@@ -10,6 +10,7 @@
 | [ARCHITECTURE.md](./ARCHITECTURE.md) | 技术栈、模块边界、数据流和目录结构 | 架构变化时 |
 | [CONTENT_MODEL.md](./CONTENT_MODEL.md) | 内容类型、字段契约、URL 和校验规则 | 内容契约变化时 |
 | [DESIGN.md](./DESIGN.md) | 视觉概念、Token、排版和交互原则 | 设计系统变化时 |
+| [DISCOVERY.md](./DISCOVERY.md) | 搜索、RSS、Sitemap、robots 与绝对 URL | 发布发现能力变化时 |
 | [ROADMAP.md](./ROADMAP.md) | 阶段、门槛和全局状态 | 每轮结束时 |
 | [decisions/](./decisions/) | 重要技术决策及其取舍 | 做出难以逆转的决策时 |
 | [iterations/](./iterations/) | 每轮范围、实现、验证和经验 | 每轮提交前 |

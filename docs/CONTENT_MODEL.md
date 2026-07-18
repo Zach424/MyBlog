@@ -110,3 +110,12 @@ demo: null
 - 阅读时间同时估算中文字符与拉丁单词；文章与项目详情按需渲染正文，并生成目录、代码高亮和稳定元数据。
 
 最初试用的 `gray-matter` 会把可执行 JavaScript frontmatter 引擎中的直接 `eval` 带进 Worker 包，因此改用 `yaml` 并显式限制 schema。内容只允许声明式 YAML，不支持 JavaScript frontmatter。
+
+## 公开内容消费者
+
+`getAllContent()` 是跨文章与项目的公开集合入口，已经统一完成草稿和未来日期过滤。站内搜索、RSS 与 Sitemap 只能从这个入口或同一组派生索引读取，禁止再次扫描文件或维护第二份发布清单。
+
+- 搜索索引包含：类型、标题、摘要、日期、标签、稳定 URL 和去除 Markdown 标记后的正文；
+- RSS 包含全部公开文章、TIL 与项目，使用稳定绝对 URL 作为 `guid`；
+- Sitemap 包含核心集合页、全部详情、专题和标签页；
+- robots 公开允许抓取，并只声明当前请求主机下的 Sitemap。

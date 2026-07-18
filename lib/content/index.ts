@@ -40,6 +40,14 @@ export function getAllProjects() {
   return publishedProjects;
 }
 
+export function getAllContent() {
+  return [...publishedPosts, ...publishedProjects].sort(
+    (left, right) =>
+      right.publishedAt.localeCompare(left.publishedAt) ||
+      left.title.localeCompare(right.title, "zh-CN"),
+  );
+}
+
 export function getPostBySlug(slug: string) {
   return publishedPosts.find((post) => post.slug === slug);
 }

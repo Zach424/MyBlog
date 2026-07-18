@@ -32,6 +32,10 @@ app/
   layout.tsx              全局站点框架、动态绝对 URL 元数据和主题颜色
   not-found.tsx           未知内容的 404 边界
   page.tsx                内容驱动的首页、Evidence Rail 和 Commit Trace
+  search/page.tsx         本地静态搜索页面与可分享查询
+  rss.xml/route.ts        RSS 2.0 发布端点
+  sitemap.xml/route.ts    站点 URL 索引
+  robots.txt/route.ts     爬虫策略与 Sitemap 入口
 build/
   markdown-source-plugin.ts Vite pre-transform，统一 Markdown 构建与 HMR
   validate-content.ts     Vite 启动/构建前内容校验
@@ -39,6 +43,7 @@ components/
   ContentViews.tsx        集合列表、内容头、目录和相邻内容
   MarkdownContent.tsx     GFM、标题锚点、代码高亮和安全外链
   SiteChrome.tsx          全局导航与页脚
+  SearchExperience.tsx    本地加权搜索、建议与结果反馈
 content/
   posts/                  3 篇真实文章与 TIL
   projects/               MyBlog 项目复盘
@@ -46,16 +51,22 @@ lib/content/
   contract.ts             frontmatter schema、规范化、过滤和派生索引
   index.ts                Vite glob 内容仓库与文章/项目/专题/标签查询
   markdown.ts             与渲染器同规则的 H2/H3 目录提取
+lib/
+  discovery.ts            RSS、Sitemap 与 robots 纯文本生成器
+  search.ts               Markdown 纯文本化、静态索引和加权匹配
+  site.ts                 全站名称、摘要与请求主机 URL 解析
 public/
   og.png                  1200 × 630 社交分享卡
 tests/
   content-contract.test.mjs  内容契约与目录提取单元测试
-  rendered-html.test.mjs    Worker 首页、核心路由、Markdown 和 404 集成测试
+  search.test.mjs            搜索规范化、排序和匹配单元测试
+  discovery.test.mjs         RSS/XML、Sitemap 与公开主机单元测试
+  rendered-html.test.mjs    Worker 页面、搜索、发布端点和 404 集成测试
 docs/                     稳定文档、决策记录和逐轮归档
 .openai/hosting.json      无 D1 / R2 的托管能力声明
 ```
 
-启动骨架、未启用的 ChatGPT Auth/D1/Drizzle 示例和相关依赖已删除。首页、全局导航、集合页、详情页、专题与标签索引现在全部使用稳定内容 URL；未知 slug 进入统一 404 边界。
+启动骨架、未启用的 ChatGPT Auth/D1/Drizzle 示例和相关依赖已删除。首页、全局导航、集合页、详情页、专题与标签索引现在全部使用稳定内容 URL；未知 slug 进入统一 404 边界。搜索索引、RSS、Sitemap 和 robots 只消费经过草稿与未来日期过滤的公开内容。
 
 ## 目标模块
 
@@ -85,7 +96,8 @@ YAML 解析、Zod schema 与跨内容校验
         ↓
 Vite glob 打包、草稿过滤与派生索引
         ↓
-React Markdown + GFM + 标题锚点 + 代码高亮
+页面：React Markdown + GFM + 标题锚点 + 代码高亮
+发现：本地搜索索引 + RSS + Sitemap + robots
         ↓
 Vite / Vinext 构建 Cloudflare-compatible output
         ↓

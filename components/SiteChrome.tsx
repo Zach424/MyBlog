@@ -11,6 +11,7 @@ export function SiteHeader() {
         <Link href="/posts">文章</Link>
         <Link href="/series">专题</Link>
         <Link href="/projects">项目</Link>
+        <Link href="/search">搜索</Link>
         <Link href="/about">关于</Link>
       </nav>
     </header>
@@ -23,7 +24,13 @@ export function SiteFooter() {
       <p>
         <strong>ZACH424</strong> / LEARN · BUILD · REVIEW
       </p>
-      <p>用项目验证学习，用记录沉淀判断。</p>
+      <nav className="footer-links" aria-label="订阅与源码">
+        <Link href="/search">搜索</Link>
+        <a href="/rss.xml">RSS</a>
+        <a href="https://github.com/Zach424/MyBlog" target="_blank" rel="noreferrer">
+          源码 <span aria-hidden="true">↗</span>
+        </a>
+      </nav>
     </footer>
   );
 }

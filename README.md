@@ -4,8 +4,8 @@
 
 ## 当前状态
 
-- 阶段：核心阅读路径完成，正在补齐搜索、订阅与上线能力
-- 当前轮次：`0005-core-content-routes`
+- 阶段：核心阅读与发布发现能力完成，正在进入上线候选验收
+- 当前轮次：`0006-discovery-and-feeds`
 - 运行目标：Cloudflare Worker-compatible web application
 - 内容目标：学习笔记、完整文章、系列专题、项目复盘
 
@@ -39,6 +39,7 @@ npm test
 - [项目章程](./docs/PROJECT.md)
 - [技术架构](./docs/ARCHITECTURE.md)
 - [设计基线](./docs/DESIGN.md)
+- [搜索与发布发现](./docs/DISCOVERY.md)
 - [开发路线图](./docs/ROADMAP.md)
 - [架构决策](./docs/decisions/0001-runtime-and-hosting.md)
 - [迭代归档](./docs/iterations/README.md)

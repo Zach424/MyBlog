@@ -32,6 +32,7 @@ export default function PostsPage() {
       />
       <ContentIndexList items={posts} />
       <div className="collection-links">
+        <Link href="/search">搜索全部公开内容 <span aria-hidden="true">→</span></Link>
         <Link href="/series">按专题连续阅读 <span aria-hidden="true">→</span></Link>
         <Link href="/tags">查看全部技术标签 <span aria-hidden="true">→</span></Link>
       </div>

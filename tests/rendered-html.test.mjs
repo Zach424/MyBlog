@@ -51,6 +51,10 @@ test("server-renders the engineering log homepage", async () => {
     html,
     /<meta property="og:image" content="https:\/\/blog\.example\.test\/og\.png"/i,
   );
+  assert.match(
+    html,
+    /<link(?=[^>]*rel="alternate")(?=[^>]*type="application\/rss\+xml")(?=[^>]*href="https:\/\/blog\.example\.test\/rss\.xml")[^>]*>/i,
+  );
   assert.match(html, /<a class="skip-link" href="#main-content">/i);
   assert.match(html, /<nav class="site-nav" aria-label="主导航">/i);
   assert.match(html, /把写过的代码/);
@@ -61,7 +65,7 @@ test("server-renders the engineering log homepage", async () => {
   assert.match(html, />Learned</);
   assert.match(html, /从零搭建可维护的个人技术博客/);
   assert.match(html, /MyBlog — 把学习记录做成工程资产/);
-  assert.match(html, /Markdown 正文与核心路由/);
+  assert.match(html, /搜索、订阅与站点发现/);
   assert.match(visibleHtml, /Design Systems · 3/);
   assert.doesNotMatch(html, developmentPreviewMeta);
   assert.doesNotMatch(html, /Starter Project|react-loading-skeleton|Your site is taking shape/);
@@ -75,6 +79,7 @@ test("server-renders every public content collection and detail route", async ()
     ["/series/build-my-blog", /从零搭建可维护的个人技术博客/],
     ["/tags", /技术标签/],
     ["/tags/typescript", /TypeScript/],
+    ["/search", /检索工程轨迹/],
     ["/about", /学习不是收藏答案，而是更新判断/],
   ];
 
@@ -115,8 +120,48 @@ test("renders project Markdown and returns a real 404 for unknown content", asyn
   assert.match(await missingResponse.text(), /这条工程轨迹不存在/);
 });
 
+test("server-renders a shareable search query against posts and projects", async () => {
+  const response = await render("/search?q=cloudflare");
+  assert.equal(response.status, 200);
+
+  const html = await response.text();
+  assert.match(html, /name="q"/);
+  assert.match(html, /value="cloudflare"/);
+  assert.match(html, /Cloudflare/);
+  assert.match(html, /MyBlog — 把学习记录做成工程资产/);
+  assert.match(html, /NO TRACKING/);
+});
+
+test("publishes RSS, Sitemap and robots from the same public content index", async () => {
+  const [rssResponse, sitemapResponse, robotsResponse] = await Promise.all([
+    render("/rss.xml"),
+    render("/sitemap.xml"),
+    render("/robots.txt"),
+  ]);
+
+  assert.equal(rssResponse.status, 200);
+  assert.match(rssResponse.headers.get("content-type") ?? "", /^application\/rss\+xml/i);
+  const rss = await rssResponse.text();
+  assert.match(rss, /https:\/\/blog\.example\.test\/rss\.xml/);
+  assert.match(rss, /从零搭建可维护的个人技术博客/);
+  assert.match(rss, /MyBlog — 把学习记录做成工程资产/);
+  assert.equal((rss.match(/<item>/g) ?? []).length, 4);
+
+  assert.equal(sitemapResponse.status, 200);
+  assert.match(sitemapResponse.headers.get("content-type") ?? "", /^application\/xml/i);
+  const sitemap = await sitemapResponse.text();
+  assert.match(sitemap, /https:\/\/blog\.example\.test\/search/);
+  assert.match(sitemap, /https:\/\/blog\.example\.test\/tags\/typescript/);
+  assert.match(sitemap, /https:\/\/blog\.example\.test\/series\/build-my-blog/);
+
+  assert.equal(robotsResponse.status, 200);
+  const robots = await robotsResponse.text();
+  assert.match(robots, /User-agent: \*/);
+  assert.match(robots, /Sitemap: https:\/\/blog\.example\.test\/sitemap\.xml/);
+});
+
 test("removes starter artifacts and keeps the design contract explicit", async () => {
-  const [page, layout, css, packageJson, worker, viteConfig, markdownPlugin, ogImage] = await Promise.all([
+  const [page, layout, css, packageJson, worker, viteConfig, markdownPlugin, siteModule, ogImage] = await Promise.all([
     readFile(new URL("../app/page.tsx", import.meta.url), "utf8"),
     readFile(new URL("../app/layout.tsx", import.meta.url), "utf8"),
     readFile(new URL("../app/globals.css", import.meta.url), "utf8"),
@@ -124,6 +169,7 @@ test("removes starter artifacts and keeps the design contract explicit", async (
     readFile(new URL("../worker/index.ts", import.meta.url), "utf8"),
     readFile(new URL("../vite.config.ts", import.meta.url), "utf8"),
     readFile(new URL("../build/markdown-source-plugin.ts", import.meta.url), "utf8"),
+    readFile(new URL("../lib/site.ts", import.meta.url), "utf8"),
     readFile(new URL("../public/og.png", import.meta.url)),
   ]);
 
@@ -136,7 +182,8 @@ test("removes starter artifacts and keeps the design contract explicit", async (
   assert.doesNotMatch(page, /_sites-preview|SkeletonPreview|codex-preview/);
 
   assert.match(layout, /export async function generateMetadata/);
-  assert.match(layout, /x-forwarded-host/);
+  assert.match(layout, /resolveSiteUrl/);
+  assert.match(siteModule, /x-forwarded-host/);
   assert.match(layout, /<html lang="zh-CN">/);
   assert.doesNotMatch(layout, /next\/font|Starter Project|favicon\.svg/);
 

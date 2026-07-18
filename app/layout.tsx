@@ -1,31 +1,12 @@
 import type { Metadata, Viewport } from "next";
 import { headers } from "next/headers";
 import { SiteFooter, SiteHeader } from "@/components/SiteChrome";
+import { resolveSiteUrl, SITE_DESCRIPTION, SITE_TITLE } from "@/lib/site";
 import "./globals.css";
 
-const siteTitle = "Zach424 / Engineering Notes";
-const siteDescription =
-  "记录学习路径、技术取舍和项目复盘，把写过的代码变成可复用的判断。";
-
 async function getSiteUrl() {
-  if (process.env.NEXT_PUBLIC_SITE_URL) {
-    return new URL(process.env.NEXT_PUBLIC_SITE_URL);
-  }
-
   const requestHeaders = await headers();
-  const host = requestHeaders.get("x-forwarded-host") ?? requestHeaders.get("host");
-
-  if (!host) {
-    return new URL("http://localhost:3000");
-  }
-
-  const protocol =
-    requestHeaders.get("x-forwarded-proto") ??
-    (host.startsWith("localhost") || host.startsWith("127.0.0.1")
-      ? "http"
-      : "https");
-
-  return new URL(`${protocol}://${host}`);
+  return resolveSiteUrl(requestHeaders);
 }
 
 export async function generateMetadata(): Promise<Metadata> {
@@ -34,20 +15,23 @@ export async function generateMetadata(): Promise<Metadata> {
   return {
     metadataBase: siteUrl,
     title: {
-      default: siteTitle,
+      default: SITE_TITLE,
       template: `%s — Zach424`,
     },
-    description: siteDescription,
+    description: SITE_DESCRIPTION,
     alternates: {
       canonical: "/",
+      types: {
+        "application/rss+xml": "/rss.xml",
+      },
     },
     openGraph: {
       type: "website",
       locale: "zh_CN",
       url: "/",
-      siteName: siteTitle,
-      title: siteTitle,
-      description: siteDescription,
+      siteName: SITE_TITLE,
+      title: SITE_TITLE,
+      description: SITE_DESCRIPTION,
       images: [
         {
           url: "/og.png",
@@ -59,8 +43,8 @@ export async function generateMetadata(): Promise<Metadata> {
     },
     twitter: {
       card: "summary_large_image",
-      title: siteTitle,
-      description: siteDescription,
+      title: SITE_TITLE,
+      description: SITE_DESCRIPTION,
       images: ["/og.png"],
     },
   };
