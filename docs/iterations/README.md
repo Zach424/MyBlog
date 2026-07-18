@@ -9,6 +9,7 @@
 0002-content-contract.md
 0003-homepage-design-system.md
 0004-content-pipeline.md
+0005-core-content-routes.md
 ```
 
 ## 必填结构

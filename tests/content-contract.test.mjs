@@ -7,6 +7,7 @@ import {
   parsePostFile,
   parseProjectFile,
 } from "../lib/content/contract.ts";
+import { extractTableOfContents } from "../lib/content/markdown.ts";
 
 function postSource({
   publishedAt = "2026-07-18",
@@ -195,4 +196,38 @@ test("filters drafts and future content deterministically", () => {
   assert.equal(isPublished(current, now), true);
   assert.equal(isPublished(future, now), false);
   assert.equal(isPublished(draft, now), false);
+});
+
+test("extracts stable H2 and H3 table-of-contents anchors", () => {
+  const items = extractTableOfContents(`
+## Why **content contracts** matter
+
+### Parse, then validate
+
+## Why content contracts matter
+
+\`\`\`md
+## This heading is code
+\`\`\`
+
+#### H4 is intentionally omitted
+`);
+
+  assert.deepEqual(items, [
+    {
+      depth: 2,
+      id: "why-content-contracts-matter",
+      text: "Why content contracts matter",
+    },
+    {
+      depth: 3,
+      id: "parse-then-validate",
+      text: "Parse, then validate",
+    },
+    {
+      depth: 2,
+      id: "why-content-contracts-matter-1",
+      text: "Why content contracts matter",
+    },
+  ]);
 });

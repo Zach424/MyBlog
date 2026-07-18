@@ -1,6 +1,7 @@
 import vinext from "vinext";
 import { defineConfig } from "vite";
 import hostingConfig from "./.openai/hosting.json";
+import { markdownSourcePlugin } from "./build/markdown-source-plugin";
 import { sites } from "./build/sites-vite-plugin";
 import { validateContentRepository } from "./build/validate-content";
 
@@ -51,6 +52,7 @@ export default defineConfig(async () => {
       ? { watch: { useFsEvents: false, usePolling: true } }
       : undefined,
     plugins: [
+      markdownSourcePlugin(),
       vinext(),
       sites(),
       cloudflare({

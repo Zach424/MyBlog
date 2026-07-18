@@ -5,13 +5,13 @@ import test from "node:test";
 const developmentPreviewMeta =
   /<meta(?=[^>]*\bname=["']codex-preview["'])(?=[^>]*\bcontent=["']development["'])[^>]*>/i;
 
-async function render() {
+async function render(pathname = "/") {
   const workerUrl = new URL("../dist/server/index.js", import.meta.url);
   workerUrl.searchParams.set("test", `${process.pid}-${Date.now()}`);
   const { default: worker } = await import(workerUrl.href);
 
   return worker.fetch(
-    new Request("http://localhost/", {
+    new Request(`http://localhost${pathname}`, {
       headers: {
         accept: "text/html",
         "x-forwarded-host": "blog.example.test",
@@ -61,20 +61,69 @@ test("server-renders the engineering log homepage", async () => {
   assert.match(html, />Learned</);
   assert.match(html, /从零搭建可维护的个人技术博客/);
   assert.match(html, /MyBlog — 把学习记录做成工程资产/);
-  assert.match(html, /Markdown 内容管线/);
+  assert.match(html, /Markdown 正文与核心路由/);
   assert.match(visibleHtml, /Design Systems · 3/);
   assert.doesNotMatch(html, developmentPreviewMeta);
   assert.doesNotMatch(html, /Starter Project|react-loading-skeleton|Your site is taking shape/);
 });
 
+test("server-renders every public content collection and detail route", async () => {
+  const routeExpectations = [
+    ["/posts", /文章与 TIL/],
+    ["/projects", /项目复盘/],
+    ["/series", /连续专题/],
+    ["/series/build-my-blog", /从零搭建可维护的个人技术博客/],
+    ["/tags", /技术标签/],
+    ["/tags/typescript", /TypeScript/],
+    ["/about", /学习不是收藏答案，而是更新判断/],
+  ];
+
+  for (const [pathname, expectation] of routeExpectations) {
+    const response = await render(pathname);
+    assert.equal(response.status, 200, pathname);
+    assert.match(await response.text(), expectation, pathname);
+  }
+});
+
+test("renders Markdown articles with metadata, anchors, code and navigation", async () => {
+  const response = await render("/posts/building-a-maintainable-blog");
+  assert.equal(response.status, 200);
+
+  const html = await response.text();
+  assert.match(html, /从零搭建可维护的个人技术博客/);
+  assert.match(html, /<nav aria-label="本文目录">/);
+  assert.match(html, /id="先冻结内容契约"/);
+  assert.match(html, /class="[^"]*hljs[^"]*"/);
+  assert.match(html, /href="\/series\/build-my-blog"/);
+  assert.match(html, /href="\/tags\/typescript"/);
+  assert.match(
+    html,
+    /<link rel="canonical" href="https:\/\/blog\.example\.test\/posts\/building-a-maintainable-blog"/,
+  );
+});
+
+test("renders project Markdown and returns a real 404 for unknown content", async () => {
+  const projectResponse = await render("/projects/myblog");
+  assert.equal(projectResponse.status, 200);
+  const projectHtml = await projectResponse.text();
+  assert.match(projectHtml, /MyBlog/);
+  assert.match(projectHtml, /GitHub repository/);
+  assert.match(projectHtml, /https:\/\/github\.com\/Zach424\/MyBlog/);
+
+  const missingResponse = await render("/posts/does-not-exist");
+  assert.equal(missingResponse.status, 404);
+  assert.match(await missingResponse.text(), /这条工程轨迹不存在/);
+});
+
 test("removes starter artifacts and keeps the design contract explicit", async () => {
-  const [page, layout, css, packageJson, worker, viteConfig, ogImage] = await Promise.all([
+  const [page, layout, css, packageJson, worker, viteConfig, markdownPlugin, ogImage] = await Promise.all([
     readFile(new URL("../app/page.tsx", import.meta.url), "utf8"),
     readFile(new URL("../app/layout.tsx", import.meta.url), "utf8"),
     readFile(new URL("../app/globals.css", import.meta.url), "utf8"),
     readFile(new URL("../package.json", import.meta.url), "utf8"),
     readFile(new URL("../worker/index.ts", import.meta.url), "utf8"),
     readFile(new URL("../vite.config.ts", import.meta.url), "utf8"),
+    readFile(new URL("../build/markdown-source-plugin.ts", import.meta.url), "utf8"),
     readFile(new URL("../public/og.png", import.meta.url)),
   ]);
 
@@ -99,9 +148,14 @@ test("removes starter artifacts and keeps the design contract explicit", async (
   assert.doesNotMatch(packageJson, /drizzle/);
   assert.match(packageJson, /"yaml": "2\.9\.0"/);
   assert.match(packageJson, /"zod": "4\.4\.3"/);
+  assert.match(packageJson, /"react-markdown": "10\.1\.0"/);
+  assert.match(packageJson, /"rehype-highlight": "7\.0\.2"/);
+  assert.match(packageJson, /"remark-gfm": "4\.0\.1"/);
   assert.match(packageJson, /"typecheck": "tsc --noEmit"/);
   assert.doesNotMatch(worker, /\bDB:\s*D1Database/);
   assert.match(viteConfig, /validateContentRepository\(process\.cwd\(\)\)/);
+  assert.match(viteConfig, /markdownSourcePlugin\(\)/);
+  assert.match(markdownPlugin, /export default/);
 
   assert.equal(ogImage.readUInt32BE(16), 1200);
   assert.equal(ogImage.readUInt32BE(20), 630);

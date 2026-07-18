@@ -23,27 +23,39 @@
 
 ```text
 app/
-  globals.css             设计 Token、响应式和可访问性交互
-  layout.tsx              中文根布局、动态绝对 URL 元数据和主题颜色
-  page.tsx                由内容管线驱动的首页、Evidence Rail 和 Commit Trace
+  about/page.tsx          关于与记录原则
+  posts/                  文章列表与 Markdown 详情
+  projects/               项目列表与 Markdown 详情
+  series/                 派生专题索引与详情
+  tags/                   派生标签索引与详情
+  globals.css             首页、集合页、阅读页、响应式和可访问性交互
+  layout.tsx              全局站点框架、动态绝对 URL 元数据和主题颜色
+  not-found.tsx           未知内容的 404 边界
+  page.tsx                内容驱动的首页、Evidence Rail 和 Commit Trace
 build/
+  markdown-source-plugin.ts Vite pre-transform，统一 Markdown 构建与 HMR
   validate-content.ts     Vite 启动/构建前内容校验
+components/
+  ContentViews.tsx        集合列表、内容头、目录和相邻内容
+  MarkdownContent.tsx     GFM、标题锚点、代码高亮和安全外链
+  SiteChrome.tsx          全局导航与页脚
 content/
   posts/                  3 篇真实文章与 TIL
   projects/               MyBlog 项目复盘
 lib/content/
   contract.ts             frontmatter schema、规范化、过滤和派生索引
-  index.ts                Vite glob 内容仓库与查询接口
+  index.ts                Vite glob 内容仓库与文章/项目/专题/标签查询
+  markdown.ts             与渲染器同规则的 H2/H3 目录提取
 public/
   og.png                  1200 × 630 社交分享卡
 tests/
-  content-contract.test.mjs  内容契约单元测试
-  rendered-html.test.mjs    Worker 构建产物、内容接线和清理验证
+  content-contract.test.mjs  内容契约与目录提取单元测试
+  rendered-html.test.mjs    Worker 首页、核心路由、Markdown 和 404 集成测试
 docs/                     稳定文档、决策记录和逐轮归档
 .openai/hosting.json      无 D1 / R2 的托管能力声明
 ```
 
-启动骨架、未启用的 ChatGPT Auth/D1/Drizzle 示例和相关依赖已删除。首页暂时使用同页锚点，避免在详情路由实现前产生 404；下一轮页面完成后，导航和记录标题会切换到稳定内容 URL。
+启动骨架、未启用的 ChatGPT Auth/D1/Drizzle 示例和相关依赖已删除。首页、全局导航、集合页、详情页、专题与标签索引现在全部使用稳定内容 URL；未知 slug 进入统一 404 边界。
 
 ## 目标模块
 
@@ -72,6 +84,8 @@ Markdown + frontmatter
 YAML 解析、Zod schema 与跨内容校验
         ↓
 Vite glob 打包、草稿过滤与派生索引
+        ↓
+React Markdown + GFM + 标题锚点 + 代码高亮
         ↓
 Vite / Vinext 构建 Cloudflare-compatible output
         ↓

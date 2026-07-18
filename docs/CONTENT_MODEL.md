@@ -92,8 +92,8 @@ demo: null
 
 ## 内容加载边界
 
-- 使用 Vite `import.meta.glob` 将 Markdown 原文打包，避免 Cloudflare 运行时读取文件系统。
-- frontmatter 解析、schema 校验和 Markdown 渲染统一放在 `lib/content`。
+- 使用 Vite `import.meta.glob` 与项目的 Markdown pre-transform 将原文打包，避免 Cloudflare 运行时读取文件系统。
+- frontmatter 解析、schema 校验、目录提取和内容查询统一放在 `lib/content`；React 渲染组件放在 `components`。
 - 列表只暴露元数据，正文渲染按页面需要执行。
 - 构建失败应指出具体文件和字段，不能静默跳过错误内容。
 
@@ -102,8 +102,11 @@ demo: null
 - `lib/content/contract.ts`：安全拆分 `---` 边界，使用 YAML 1.2 core schema 解析 frontmatter，并用 Zod 校验字段；
 - `lib/content/index.ts`：通过 `import.meta.glob` 打包 Markdown 原文，过滤草稿/未来内容，提供排序结果和查询函数；
 - `build/validate-content.ts`：Vinext/Vite 启动与构建前读取仓库内容并执行同一套校验；
+- `build/markdown-source-plugin.ts`：在 Vite 解析前把 `.md` 转成字符串模块，使生产构建与 Vinext RSC 热更新使用同一导入语义；
+- `lib/content/markdown.ts`：用 `github-slugger` 提取 H2/H3 目录，跳过 fenced code，并与页面标题锚点保持一致；
+- `components/MarkdownContent.tsx`：使用 React Markdown、GFM、rehype slug 和 highlight.js 输出正文；
 - 标签由 `TAG_REGISTRY` 统一名称与 slug，未知标签会让构建失败；
 - 专题和标签索引由已发布内容派生，不保存第二份索引文件；
-- 阅读时间同时估算中文字符与拉丁单词；Markdown 正文渲染器在详情路由轮次实现。
+- 阅读时间同时估算中文字符与拉丁单词；文章与项目详情按需渲染正文，并生成目录、代码高亮和稳定元数据。
 
 最初试用的 `gray-matter` 会把可执行 JavaScript frontmatter 引擎中的直接 `eval` 带进 Worker 包，因此改用 `yaml` 并显式限制 schema。内容只允许声明式 YAML，不支持 JavaScript frontmatter。

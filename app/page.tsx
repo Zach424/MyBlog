@@ -1,3 +1,4 @@
+import Link from "next/link";
 import {
   getAllPosts,
   getFeaturedProject,
@@ -8,20 +9,20 @@ const evidenceItems = [
   {
     state: "Verified",
     mark: "verified",
-    value: "内容契约与构建基线",
-    meta: "Docs · Build · Tests",
+    value: "Markdown 正文与核心路由",
+    meta: "Routes · TOC · Tests",
   },
   {
     state: "Building",
     mark: "building",
-    value: "Markdown 内容管线",
-    meta: "Schema · Glob · Indexes",
+    value: "发布能力与站内检索",
+    meta: "Search · RSS · Sitemap",
   },
   {
     state: "Learned",
     mark: "learned",
-    value: "构建期 schema 校验",
-    meta: "Vite · Cloudflare",
+    value: "标题锚点必须同源生成",
+    meta: "GitHub Slugger · rehype",
   },
 ] as const;
 
@@ -33,30 +34,12 @@ export default function Home() {
 
   return (
     <>
-      <a className="skip-link" href="#main-content">
-        跳到主要内容
-      </a>
-      <div className="top-rule" aria-hidden="true" />
-
-      <header className="site-header page-shell">
-        <a className="brand" href="#top" aria-label="Zach424 Engineering Notes 首页">
-          <strong>Zach424</strong>
-          <span>Engineering Notes</span>
-        </a>
-        <nav className="site-nav" aria-label="主导航">
-          <a href="#recent">文章</a>
-          <a href="#focus">专题</a>
-          <a href="#project">项目</a>
-          <a href="#about">关于</a>
-        </nav>
-      </header>
-
       <main id="main-content">
         <section className="hero page-shell" id="top" aria-labelledby="hero-title">
           <div className="hero-copy">
             <p className="eyebrow">
               <span>Independent engineering log</span>
-              <span>REV. 004 · {latestDate}</span>
+              <span>REV. 005 · {latestDate}</span>
             </p>
             <h1 id="hero-title">
               把写过的代码，
@@ -107,7 +90,7 @@ export default function Home() {
 
         <section className="focus-strip page-shell" id="focus" aria-label="当前关注">
           <span className="focus-label">Current focus</span>
-          <strong>个人技术博客 / Markdown 内容管线 / Cloudflare</strong>
+          <strong>核心阅读路径 / 站内检索 / Cloudflare</strong>
           <span className="focus-index">
             TRACE {String(journalEntries.length).padStart(2, "0")} / ACTIVE
           </span>
@@ -133,7 +116,7 @@ export default function Home() {
                   <span>{entry.type === "til" ? "TIL" : "NOTE"}</span>
                 </time>
                 <span className="trace-node" aria-hidden="true" />
-                <div className="entry">
+                <Link className="entry" href={entry.url}>
                   <div className="entry-topline">
                     <span className="entry-type">
                       {entry.type === "til" ? "TIL" : "Article"}
@@ -144,16 +127,14 @@ export default function Home() {
                   </div>
                   <h3>{entry.title}</h3>
                   <p>{entry.description}</p>
-                </div>
+                </Link>
 
                 {index === 0 && featuredProject ? (
-                  <a
+                  <Link
                     className="project"
                     id="project"
-                    href={featuredProject.repository ?? featuredProject.url}
-                    target="_blank"
-                    rel="noreferrer"
-                    aria-label="在 GitHub 查看 MyBlog 项目"
+                    href={featuredProject.url}
+                    aria-label="查看 MyBlog 项目复盘"
                   >
                     <div className="project-topline">
                       <span className="project-kicker">Featured project</span>
@@ -168,7 +149,7 @@ export default function Home() {
                       <span>{featuredProject.stack.join(" · ")}</span>
                       <span aria-hidden="true">↗</span>
                     </div>
-                  </a>
+                  </Link>
                 ) : null}
               </article>
             ))}
@@ -183,19 +164,14 @@ export default function Home() {
           <ul aria-label="技术主题">
             {topicTags.map((tag) => (
               <li key={tag.slug}>
-                {tag.name} · {tag.count}
+                <Link href={`/tags/${tag.slug}`}>
+                  {tag.name} · {tag.count}
+                </Link>
               </li>
             ))}
           </ul>
         </section>
       </main>
-
-      <footer className="site-footer page-shell" id="about">
-        <p>
-          <strong>ZACH424</strong> / LEARN · BUILD · REVIEW
-        </p>
-        <p>用项目验证学习，用记录沉淀判断。</p>
-      </footer>
     </>
   );
 }

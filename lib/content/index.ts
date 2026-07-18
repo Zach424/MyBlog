@@ -12,13 +12,11 @@ import {
 const postSources = import.meta.glob("../../content/posts/*.md", {
   eager: true,
   import: "default",
-  query: "?raw",
 }) as Record<string, string>;
 
 const projectSources = import.meta.glob("../../content/projects/*.md", {
   eager: true,
   import: "default",
-  query: "?raw",
 }) as Record<string, string>;
 
 const allPosts = Object.entries(postSources).map(([sourcePath, raw]) =>
@@ -58,8 +56,20 @@ export function getSeriesIndex() {
   return indexes.series;
 }
 
+export function getSeriesBySlug(slug: string) {
+  return indexes.series.find((series) => series.slug === slug);
+}
+
 export function getTagIndex() {
   return indexes.tags;
+}
+
+export function getTagBySlug(slug: string) {
+  return indexes.tags.find((tag) => tag.slug === slug);
+}
+
+export function getTagSlug(name: string) {
+  return indexes.tags.find((tag) => tag.name === name)?.slug;
 }
 
 export type {

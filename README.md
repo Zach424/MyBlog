@@ -4,8 +4,8 @@
 
 ## 当前状态
 
-- 阶段：工程、设计系统、正式首页与构建期内容管线已经建立
-- 当前轮次：`0004-content-pipeline`
+- 阶段：核心阅读路径完成，正在补齐搜索、订阅与上线能力
+- 当前轮次：`0005-core-content-routes`
 - 运行目标：Cloudflare Worker-compatible web application
 - 内容目标：学习笔记、完整文章、系列专题、项目复盘
 
