@@ -68,6 +68,7 @@ tests/
 worker/
   index.ts                  Worker 入口、图像优化与生产响应头基线
 docs/                     稳定文档、决策记录和逐轮归档
+  OPERATIONS.md           内容发布、生产验收、监控与回滚手册
 .openai/hosting.json      无 D1 / R2 的托管能力声明
 .env.example              可选公开站点地址示例，不包含凭证
 ```

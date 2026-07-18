@@ -95,3 +95,5 @@ public, max-age=0, s-maxage=3600, stale-while-revalidate=86400
 3. Wrangler 干跑成功且上传包位于平台和项目预算内；
 4. 结构、设计、实现、证据、失败经验和下一步已经写入本轮归档；
 5. 工作树只包含本轮范围内的预期修改。
+
+部署成功不是业务验收成功。部署后还必须按 [OPERATIONS.md](./OPERATIONS.md) 检查真实正文、Sitemap URL 数量与逐路由状态、搜索、RSS、robots、结构化数据、安全头和 404 缓存；在线证据通过后，本轮才能标记为 `done`。

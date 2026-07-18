@@ -4,7 +4,7 @@
 
 ## 当前状态
 
-- 阶段：Cloudflare 首次发布完成，正在修复并复核生产详情路由
+- 阶段：Sites / Cloudflare 私有生产上线完成，进入维护与公开发布决策
 - 当前轮次：`0008-production-launch`
 - 运行目标：Cloudflare Worker-compatible web application
 - 内容目标：学习笔记、完整文章、系列专题、项目复盘
@@ -41,6 +41,7 @@ npx wrangler deploy --dry-run --config dist/server/wrangler.json --outdir .wrang
 - [设计基线](./docs/DESIGN.md)
 - [搜索与发布发现](./docs/DISCOVERY.md)
 - [发布质量基线](./docs/QUALITY.md)
+- [上线、维护与回滚手册](./docs/OPERATIONS.md)
 - [开发路线图](./docs/ROADMAP.md)
 - [架构决策](./docs/decisions/0001-runtime-and-hosting.md)
 - [迭代归档](./docs/iterations/README.md)
