@@ -8,6 +8,7 @@ import {
   parseProjectFile,
 } from "../lib/content/contract.ts";
 import { extractTableOfContents } from "../lib/content/markdown.ts";
+import { resolveContentBuildDate } from "../build/content-build-date.ts";
 
 function postSource({
   publishedAt = "2026-07-18",
@@ -196,6 +197,17 @@ test("filters drafts and future content deterministically", () => {
   assert.equal(isPublished(current, now), true);
   assert.equal(isPublished(future, now), false);
   assert.equal(isPublished(draft, now), false);
+});
+
+test("freezes publication visibility to the author timezone at build time", () => {
+  assert.equal(
+    resolveContentBuildDate(new Date("2026-07-18T15:59:59Z")),
+    "2026-07-18",
+  );
+  assert.equal(
+    resolveContentBuildDate(new Date("2026-07-18T16:00:00Z")),
+    "2026-07-19",
+  );
 });
 
 test("extracts stable H2 and H3 table-of-contents anchors", () => {

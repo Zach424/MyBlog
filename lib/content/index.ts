@@ -1,5 +1,7 @@
 /// <reference types="vite/client" />
 
+declare const __CONTENT_BUILD_DATE__: string;
+
 import {
   deriveContentIndexes,
   isPublished,
@@ -26,9 +28,12 @@ const allProjects = Object.entries(projectSources).map(([sourcePath, raw]) =>
   parseProjectFile(sourcePath, raw),
 );
 
-const publishedPosts = sortPosts(allPosts.filter((post) => isPublished(post)));
+const contentBuildDate = new Date(`${__CONTENT_BUILD_DATE__}T00:00:00.000Z`);
+const publishedPosts = sortPosts(
+  allPosts.filter((post) => isPublished(post, contentBuildDate)),
+);
 const publishedProjects = sortProjects(
-  allProjects.filter((project) => isPublished(project)),
+  allProjects.filter((project) => isPublished(project, contentBuildDate)),
 );
 const indexes = deriveContentIndexes(publishedPosts, publishedProjects);
 

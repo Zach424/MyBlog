@@ -74,7 +74,7 @@ docs/                     稳定文档、决策记录和逐轮归档
 
 启动骨架、未启用的 ChatGPT Auth/D1/Drizzle 示例和相关依赖已删除。首页、全局导航、集合页、详情页、专题与标签索引现在全部使用稳定内容 URL；未知 slug 进入统一 404 边界。搜索索引、RSS、Sitemap 和 robots 只消费经过草稿与未来日期过滤的公开内容。
 
-生产路由同时保留参数化详情页与显式静态包装页。参数化页集中维护读取、元数据和渲染逻辑；每个 Sitemap 公开详情 URL 有一个仅绑定固定 slug 的薄包装，以规避 Sites 首次生产环境中参数化路由统一返回 404 的兼容问题。发布审计从 Sitemap 反查 `app/<path>/page.tsx`，新增内容缺少包装时构建门禁失败。
+公开内容的可见日期在 Vite 配置加载时按 `Asia/Shanghai` 冻结为 `__CONTENT_BUILD_DATE__`，内容模块使用这个构建常量过滤未来内容。生产 Worker 不再在模块初始化阶段读取运行时时钟，因此同一提交的页面、搜索、RSS 与 Sitemap 具有确定的公开内容集合。
 
 ## 目标模块
 
@@ -129,4 +129,4 @@ Worker 注入安全头与 HTML 边缘缓存
 - 所有 npm scripts 必须同时兼容 Windows 本地开发和托管构建环境。
 - 生产响应统一经过 Worker 安全头基线；HTML 使用浏览器不缓存、Cloudflare 边缘缓存一小时的策略。
 - Next.js 的内部 PostCSS 使用已修复的 `8.5.10` 覆盖，并由生产依赖审计与完整构建共同验证。
-- 所有公开内容详情 URL 必须有显式静态路由包装；动态 sibling 只作为集中实现与未知 slug 边界，直到 Sites/Vinext 的生产参数化匹配问题被上游修复并在线验证。
+- 草稿与未来内容过滤必须依赖构建日期，不能依赖 Cloudflare Worker 模块初始化时的 `new Date()`；发布日期时区固定为作者时区 `Asia/Shanghai`。

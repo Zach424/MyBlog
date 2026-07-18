@@ -1,6 +1,7 @@
 import vinext from "vinext";
 import { defineConfig } from "vite";
 import hostingConfig from "./.openai/hosting.json";
+import { resolveContentBuildDate } from "./build/content-build-date";
 import { markdownSourcePlugin } from "./build/markdown-source-plugin";
 import { sites } from "./build/sites-vite-plugin";
 import { validateContentRepository } from "./build/validate-content";
@@ -48,6 +49,9 @@ export default defineConfig(async () => {
   const { cloudflare } = await import("@cloudflare/vite-plugin");
 
   return {
+    define: {
+      __CONTENT_BUILD_DATE__: JSON.stringify(resolveContentBuildDate()),
+    },
     server: isCodexSeatbeltSandbox
       ? { watch: { useFsEvents: false, usePolling: true } }
       : undefined,
