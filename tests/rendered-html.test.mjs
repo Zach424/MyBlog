@@ -55,6 +55,7 @@ test("server-renders the engineering log homepage", async () => {
     html,
     /<link(?=[^>]*rel="alternate")(?=[^>]*type="application\/rss\+xml")(?=[^>]*href="https:\/\/blog\.example\.test\/rss\.xml")[^>]*>/i,
   );
+  assert.match(html, /<link(?=[^>]*rel="icon")(?=[^>]*href="[^"]*icon\.png[^"]*")[^>]*>/i);
   assert.match(html, /<a class="skip-link" href="#main-content">/i);
   assert.match(html, /<nav class="site-nav" aria-label="主导航">/i);
   assert.match(html, /把写过的代码/);
@@ -65,7 +66,8 @@ test("server-renders the engineering log homepage", async () => {
   assert.match(html, />Learned</);
   assert.match(html, /从零搭建可维护的个人技术博客/);
   assert.match(html, /MyBlog — 把学习记录做成工程资产/);
-  assert.match(html, /搜索、订阅与站点发现/);
+  assert.match(html, /上线候选质量门槛/);
+  assert.match(visibleHtml, /REV\. 007 · 2026-07-18/);
   assert.match(visibleHtml, /Design Systems · 3/);
   assert.doesNotMatch(html, developmentPreviewMeta);
   assert.doesNotMatch(html, /Starter Project|react-loading-skeleton|Your site is taking shape/);
@@ -101,6 +103,8 @@ test("renders Markdown articles with metadata, anchors, code and navigation", as
   assert.match(html, /class="[^"]*hljs[^"]*"/);
   assert.match(html, /href="\/series\/build-my-blog"/);
   assert.match(html, /href="\/tags\/typescript"/);
+  assert.match(html, /"@type":"BlogPosting"/);
+  assert.match(html, /"mainEntityOfPage":"https:\/\/blog\.example\.test\/posts\/building-a-maintainable-blog"/);
   assert.match(
     html,
     /<link rel="canonical" href="https:\/\/blog\.example\.test\/posts\/building-a-maintainable-blog"/,
@@ -114,6 +118,7 @@ test("renders project Markdown and returns a real 404 for unknown content", asyn
   assert.match(projectHtml, /MyBlog/);
   assert.match(projectHtml, /GitHub repository/);
   assert.match(projectHtml, /https:\/\/github\.com\/Zach424\/MyBlog/);
+  assert.match(projectHtml, /"@type":"SoftwareSourceCode"/);
 
   const missingResponse = await render("/posts/does-not-exist");
   assert.equal(missingResponse.status, 404);
@@ -161,7 +166,7 @@ test("publishes RSS, Sitemap and robots from the same public content index", asy
 });
 
 test("removes starter artifacts and keeps the design contract explicit", async () => {
-  const [page, layout, css, packageJson, worker, viteConfig, markdownPlugin, siteModule, ogImage] = await Promise.all([
+  const [page, layout, css, packageJson, worker, viteConfig, markdownPlugin, siteModule, ogImage, iconImage] = await Promise.all([
     readFile(new URL("../app/page.tsx", import.meta.url), "utf8"),
     readFile(new URL("../app/layout.tsx", import.meta.url), "utf8"),
     readFile(new URL("../app/globals.css", import.meta.url), "utf8"),
@@ -171,6 +176,7 @@ test("removes starter artifacts and keeps the design contract explicit", async (
     readFile(new URL("../build/markdown-source-plugin.ts", import.meta.url), "utf8"),
     readFile(new URL("../lib/site.ts", import.meta.url), "utf8"),
     readFile(new URL("../public/og.png", import.meta.url)),
+    readFile(new URL("../app/icon.png", import.meta.url)),
   ]);
 
   assert.match(page, /className="trace"/);
@@ -187,7 +193,7 @@ test("removes starter artifacts and keeps the design contract explicit", async (
   assert.match(layout, /<html lang="zh-CN">/);
   assert.doesNotMatch(layout, /next\/font|Starter Project|favicon\.svg/);
 
-  assert.match(css, /--signal:\s*#e4572e/i);
+  assert.match(css, /--signal:\s*#b9431f/i);
   assert.match(css, /@media \(prefers-color-scheme:\s*dark\)/i);
   assert.match(css, /@media \(prefers-reduced-motion:\s*reduce\)/i);
   assert.match(css, /a:focus-visible/);
@@ -206,6 +212,9 @@ test("removes starter artifacts and keeps the design contract explicit", async (
 
   assert.equal(ogImage.readUInt32BE(16), 1200);
   assert.equal(ogImage.readUInt32BE(20), 630);
+  assert.equal(iconImage.readUInt32BE(16), 256);
+  assert.equal(iconImage.readUInt32BE(20), 256);
+  assert.ok(iconImage.byteLength < 100_000);
 
   await Promise.all([
     assert.rejects(

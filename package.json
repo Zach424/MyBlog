@@ -9,13 +9,17 @@
     "dev": "vinext dev",
     "build": "vinext build",
     "start": "vinext start",
-    "test": "node --experimental-strip-types --test tests/content-contract.test.mjs tests/search.test.mjs tests/discovery.test.mjs && npm run typecheck && npm run build && node --test tests/rendered-html.test.mjs",
-    "lint": "eslint . --ignore-pattern dist --ignore-pattern .next",
+    "test": "npm run test:unit && npm run typecheck && npm run build && npm run test:worker && npm run audit",
+    "test:unit": "node --experimental-strip-types --test tests/content-contract.test.mjs tests/search.test.mjs tests/discovery.test.mjs",
+    "test:worker": "node --test tests/rendered-html.test.mjs",
+    "audit": "node --test tests/quality-gates.test.mjs",
+    "check": "npm run lint && npm test",
+    "lint": "eslint . --ignore-pattern dist --ignore-pattern .next --ignore-pattern .wrangler",
     "typecheck": "tsc --noEmit"
   },
   "dependencies": {
     "github-slugger": "2.0.0",
-    "next": "16.2.6",
+    "next": "16.2.10",
     "react": "19.2.6",
     "react-dom": "19.2.6",
     "react-markdown": "10.1.0",
@@ -35,13 +39,18 @@
     "@vitejs/plugin-react": "6.0.2",
     "@vitejs/plugin-rsc": "0.5.26",
     "eslint": "9.39.4",
-    "eslint-config-next": "16.2.6",
+    "eslint-config-next": "16.2.10",
     "react-server-dom-webpack": "19.2.6",
     "tailwindcss": "4.2.1",
     "typescript": "5.9.3",
     "vinext": "0.0.50",
     "vite": "8.0.13",
     "wrangler": "4.92.0"
+  },
+  "overrides": {
+    "next": {
+      "postcss": "8.5.10"
+    }
   },
   "type": "module"
 }

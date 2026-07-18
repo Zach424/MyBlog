@@ -1,14 +1,17 @@
 import type { Metadata } from "next";
 import Link from "next/link";
+import { headers } from "next/headers";
 import { notFound } from "next/navigation";
 import { ContentHeader, TableOfContents } from "@/components/ContentViews";
 import { MarkdownContent } from "@/components/MarkdownContent";
+import { StructuredData } from "@/components/StructuredData";
 import {
   getAllProjects,
   getProjectBySlug,
   getTagSlug,
 } from "@/lib/content";
 import { extractTableOfContents } from "@/lib/content/markdown";
+import { absoluteSiteUrl, resolveSiteUrl } from "@/lib/site";
 
 type ProjectPageProps = {
   params: Promise<{ slug: string }>;
@@ -48,6 +51,8 @@ export default async function ProjectPage({ params }: ProjectPageProps) {
   if (!project) notFound();
 
   const toc = extractTableOfContents(project.body);
+  const siteUrl = resolveSiteUrl(await headers());
+  const projectUrl = absoluteSiteUrl(siteUrl, project.url);
   const tags = project.tags.map((name) => ({
     name,
     href: `/tags/${getTagSlug(name) ?? ""}`,
@@ -55,6 +60,26 @@ export default async function ProjectPage({ params }: ProjectPageProps) {
 
   return (
     <main className="content-page page-shell" id="main-content">
+      <StructuredData
+        data={{
+          "@context": "https://schema.org",
+          "@type": "SoftwareSourceCode",
+          name: project.title,
+          description: project.description,
+          dateCreated: project.publishedAt,
+          dateModified: project.updatedAt ?? project.publishedAt,
+          inLanguage: "zh-CN",
+          keywords: project.tags,
+          url: projectUrl,
+          codeRepository: project.repository,
+          programmingLanguage: project.stack,
+          author: {
+            "@type": "Person",
+            name: "Zach424",
+            url: "https://github.com/Zach424",
+          },
+        }}
+      />
       <nav className="breadcrumbs" aria-label="面包屑">
         <Link href="/">首页</Link>
         <span aria-hidden="true">/</span>

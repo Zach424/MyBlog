@@ -1,5 +1,6 @@
 import type { Metadata } from "next";
 import Link from "next/link";
+import { headers } from "next/headers";
 import { notFound } from "next/navigation";
 import {
   ContentHeader,
@@ -7,6 +8,7 @@ import {
   TableOfContents,
 } from "@/components/ContentViews";
 import { MarkdownContent } from "@/components/MarkdownContent";
+import { StructuredData } from "@/components/StructuredData";
 import {
   getAllPosts,
   getPostBySlug,
@@ -14,6 +16,7 @@ import {
   getTagSlug,
 } from "@/lib/content";
 import { extractTableOfContents } from "@/lib/content/markdown";
+import { absoluteSiteUrl, resolveSiteUrl } from "@/lib/site";
 
 type PostPageProps = {
   params: Promise<{ slug: string }>;
@@ -60,6 +63,8 @@ export default async function PostPage({ params }: PostPageProps) {
   const next = index > 0 ? posts[index - 1] : undefined;
   const series = post.series ? getSeriesBySlug(post.series.slug) : undefined;
   const toc = extractTableOfContents(post.body);
+  const siteUrl = resolveSiteUrl(await headers());
+  const canonicalUrl = post.canonical ?? absoluteSiteUrl(siteUrl, post.url);
   const tags = post.tags.map((name) => ({
     name,
     href: `/tags/${getTagSlug(name) ?? ""}`,
@@ -67,6 +72,25 @@ export default async function PostPage({ params }: PostPageProps) {
 
   return (
     <main className="content-page page-shell" id="main-content">
+      <StructuredData
+        data={{
+          "@context": "https://schema.org",
+          "@type": "BlogPosting",
+          headline: post.title,
+          description: post.description,
+          datePublished: post.publishedAt,
+          dateModified: post.updatedAt ?? post.publishedAt,
+          inLanguage: "zh-CN",
+          keywords: post.tags,
+          mainEntityOfPage: canonicalUrl,
+          url: canonicalUrl,
+          author: {
+            "@type": "Person",
+            name: "Zach424",
+            url: "https://github.com/Zach424",
+          },
+        }}
+      />
       <nav className="breadcrumbs" aria-label="面包屑">
         <Link href="/">首页</Link>
         <span aria-hidden="true">/</span>

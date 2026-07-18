@@ -4,8 +4,8 @@
 
 ## 当前状态
 
-- 阶段：核心阅读与发布发现能力完成，正在进入上线候选验收
-- 当前轮次：`0006-discovery-and-feeds`
+- 阶段：上线候选质量门已通过，等待 Cloudflare 生产部署与在线验收
+- 当前轮次：`0007-release-candidate-quality`
 - 运行目标：Cloudflare Worker-compatible web application
 - 内容目标：学习笔记、完整文章、系列专题、项目复盘
 
@@ -29,9 +29,9 @@ npm run dev
 ## 常用检查
 
 ```bash
-npm run build
-npm run lint
-npm test
+npm run check
+npm audit --omit=dev --audit-level=high
+npx wrangler deploy --dry-run --config dist/server/wrangler.json --outdir .wrangler/dry-run
 ```
 
 ## 文档入口
@@ -40,6 +40,7 @@ npm test
 - [技术架构](./docs/ARCHITECTURE.md)
 - [设计基线](./docs/DESIGN.md)
 - [搜索与发布发现](./docs/DISCOVERY.md)
+- [发布质量基线](./docs/QUALITY.md)
 - [开发路线图](./docs/ROADMAP.md)
 - [架构决策](./docs/decisions/0001-runtime-and-hosting.md)
 - [迭代归档](./docs/iterations/README.md)

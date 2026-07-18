@@ -9,20 +9,20 @@ const evidenceItems = [
   {
     state: "Verified",
     mark: "verified",
-    value: "搜索、订阅与站点发现",
-    meta: "Search · RSS · Sitemap",
+    value: "上线候选质量门槛",
+    meta: "12 Unit · 7 Worker · 5 Audit",
   },
   {
     state: "Building",
     mark: "building",
-    value: "上线候选质量验收",
-    meta: "A11y · Performance · Security",
+    value: "Cloudflare 生产发布",
+    meta: "Deploy · Verify · Rollback",
   },
   {
     state: "Learned",
     mark: "learned",
-    value: "发布端点必须共用内容索引",
-    meta: "XML · Cache · Worker",
+    value: "质量必须写成可重复门槛",
+    meta: "Headers · Budgets · Contrast",
   },
 ] as const;
 
@@ -39,7 +39,7 @@ export default function Home() {
           <div className="hero-copy">
             <p className="eyebrow">
               <span>Independent engineering log</span>
-              <span>REV. 006 · {latestDate}</span>
+              <span>REV. 007 · {latestDate}</span>
             </p>
             <h1 id="hero-title">
               把写过的代码，
@@ -90,7 +90,7 @@ export default function Home() {
 
         <section className="focus-strip page-shell" id="focus" aria-label="当前关注">
           <span className="focus-label">Current focus</span>
-          <strong>可发现性 / 上线候选验收 / Cloudflare</strong>
+          <strong>发布候选 / Cloudflare 上线 / 在线验收</strong>
           <span className="focus-index">
             TRACE {String(journalEntries.length).padStart(2, "0")} / ACTIVE
           </span>

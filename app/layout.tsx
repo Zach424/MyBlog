@@ -19,6 +19,8 @@ export async function generateMetadata(): Promise<Metadata> {
       template: `%s — Zach424`,
     },
     description: SITE_DESCRIPTION,
+    authors: [{ name: "Zach424", url: "https://github.com/Zach424" }],
+    creator: "Zach424",
     alternates: {
       canonical: "/",
       types: {

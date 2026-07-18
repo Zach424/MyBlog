@@ -16,7 +16,7 @@
 | 语言 | TypeScript 5，严格模式 | 类型安全和内容契约 |
 | 样式 | Tailwind CSS 4 + CSS 自定义属性 | 基础工具类和设计 Token |
 | 运行 | Cloudflare Worker-compatible output | 预览和生产托管 |
-| 测试 | Node test + ESLint，后续加入浏览器验收 | 构建、HTML 和用户流程验证 |
+| 测试 | Node test + ESLint + Worker 质量审计 | 内容、构建、HTML、安全、链接、体积和对比度验证 |
 | 数据 | 仓库内 Markdown，构建期读取 | 文章和项目内容 |
 
 ## 当前实现状态
@@ -29,6 +29,7 @@ app/
   series/                 派生专题索引与详情
   tags/                   派生标签索引与详情
   globals.css             首页、集合页、阅读页、响应式和可访问性交互
+  icon.png                256 × 256 Commit Trace 站点图标
   layout.tsx              全局站点框架、动态绝对 URL 元数据和主题颜色
   not-found.tsx           未知内容的 404 边界
   page.tsx                内容驱动的首页、Evidence Rail 和 Commit Trace
@@ -44,6 +45,7 @@ components/
   MarkdownContent.tsx     GFM、标题锚点、代码高亮和安全外链
   SiteChrome.tsx          全局导航与页脚
   SearchExperience.tsx    本地加权搜索、建议与结果反馈
+  StructuredData.tsx      转义后输出文章与项目 JSON-LD
 content/
   posts/                  3 篇真实文章与 TIL
   projects/               MyBlog 项目复盘
@@ -62,8 +64,12 @@ tests/
   search.test.mjs            搜索规范化、排序和匹配单元测试
   discovery.test.mjs         RSS/XML、Sitemap 与公开主机单元测试
   rendered-html.test.mjs    Worker 页面、搜索、发布端点和 404 集成测试
+  quality-gates.test.mjs    安全头、缓存、语义、链接、体积与对比度发布审计
+worker/
+  index.ts                  Worker 入口、图像优化与生产响应头基线
 docs/                     稳定文档、决策记录和逐轮归档
 .openai/hosting.json      无 D1 / R2 的托管能力声明
+.env.example              可选公开站点地址示例，不包含凭证
 ```
 
 启动骨架、未启用的 ChatGPT Auth/D1/Drizzle 示例和相关依赖已删除。首页、全局导航、集合页、详情页、专题与标签索引现在全部使用稳定内容 URL；未知 slug 进入统一 404 边界。搜索索引、RSS、Sitemap 和 robots 只消费经过草稿与未来日期过滤的公开内容。
@@ -101,7 +107,9 @@ Vite glob 打包、草稿过滤与派生索引
         ↓
 Vite / Vinext 构建 Cloudflare-compatible output
         ↓
-预览部署 → 主分支生产部署
+Worker 注入安全头与 HTML 边缘缓存
+        ↓
+质量门与 Wrangler 干跑 → 生产部署 → 在线验收
 ```
 
 ## 内容契约草案
@@ -117,3 +125,5 @@ Vite / Vinext 构建 Cloudflare-compatible output
 - 生产构建不得依赖运行时文件系统读取。
 - 不需要持久化时，`.openai/hosting.json` 中的 D1 和 R2 保持为 `null`，仓库不保留未使用的数据库代码。
 - 所有 npm scripts 必须同时兼容 Windows 本地开发和托管构建环境。
+- 生产响应统一经过 Worker 安全头基线；HTML 使用浏览器不缓存、Cloudflare 边缘缓存一小时的策略。
+- Next.js 的内部 PostCSS 使用已修复的 `8.5.10` 覆盖，并由生产依赖审计与完整构建共同验证。
