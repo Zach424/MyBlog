@@ -38,7 +38,7 @@ npx wrangler deploy --dry-run --config dist/server/wrangler.json --outdir .wrang
 - 每页只有一个主要标题，目录锚点与正文 ID 使用同一稳定规则；
 - 站点图标必须为 `256 × 256` PNG 且小于 `100 KB`，并通过根文档图标链接发布。
 
-自动审计不能代替不同浏览器、操作系统和窄屏设备上的视觉复核。真实字体折行、焦点移动和触控体验在上线后的浏览器验收中记录。
+自动审计不能代替不同浏览器、操作系统和窄屏设备上的视觉复核。当前 Chromium 验收覆盖 `1440 × 1000`、`390 × 844`、`320 × 568`、浅色、深色、Reduced Motion、搜索输入、目录锚点、跳到主要内容和键盘焦点。根布局不得使用会让垂直滚动条触发横向溢出的固定 `min-width`；320px 验收要求 `document.scrollingElement.scrollWidth === document.documentElement.clientWidth`。其他浏览器和操作系统仍需在公开访问后回归。
 
 ## 产物预算
 
@@ -96,4 +96,4 @@ public, max-age=0, s-maxage=3600, stale-while-revalidate=86400
 4. 结构、设计、实现、证据、失败经验和下一步已经写入本轮归档；
 5. 工作树只包含本轮范围内的预期修改。
 
-部署成功不是业务验收成功。部署后还必须按 [OPERATIONS.md](./OPERATIONS.md) 检查真实正文、Sitemap URL 数量与逐路由状态、搜索、RSS、robots、结构化数据、安全头和 404 缓存；在线证据通过后，本轮才能标记为 `done`。
+部署成功不是业务验收成功。部署后还必须按 [OPERATIONS.md](./OPERATIONS.md) 检查真实正文、Sitemap URL 数量与逐路由状态、搜索、RSS、robots、结构化数据、安全头和 404 缓存；在线证据通过后，本轮才能标记为 `done`。质量审计还静态禁止根 `html`/`body` 固定最小宽度，防止最窄视口回归横向滚动。

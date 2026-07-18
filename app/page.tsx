@@ -9,20 +9,20 @@ const evidenceItems = [
   {
     state: "Verified",
     mark: "verified",
-    value: "私有生产上线",
-    meta: "23 Routes · 4 RSS items · 0 Vulns",
+    value: "真实浏览器与窄屏验收",
+    meta: "1440 · 390 · 320 · Dark",
   },
   {
     state: "Building",
     mark: "building",
     value: "公开访问与域名决策",
-    meta: "Access · Domain · Visual QA",
+    meta: "Public access · Domain · Guest QA",
   },
   {
     state: "Learned",
     mark: "learned",
-    value: "上线必须验证业务内容",
-    meta: "Build date · Sitemap · Headers",
+    value: "根布局不锁定最小宽度",
+    meta: "Scrollbar · Root width · Regression",
   },
 ] as const;
 
@@ -39,7 +39,7 @@ export default function Home() {
           <div className="hero-copy">
             <p className="eyebrow">
               <span>Independent engineering log</span>
-              <span>REV. 008 · {latestDate}</span>
+              <span>REV. 009 · {latestDate}</span>
             </p>
             <h1 id="hero-title">
               把写过的代码，

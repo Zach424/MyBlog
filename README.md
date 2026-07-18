@@ -4,8 +4,8 @@
 
 ## 当前状态
 
-- 阶段：Sites / Cloudflare 私有生产上线完成，进入维护与公开发布决策
-- 当前轮次：`0008-production-launch`
+- 阶段：私有生产上线与真实浏览器验收完成，等待公开访问授权
+- 当前轮次：`0009-browser-qa`
 - 运行目标：Cloudflare Worker-compatible web application
 - 内容目标：学习笔记、完整文章、系列专题、项目复盘
 

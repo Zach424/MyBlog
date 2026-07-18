@@ -2,7 +2,7 @@
 title: "MyBlog — 把学习记录做成工程资产"
 description: "从内容契约、工程轨迹设计到 Cloudflare 发布，构建一个可维护、可检索、可复盘的个人技术博客。"
 publishedAt: 2026-07-18
-updatedAt: 2026-07-18
+updatedAt: 2026-07-19
 status: maintained
 stack: ["TypeScript", "React", "Vinext", "Vite", "Cloudflare"]
 tags: ["TypeScript", "React", "Cloudflare", "Personal Knowledge", "Design Systems"]
@@ -56,9 +56,11 @@ demo: "https://zach424-engineering-notes.zhiqingchen792.chatgpt.site"
 
 Sites 首次生产发布后，首页与集合页返回 200，但没有任何内容，Sitemap 也只剩 7 个基础 URL，因此所有详情统一返回 404。第一次把现象误判为参数化路由兼容问题；第二次发布证明显式路由包装不能修复空内容索引。根因收敛到 Worker 模块初始化时使用运行时时钟过滤发布日期；现在改为在 Vite 构建时按 `Asia/Shanghai` 冻结日期，页面、搜索、RSS 与 Sitemap 共用同一确定内容集合。
 
+真实浏览器验收在 320px 宽度下发现文章页有 15px 横向滚动。页面内容本身没有越界，原因是根 `html` 与 `body` 的 `20rem` 最小宽度仍按完整视口计算，而桌面 Chromium 的垂直滚动条把可布局宽度减到 305px。删除根最小宽度后，页面留白继续由 `.page-shell` 控制，首页、文章与搜索页的 `scrollWidth` 都与 `clientWidth` 相等；静态质量审计同时禁止这条规则回归。
+
 ## 结果证据
 
-工程基线、内容契约、正式首页、响应式设计、深色偏好、分享卡与站点图标、结构化数据、内容校验管线、完整核心阅读路径、站内搜索与发布发现端点已经完成。完整质量门通过 13 项单元测试、7 项 Worker 集成测试和 5 项发布审计；所有可见内部链接健康，文本 Token 达到 WCAG AA，生产依赖审计为 0 个已知漏洞。构建日期修复发布后，生产 Sitemap 包含 23 个 URL，逐路由请求全部返回 200；RSS 含 4 条内容，搜索、robots、图标、结构化数据、安全响应头与真实 404 均通过在线验收。项目进入 `maintained`，当前生产站点仅所有者可访问。
+工程基线、内容契约、正式首页、响应式设计、深色偏好、分享卡与站点图标、结构化数据、内容校验管线、完整核心阅读路径、站内搜索与发布发现端点已经完成。完整质量门通过 13 项单元测试、7 项 Worker 集成测试和 6 项发布审计；所有可见内部链接健康，文本 Token 达到 WCAG AA，生产依赖审计为 0 个已知漏洞。构建日期修复发布后，生产 Sitemap 包含 23 个 URL，逐路由请求全部返回 200；RSS 含 4 条内容，搜索、robots、图标、结构化数据、安全响应头与真实 404 均通过在线验收。真实 Chromium 进一步覆盖桌面、390px、320px、浅色、深色、Reduced Motion、搜索和键盘路径。项目保持 `maintained`，当前生产站点仅所有者可访问。
 
 ## 复盘
 

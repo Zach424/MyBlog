@@ -206,3 +206,13 @@ test("keeps text design tokens at WCAG AA contrast", async () => {
     }
   }
 });
+
+test("keeps the root layout fluid at 320px viewports", async () => {
+  const css = await readFile(new URL("../app/globals.css", import.meta.url), "utf8");
+  const htmlBlock = css.match(/html\s*{([^}]+)}/)?.[1] ?? "";
+  const bodyBlock = css.match(/body\s*{([^}]+)}/)?.[1] ?? "";
+
+  assert.doesNotMatch(htmlBlock, /min-width\s*:/, "html must not force horizontal overflow");
+  assert.doesNotMatch(bodyBlock, /min-width\s*:/, "body must not force horizontal overflow");
+  assert.match(css, /\.page-shell\s*{[^}]*width:\s*min\(calc\(100%/s);
+});

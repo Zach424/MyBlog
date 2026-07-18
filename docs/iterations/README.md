@@ -13,6 +13,7 @@
 0006-discovery-and-feeds.md
 0007-release-candidate-quality.md
 0008-production-launch.md
+0009-browser-qa.md
 ```
 
 ## 必填结构

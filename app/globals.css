@@ -33,13 +33,11 @@
 }
 
 html {
-  min-width: 20rem;
   scroll-behavior: smooth;
   background: var(--canvas);
 }
 
 body {
-  min-width: 20rem;
   margin: 0;
   color: var(--ink);
   background: var(--canvas);

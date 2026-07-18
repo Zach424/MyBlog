@@ -66,10 +66,10 @@ test("server-renders the engineering log homepage", async () => {
   assert.match(html, />Learned</);
   assert.match(html, /从零搭建可维护的个人技术博客/);
   assert.match(html, /MyBlog — 把学习记录做成工程资产/);
-  assert.match(html, /私有生产上线/);
-  assert.match(html, /23 Routes · 4 RSS items · 0 Vulns/);
+  assert.match(html, /真实浏览器与窄屏验收/);
+  assert.match(html, /1440 · 390 · 320 · Dark/);
   assert.match(html, /公开访问与域名决策/);
-  assert.match(visibleHtml, /REV\. 008 · 2026-07-18/);
+  assert.match(visibleHtml, /REV\. 009 · 2026-07-18/);
   assert.match(visibleHtml, /Design Systems · 3/);
   assert.doesNotMatch(html, developmentPreviewMeta);
   assert.doesNotMatch(html, /Starter Project|react-loading-skeleton|Your site is taking shape/);
