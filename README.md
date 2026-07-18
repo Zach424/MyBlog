@@ -4,8 +4,8 @@
 
 ## 当前状态
 
-- 阶段：上线候选质量门已通过，等待 Cloudflare 生产部署与在线验收
-- 当前轮次：`0007-release-candidate-quality`
+- 阶段：Cloudflare 首次发布完成，正在修复并复核生产详情路由
+- 当前轮次：`0008-production-launch`
 - 运行目标：Cloudflare Worker-compatible web application
 - 内容目标：学习笔记、完整文章、系列专题、项目复盘
 

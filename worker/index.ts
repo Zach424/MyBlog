@@ -53,11 +53,13 @@ function withProductionHeaders(request: Request, response: Response) {
     headers.set("strict-transport-security", "max-age=31536000; includeSubDomains");
   }
 
-  if (contentType.startsWith("text/html")) {
+  if (contentType.startsWith("text/html") && response.ok) {
     headers.set(
       "cache-control",
       "public, max-age=0, s-maxage=3600, stale-while-revalidate=86400",
     );
+  } else if (contentType.startsWith("text/html")) {
+    headers.set("cache-control", "no-store");
   }
 
   return new Response(response.body, {

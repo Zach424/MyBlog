@@ -8,7 +8,7 @@
 npm run check
 ```
 
-执行顺序为：ESLint → 内容、搜索与发现单元测试 → TypeScript → Vinext 生产构建 → Worker 渲染集成测试 → 发布质量审计。任何一步失败都阻止提交和部署。
+执行顺序为：ESLint → 内容、搜索与发现单元测试 → TypeScript → Vinext 生产构建 → Worker 渲染集成测试 → 发布质量审计。发布审计还会用 Sitemap 校验公开详情 URL 的显式平台路由包装。任何一步失败都阻止提交和部署。
 
 生产依赖与 Cloudflare 上传包单独验证：
 
@@ -28,6 +28,7 @@ npx wrangler deploy --dry-run --config dist/server/wrangler.json --outdir .wrang
 - 单页服务端 HTML 小于 `100 KB`；
 - 首页、集合页、搜索与关于页上所有可见站内链接返回小于 400 的状态码；
 - 未知文章或项目进入真实 404。
+- Sitemap 中每个文章、项目、专题和标签详情 URL 都必须存在显式 `app/<path>/page.tsx` 包装；这是当前 Sites 生产路由兼容门槛。
 
 文章必须输出 `BlogPosting` JSON-LD，项目必须输出 `SoftwareSourceCode` JSON-LD。JSON 序列化后将 `<` 转义，避免数据内容结束脚本标签。
 
@@ -76,6 +77,8 @@ public, max-age=0, s-maxage=3600, stale-while-revalidate=86400
 ```
 
 浏览器每次复核最新文档，Cloudflare 边缘可缓存一小时并在一天内提供过期回源缓冲。RSS、Sitemap 与 robots 保留各自的公共缓存策略。发布后必须在线确认 Cloudflare 没有覆盖这些响应头。
+
+只有成功 HTML 使用上述边缘缓存；404 与其他 HTML 错误显式使用 `no-store`，避免短暂路由故障被边缘缓存放大。
 
 ## 依赖基线
 

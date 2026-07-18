@@ -10,13 +10,13 @@ const evidenceItems = [
     state: "Verified",
     mark: "verified",
     value: "上线候选质量门槛",
-    meta: "12 Unit · 7 Worker · 5 Audit",
+    meta: "12 Unit · 7 Worker · 6 Audit",
   },
   {
     state: "Building",
     mark: "building",
-    value: "Cloudflare 生产发布",
-    meta: "Deploy · Verify · Rollback",
+    value: "Cloudflare 路由复核",
+    meta: "Explicit paths · Online GET",
   },
   {
     state: "Learned",

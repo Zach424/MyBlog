@@ -1,5 +1,5 @@
 import assert from "node:assert/strict";
-import { readdir, readFile, stat } from "node:fs/promises";
+import { access, readdir, readFile, stat } from "node:fs/promises";
 import test from "node:test";
 
 async function request(pathname = "/") {
@@ -114,6 +114,9 @@ test("applies the production security and cache baseline", async () => {
   );
   const rssResponse = await request("/rss.xml");
   assert.match(rssResponse.headers.get("cache-control") ?? "", /max-age=3600/);
+  const missingResponse = await request("/definitely-missing");
+  assert.equal(missingResponse.status, 404);
+  assert.equal(missingResponse.headers.get("cache-control"), "no-store");
 });
 
 test("keeps key HTML routes structurally valid and uniquely identified", async () => {
@@ -164,6 +167,28 @@ test("keeps every visible internal navigation target healthy", async () => {
   for (const pathname of [...targetPaths].sort()) {
     const response = await request(pathname);
     assert.ok(response.status < 400, `${pathname}: ${response.status}`);
+  }
+});
+
+test("materializes every public content URL as an explicit platform route", async () => {
+  const response = await request("/sitemap.xml");
+  const sitemap = await response.text();
+  const collectionPaths = new Set(["/posts", "/projects", "/series", "/tags"]);
+  const contentPaths = [...sitemap.matchAll(/<loc>([^<]+)<\/loc>/g)]
+    .map((match) => new URL(match[1]).pathname)
+    .filter(
+      (pathname) =>
+        [...collectionPaths].some((collection) => pathname.startsWith(`${collection}/`)) &&
+        !collectionPaths.has(pathname),
+    );
+
+  assert.ok(contentPaths.length > 0, "sitemap did not expose any content detail URLs");
+
+  for (const pathname of contentPaths) {
+    await assert.doesNotReject(
+      access(new URL(`../app${pathname}/page.tsx`, import.meta.url)),
+      `${pathname}: missing explicit static route wrapper`,
+    );
   }
 });
 
