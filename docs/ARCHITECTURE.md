@@ -25,16 +25,25 @@
 app/
   globals.css             设计 Token、响应式和可访问性交互
   layout.tsx              中文根布局、动态绝对 URL 元数据和主题颜色
-  page.tsx                正式首页、Evidence Rail 和 Commit Trace
+  page.tsx                由内容管线驱动的首页、Evidence Rail 和 Commit Trace
+build/
+  validate-content.ts     Vite 启动/构建前内容校验
+content/
+  posts/                  3 篇真实文章与 TIL
+  projects/               MyBlog 项目复盘
+lib/content/
+  contract.ts             frontmatter schema、规范化、过滤和派生索引
+  index.ts                Vite glob 内容仓库与查询接口
 public/
   og.png                  1200 × 630 社交分享卡
 tests/
-  rendered-html.test.mjs  Worker 构建产物、元数据和 starter 清理验证
+  content-contract.test.mjs  内容契约单元测试
+  rendered-html.test.mjs    Worker 构建产物、内容接线和清理验证
 docs/                     稳定文档、决策记录和逐轮归档
 .openai/hosting.json      无 D1 / R2 的托管能力声明
 ```
 
-启动骨架和 `react-loading-skeleton` 已删除。首页暂时使用同页锚点，避免在文章路由实现前产生 404；下一轮内容管线完成后，导航和记录标题会切换到稳定内容 URL。
+启动骨架、未启用的 ChatGPT Auth/D1/Drizzle 示例和相关依赖已删除。首页暂时使用同页锚点，避免在详情路由实现前产生 404；下一轮页面完成后，导航和记录标题会切换到稳定内容 URL。
 
 ## 目标模块
 
@@ -60,9 +69,9 @@ tests/                  构建与内容契约测试
 ```text
 Markdown + frontmatter
         ↓
-内容加载与 schema 校验
+YAML 解析、Zod schema 与跨内容校验
         ↓
-构建期生成页面、索引、RSS 与 Sitemap
+Vite glob 打包、草稿过滤与派生索引
         ↓
 Vite / Vinext 构建 Cloudflare-compatible output
         ↓
@@ -80,5 +89,5 @@ Vite / Vinext 构建 Cloudflare-compatible output
 ## 平台兼容约束
 
 - 生产构建不得依赖运行时文件系统读取。
-- 不需要持久化时，`.openai/hosting.json` 中的 D1 和 R2 保持为 `null`。
+- 不需要持久化时，`.openai/hosting.json` 中的 D1 和 R2 保持为 `null`，仓库不保留未使用的数据库代码。
 - 所有 npm scripts 必须同时兼容 Windows 本地开发和托管构建环境。

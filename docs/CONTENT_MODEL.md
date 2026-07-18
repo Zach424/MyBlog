@@ -1,6 +1,6 @@
 # 内容模型
 
-- 状态：Frozen v1 in iteration 0002
+- 状态：Frozen v1 in iteration 0002，implemented in iteration 0004
 - 目标：冻结一套无需数据库、可在构建期校验、可以稳定生成 URL 的 Markdown 契约。
 
 ## 目录与 URL
@@ -97,4 +97,13 @@ demo: null
 - 列表只暴露元数据，正文渲染按页面需要执行。
 - 构建失败应指出具体文件和字段，不能静默跳过错误内容。
 
-解析和渲染库在第 3 轮实现时确定；本轮只冻结输入输出契约，避免让库 API 反向定义内容模型。
+## 当前实现
+
+- `lib/content/contract.ts`：安全拆分 `---` 边界，使用 YAML 1.2 core schema 解析 frontmatter，并用 Zod 校验字段；
+- `lib/content/index.ts`：通过 `import.meta.glob` 打包 Markdown 原文，过滤草稿/未来内容，提供排序结果和查询函数；
+- `build/validate-content.ts`：Vinext/Vite 启动与构建前读取仓库内容并执行同一套校验；
+- 标签由 `TAG_REGISTRY` 统一名称与 slug，未知标签会让构建失败；
+- 专题和标签索引由已发布内容派生，不保存第二份索引文件；
+- 阅读时间同时估算中文字符与拉丁单词；Markdown 正文渲染器在详情路由轮次实现。
+
+最初试用的 `gray-matter` 会把可执行 JavaScript frontmatter 引擎中的直接 `eval` 带进 Worker 包，因此改用 `yaml` 并显式限制 schema。内容只允许声明式 YAML，不支持 JavaScript frontmatter。

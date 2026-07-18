@@ -1,26 +1,8 @@
-const journalEntries = [
-  {
-    type: "Article",
-    date: "2026-07-18",
-    sequence: "TRACE 003",
-    title: "从零搭建可维护的个人技术博客",
-    summary: "从目标、内容契约到部署边界，记录这个博客如何一步步成为长期可维护的工程资产。",
-  },
-  {
-    type: "TIL",
-    date: "2026-07-18",
-    sequence: "TRACE 002",
-    title: "Windows 下的跨平台 npm scripts",
-    summary: "让开发、构建与启动命令不依赖特定 shell，是把本地经验变成可复用流程的第一步。",
-  },
-  {
-    type: "Article",
-    date: "2026-07-17",
-    sequence: "TRACE 001",
-    title: "为什么先写项目章程，再写首页",
-    summary: "先固定目标、边界与验收标准，再让技术和视觉选择围绕真实任务收敛。",
-  },
-] as const;
+import {
+  getAllPosts,
+  getFeaturedProject,
+  getTagIndex,
+} from "@/lib/content";
 
 const evidenceItems = [
   {
@@ -32,18 +14,23 @@ const evidenceItems = [
   {
     state: "Building",
     mark: "building",
-    value: "MyBlog 首页与内容系统",
-    meta: "TypeScript · Cloudflare",
+    value: "Markdown 内容管线",
+    meta: "Schema · Glob · Indexes",
   },
   {
     state: "Learned",
     mark: "learned",
-    value: "跨平台 npm scripts",
-    meta: "TIL · Windows",
+    value: "构建期 schema 校验",
+    meta: "Vite · Cloudflare",
   },
 ] as const;
 
 export default function Home() {
+  const journalEntries = getAllPosts().slice(0, 3);
+  const featuredProject = getFeaturedProject();
+  const topicTags = getTagIndex().slice(0, 4);
+  const latestDate = journalEntries[0]?.publishedAt ?? "2026-07-18";
+
   return (
     <>
       <a className="skip-link" href="#main-content">
@@ -69,7 +56,7 @@ export default function Home() {
           <div className="hero-copy">
             <p className="eyebrow">
               <span>Independent engineering log</span>
-              <span>REV. 003 · 2026-07-18</span>
+              <span>REV. 004 · {latestDate}</span>
             </p>
             <h1 id="hero-title">
               把写过的代码，
@@ -120,8 +107,10 @@ export default function Home() {
 
         <section className="focus-strip page-shell" id="focus" aria-label="当前关注">
           <span className="focus-label">Current focus</span>
-          <strong>个人技术博客 / 构建期内容系统 / Cloudflare</strong>
-          <span className="focus-index">TRACE 03 / ACTIVE</span>
+          <strong>个人技术博客 / Markdown 内容管线 / Cloudflare</strong>
+          <span className="focus-index">
+            TRACE {String(journalEntries.length).padStart(2, "0")} / ACTIVE
+          </span>
         </section>
 
         <section className="journal page-shell" id="recent" aria-labelledby="recent-title">
@@ -135,43 +124,48 @@ export default function Home() {
             {journalEntries.map((entry, index) => (
               <article
                 className={`trace-row${index === 0 ? " branch-row" : ""}`}
-                id={`trace-${journalEntries.length - index}`}
-                key={entry.sequence}
+                id={`trace-${entry.slug}`}
+                key={entry.slug}
                 role="listitem"
               >
-                <time className="trace-date" dateTime={entry.date}>
-                  {entry.date}
-                  <span>{index === 1 ? "TIL" : "NOTE"}</span>
+                <time className="trace-date" dateTime={entry.publishedAt}>
+                  {entry.publishedAt}
+                  <span>{entry.type === "til" ? "TIL" : "NOTE"}</span>
                 </time>
                 <span className="trace-node" aria-hidden="true" />
                 <div className="entry">
                   <div className="entry-topline">
-                    <span className="entry-type">{entry.type}</span>
-                    <span>{entry.sequence}</span>
+                    <span className="entry-type">
+                      {entry.type === "til" ? "TIL" : "Article"}
+                    </span>
+                    <span>
+                      TRACE {String(journalEntries.length - index).padStart(3, "0")}
+                    </span>
                   </div>
                   <h3>{entry.title}</h3>
-                  <p>{entry.summary}</p>
+                  <p>{entry.description}</p>
                 </div>
 
-                {index === 0 ? (
+                {index === 0 && featuredProject ? (
                   <a
                     className="project"
                     id="project"
-                    href="https://github.com/Zach424/MyBlog"
+                    href={featuredProject.repository ?? featuredProject.url}
                     target="_blank"
                     rel="noreferrer"
                     aria-label="在 GitHub 查看 MyBlog 项目"
                   >
                     <div className="project-topline">
                       <span className="project-kicker">Featured project</span>
-                      <span className="project-state">Building</span>
+                      <span className="project-state">
+                        {featuredProject.status.charAt(0).toUpperCase() +
+                          featuredProject.status.slice(1)}
+                      </span>
                     </div>
-                    <h3>MyBlog — 把学习记录做成工程资产</h3>
-                    <p>
-                      从内容契约、视觉系统到 Cloudflare 发布，全程保留可验证的工程记录。
-                    </p>
+                    <h3>{featuredProject.title}</h3>
+                    <p>{featuredProject.description}</p>
                     <div className="project-footer">
-                      <span>TypeScript · React · Cloudflare</span>
+                      <span>{featuredProject.stack.join(" · ")}</span>
                       <span aria-hidden="true">↗</span>
                     </div>
                   </a>
@@ -187,10 +181,11 @@ export default function Home() {
             <h2 id="topics-title">正在积累的主题</h2>
           </div>
           <ul aria-label="技术主题">
-            <li>Next.js</li>
-            <li>TypeScript</li>
-            <li>Cloudflare</li>
-            <li>Design Systems</li>
+            {topicTags.map((tag) => (
+              <li key={tag.slug}>
+                {tag.name} · {tag.count}
+              </li>
+            ))}
           </ul>
         </section>
       </main>

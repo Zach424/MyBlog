@@ -36,6 +36,7 @@ test("server-renders the engineering log homepage", async () => {
   assert.match(response.headers.get("content-type") ?? "", /^text\/html\b/i);
 
   const html = await response.text();
+  const visibleHtml = html.replaceAll("<!-- -->", "");
   assert.match(html, /<html lang="zh-CN">/i);
   assert.match(html, /<title>Zach424 \/ Engineering Notes<\/title>/i);
   assert.match(
@@ -60,21 +61,28 @@ test("server-renders the engineering log homepage", async () => {
   assert.match(html, />Learned</);
   assert.match(html, /从零搭建可维护的个人技术博客/);
   assert.match(html, /MyBlog — 把学习记录做成工程资产/);
+  assert.match(html, /Markdown 内容管线/);
+  assert.match(visibleHtml, /Design Systems · 3/);
   assert.doesNotMatch(html, developmentPreviewMeta);
   assert.doesNotMatch(html, /Starter Project|react-loading-skeleton|Your site is taking shape/);
 });
 
 test("removes starter artifacts and keeps the design contract explicit", async () => {
-  const [page, layout, css, packageJson, ogImage] = await Promise.all([
+  const [page, layout, css, packageJson, worker, viteConfig, ogImage] = await Promise.all([
     readFile(new URL("../app/page.tsx", import.meta.url), "utf8"),
     readFile(new URL("../app/layout.tsx", import.meta.url), "utf8"),
     readFile(new URL("../app/globals.css", import.meta.url), "utf8"),
     readFile(new URL("../package.json", import.meta.url), "utf8"),
+    readFile(new URL("../worker/index.ts", import.meta.url), "utf8"),
+    readFile(new URL("../vite.config.ts", import.meta.url), "utf8"),
     readFile(new URL("../public/og.png", import.meta.url)),
   ]);
 
   assert.match(page, /className="trace"/);
   assert.match(page, /className="evidence-rail"/);
+  assert.match(page, /getAllPosts\(\)/);
+  assert.match(page, /getFeaturedProject\(\)/);
+  assert.match(page, /getTagIndex\(\)/);
   assert.match(page, /href="https:\/\/github\.com\/Zach424\/MyBlog"/);
   assert.doesNotMatch(page, /_sites-preview|SkeletonPreview|codex-preview/);
 
@@ -88,6 +96,12 @@ test("removes starter artifacts and keeps the design contract explicit", async (
   assert.match(css, /@media \(prefers-reduced-motion:\s*reduce\)/i);
   assert.match(css, /a:focus-visible/);
   assert.doesNotMatch(packageJson, /react-loading-skeleton/);
+  assert.doesNotMatch(packageJson, /drizzle/);
+  assert.match(packageJson, /"yaml": "2\.9\.0"/);
+  assert.match(packageJson, /"zod": "4\.4\.3"/);
+  assert.match(packageJson, /"typecheck": "tsc --noEmit"/);
+  assert.doesNotMatch(worker, /\bDB:\s*D1Database/);
+  assert.match(viteConfig, /validateContentRepository\(process\.cwd\(\)\)/);
 
   assert.equal(ogImage.readUInt32BE(16), 1200);
   assert.equal(ogImage.readUInt32BE(20), 630);
@@ -100,5 +114,8 @@ test("removes starter artifacts and keeps the design contract explicit", async (
     assert.rejects(access(new URL("../public/file.svg", import.meta.url))),
     assert.rejects(access(new URL("../public/globe.svg", import.meta.url))),
     assert.rejects(access(new URL("../public/window.svg", import.meta.url))),
+    assert.rejects(access(new URL("../db/index.ts", import.meta.url))),
+    assert.rejects(access(new URL("../drizzle.config.ts", import.meta.url))),
+    assert.rejects(access(new URL("../app/chatgpt-auth.ts", import.meta.url))),
   ]);
 });

@@ -8,6 +8,7 @@
 0001-foundation.md
 0002-content-contract.md
 0003-homepage-design-system.md
+0004-content-pipeline.md
 ```
 
 ## 必填结构
