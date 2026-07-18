@@ -5,7 +5,7 @@
 ## 当前状态
 
 - 阶段：工程与设计基线已经建立，页面仍为启动骨架
-- 当前轮次：`0001-foundation`
+- 当前轮次：`0002-content-contract`
 - 运行目标：Cloudflare Worker-compatible web application
 - 内容目标：学习笔记、完整文章、系列专题、项目复盘
 

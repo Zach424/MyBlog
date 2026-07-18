@@ -58,7 +58,7 @@ Vite / Vinext 构建 Cloudflare-compatible output
 
 项目必须额外具有：`status`、`stack`，并可选 `repository`、`demo`、`startedAt`、`completedAt`。
 
-具体 schema 在内容模块实现轮次冻结，当前只记录边界，不提前选择解析库。
+字段、URL 和校验规则已经在 [CONTENT_MODEL.md](./CONTENT_MODEL.md) 冻结；解析库在内容模块实现轮次选择，避免让库 API 反向定义内容模型。
 
 ## 平台兼容约束
 
