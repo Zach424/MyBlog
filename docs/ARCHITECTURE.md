@@ -19,6 +19,23 @@
 | 测试 | Node test + ESLint，后续加入浏览器验收 | 构建、HTML 和用户流程验证 |
 | 数据 | 仓库内 Markdown，构建期读取 | 文章和项目内容 |
 
+## 当前实现状态
+
+```text
+app/
+  globals.css             设计 Token、响应式和可访问性交互
+  layout.tsx              中文根布局、动态绝对 URL 元数据和主题颜色
+  page.tsx                正式首页、Evidence Rail 和 Commit Trace
+public/
+  og.png                  1200 × 630 社交分享卡
+tests/
+  rendered-html.test.mjs  Worker 构建产物、元数据和 starter 清理验证
+docs/                     稳定文档、决策记录和逐轮归档
+.openai/hosting.json      无 D1 / R2 的托管能力声明
+```
+
+启动骨架和 `react-loading-skeleton` 已删除。首页暂时使用同页锚点，避免在文章路由实现前产生 404；下一轮内容管线完成后，导航和记录标题会切换到稳定内容 URL。
+
 ## 目标模块
 
 ```text
@@ -36,7 +53,7 @@ tests/                  构建与内容契约测试
 .openai/hosting.json    托管能力声明
 ```
 
-目录中的“目标模块”会在对应功能首次实现时创建；当前结构以启动骨架为准，避免空目录和提前抽象。
+目录中的“目标模块”会在对应功能首次实现时创建，避免空目录和提前抽象。
 
 ## 目标数据流
 

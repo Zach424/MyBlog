@@ -6,8 +6,8 @@
 
 ```text
 0001-foundation.md
-0002-content-and-visual-system.md
-0003-core-pages.md
+0002-content-contract.md
+0003-homepage-design-system.md
 ```
 
 ## 必填结构

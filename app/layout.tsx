@@ -1,24 +1,78 @@
-import type { Metadata } from "next";
-import { Geist, Geist_Mono } from "next/font/google";
+import type { Metadata, Viewport } from "next";
+import { headers } from "next/headers";
 import "./globals.css";
 
-const geistSans = Geist({
-  variable: "--font-geist-sans",
-  subsets: ["latin"],
-});
+const siteTitle = "Zach424 / Engineering Notes";
+const siteDescription =
+  "记录学习路径、技术取舍和项目复盘，把写过的代码变成可复用的判断。";
 
-const geistMono = Geist_Mono({
-  variable: "--font-geist-mono",
-  subsets: ["latin"],
-});
+async function getSiteUrl() {
+  if (process.env.NEXT_PUBLIC_SITE_URL) {
+    return new URL(process.env.NEXT_PUBLIC_SITE_URL);
+  }
 
-export const metadata: Metadata = {
-  title: "Starter Project",
-  description: "A clean starting point for building your site.",
-  icons: {
-    icon: "/favicon.svg",
-    shortcut: "/favicon.svg",
-  },
+  const requestHeaders = await headers();
+  const host = requestHeaders.get("x-forwarded-host") ?? requestHeaders.get("host");
+
+  if (!host) {
+    return new URL("http://localhost:3000");
+  }
+
+  const protocol =
+    requestHeaders.get("x-forwarded-proto") ??
+    (host.startsWith("localhost") || host.startsWith("127.0.0.1")
+      ? "http"
+      : "https");
+
+  return new URL(`${protocol}://${host}`);
+}
+
+export async function generateMetadata(): Promise<Metadata> {
+  const siteUrl = await getSiteUrl();
+
+  return {
+    metadataBase: siteUrl,
+    title: {
+      default: siteTitle,
+      template: `%s — Zach424`,
+    },
+    description: siteDescription,
+    alternates: {
+      canonical: "/",
+    },
+    openGraph: {
+      type: "website",
+      locale: "zh_CN",
+      url: "/",
+      siteName: siteTitle,
+      title: siteTitle,
+      description: siteDescription,
+      images: [
+        {
+          url: "/og.png",
+          width: 1200,
+          height: 630,
+          alt: "Zach424 Engineering Notes — Commit Trace",
+        },
+      ],
+    },
+    twitter: {
+      card: "summary_large_image",
+      title: siteTitle,
+      description: siteDescription,
+      images: ["/og.png"],
+    },
+  };
+}
+
+export const viewport: Viewport = {
+  width: "device-width",
+  initialScale: 1,
+  colorScheme: "light dark",
+  themeColor: [
+    { media: "(prefers-color-scheme: light)", color: "#F2F6F7" },
+    { media: "(prefers-color-scheme: dark)", color: "#101820" },
+  ],
 };
 
 export default function RootLayout({
@@ -27,12 +81,8 @@ export default function RootLayout({
   children: React.ReactNode;
 }>) {
   return (
-    <html lang="en">
-      <body
-        className={`${geistSans.variable} ${geistMono.variable} antialiased`}
-      >
-        {children}
-      </body>
+    <html lang="zh-CN">
+      <body>{children}</body>
     </html>
   );
 }
