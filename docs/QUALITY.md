@@ -87,6 +87,8 @@ public, max-age=0, s-maxage=3600, stale-while-revalidate=86400
 
 只有成功 HTML 使用上述边缘缓存；404 与其他 HTML 错误显式使用 `no-store`，避免短暂路由故障被边缘缓存放大。
 
+Studio 还有一个静态平台兜底：`public/_headers` 对 `/studio` 与其子资源重复专用 CSP、`same-origin-allow-popups` 和 `no-store`。质量审计必须确认该文件进入 `dist/client`；真实部署必须检查最终 `/studio/` 响应，因为目录规范化重定向发生在静态头规则之前。
+
 ## 依赖基线
 
 - Next.js 与 `eslint-config-next` 保持相同补丁版本；

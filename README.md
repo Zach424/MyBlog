@@ -5,7 +5,7 @@
 ## 当前状态
 
 - 阶段：自助发布工程闭环完成；等待所有者账号授权、真实双入口验收与生产切换
-- 当前轮次：`0014-migration-and-cutover`
+- 当前轮次：`0015-sites-studio-security`
 - 生产站点：<https://zach424-engineering-notes.zhiqingchen792.chatgpt.site>
 - 运行目标：Cloudflare Worker-compatible web application
 - 内容目标：学习笔记、完整文章、系列专题、项目复盘

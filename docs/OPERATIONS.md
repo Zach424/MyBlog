@@ -61,6 +61,7 @@ Obsidian 发布命令直接复用本仓库内容 schema 和 `npm run check`。`-
 6. 文章含 `BlogPosting`，项目含 `SoftwareSourceCode` JSON-LD；
 7. 成功 HTML 使用浏览器不缓存、边缘缓存一小时的策略，并包含 CSP、HSTS、`X-Frame-Options: DENY`、`X-Content-Type-Options: nosniff` 与 Referrer Policy；
 8. 随机不存在路径返回 404 且 `Cache-Control: no-store`。
+9. `/studio` 最终页面返回 200、`Cache-Control: no-store`、专用 CSP 与 `Cross-Origin-Opener-Policy: same-origin-allow-popups`，无论它由 Worker 还是静态资产层响应。
 
 所有者 Cloudflare 部署会自动执行等价检查；也可手动运行 `npm run production:smoke -- <origin> --expect-oauth`。自动结果不替代首次迁移时的未登录浏览器和真实编辑发布验收。
 

@@ -145,6 +145,14 @@ test("applies the production security and cache baseline", async () => {
   );
 });
 
+test("ships the static Studio security fallback", async () => {
+  const staticHeaders = await readFile(new URL("../dist/client/_headers", import.meta.url), "utf8");
+  assert.match(staticHeaders, /\/studio\/\*/);
+  assert.match(staticHeaders, /Cache-Control: no-store/);
+  assert.match(staticHeaders, /Cross-Origin-Opener-Policy: same-origin-allow-popups/);
+  assert.match(staticHeaders, /Content-Security-Policy: default-src 'self'/);
+});
+
 test("keeps key HTML routes structurally valid and uniquely identified", async () => {
   const paths = [
     "/",

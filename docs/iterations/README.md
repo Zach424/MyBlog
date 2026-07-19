@@ -19,6 +19,7 @@
 0012-publishing-studio.md
 0013-obsidian-authoring.md
 0014-migration-and-cutover.md
+0015-sites-studio-security.md
 ```
 
 ## 必填结构

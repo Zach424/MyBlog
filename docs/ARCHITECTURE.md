@@ -63,6 +63,7 @@ lib/
   site.ts                 全站名称、摘要与请求主机 URL 解析
 public/
   og.png                  1200 × 630 社交分享卡
+  _headers                Studio 静态资产安全头与 no-store 兜底
   studio/
     index.html            固定版本与完整性校验的 CMS 启动页
     config.mjs            文章/项目字段、GitHub 后端与发布工作流
@@ -111,6 +112,8 @@ GitHub 仓库继续是唯一内容事实源。网页后台与 Obsidian 都只提
 Studio 路由单独使用允许 GitHub API 与固定 unpkg 资源的 CSP、`same-origin-allow-popups` 和 `no-store`；公开阅读路由继续使用更严格的原 CSP、`same-origin` 和边缘缓存。CMS 包锁定到 `3.14.1` 并使用 SHA-384 Subresource Integrity，资源异常时启动页给出可恢复提示。
 
 Cloudflare 静态资产默认可以绕过 Worker，因此生成配置对 `/studio`、`/studio/*` 与 `/api/cms/*` 显式启用 `run_worker_first`。Studio HTML、配置和预览样式都先经过 Worker 再从 `ASSETS` binding 读取，保证发布界面的安全头和缓存策略在真实平台上生效；其他普通静态资源仍由资产层直接提供。
+
+现有 Sites 托管表面在真实生产中仍可能优先返回 Studio 静态文件，因此 `public/_headers` 对 `/studio` 与 `/studio/*` 提供同等的 `no-store`、CSP 和 COOP 等安全策略。Worker 响应继续由代码设置；静态响应由 `_headers` 设置，二者的策略变更必须同步并由生产冒烟验证。
 
 部署动作使用 Wrangler 返回的本次 deployment URL 运行自动生产冒烟；回滚动作使用稳定的 `CLOUDFLARE_PRODUCTION_URL`，可选择明确 version ID 或上一版本。两个方向使用同一验收器检查内容页、搜索、发现端点、Studio/OAuth、安全头、全 Sitemap 和 404。
 
