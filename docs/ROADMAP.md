@@ -34,4 +34,4 @@
 - Sites 访问策略现为公开；后续每次部署都必须确认本轮提交的内容适合面向公众，并用未登录会话终验。
 - GitHub 与 Sites 公开入口和首批内容已确定；自定义域名、邮箱公开范围和其他联系方式尚未选择，但不阻塞当前生产站运行。
 - Cloudflare 静态资源默认优先曾绕过 Studio 安全头，并在首次修复中触发 index 规范化重定向环；现已用精确 `run_worker_first` 路由和 Wrangler 23 路由冒烟覆盖，升级 Cloudflare/Vinext 插件后必须回归。
-- Sites 第 7、8 个生产版本分别证明其静态资产层可绕过 Worker-first 并忽略 `_headers`；Studio 已移出公共资产并编译进 Worker，且构建会先清理 `dist`，修复版完成公网冒烟前保持为待验收风险。
+- Sites 第 7、8 个生产版本分别证明其静态资产层可绕过 Worker-first 并忽略 `_headers`；Studio 已移出公共资产并编译进 Worker，构建会先清理 `dist`。第 9 个版本已通过 23 路由、Studio HTML/子资源/CSP/no-store 与错误边界公网冒烟；平台升级后仍需回归。

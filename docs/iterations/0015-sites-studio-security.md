@@ -42,7 +42,8 @@ Studio 的 `index.html`、`config.mjs` 与 `preview.css` 从 `public/studio` 移
 - 最终结构通过 ESLint、TypeScript 和 28/28 单元测试；新增测试覆盖 raw bundle 路由、清理脚本路径守卫和构建命令；
 - 8/8 Worker 集成测试与 7/7 发布质量审计通过；构建产物确认没有 `dist/client/studio` 或 `_studio`，Worker bundle 包含 `decap-cms-app@3.14.1` 与 Studio 标识；
 - Wrangler 本地真实运行时生产冒烟通过：23/23 Sitemap 路由为 200，Studio 200/no-store，未配置 secrets 的 OAuth 为 503，未知路由 404/no-store；
-- 生产依赖审计为 0 个已知漏洞；Wrangler 干跑读取 28 个静态文件，总上传 `2645.50 KiB`、gzip `631.55 KiB`；修复版 Sites 公网冒烟将在本轮精确提交发布后补记。
+- 生产依赖审计为 0 个已知漏洞；Wrangler 干跑读取 28 个静态文件，总上传 `2645.50 KiB`、gzip `631.55 KiB`；
+- 提交 `045b8b6` 保存为 Sites 第 9 个版本并成功公开部署；增强后的公网冒烟验证 23/23 Sitemap 路由、Studio HTML/配置/预览样式、专用 CSP、`no-store`、OAuth popup 策略、未知 Studio 子资源 404/no-store、OAuth 安全关闭 503、RSS、robots 与随机 404 全部通过。
 
 ## 8. 经验与教训
 
@@ -54,8 +55,8 @@ Studio 的 `index.html`、`config.mjs` 与 `preview.css` 从 `public/studio` 移
 
 ## 9. 全局状态、风险与未解决问题
 
-现有 Sites 第 8 个版本公开可用，但 Studio 缓存策略仍未达标；最终结构已通过本地 Worker 验收，等待发布到下一 Sites 版本并公网复测。Cloudflare 所有者 OAuth、GitHub secrets、真实 Studio 登录和 Obsidian 端到端发布仍未完成。GitHub 当前网络请求返回 403，本地提交和 Sites 专用源推送不受影响，但恢复前不能宣称 GitHub main 已同步。
+现有 Sites 第 9 个版本已通过完整公网冒烟，公开阅读和未配置 OAuth 的 Studio 安全边界可作为稳定保底。Cloudflare 所有者 OAuth、GitHub secrets、真实 Studio 登录和 Obsidian 端到端发布仍未完成。GitHub 当前网络请求返回 403，本地提交和 Sites 专用源推送不受影响，但恢复前不能宣称 GitHub main 已同步。
 
 ## 10. 下一轮唯一主任务
 
-提交最终结构、恢复 GitHub 同步并发布新 Sites 版本，完成 23 路由与 Studio 响应头公网复测；随后回到所有者 Cloudflare 授权和双入口真实发布。
+恢复 GitHub 同步，完成所有者 Cloudflare 授权与 secrets，并用 Studio 和 Obsidian 各完成一次真实发布。

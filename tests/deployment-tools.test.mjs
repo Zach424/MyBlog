@@ -29,6 +29,9 @@ test("connects deployment, smoke testing, rollback, and Studio routing without i
   assert.match(rollback, /--yes/);
   assert.match(smoke, /Sitemap 路由失败/);
   assert.match(smoke, /same-origin-allow-popups/);
+  assert.match(smoke, /\/studio\/config\.mjs/);
+  assert.match(smoke, /\/studio\/preview\.css/);
+  assert.match(smoke, /frame-ancestors 'none'/);
   assert.doesNotMatch(smoke, /CLOUDFLARE_API_TOKEN|GITHUB_OAUTH_SECRET/);
   assert.match(viteConfig, /run_worker_first: \["\/studio", "\/studio\/\*", "\/api\/cms\/\*"\]/);
   assert.match(worker, /STUDIO_ASSETS\.get\(url\.pathname\)/);

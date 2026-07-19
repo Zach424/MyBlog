@@ -52,6 +52,40 @@ export async function runProductionSmoke(originInput, { expectOAuth = false } = 
     studio.response.headers.get("cross-origin-opener-policy") === "same-origin-allow-popups",
     "Studio OAuth popup 策略不正确",
   );
+  const studioPolicy = studio.response.headers.get("content-security-policy") ?? "";
+  invariant(studioPolicy.includes("https://unpkg.com"), "Studio CSP 缺少固定 CMS 资源");
+  invariant(studioPolicy.includes("https://api.github.com"), "Studio CSP 缺少 GitHub API");
+  invariant(studioPolicy.includes("frame-ancestors 'none'"), "Studio CSP 未禁止嵌入");
+
+  const [studioConfig, studioPreview, unknownStudioAsset] = await Promise.all([
+    request(origin, "/studio/config.mjs", { accept: "text/javascript" }),
+    request(origin, "/studio/preview.css", { accept: "text/css" }),
+    request(origin, "/studio/definitely-missing", { redirect: "manual" }),
+  ]);
+  invariant(
+    studioConfig.response.status === 200 && studioConfig.body.includes('repo: "Zach424/MyBlog"'),
+    "Studio 配置模块不可用",
+  );
+  invariant(
+    studioConfig.response.headers.get("content-type")?.startsWith("text/javascript"),
+    "Studio 配置模块类型不正确",
+  );
+  invariant(
+    studioPreview.response.status === 200 && studioPreview.body.includes("--canvas:"),
+    "Studio 预览样式不可用",
+  );
+  invariant(
+    studioPreview.response.headers.get("content-type")?.startsWith("text/css"),
+    "Studio 预览样式类型不正确",
+  );
+  for (const asset of [studioConfig, studioPreview]) {
+    invariant(asset.response.headers.get("cache-control") === "no-store", "Studio 子资源必须 no-store");
+  }
+  invariant(
+    unknownStudioAsset.response.status === 404 &&
+      unknownStudioAsset.response.headers.get("cache-control") === "no-store",
+    "未知 Studio 子资源必须返回 404/no-store",
+  );
 
   const oauth = await request(
     origin,
