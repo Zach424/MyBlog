@@ -99,8 +99,12 @@ const worker = {
     const url = new URL(request.url);
 
     if (url.pathname === "/studio" || url.pathname === "/studio/") {
-      const studioRequest = new Request(new URL("/studio/index.html", request.url), request);
+      const studioRequest = new Request(new URL("/studio/", request.url), request);
       return withProductionHeaders(request, await env.ASSETS.fetch(studioRequest));
+    }
+
+    if (url.pathname.startsWith("/studio/")) {
+      return withProductionHeaders(request, await env.ASSETS.fetch(request));
     }
 
     if (url.pathname === "/api/cms/auth" || url.pathname === "/api/cms/callback") {

@@ -13,6 +13,7 @@
 | [DISCOVERY.md](./DISCOVERY.md) | 搜索、RSS、Sitemap、robots 与绝对 URL | 发布发现能力变化时 |
 | [QUALITY.md](./QUALITY.md) | 发布质量门、安全、缓存、体积预算与依赖审计 | 质量或部署基线变化时 |
 | [OPERATIONS.md](./OPERATIONS.md) | 内容发布、生产验收、监控、故障处理和回滚 | 运维流程或平台变化时 |
+| [MIGRATION.md](./MIGRATION.md) | 所有者账号配置、双入口验收、生产切换和回滚清单 | 迁移或生产 origin 变化时 |
 | [ROADMAP.md](./ROADMAP.md) | 阶段、门槛和全局状态 | 每轮结束时 |
 | [decisions/](./decisions/) | 重要技术决策及其取舍 | 做出难以逆转的决策时 |
 | [iterations/](./iterations/) | 每轮范围、实现、验证和经验 | 每轮提交前 |

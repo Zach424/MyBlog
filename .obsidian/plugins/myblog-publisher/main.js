@@ -19,15 +19,17 @@ module.exports = class MyBlogPublisher extends Plugin {
 
   publishCurrentNote(checking, push) {
     const file = this.app.workspace.getActiveFile();
-    const isInboxNote = file?.extension === "md" && file.path.startsWith("content/inbox/");
+    const isInboxNote =
+      file?.extension === "md" &&
+      /^content\/inbox\/[a-z0-9]+(?:-[a-z0-9]+)*\.md$/u.test(file.path);
     const isDesktopVault = this.app.vault.adapter instanceof FileSystemAdapter;
     if (!isInboxNote || !isDesktopVault) return false;
     if (checking) return true;
 
     const root = this.app.vault.adapter.getBasePath();
-    const executable = process.platform === "win32" ? "npm.cmd" : "npm";
-    const args = ["run", "content:publish", "--", file.path, "--check-only"];
-    if (push) args.splice(args.length - 1, 1, "--push");
+    const npmArgs = ["run", "content:publish", "--", file.path, push ? "--push" : "--check-only"];
+    const executable = process.platform === "win32" ? (process.env.ComSpec || "cmd.exe") : "npm";
+    const args = process.platform === "win32" ? ["/d", "/s", "/c", "npm", ...npmArgs] : npmArgs;
 
     new Notice(push ? "正在检查、提交并发布…" : "正在检查当前草稿…", 0);
     const child = spawn(executable, args, {

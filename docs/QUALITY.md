@@ -17,6 +17,14 @@ npm audit --omit=dev --audit-level=high
 npx wrangler deploy --dry-run --config dist/server/wrangler.json --outdir .wrangler/dry-run
 ```
 
+部署后对本次 HTTPS origin 执行自动生产冒烟：
+
+```bash
+npm run production:smoke -- https://example.workers.dev --expect-oauth
+```
+
+该命令检查代表性内容、搜索、Studio/OAuth、RSS、robots、Sitemap 中每个 URL、安全头和随机 404。`--expect-oauth` 只用于已经配置 GitHub OAuth secrets 的生产版本；本地 Wrangler 验收允许授权端点以 503 安全关闭。
+
 依赖审计不使用 `npm audit fix --force`。自动修复若要求主版本变化或框架降级，先定位传递依赖，再采用可构建、可测试的最小补丁或覆盖。
 
 ## HTML 与导航门槛

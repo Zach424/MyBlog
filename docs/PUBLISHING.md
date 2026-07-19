@@ -4,6 +4,8 @@
 
 网页后台、Obsidian 和普通 Git 编辑器都操作同一个 GitHub 仓库。文章没有数据库副本：草稿、附件、版本和回滚都可以在 Git 历史中找到。main 的精确提交通过质量门后由所有者 Cloudflare 自动部署。
 
+首次启用账号、生产 origin 与切换步骤统一按 [MIGRATION.md](./MIGRATION.md) 执行；日常写作不需要再次配置密钥。
+
 ## 首次启用网页后台
 
 等所有者 Cloudflare Worker 获得稳定 origin 后，只需配置一次：

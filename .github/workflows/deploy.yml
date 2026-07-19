@@ -37,6 +37,7 @@ jobs:
         run: npm run check
 
       - name: Deploy to the owner's Cloudflare account
+        id: deploy
         uses: cloudflare/wrangler-action@v3
         with:
           apiToken: ${{ secrets.CLOUDFLARE_API_TOKEN }}
@@ -48,3 +49,8 @@ jobs:
         env:
           GITHUB_OAUTH_ID: ${{ secrets.GITHUB_OAUTH_ID }}
           GITHUB_OAUTH_SECRET: ${{ secrets.GITHUB_OAUTH_SECRET }}
+
+      - name: Smoke-test the deployed URL
+        env:
+          DEPLOYMENT_URL: ${{ steps.deploy.outputs.deployment-url }}
+        run: npm run production:smoke -- "$DEPLOYMENT_URL" --expect-oauth

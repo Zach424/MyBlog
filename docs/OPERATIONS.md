@@ -14,6 +14,8 @@
 
 仓库包含两个互相独立的工作流：`Quality Gate` 在 pull request 与 main 上执行完整检查；`Deploy to Cloudflare` 在所有者完成一次性配置后，对 main 的每个精确提交重新检查并部署。
 
+一次性迁移的逐项操作、验收与切换条件见 [MIGRATION.md](./MIGRATION.md)。
+
 首次启用由仓库所有者完成：
 
 1. 在自己的 Cloudflare 账号创建一个仅允许编辑 Workers 的 API Token；
@@ -60,6 +62,8 @@ Obsidian 发布命令直接复用本仓库内容 schema 和 `npm run check`。`-
 7. 成功 HTML 使用浏览器不缓存、边缘缓存一小时的策略，并包含 CSP、HSTS、`X-Frame-Options: DENY`、`X-Content-Type-Options: nosniff` 与 Referrer Policy；
 8. 随机不存在路径返回 404 且 `Cache-Control: no-store`。
 
+所有者 Cloudflare 部署会自动执行等价检查；也可手动运行 `npm run production:smoke -- <origin> --expect-oauth`。自动结果不替代首次迁移时的未登录浏览器和真实编辑发布验收。
+
 公开站点默认使用无凭证 HTTP 和全新未登录浏览器会话验收，避免登录状态掩盖访问门禁。若未来临时改回私有，旁路凭证只能放在进程内存中；在线验收只归档状态、数量和响应头，不归档 Token。
 
 ## 5. 监控与故障分级
@@ -76,7 +80,7 @@ Obsidian 发布命令直接复用本仓库内容 schema 和 `npm run check`。`-
 
 ## 6. 回滚
 
-1. 在 Cloudflare Deployments 中选择最近一个已通过在线验收的版本执行回滚；迁移前仍使用 Sites 已保存版本。
+1. 在 GitHub Actions 手动运行 `Roll back Cloudflare production`：留空 version ID 回到上一版本，或填写已验证版本；工作流会回滚并自动复核 `CLOUDFLARE_PRODUCTION_URL`。也可在 Cloudflare Deployments 中执行同一操作；迁移前仍使用 Sites 已保存版本。
 2. 不使用 `git reset --hard`，也不删除失败提交；如需让仓库状态与线上一致，创建显式 revert 提交。
 3. 轮询到部署成功，并至少验证首页、一个详情、Sitemap、RSS 和随机 404。
 4. 新建故障修复分支或后续提交，记录原因、影响、回滚版本证据和防复发测试。

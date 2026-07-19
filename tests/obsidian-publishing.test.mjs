@@ -90,5 +90,6 @@ test("ships a desktop Obsidian command without hidden shell interpolation", asyn
   assert.match(plugin, /content:publish/);
   assert.match(plugin, /shell:\s*false/);
   assert.match(plugin, /--push/);
+  assert.match(plugin, /\^content\\\/inbox/);
   assert.doesNotMatch(plugin, /exec\s*\(/u);
 });

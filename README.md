@@ -4,8 +4,8 @@
 
 ## 当前状态
 
-- 阶段：自助发布系统建设中；网页后台与 Obsidian 双写作入口完成
-- 当前轮次：`0013-obsidian-authoring`
+- 阶段：自助发布工程闭环完成；等待所有者账号授权、真实双入口验收与生产切换
+- 当前轮次：`0014-migration-and-cutover`
 - 生产站点：<https://zach424-engineering-notes.zhiqingchen792.chatgpt.site>
 - 运行目标：Cloudflare Worker-compatible web application
 - 内容目标：学习笔记、完整文章、系列专题、项目复盘
@@ -42,6 +42,7 @@ npx wrangler deploy --dry-run --config dist/server/wrangler.json --outdir .wrang
 - [设计基线](./docs/DESIGN.md)
 - [搜索与发布发现](./docs/DISCOVERY.md)
 - [自助发布指南](./docs/PUBLISHING.md)
+- [所有者 Cloudflare 迁移清单](./docs/MIGRATION.md)
 - [发布质量基线](./docs/QUALITY.md)
 - [上线、维护与回滚手册](./docs/OPERATIONS.md)
 - [自助发布架构决策](./docs/decisions/0002-git-first-publishing.md)

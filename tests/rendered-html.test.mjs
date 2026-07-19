@@ -21,7 +21,10 @@ async function render(pathname = "/") {
     {
       ASSETS: {
         fetch: async (request) => {
-          const assetPath = new URL(request.url).pathname.replace(/^\//u, "");
+          const requestedPath = new URL(request.url).pathname.replace(/^\//u, "");
+          const assetPath = requestedPath.endsWith("/")
+            ? `${requestedPath}index.html`
+            : requestedPath;
           try {
             const body = await readFile(new URL(`../dist/client/${assetPath}`, import.meta.url));
             const contentType = assetPath.endsWith(".html")

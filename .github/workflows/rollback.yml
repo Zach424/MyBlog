@@ -1,0 +1,63 @@
+name: Roll back Cloudflare production
+
+on:
+  workflow_dispatch:
+    inputs:
+      version_id:
+        description: "Optional Cloudflare Worker version ID; blank selects the previous version"
+        required: false
+        type: string
+      reason:
+        description: "Reason recorded with the rollback deployment"
+        required: true
+        default: "Production smoke test failed"
+        type: string
+
+permissions:
+  contents: read
+
+concurrency:
+  group: cloudflare-production
+  cancel-in-progress: false
+
+jobs:
+  rollback:
+    name: Roll back and verify
+    runs-on: ubuntu-latest
+    timeout-minutes: 15
+    environment:
+      name: production
+    env:
+      CLOUDFLARE_API_TOKEN: ${{ secrets.CLOUDFLARE_API_TOKEN }}
+      CLOUDFLARE_ACCOUNT_ID: ${{ secrets.CLOUDFLARE_ACCOUNT_ID }}
+      PRODUCTION_URL: ${{ vars.CLOUDFLARE_PRODUCTION_URL }}
+      VERSION_ID: ${{ inputs.version_id }}
+      ROLLBACK_REASON: ${{ inputs.reason }}
+    steps:
+      - name: Check out the rollback verifier
+        uses: actions/checkout@v4
+
+      - name: Use Node.js 22
+        uses: actions/setup-node@v4
+        with:
+          node-version: 22
+          cache: npm
+
+      - name: Install locked dependencies
+        run: npm ci
+
+      - name: Require the stable production URL
+        run: test -n "$PRODUCTION_URL"
+
+      - name: Roll back the Worker
+        shell: bash
+        run: |
+          args=(rollback)
+          if [[ -n "$VERSION_ID" ]]; then
+            args+=("$VERSION_ID")
+          fi
+          args+=(--name zach424-myblog --message "$ROLLBACK_REASON" --yes)
+          npx wrangler "${args[@]}"
+
+      - name: Verify the restored production version
+        run: npm run production:smoke -- "$PRODUCTION_URL" --expect-oauth

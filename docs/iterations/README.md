@@ -18,6 +18,7 @@
 0011-owner-controlled-delivery.md
 0012-publishing-studio.md
 0013-obsidian-authoring.md
+0014-migration-and-cutover.md
 ```
 
 ## 必填结构

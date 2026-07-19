@@ -72,8 +72,11 @@ lib/
 .github/workflows/
   quality.yml             pull request 与 main 的完整质量门
   deploy.yml              经显式开关启用的所有者 Cloudflare 自动部署
+  rollback.yml            可选版本回滚与稳定生产地址复核
 scripts/
   check-release-config.mjs 自助发布配置完整性检查
+  check-migration-status.mjs 分支、远端同步与 Cloudflare 身份检查
+  smoke-production.mjs     生产 origin、全 Sitemap 与发布端点冒烟
   publish-note.mjs         Obsidian 草稿检查、迁移、回滚、提交和推送
 .obsidian/
   app.json                 Vault 收件箱、附件和排除目录设置
@@ -85,6 +88,7 @@ tests/
   content-contract.test.mjs  内容契约与目录提取单元测试
   search.test.mjs            搜索规范化、排序和匹配单元测试
   discovery.test.mjs         RSS/XML、Sitemap 与公开主机单元测试
+  deployment-tools.test.mjs  部署、回滚、冒烟与 Worker-first 契约
   rendered-html.test.mjs    Worker 页面、搜索、发布端点和 404 集成测试
   quality-gates.test.mjs    安全头、缓存、语义、链接、体积与对比度发布审计
 worker/
@@ -105,6 +109,10 @@ GitHub 仓库继续是唯一内容事实源。网页后台与 Obsidian 都只提
 `/studio` 由 Worker 映射到静态 CMS 启动页。CMS 在浏览器中把当前 origin 注入 `base_url`，因此 workers.dev 与未来自定义域名不需要维护不同配置；`/api/cms/auth` 和 `/api/cms/callback` 在同一个 Worker 完成 GitHub OAuth。授权 state 使用 OAuth secret 做 HMAC 签名并在十分钟后失效，回调消息只发送给发起 Studio 的同源窗口。未设置 OAuth secrets 时接口返回 503，后台保持关闭。
 
 Studio 路由单独使用允许 GitHub API 与固定 unpkg 资源的 CSP、`same-origin-allow-popups` 和 `no-store`；公开阅读路由继续使用更严格的原 CSP、`same-origin` 和边缘缓存。CMS 包锁定到 `3.14.1` 并使用 SHA-384 Subresource Integrity，资源异常时启动页给出可恢复提示。
+
+Cloudflare 静态资产默认可以绕过 Worker，因此生成配置对 `/studio`、`/studio/*` 与 `/api/cms/*` 显式启用 `run_worker_first`。Studio HTML、配置和预览样式都先经过 Worker 再从 `ASSETS` binding 读取，保证发布界面的安全头和缓存策略在真实平台上生效；其他普通静态资源仍由资产层直接提供。
+
+部署动作使用 Wrangler 返回的本次 deployment URL 运行自动生产冒烟；回滚动作使用稳定的 `CLOUDFLARE_PRODUCTION_URL`，可选择明确 version ID 或上一版本。两个方向使用同一验收器检查内容页、搜索、发现端点、Studio/OAuth、安全头、全 Sitemap 和 404。
 
 仓库根目录可以直接作为 Obsidian Vault。普通新文件进入 `content/inbox`，因此半成品和不完整 frontmatter 不会破坏博客构建；附件进入 `public/uploads`。模板使用文件名作为稳定 Slug。桌面插件只对 inbox Markdown 启用，调用参数数组而不是拼接 shell 字符串；底层脚本关闭 `draft`、规范化 Obsidian 附件链接、复用正式 Zod 内容契约并运行全量检查。检查失败时恢复原始草稿；`--push` 只暂存草稿移动、正式内容和正文实际引用的附件。
 

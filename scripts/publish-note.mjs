@@ -22,6 +22,13 @@ function run(command, args, options = {}) {
   return result;
 }
 
+function runNpm(args) {
+  if (process.platform === "win32") {
+    return run(process.env.ComSpec || "cmd.exe", ["/d", "/s", "/c", "npm", ...args]);
+  }
+  return run("npm", args);
+}
+
 const args = process.argv.slice(2);
 const sourceArgument = args.find((argument) => !argument.startsWith("--"));
 const checkOnly = args.includes("--check-only");
@@ -68,7 +75,7 @@ writeFileSync(resolve(process.cwd(), prepared.targetPath), prepared.content, { f
 rmSync(absoluteSource);
 
 try {
-  run(process.platform === "win32" ? "npm.cmd" : "npm", ["run", "check"]);
+  runNpm(["run", "check"]);
 } catch (error) {
   writeFileSync(absoluteSource, sourceContent);
   rmSync(resolve(process.cwd(), prepared.targetPath));

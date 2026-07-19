@@ -3,6 +3,7 @@ import { readFileSync } from "node:fs";
 const requiredFiles = [
   ".github/workflows/quality.yml",
   ".github/workflows/deploy.yml",
+  ".github/workflows/rollback.yml",
   ".env.example",
 ];
 
@@ -23,9 +24,20 @@ for (const marker of [
   "GITHUB_OAUTH_SECRET",
   "npm run check",
   "dist/server/wrangler.json",
+  "production:smoke",
 ]) {
   if (!deployWorkflow.includes(marker)) {
     throw new Error(`Deployment workflow is missing required marker: ${marker}`);
+  }
+}
+
+const rollbackWorkflow = readFileSync(
+  new URL("../.github/workflows/rollback.yml", import.meta.url),
+  "utf8",
+);
+for (const marker of ["wrangler", "rollback", "--yes", "CLOUDFLARE_PRODUCTION_URL", "production:smoke"]) {
+  if (!rollbackWorkflow.includes(marker)) {
+    throw new Error(`Rollback workflow is missing required marker: ${marker}`);
   }
 }
 
