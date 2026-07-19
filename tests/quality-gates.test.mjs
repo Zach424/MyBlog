@@ -17,7 +17,18 @@ async function request(pathname = "/") {
     }),
     {
       ASSETS: {
-        fetch: async () => new Response("Not found", { status: 404 }),
+        fetch: async (request) => {
+          const assetPath = new URL(request.url).pathname.replace(/^\//u, "");
+          try {
+            const body = await readFile(new URL(`../dist/client/${assetPath}`, import.meta.url));
+            const contentType = assetPath.endsWith(".html")
+              ? "text/html; charset=utf-8"
+              : "application/octet-stream";
+            return new Response(body, { headers: { "content-type": contentType } });
+          } catch {
+            return new Response("Not found", { status: 404 });
+          }
+        },
       },
     },
     {
@@ -117,6 +128,18 @@ test("applies the production security and cache baseline", async () => {
   const missingResponse = await request("/definitely-missing");
   assert.equal(missingResponse.status, 404);
   assert.equal(missingResponse.headers.get("cache-control"), "no-store");
+
+  const studioResponse = await request("/studio");
+  assert.equal(studioResponse.status, 200);
+  assert.equal(studioResponse.headers.get("cache-control"), "no-store");
+  assert.equal(
+    studioResponse.headers.get("cross-origin-opener-policy"),
+    "same-origin-allow-popups",
+  );
+  assert.match(
+    studioResponse.headers.get("content-security-policy") ?? "",
+    /connect-src 'self' https:\/\/api\.github\.com https:\/\/github\.com/,
+  );
 });
 
 test("keeps key HTML routes structurally valid and uniquely identified", async () => {

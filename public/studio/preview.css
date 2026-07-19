@@ -1,0 +1,46 @@
+:root {
+  --canvas: #f2f6f7;
+  --paper: #f8fafa;
+  --ink: #18263d;
+  --muted: #566d77;
+  --signal: #b9431f;
+  --rule: #d7e4e7;
+}
+
+html,
+body {
+  margin: 0;
+  color: var(--ink);
+  background: var(--canvas);
+  font-family: "Microsoft YaHei UI", "PingFang SC", sans-serif;
+}
+
+body {
+  max-width: 48rem;
+  margin-inline: auto;
+  padding: 3rem clamp(1.25rem, 6vw, 4rem);
+  border-top: 0.25rem solid var(--signal);
+  line-height: 1.85;
+}
+
+h1,
+h2,
+h3 {
+  font-family: "Bahnschrift Condensed", "Arial Narrow", "Microsoft YaHei UI", sans-serif;
+  line-height: 1.2;
+  letter-spacing: -0.025em;
+}
+
+h1 { font-size: clamp(2.5rem, 8vw, 4.5rem); }
+h2 { margin-top: 2.75rem; padding-top: 1rem; border-top: 1px solid var(--rule); }
+a { color: var(--signal); text-underline-offset: 0.2em; }
+blockquote { margin-inline: 0; padding-left: 1rem; border-left: 0.2rem solid var(--signal); color: var(--muted); }
+pre { overflow-x: auto; padding: 1rem; color: var(--paper); background: var(--ink); }
+code { font-family: "Cascadia Code", Consolas, monospace; }
+img { max-width: 100%; height: auto; }
+table { width: 100%; border-collapse: collapse; }
+th, td { padding: 0.6rem; border: 1px solid var(--rule); text-align: left; }
+
+@media (prefers-color-scheme: dark) {
+  :root { --canvas: #101820; --paper: #17232d; --ink: #edf4f5; --muted: #a8b9be; --signal: #ff7851; --rule: #294049; }
+}

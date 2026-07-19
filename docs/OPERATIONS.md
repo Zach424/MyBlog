@@ -19,11 +19,14 @@
 1. 在自己的 Cloudflare 账号创建一个仅允许编辑 Workers 的 API Token；
 2. 在 GitHub 仓库创建 `production` Environment；
 3. 把账号 ID 保存为 `CLOUDFLARE_ACCOUNT_ID` secret，把 Token 保存为 `CLOUDFLARE_API_TOKEN` secret；
-4. 在仓库 Actions variables 中设置 `CLOUDFLARE_DEPLOY_ENABLED=true`；
-5. 手动运行一次 `Deploy to Cloudflare`，获得所有者账号下的 `workers.dev` 地址并完成在线验收；
-6. 验收通过后再配置正式域名或切换公开入口。Sites 地址在切换前保持在线。
+4. 为该 origin 创建 GitHub OAuth App，把 client ID/secret 保存为 `GITHUB_OAUTH_ID` 与 `GITHUB_OAUTH_SECRET`；callback 固定为 `<origin>/api/cms/callback?provider=github`；
+5. 在仓库 Actions variables 中设置 `CLOUDFLARE_DEPLOY_ENABLED=true`；
+6. 手动运行一次 `Deploy to Cloudflare`，获得所有者账号下的 `workers.dev` 地址并完成在线验收；
+7. 打开 `/studio` 完成 GitHub 登录、草稿保存和发布验证；验收通过后再配置正式域名或切换公开入口。Sites 地址在切换前保持在线。
 
 Secret 只保存在 GitHub Environment；禁止写入 `.env`、Actions 日志、文档或 Git 历史。关闭自动部署只需把开关改为 `false`，不会删除线上 Worker。
+
+网页后台 OAuth 使用公开仓库所需的 `public_repo,user` scope；只有本来就拥有仓库写权限的 GitHub 用户可以编辑。OAuth state 有签名和十分钟有效期，回调只向同源 Studio 发送结果。更换正式域名时必须同步更新 GitHub OAuth App 的 Homepage/callback，再重新部署和验收登录。
 
 ## 3. 日常内容发布
 

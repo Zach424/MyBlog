@@ -59,5 +59,7 @@ test("creates a complete sitemap and a linked robots policy", () => {
   assert.match(sitemap, /https:\/\/blog\.example\.test\/posts\/build-worker/);
   assert.match(sitemap, /<lastmod>2026-07-19<\/lastmod>/);
   assert.match(robots, /Allow: \/$/m);
+  assert.match(robots, /Disallow: \/studio$/m);
+  assert.match(robots, /Disallow: \/api\/cms\/$/m);
   assert.match(robots, /Sitemap: https:\/\/blog\.example\.test\/sitemap\.xml/);
 });

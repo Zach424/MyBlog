@@ -42,3 +42,9 @@ jobs:
           apiToken: ${{ secrets.CLOUDFLARE_API_TOKEN }}
           accountId: ${{ secrets.CLOUDFLARE_ACCOUNT_ID }}
           command: deploy --config dist/server/wrangler.json --name zach424-myblog
+          secrets: |
+            GITHUB_OAUTH_ID
+            GITHUB_OAUTH_SECRET
+        env:
+          GITHUB_OAUTH_ID: ${{ secrets.GITHUB_OAUTH_ID }}
+          GITHUB_OAUTH_SECRET: ${{ secrets.GITHUB_OAUTH_SECRET }}

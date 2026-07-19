@@ -20,6 +20,7 @@
 | 测试 | Node test + ESLint + Worker 质量审计 | 内容、构建、HTML、安全、链接、体积和对比度验证 |
 | 数据 | 仓库内 Markdown，构建期读取 | 文章和项目内容 |
 | 交付 | GitHub Actions + Wrangler | 每次提交自动检查，并由仓库所有者控制 Cloudflare 部署 |
+| 编辑后台 | Decap CMS 3.14.1 + GitHub OAuth | `/studio` 编辑同一仓库内容，草稿以 pull request 保存 |
 
 ## 当前实现状态
 
@@ -61,6 +62,12 @@ lib/
   site.ts                 全站名称、摘要与请求主机 URL 解析
 public/
   og.png                  1200 × 630 社交分享卡
+  studio/
+    index.html            固定版本与完整性校验的 CMS 启动页
+    config.mjs            文章/项目字段、GitHub 后端与发布工作流
+    preview.css           复用博客 Token 的正文预览样式
+lib/
+  cms-oauth.ts            有签名 state 的 GitHub OAuth 授权与回调
 .github/workflows/
   quality.yml             pull request 与 main 的完整质量门
   deploy.yml              经显式开关启用的所有者 Cloudflare 自动部署
@@ -73,7 +80,7 @@ tests/
   rendered-html.test.mjs    Worker 页面、搜索、发布端点和 404 集成测试
   quality-gates.test.mjs    安全头、缓存、语义、链接、体积与对比度发布审计
 worker/
-  index.ts                  Worker 入口、图像优化与生产响应头基线
+  index.ts                  Worker 入口、Studio 静态入口、OAuth、图像优化与生产响应头基线
 output/playwright/         真实浏览器桌面、窄屏、深色、公开未登录与修复前后截图
 docs/                     稳定文档、决策记录和逐轮归档
   OPERATIONS.md           内容发布、生产验收、监控与回滚手册
@@ -86,6 +93,10 @@ docs/                     稳定文档、决策记录和逐轮归档
 GitHub 仓库继续是唯一内容事实源。网页后台与 Obsidian 都只提交 `content`、附件和相关元数据；GitHub Actions 对精确提交执行 lint、内容契约、单元/Worker 测试、TypeScript、生产构建、依赖审计与 Wrangler 干跑。部署工作流只有在仓库变量 `CLOUDFLARE_DEPLOY_ENABLED=true` 后才会运行，并从 GitHub Environment secrets 读取 `CLOUDFLARE_ACCOUNT_ID` 和 `CLOUDFLARE_API_TOKEN`。
 
 这个开关避免尚未完成所有者 Cloudflare 初始化时把 main 的每次提交变成失败部署。开关启用后，任何通过网页后台、Obsidian 或普通 Git 客户端进入 main 的提交都会由同一个工作流自动发布，不再依赖 Codex 或 Sites 打包操作。
+
+`/studio` 由 Worker 映射到静态 CMS 启动页。CMS 在浏览器中把当前 origin 注入 `base_url`，因此 workers.dev 与未来自定义域名不需要维护不同配置；`/api/cms/auth` 和 `/api/cms/callback` 在同一个 Worker 完成 GitHub OAuth。授权 state 使用 OAuth secret 做 HMAC 签名并在十分钟后失效，回调消息只发送给发起 Studio 的同源窗口。未设置 OAuth secrets 时接口返回 503，后台保持关闭。
+
+Studio 路由单独使用允许 GitHub API 与固定 unpkg 资源的 CSP、`same-origin-allow-popups` 和 `no-store`；公开阅读路由继续使用更严格的原 CSP、`same-origin` 和边缘缓存。CMS 包锁定到 `3.14.1` 并使用 SHA-384 Subresource Integrity，资源异常时启动页给出可恢复提示。
 
 启动骨架、未启用的 ChatGPT Auth/D1/Drizzle 示例和相关依赖已删除。首页、全局导航、集合页、详情页、专题与标签索引现在全部使用稳定内容 URL；未知 slug 进入统一 404 边界。搜索索引、RSS、Sitemap 和 robots 只消费经过草稿与未来日期过滤的公开内容。
 

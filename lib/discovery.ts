@@ -142,6 +142,8 @@ ${urls}
 export function createRobotsText(siteUrl: URL) {
   return `User-agent: *
 Allow: /
+Disallow: /studio
+Disallow: /api/cms/
 
 Host: ${siteUrl.host}
 Sitemap: ${absoluteSiteUrl(siteUrl, "/sitemap.xml")}

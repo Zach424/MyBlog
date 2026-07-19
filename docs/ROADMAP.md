@@ -12,13 +12,13 @@
 | 6. 生产上线与维护基线 | done | Sites 私有生产部署成功，23/23 路由与发布端点在线验收通过，维护和回滚手册已冻结 |
 | 7. 公开发布 | done | Sites 访问策略为 public，无凭证 23/23 路由与未登录 320px 首页、搜索、控制台验收通过 |
 | 8. 所有者自助发布 | partial | GitHub 质量门与 Cloudflare 部署工作流已实现；待配置所有者 secrets、执行首次部署和切换入口 |
-| 9. 网页后台与 Obsidian | pending | `/studio`、GitHub OAuth、Obsidian 模板与双入口发布验收完成 |
+| 9. 网页后台与 Obsidian | partial | `/studio`、内容集合、OAuth 安全边界和发布文档完成；待 Obsidian 模板与真实账号联调 |
 | 10. 持续内容维护与可选域名 | pending | 使用任一自助入口发布真实内容；可选域名、评论和统计只由真实需求触发 |
 
 ## 当前关键路径
 
-1. 完成 `/studio` GitHub 编辑、草稿、预览和附件工作流；
-2. 把同一仓库配置为 Obsidian Vault，增加模板、同步和发布检查；
+1. 把同一仓库配置为 Obsidian Vault，增加模板、同步和发布检查；
+2. 使用真实 GitHub OAuth App 验证 `/studio` 登录、草稿 pull request、图片和发布；
 3. 配置所有者 Cloudflare/GitHub secrets，验证 main 自动部署并完成生产切换；
 4. 使用网页后台或 Obsidian 发布一篇真实内容，证明流程不依赖 Codex。
 

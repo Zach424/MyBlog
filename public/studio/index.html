@@ -1,0 +1,91 @@
+<!doctype html>
+<html lang="zh-CN">
+  <head>
+    <meta charset="utf-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1" />
+    <meta name="robots" content="noindex, nofollow" />
+    <title>发布后台 · Zach424 Engineering Notes</title>
+    <style>
+      :root { color-scheme: light dark; }
+      * { box-sizing: border-box; }
+      body {
+        margin: 0;
+        color: #18263d;
+        background: #f2f6f7;
+        font-family: "Microsoft YaHei UI", "PingFang SC", sans-serif;
+      }
+      body::before {
+        display: block;
+        height: 4px;
+        background: linear-gradient(90deg, #b9431f 0 19%, #18263d 19% 78%, #486f78 78%);
+        content: "";
+      }
+      .loading-shell {
+        width: min(calc(100% - 2rem), 72rem);
+        min-height: calc(100vh - 4px);
+        display: grid;
+        place-content: center;
+        margin: auto;
+      }
+      .loading-shell div {
+        max-width: 42rem;
+        padding-left: 1.5rem;
+        border-left: 1px solid #486f78;
+      }
+      .loading-shell p {
+        margin: 0 0 0.75rem;
+        color: #566d77;
+        font: 0.72rem/1.5 "Cascadia Code", Consolas, monospace;
+        letter-spacing: 0.08em;
+        text-transform: uppercase;
+      }
+      .loading-shell h1 {
+        margin: 0;
+        font-family: "Bahnschrift Condensed", "Arial Narrow", sans-serif;
+        font-size: clamp(2.5rem, 7vw, 5rem);
+        line-height: 1;
+        letter-spacing: -0.04em;
+      }
+      .loading-shell span {
+        display: block;
+        margin-top: 1rem;
+        color: #566d77;
+        line-height: 1.8;
+      }
+      @media (prefers-color-scheme: dark) {
+        body { color: #edf4f5; background: #101820; }
+        .loading-shell p, .loading-shell span { color: #a8b9be; }
+        .loading-shell div { border-color: #5f8f99; }
+      }
+    </style>
+    <script>window.CMS_MANUAL_INIT = true;</script>
+    <script
+      defer
+      crossorigin="anonymous"
+      integrity="sha384-HWC+7ToWOjlzUGKnvUM0CMEvRj7BeLwGb9b1EGDQxE4SrnC8TS3n1MtDSCQJ/WGl"
+      src="https://unpkg.com/decap-cms-app@3.14.1/dist/decap-cms-app.js"
+    ></script>
+    <script type="module">
+      import { createStudioConfig } from "/studio/config.mjs";
+
+      window.addEventListener("load", () => {
+        if (!window.CMS) {
+          document.querySelector(".loading-shell span").textContent =
+            "编辑器资源加载失败。请检查网络后刷新页面。";
+          return;
+        }
+        window.CMS.registerPreviewStyle("/studio/preview.css");
+        window.CMS.init({ config: createStudioConfig(window.location.origin) });
+      });
+    </script>
+  </head>
+  <body>
+    <main class="loading-shell">
+      <div>
+        <p>Publishing studio / Git-backed</p>
+        <h1>把草稿推进为<br />可验证的发布。</h1>
+        <span>正在加载文章、项目和 GitHub 发布状态…</span>
+      </div>
+    </main>
+  </body>
+</html>

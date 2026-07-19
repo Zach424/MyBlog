@@ -27,6 +27,7 @@ Slug 默认取文件名；发布日期变化时 URL 不变。已经发布的 slu
 ```yaml
 ---
 title: "从零搭建可维护的个人技术博客"
+slug: building-a-maintainable-blog # 网页后台创建时必填，必须与文件名相同
 description: "如何先冻结内容、设计与交付边界，再开始写页面。"
 type: article # article | til
 publishedAt: 2026-07-18
@@ -54,6 +55,7 @@ series:
 
 ### 可选字段
 
+- `slug`：网页后台用于生成文件名；一旦存在必须与当前文件名完全一致。已有内容可以省略；已发布 slug 禁止直接修改。
 - `updatedAt`：必须不早于 `publishedAt`。
 - `featured`：首页精选，默认 `false`。
 - `series`：一旦存在，`slug`、`title`、`order` 必须同时存在，且同专题顺序唯一。
@@ -83,12 +85,13 @@ demo: null
 ## 跨内容校验
 
 1. 文件名 slug 在对应集合中唯一，只使用小写 ASCII、数字和连字符。
-2. 生产环境排除 `draft: true` 和未来日期内容。
-3. 标签通过单一映射表规范化，避免 `TypeScript`、`typescript` 等重复概念。
-4. `updatedAt` 不早于 `publishedAt`。
-5. `repository`、`demo`、`canonical` 必须是完整 HTTPS URL。
-6. 精选内容不能是草稿。
-7. 专题顺序在同一 `series.slug` 内唯一且从 1 开始。
+2. frontmatter 包含 `slug` 时必须与文件名一致，防止编辑字段与公开 URL 漂移。
+3. 生产环境排除 `draft: true` 和未来日期内容。
+4. 标签通过单一映射表规范化，避免 `TypeScript`、`typescript` 等重复概念。
+5. `updatedAt` 不早于 `publishedAt`。
+6. `repository`、`demo`、`canonical` 必须是完整 HTTPS URL。
+7. 精选内容不能是草稿。
+8. 专题顺序在同一 `series.slug` 内唯一且从 1 开始。
 
 ## 内容加载边界
 

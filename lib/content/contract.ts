@@ -4,7 +4,7 @@ import { z } from "zod";
 const SLUG_PATTERN = /^[a-z0-9]+(?:-[a-z0-9]+)*$/;
 const ISO_DATE_PATTERN = /^\d{4}-\d{2}-\d{2}$/;
 
-const TAG_REGISTRY = [
+export const TAG_REGISTRY = [
   { name: "Next.js", slug: "nextjs", aliases: ["next.js", "nextjs"] },
   { name: "TypeScript", slug: "typescript", aliases: ["typescript", "ts"] },
   { name: "Cloudflare", slug: "cloudflare", aliases: ["cloudflare"] },
@@ -65,6 +65,7 @@ const seriesSchema = z
 const postFrontmatterSchema = z
   .object({
     title: z.string().trim().min(1, "标题不能为空").max(120, "标题过长"),
+    slug: z.string().regex(SLUG_PATTERN, "slug 只能包含小写字母、数字和连字符").optional(),
     description: z.string().trim().min(1, "摘要不能为空").max(320, "摘要过长"),
     type: z.enum(["article", "til"]),
     publishedAt: isoDateSchema,
@@ -98,6 +99,7 @@ const postFrontmatterSchema = z
 const projectFrontmatterSchema = z
   .object({
     title: z.string().trim().min(1, "标题不能为空").max(120, "标题过长"),
+    slug: z.string().regex(SLUG_PATTERN, "slug 只能包含小写字母、数字和连字符").optional(),
     description: z.string().trim().min(1, "摘要不能为空").max(320, "摘要过长"),
     publishedAt: isoDateSchema,
     updatedAt: isoDateSchema.optional(),
@@ -284,6 +286,10 @@ export function parsePostFile(sourcePath: string, raw: string): PostRecord {
   const slug = sourceSlug(sourcePath);
   const { data, body } = parseFrontmatter(sourcePath, raw, postFrontmatterSchema);
 
+  if (data.slug && data.slug !== slug) {
+    throw new ContentValidationError(sourcePath, "frontmatter slug 必须与文件名一致");
+  }
+
   return {
     ...data,
     tags: normalizeTags(data.tags, sourcePath),
@@ -299,6 +305,10 @@ export function parsePostFile(sourcePath: string, raw: string): PostRecord {
 export function parseProjectFile(sourcePath: string, raw: string): ProjectRecord {
   const slug = sourceSlug(sourcePath);
   const { data, body } = parseFrontmatter(sourcePath, raw, projectFrontmatterSchema);
+
+  if (data.slug && data.slug !== slug) {
+    throw new ContentValidationError(sourcePath, "frontmatter slug 必须与文件名一致");
+  }
 
   return {
     ...data,

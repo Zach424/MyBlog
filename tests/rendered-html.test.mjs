@@ -20,7 +20,18 @@ async function render(pathname = "/") {
     }),
     {
       ASSETS: {
-        fetch: async () => new Response("Not found", { status: 404 }),
+        fetch: async (request) => {
+          const assetPath = new URL(request.url).pathname.replace(/^\//u, "");
+          try {
+            const body = await readFile(new URL(`../dist/client/${assetPath}`, import.meta.url));
+            const contentType = assetPath.endsWith(".html")
+              ? "text/html; charset=utf-8"
+              : "application/octet-stream";
+            return new Response(body, { headers: { "content-type": contentType } });
+          } catch {
+            return new Response("Not found", { status: 404 });
+          }
+        },
       },
     },
     {
@@ -93,6 +104,21 @@ test("server-renders every public content collection and detail route", async ()
     assert.equal(response.status, 200, pathname);
     assert.match(await response.text(), expectation, pathname);
   }
+});
+
+test("serves the owner publishing studio without exposing OAuth when unconfigured", async () => {
+  const studioResponse = await render("/studio");
+  assert.equal(studioResponse.status, 200);
+  assert.equal(studioResponse.headers.get("cache-control"), "no-store");
+  assert.equal(studioResponse.headers.get("cross-origin-opener-policy"), "same-origin-allow-popups");
+  assert.match(studioResponse.headers.get("content-security-policy") ?? "", /https:\/\/unpkg\.com/);
+  const studioHtml = await studioResponse.text();
+  assert.match(studioHtml, /Publishing studio \/ Git-backed/);
+  assert.match(studioHtml, /decap-cms-app@3\.14\.1/);
+
+  const oauthResponse = await render("/api/cms/auth?provider=github");
+  assert.equal(oauthResponse.status, 503);
+  assert.equal(oauthResponse.headers.get("cache-control"), "no-store");
 });
 
 test("renders Markdown articles with metadata, anchors, code and navigation", async () => {

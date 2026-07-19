@@ -19,6 +19,8 @@ for (const marker of [
   "CLOUDFLARE_DEPLOY_ENABLED",
   "CLOUDFLARE_API_TOKEN",
   "CLOUDFLARE_ACCOUNT_ID",
+  "GITHUB_OAUTH_ID",
+  "GITHUB_OAUTH_SECRET",
   "npm run check",
   "dist/server/wrangler.json",
 ]) {

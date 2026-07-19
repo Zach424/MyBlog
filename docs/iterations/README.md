@@ -16,6 +16,7 @@
 0009-browser-qa.md
 0010-public-launch.md
 0011-owner-controlled-delivery.md
+0012-publishing-studio.md
 ```
 
 ## 必填结构

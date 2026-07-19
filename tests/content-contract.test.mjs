@@ -112,6 +112,18 @@ test("reports the source path and invalid field", () => {
   );
 });
 
+test("keeps an optional editor slug equal to the stable filename", () => {
+  const valid = postSource().replace(
+    'title: "内容契约测试"',
+    'title: "内容契约测试"\nslug: build-a-blog',
+  );
+  assert.equal(parsePostFile("content/posts/build-a-blog.md", valid).slug, "build-a-blog");
+  assert.throws(
+    () => parsePostFile("content/posts/different.md", valid),
+    /frontmatter slug 必须与文件名一致/,
+  );
+});
+
 test("enforces date and HTTPS URL invariants", () => {
   assert.throws(
     () =>
