@@ -5,14 +5,40 @@ function invariant(condition, message) {
   if (!condition) throw new Error(message);
 }
 
+const RETRYABLE_STATUS = new Set([429, 500, 502, 503, 504]);
+
+async function fetchWithRetry(url, init = {}, attempts = 3) {
+  let lastError;
+
+  for (let attempt = 1; attempt <= attempts; attempt += 1) {
+    try {
+      const response = await fetch(url, {
+        ...init,
+        signal: AbortSignal.timeout(30_000),
+      });
+      if (!RETRYABLE_STATUS.has(response.status) || attempt === attempts) return response;
+      await response.body?.cancel();
+      lastError = new Error(`HTTP ${response.status}`);
+    } catch (error) {
+      lastError = error;
+    }
+
+    await new Promise((resolveDelay) => setTimeout(resolveDelay, attempt * 500));
+  }
+
+  throw new Error(
+    `${new URL(url).pathname} 请求失败：${lastError instanceof Error ? lastError.message : String(lastError)}`,
+    { cause: lastError },
+  );
+}
+
 export function extractSitemapUrls(xml) {
   return [...xml.matchAll(/<loc>([^<]+)<\/loc>/gu)].map((match) => match[1]);
 }
 
 async function request(origin, pathname, options = {}) {
-  const response = await fetch(new URL(pathname, origin), {
+  const response = await fetchWithRetry(new URL(pathname, origin), {
     redirect: options.redirect ?? "follow",
-    signal: AbortSignal.timeout(15_000),
     headers: { accept: options.accept ?? "text/html" },
   });
   const body = await response.text();
@@ -132,7 +158,7 @@ export async function runProductionSmoke(originInput, { expectOAuth = false } = 
   const sitemapUrls = extractSitemapUrls(sitemap.body);
   invariant(sitemap.response.status === 200 && sitemapUrls.length >= 23, "Sitemap URL 数量异常");
   const routeResponses = await Promise.all(
-    sitemapUrls.map((url) => fetch(url, { redirect: "manual", signal: AbortSignal.timeout(15_000) })),
+    sitemapUrls.map((url) => fetchWithRetry(url, { redirect: "manual" })),
   );
   const failedRoutes = routeResponses
     .map((response, index) => ({ status: response.status, url: sitemapUrls[index] }))

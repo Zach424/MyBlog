@@ -70,6 +70,7 @@ Vercel Git 自动部署拆成两个权限层分别核实：GitHub App repository
 - Vercel GitHub App 安装页确认只选择 `Zach424/MyBlog`；
 - `vercel git connect` 仍返回“需要 GitHub Login Connection”，因此 Git 自动部署尚未伪报成功。
 - 完整发布门首次捕获重命名路由留下的 `.next/types` 引用；`typecheck` 加入 `next typegen` 后独立类型检查恢复通过。
+- 最终精确提交部署后，公网冒烟连续两次遇到 TLS/传输层 `fetch failed`；请求器加入最多三次、短退避且仅针对网络异常/429/5xx 的重试，并保留失败路径。
 
 ## 8. 经验与教训
 
@@ -79,6 +80,7 @@ Vercel Git 自动部署拆成两个权限层分别核实：GitHub App repository
 - GitHub App 安装与 Vercel 账户 Login Connection 是两个独立状态；前者不能替代后者。
 - 测试文章应默认保持 draft，并优先做不留内容的预检；没有作者正文时不应为了“端到端”向公开仓库制造垃圾。
 - CLI 网络偶发 `fetch failed` 要区分平台传输故障和应用构建故障；重试前先确认构建日志已成功。
+- 公网验收应对短暂网络错误做有限重试，但不能重试业务断言或掩盖稳定 4xx；最终失败信息必须带路由。
 - 类型检查应先重新生成框架路由类型；否则删除/重命名路由后，缓存中的声明会制造与源码无关的假失败。
 
 ## 9. 全局状态、风险与未解决问题
