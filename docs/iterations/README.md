@@ -21,6 +21,7 @@
 0014-migration-and-cutover.md
 0015-sites-studio-security.md
 0016-vercel-native-migration.md
+0017-vercel-production-and-authoring.md
 ```
 
 ## 必填结构

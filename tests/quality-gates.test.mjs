@@ -120,16 +120,19 @@ test("applies the production security and cache baseline", async () => {
 
 test("serves Studio through explicit Next.js routes instead of public assets", async () => {
   await assert.rejects(access(new URL("../public/studio", import.meta.url)));
-  const [studio, config, preview, unknown] = await Promise.all([
+  const [studio, config, preview, runtime, unknown] = await Promise.all([
     request("/studio"),
     request("/studio/config.mjs"),
     request("/studio/preview.css"),
+    request("/studio/editor-runtime-3.14.1.js"),
     request("/studio/definitely-missing"),
   ]);
   assert.equal(studio.status, 200);
   assert.match(await studio.text(), /Publishing studio \/ Git-backed/);
   assert.match(await config.text(), /repo: "Zach424\/MyBlog"/);
   assert.match(await preview.text(), /--canvas:/);
+  assert.match(await runtime.text(), /decap-cms 3\.14\.1/);
+  assert.equal(runtime.headers.get("cache-control"), "public, max-age=31536000, immutable");
   assert.equal(unknown.status, 404);
   assert.match(unknown.headers.get("cache-control") ?? "", /no-store/);
 });

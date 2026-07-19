@@ -46,20 +46,24 @@ export async function runProductionSmoke(originInput, { expectOAuth = false } = 
 
   const studio = await request(origin, "/studio");
   invariant(studio.response.status === 200, `Studio 状态 ${studio.response.status}`);
-  invariant(studio.body.includes("decap-cms-app@3.14.1"), "Studio CMS 版本不正确");
+  invariant(
+    studio.body.includes("/studio/editor-runtime-3.14.1.js"),
+    "Studio CMS 版本不正确",
+  );
   invariant(studio.response.headers.get("cache-control") === "no-store", "Studio 必须 no-store");
   invariant(
     studio.response.headers.get("cross-origin-opener-policy") === "same-origin-allow-popups",
     "Studio OAuth popup 策略不正确",
   );
   const studioPolicy = studio.response.headers.get("content-security-policy") ?? "";
-  invariant(studioPolicy.includes("https://unpkg.com"), "Studio CSP 缺少固定 CMS 资源");
+  invariant(!studioPolicy.includes("unpkg.com"), "Studio 不应依赖第三方 CMS CDN");
   invariant(studioPolicy.includes("https://api.github.com"), "Studio CSP 缺少 GitHub API");
   invariant(studioPolicy.includes("frame-ancestors 'none'"), "Studio CSP 未禁止嵌入");
 
-  const [studioConfig, studioPreview, unknownStudioAsset] = await Promise.all([
+  const [studioConfig, studioPreview, studioRuntime, unknownStudioAsset] = await Promise.all([
     request(origin, "/studio/config.mjs", { accept: "text/javascript" }),
     request(origin, "/studio/preview.css", { accept: "text/css" }),
+    request(origin, "/studio/editor-runtime-3.14.1.js", { accept: "text/javascript" }),
     request(origin, "/studio/definitely-missing", { redirect: "manual" }),
   ]);
   invariant(
@@ -81,6 +85,21 @@ export async function runProductionSmoke(originInput, { expectOAuth = false } = 
   for (const asset of [studioConfig, studioPreview]) {
     invariant(asset.response.headers.get("cache-control") === "no-store", "Studio 子资源必须 no-store");
   }
+  invariant(
+    studioRuntime.response.status === 200 &&
+      studioRuntime.body.length > 4_000_000 &&
+      studioRuntime.body.includes("decap-cms 3.14.1"),
+    "Studio CMS 运行时不可用",
+  );
+  invariant(
+    studioRuntime.response.headers.get("content-type")?.startsWith("text/javascript"),
+    "Studio CMS 运行时类型不正确",
+  );
+  invariant(
+    studioRuntime.response.headers.get("cache-control") ===
+      "public, max-age=31536000, immutable",
+    "固定版本 Studio CMS 运行时缓存不正确",
+  );
   invariant(
     unknownStudioAsset.response.status === 404 &&
       (unknownStudioAsset.response.headers.get("cache-control") ?? "").includes("no-store"),

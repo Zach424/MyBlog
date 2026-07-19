@@ -87,10 +87,10 @@ test("serves the owner publishing studio without exposing OAuth when unconfigure
   assert.equal(studioResponse.status, 200);
   assert.equal(studioResponse.headers.get("cache-control"), "no-store");
   assert.equal(studioResponse.headers.get("cross-origin-opener-policy"), "same-origin-allow-popups");
-  assert.match(studioResponse.headers.get("content-security-policy") ?? "", /https:\/\/unpkg\.com/);
+  assert.doesNotMatch(studioResponse.headers.get("content-security-policy") ?? "", /unpkg\.com/);
   const studioHtml = await studioResponse.text();
   assert.match(studioHtml, /Publishing studio \/ Git-backed/);
-  assert.match(studioHtml, /decap-cms-app@3\.14\.1/);
+  assert.match(studioHtml, /\/studio\/editor-runtime-3\.14\.1\.js/);
 
   const oauthResponse = await render("/api/cms/auth?provider=github");
   assert.equal(oauthResponse.status, 503);
@@ -209,7 +209,7 @@ test("removes starter artifacts and keeps the Vercel-native design contract expl
   assert.match(packageJson, /"react-markdown": "10\.1\.0"/);
   assert.match(packageJson, /"rehype-highlight": "7\.0\.2"/);
   assert.match(packageJson, /"remark-gfm": "4\.0\.1"/);
-  assert.match(packageJson, /"typecheck": "tsc --noEmit"/);
+  assert.match(packageJson, /"typecheck": "next typegen && tsc --noEmit"/);
   assert.match(nextConfig, /validateContentRepository\(process\.cwd\(\)\)/);
   assert.match(nextConfig, /CONTENT_BUILD_DATE/);
   assert.match(nextConfig, /STUDIO_CONTENT_SECURITY_POLICY/);

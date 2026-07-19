@@ -26,7 +26,9 @@ const STUDIO_CONTENT_SECURITY_POLICY = [
   "img-src 'self' data: blob: https://avatars.githubusercontent.com https://github.com",
   "manifest-src 'self'",
   "object-src 'none'",
-  "script-src 'self' 'unsafe-inline' https://unpkg.com",
+  // Decap CMS evaluates editor/parser modules at runtime. Keep this exception
+  // isolated to the noindex Studio routes; the public site retains the strict CSP.
+  "script-src 'self' 'unsafe-inline' 'unsafe-eval'",
   "style-src 'self' 'unsafe-inline'",
 ].join("; ");
 
@@ -60,7 +62,11 @@ export default async function createNextConfig(): Promise<NextConfig> {
       CONTENT_BUILD_DATE: resolveContentBuildDate(),
     },
     outputFileTracingIncludes: {
-      "/*": ["./content/**/*.md", "./studio/**/*"],
+      "/*": [
+        "./content/**/*.md",
+        "./studio/**/*",
+        "./node_modules/decap-cms/dist/decap-cms.js",
+      ],
     },
     async headers() {
       return [
@@ -77,6 +83,15 @@ export default async function createNextConfig(): Promise<NextConfig> {
           headers: [
             ...publishingHeaders,
             { key: "Content-Security-Policy", value: STUDIO_CONTENT_SECURITY_POLICY },
+          ],
+        },
+        {
+          source: "/studio/editor-runtime-3.14.1.js",
+          headers: [
+            {
+              key: "Cache-Control",
+              value: "public, max-age=31536000, immutable",
+            },
           ],
         },
         { source: "/api/cms/:path*", headers: publishingHeaders },

@@ -33,7 +33,12 @@ test("keeps CMS tags and required content fields aligned with the contract", () 
 
 test("pins the CMS asset and provides a useful loading failure", async () => {
   const html = await readFile(new URL("../studio/index.html", import.meta.url), "utf8");
-  assert.match(html, /decap-cms-app@3\.14\.1/);
+  const packageJson = JSON.parse(
+    await readFile(new URL("../package.json", import.meta.url), "utf8"),
+  );
+  assert.equal(packageJson.devDependencies["decap-cms"], "3.14.1");
+  assert.match(html, /src="\/studio\/editor-runtime-3\.14\.1\.js"/);
+  assert.doesNotMatch(html, /unpkg\.com/);
   assert.match(html, /integrity="sha384-[^"]+"/);
   assert.match(html, /编辑器资源加载失败/);
   assert.match(html, /noindex, nofollow/);
