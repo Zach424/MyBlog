@@ -38,7 +38,7 @@ npx wrangler deploy --dry-run --config dist/server/wrangler.json --outdir .wrang
 - 每页只有一个主要标题，目录锚点与正文 ID 使用同一稳定规则；
 - 站点图标必须为 `256 × 256` PNG 且小于 `100 KB`，并通过根文档图标链接发布。
 
-自动审计不能代替不同浏览器、操作系统和窄屏设备上的视觉复核。当前 Chromium 验收覆盖 `1440 × 1000`、`390 × 844`、`320 × 568`、浅色、深色、Reduced Motion、搜索输入、目录锚点、跳到主要内容和键盘焦点。根布局不得使用会让垂直滚动条触发横向溢出的固定 `min-width`；320px 验收要求 `document.scrollingElement.scrollWidth === document.documentElement.clientWidth`。其他浏览器和操作系统仍需在公开访问后回归。
+自动审计不能代替不同浏览器、操作系统和窄屏设备上的视觉复核。当前 Chromium 验收覆盖 `1440 × 1000`、`390 × 844`、`320 × 568`、浅色、深色、Reduced Motion、搜索输入、目录锚点、跳到主要内容和键盘焦点；公开生产还必须用清空 Cookie 与本地存储的未登录会话复核首页和搜索。根布局不得使用会让垂直滚动条触发横向溢出的固定 `min-width`；320px 验收要求 `document.scrollingElement.scrollWidth === document.documentElement.clientWidth`。Safari、Firefox、macOS 与真实触控设备仍需后续回归。
 
 ## 产物预算
 

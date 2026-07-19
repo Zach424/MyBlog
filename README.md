@@ -4,8 +4,9 @@
 
 ## 当前状态
 
-- 阶段：私有生产上线与真实浏览器验收完成，等待公开访问授权
-- 当前轮次：`0009-browser-qa`
+- 阶段：公开生产上线、未登录访问验收与维护基线完成
+- 当前轮次：`0010-public-launch`
+- 生产站点：<https://zach424-engineering-notes.zhiqingchen792.chatgpt.site>
 - 运行目标：Cloudflare Worker-compatible web application
 - 内容目标：学习笔记、完整文章、系列专题、项目复盘
 

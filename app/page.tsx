@@ -9,20 +9,20 @@ const evidenceItems = [
   {
     state: "Verified",
     mark: "verified",
-    value: "真实浏览器与窄屏验收",
-    meta: "1440 · 390 · 320 · Dark",
+    value: "公开生产上线",
+    meta: "Guest · 23 routes · Browser QA",
   },
   {
     state: "Building",
     mark: "building",
-    value: "公开访问与域名决策",
-    meta: "Public access · Domain · Guest QA",
+    value: "持续内容发布与维护",
+    meta: "Markdown · Checks · Feeds",
   },
   {
     state: "Learned",
     mark: "learned",
-    value: "根布局不锁定最小宽度",
-    meta: "Scrollbar · Root width · Regression",
+    value: "权限变更也要做未登录验收",
+    meta: "Access · Guest · Canonical",
   },
 ] as const;
 
@@ -39,7 +39,7 @@ export default function Home() {
           <div className="hero-copy">
             <p className="eyebrow">
               <span>Independent engineering log</span>
-              <span>REV. 009 · {latestDate}</span>
+              <span>REV. 010 · {latestDate}</span>
             </p>
             <h1 id="hero-title">
               把写过的代码，
@@ -90,7 +90,7 @@ export default function Home() {
 
         <section className="focus-strip page-shell" id="focus" aria-label="当前关注">
           <span className="focus-label">Current focus</span>
-          <strong>生产运行 / 内容发布 / 公开访问决策</strong>
+          <strong>公开运行 / 内容发布 / 维护反馈</strong>
           <span className="focus-index">
             TRACE {String(journalEntries.length).padStart(2, "0")} / ACTIVE
           </span>

@@ -67,7 +67,7 @@ tests/
   quality-gates.test.mjs    安全头、缓存、语义、链接、体积与对比度发布审计
 worker/
   index.ts                  Worker 入口、图像优化与生产响应头基线
-output/playwright/         真实浏览器桌面、窄屏、深色与修复前后截图
+output/playwright/         真实浏览器桌面、窄屏、深色、公开未登录与修复前后截图
 docs/                     稳定文档、决策记录和逐轮归档
   OPERATIONS.md           内容发布、生产验收、监控与回滚手册
 .openai/hosting.json      无 D1 / R2 的托管能力声明

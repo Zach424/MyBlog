@@ -46,7 +46,7 @@ export default function AboutPage() {
         <section>
           <span>04 / CONTACT</span>
           <h2>项目与联系入口</h2>
-          <p>当前公开入口是 GitHub。邮箱和其他联系方式只会在确认公开范围后加入。</p>
+          <p>博客与源码均已公开，项目讨论与联系继续通过 GitHub；邮箱暂不发布。</p>
           <a href="https://github.com/Zach424" target="_blank" rel="noreferrer">
             github.com/Zach424 <span aria-hidden="true">↗</span>
           </a>
