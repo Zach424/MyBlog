@@ -15,6 +15,7 @@
 0008-production-launch.md
 0009-browser-qa.md
 0010-public-launch.md
+0011-owner-controlled-delivery.md
 ```
 
 ## 必填结构

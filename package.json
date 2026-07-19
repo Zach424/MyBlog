@@ -14,6 +14,7 @@
     "test:worker": "node --test tests/rendered-html.test.mjs",
     "audit": "node --test tests/quality-gates.test.mjs",
     "check": "npm run lint && npm test",
+    "release:check": "node scripts/check-release-config.mjs && npm run check && npm audit --omit=dev --audit-level=high && wrangler deploy --dry-run --config dist/server/wrangler.json --outdir .wrangler/dry-run",
     "lint": "eslint . --ignore-pattern dist --ignore-pattern .next --ignore-pattern .wrangler",
     "typecheck": "tsc --noEmit"
   },

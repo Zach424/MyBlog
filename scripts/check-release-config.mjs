@@ -1,0 +1,30 @@
+import { readFileSync } from "node:fs";
+
+const requiredFiles = [
+  ".github/workflows/quality.yml",
+  ".github/workflows/deploy.yml",
+  ".env.example",
+];
+
+for (const file of requiredFiles) {
+  readFileSync(new URL(`../${file}`, import.meta.url), "utf8");
+}
+
+const deployWorkflow = readFileSync(
+  new URL("../.github/workflows/deploy.yml", import.meta.url),
+  "utf8",
+);
+
+for (const marker of [
+  "CLOUDFLARE_DEPLOY_ENABLED",
+  "CLOUDFLARE_API_TOKEN",
+  "CLOUDFLARE_ACCOUNT_ID",
+  "npm run check",
+  "dist/server/wrangler.json",
+]) {
+  if (!deployWorkflow.includes(marker)) {
+    throw new Error(`Deployment workflow is missing required marker: ${marker}`);
+  }
+}
+
+console.log("Release configuration is complete.");

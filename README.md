@@ -4,8 +4,8 @@
 
 ## 当前状态
 
-- 阶段：公开生产上线、未登录访问验收与维护基线完成
-- 当前轮次：`0010-public-launch`
+- 阶段：自助发布系统建设中；GitHub 质量门与 Cloudflare 自动部署底座完成
+- 当前轮次：`0011-owner-controlled-delivery`
 - 生产站点：<https://zach424-engineering-notes.zhiqingchen792.chatgpt.site>
 - 运行目标：Cloudflare Worker-compatible web application
 - 内容目标：学习笔记、完整文章、系列专题、项目复盘
@@ -43,6 +43,7 @@ npx wrangler deploy --dry-run --config dist/server/wrangler.json --outdir .wrang
 - [搜索与发布发现](./docs/DISCOVERY.md)
 - [发布质量基线](./docs/QUALITY.md)
 - [上线、维护与回滚手册](./docs/OPERATIONS.md)
+- [自助发布架构决策](./docs/decisions/0002-git-first-publishing.md)
 - [开发路线图](./docs/ROADMAP.md)
 - [架构决策](./docs/decisions/0001-runtime-and-hosting.md)
 - [迭代归档](./docs/iterations/README.md)

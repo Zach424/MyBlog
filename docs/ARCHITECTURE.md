@@ -6,6 +6,7 @@
 2. 优先构建期处理，避免为博客维护数据库和长期服务器状态。
 3. 页面组件、内容读取、设计 Token 和部署配置相互分离。
 4. 新能力必须先证明真实需求，再增加运行时复杂度。
+5. 网页后台与 Obsidian 只能编辑同一份仓库内容，禁止产生需要双向同步的第二内容源。
 
 ## 当前技术基线
 
@@ -18,6 +19,7 @@
 | 运行 | Cloudflare Worker-compatible output | 预览和生产托管 |
 | 测试 | Node test + ESLint + Worker 质量审计 | 内容、构建、HTML、安全、链接、体积和对比度验证 |
 | 数据 | 仓库内 Markdown，构建期读取 | 文章和项目内容 |
+| 交付 | GitHub Actions + Wrangler | 每次提交自动检查，并由仓库所有者控制 Cloudflare 部署 |
 
 ## 当前实现状态
 
@@ -59,6 +61,11 @@ lib/
   site.ts                 全站名称、摘要与请求主机 URL 解析
 public/
   og.png                  1200 × 630 社交分享卡
+.github/workflows/
+  quality.yml             pull request 与 main 的完整质量门
+  deploy.yml              经显式开关启用的所有者 Cloudflare 自动部署
+scripts/
+  check-release-config.mjs 自助发布配置完整性检查
 tests/
   content-contract.test.mjs  内容契约与目录提取单元测试
   search.test.mjs            搜索规范化、排序和匹配单元测试
@@ -73,6 +80,12 @@ docs/                     稳定文档、决策记录和逐轮归档
 .openai/hosting.json      无 D1 / R2 的托管能力声明
 .env.example              可选公开站点地址示例，不包含凭证
 ```
+
+## 自助发布与部署边界
+
+GitHub 仓库继续是唯一内容事实源。网页后台与 Obsidian 都只提交 `content`、附件和相关元数据；GitHub Actions 对精确提交执行 lint、内容契约、单元/Worker 测试、TypeScript、生产构建、依赖审计与 Wrangler 干跑。部署工作流只有在仓库变量 `CLOUDFLARE_DEPLOY_ENABLED=true` 后才会运行，并从 GitHub Environment secrets 读取 `CLOUDFLARE_ACCOUNT_ID` 和 `CLOUDFLARE_API_TOKEN`。
+
+这个开关避免尚未完成所有者 Cloudflare 初始化时把 main 的每次提交变成失败部署。开关启用后，任何通过网页后台、Obsidian 或普通 Git 客户端进入 main 的提交都会由同一个工作流自动发布，不再依赖 Codex 或 Sites 打包操作。
 
 启动骨架、未启用的 ChatGPT Auth/D1/Drizzle 示例和相关依赖已删除。首页、全局导航、集合页、详情页、专题与标签索引现在全部使用稳定内容 URL；未知 slug 进入统一 404 边界。搜索索引、RSS、Sitemap 和 robots 只消费经过草稿与未来日期过滤的公开内容。
 
@@ -101,6 +114,8 @@ tests/                  构建与内容契约测试
 
 ```text
 Markdown + frontmatter
+        ↑
+网页后台 / Obsidian / Git 编辑器
         ↓
 YAML 解析、Zod schema 与跨内容校验
         ↓
@@ -113,7 +128,7 @@ Vite / Vinext 构建 Cloudflare-compatible output
         ↓
 Worker 注入安全头与 HTML 边缘缓存
         ↓
-质量门与 Wrangler 干跑 → 生产部署 → 在线验收
+GitHub 质量门与 Wrangler 干跑 → 所有者 Cloudflare 自动部署 → 在线验收
 ```
 
 ## 内容契约草案
