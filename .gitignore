@@ -13,6 +13,8 @@
 # testing
 /coverage
 /.playwright-cli/
+.obsidian/workspace*.json
+.obsidian/cache/
 
 # next.js
 /.next/

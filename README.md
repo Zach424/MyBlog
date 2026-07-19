@@ -4,8 +4,8 @@
 
 ## 当前状态
 
-- 阶段：自助发布系统建设中；网页发布后台代码与安全登录链路完成
-- 当前轮次：`0012-publishing-studio`
+- 阶段：自助发布系统建设中；网页后台与 Obsidian 双写作入口完成
+- 当前轮次：`0013-obsidian-authoring`
 - 生产站点：<https://zach424-engineering-notes.zhiqingchen792.chatgpt.site>
 - 运行目标：Cloudflare Worker-compatible web application
 - 内容目标：学习笔记、完整文章、系列专题、项目复盘

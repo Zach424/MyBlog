@@ -28,9 +28,11 @@ Secret 只保存在 GitHub Environment；禁止写入 `.env`、Actions 日志、
 
 网页后台 OAuth 使用公开仓库所需的 `public_repo,user` scope；只有本来就拥有仓库写权限的 GitHub 用户可以编辑。OAuth state 有签名和十分钟有效期，回调只向同源 Studio 发送结果。更换正式域名时必须同步更新 GitHub OAuth App 的 Homepage/callback，再重新部署和验收登录。
 
+Obsidian 发布命令直接复用本仓库内容 schema 和 `npm run check`。`--push` 前要求 Git 暂存区为空，只暂存本次 inbox → 正式目录移动及正文引用附件；全量检查失败会恢复原始草稿。推送失败不会删除已经通过检查的本地内容或提交，作者修复 Git 连接后可以正常重试 push。
+
 ## 3. 日常内容发布
 
-1. 在 `content/posts` 或 `content/projects` 新增 Markdown；文件名即稳定 slug。
+1. 使用 `/studio`、Obsidian `content/inbox` 或直接在 `content/posts`/`content/projects` 新增 Markdown；文件名即稳定 slug。
 2. 按 [CONTENT_MODEL.md](./CONTENT_MODEL.md) 填写 frontmatter。未来日期和 `draft: true` 不会进入公开索引。
 3. 本地运行 `npm run dev`，检查正文、目录、代码块、内链和窄屏折行。
 4. 本地可选运行完整发布门槛：

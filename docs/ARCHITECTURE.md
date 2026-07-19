@@ -21,6 +21,7 @@
 | 数据 | 仓库内 Markdown，构建期读取 | 文章和项目内容 |
 | 交付 | GitHub Actions + Wrangler | 每次提交自动检查，并由仓库所有者控制 Cloudflare 部署 |
 | 编辑后台 | Decap CMS 3.14.1 + GitHub OAuth | `/studio` 编辑同一仓库内容，草稿以 pull request 保存 |
+| 本地写作 | Obsidian Vault + MyBlog Publisher | 收件箱模板、附件规范、校验、提交和推送 |
 
 ## 当前实现状态
 
@@ -73,6 +74,13 @@ lib/
   deploy.yml              经显式开关启用的所有者 Cloudflare 自动部署
 scripts/
   check-release-config.mjs 自助发布配置完整性检查
+  publish-note.mjs         Obsidian 草稿检查、迁移、回滚、提交和推送
+.obsidian/
+  app.json                 Vault 收件箱、附件和排除目录设置
+  templates.json           核心 Templates 插件目录设置
+  plugins/myblog-publisher Obsidian 桌面发布命令
+templates/obsidian/        文章、TIL 与项目模板
+content/inbox/             不进入博客构建的 Obsidian 草稿收件箱
 tests/
   content-contract.test.mjs  内容契约与目录提取单元测试
   search.test.mjs            搜索规范化、排序和匹配单元测试
@@ -97,6 +105,8 @@ GitHub 仓库继续是唯一内容事实源。网页后台与 Obsidian 都只提
 `/studio` 由 Worker 映射到静态 CMS 启动页。CMS 在浏览器中把当前 origin 注入 `base_url`，因此 workers.dev 与未来自定义域名不需要维护不同配置；`/api/cms/auth` 和 `/api/cms/callback` 在同一个 Worker 完成 GitHub OAuth。授权 state 使用 OAuth secret 做 HMAC 签名并在十分钟后失效，回调消息只发送给发起 Studio 的同源窗口。未设置 OAuth secrets 时接口返回 503，后台保持关闭。
 
 Studio 路由单独使用允许 GitHub API 与固定 unpkg 资源的 CSP、`same-origin-allow-popups` 和 `no-store`；公开阅读路由继续使用更严格的原 CSP、`same-origin` 和边缘缓存。CMS 包锁定到 `3.14.1` 并使用 SHA-384 Subresource Integrity，资源异常时启动页给出可恢复提示。
+
+仓库根目录可以直接作为 Obsidian Vault。普通新文件进入 `content/inbox`，因此半成品和不完整 frontmatter 不会破坏博客构建；附件进入 `public/uploads`。模板使用文件名作为稳定 Slug。桌面插件只对 inbox Markdown 启用，调用参数数组而不是拼接 shell 字符串；底层脚本关闭 `draft`、规范化 Obsidian 附件链接、复用正式 Zod 内容契约并运行全量检查。检查失败时恢复原始草稿；`--push` 只暂存草稿移动、正式内容和正文实际引用的附件。
 
 启动骨架、未启用的 ChatGPT Auth/D1/Drizzle 示例和相关依赖已删除。首页、全局导航、集合页、详情页、专题与标签索引现在全部使用稳定内容 URL；未知 slug 进入统一 404 边界。搜索索引、RSS、Sitemap 和 robots 只消费经过草稿与未来日期过滤的公开内容。
 

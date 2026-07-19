@@ -108,6 +108,8 @@ demo: null
 - `build/markdown-source-plugin.ts`：在 Vite 解析前把 `.md` 转成字符串模块，使生产构建与 Vinext RSC 热更新使用同一导入语义；
 - `lib/content/markdown.ts`：用 `github-slugger` 提取 H2/H3 目录，跳过 fenced code，并与页面标题锚点保持一致；
 - `components/MarkdownContent.tsx`：使用 React Markdown、GFM、rehype slug 和 highlight.js 输出正文；
+- Obsidian 草稿先停留在 `content/inbox`，发布脚本才会把它移动到正式目录并用同一解析函数验证；
+- Obsidian 的 `![[image.png]]` 和指向 `public/uploads` 的相对 Markdown 附件在发布时规范化为 `/uploads/image.png`；附件名只允许 ASCII 字母、数字、点、下划线和连字符；
 - 标签由 `TAG_REGISTRY` 统一名称与 slug，未知标签会让构建失败；
 - 专题和标签索引由已发布内容派生，不保存第二份索引文件；
 - 阅读时间同时估算中文字符与拉丁单词；文章与项目详情按需渲染正文，并生成目录、代码高亮和稳定元数据。

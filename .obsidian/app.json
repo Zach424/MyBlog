@@ -1,0 +1,16 @@
+{
+  "attachmentFolderPath": "public/uploads",
+  "newFileLocation": "folder",
+  "newFileFolderPath": "content/inbox",
+  "newLinkFormat": "relative",
+  "useMarkdownLinks": true,
+  "showUnsupportedFiles": false,
+  "userIgnoreFilters": [
+    "node_modules/",
+    "dist/",
+    ".git/",
+    ".next/",
+    ".wrangler/",
+    "output/"
+  ]
+}

@@ -1,0 +1,9 @@
+{
+  "id": "myblog-publisher",
+  "name": "MyBlog Publisher",
+  "version": "1.0.0",
+  "minAppVersion": "1.5.0",
+  "description": "Validate and publish MyBlog inbox notes through the repository quality gate.",
+  "author": "Zach424",
+  "isDesktopOnly": true
+}
