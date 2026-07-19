@@ -2,6 +2,9 @@
 import { handleImageOptimization, DEFAULT_DEVICE_SIZES, DEFAULT_IMAGE_SIZES } from "vinext/server/image-optimization";
 import handler from "vinext/server/app-router-entry";
 import { handleCmsOAuth, type CmsOAuthEnv } from "../lib/cms-oauth";
+import studioConfig from "../studio/config.mjs?raw";
+import studioHtml from "../studio/index.html?raw";
+import studioPreviewCss from "../studio/preview.css?raw";
 
 interface Env extends CmsOAuthEnv {
   ASSETS: Fetcher;
@@ -46,6 +49,13 @@ const STUDIO_CONTENT_SECURITY_POLICY = [
   "script-src 'self' 'unsafe-inline' https://unpkg.com",
   "style-src 'self' 'unsafe-inline'",
 ].join("; ");
+
+const STUDIO_ASSETS = new Map<string, { body: string; contentType: string }>([
+  ["/studio", { body: studioHtml, contentType: "text/html; charset=utf-8" }],
+  ["/studio/", { body: studioHtml, contentType: "text/html; charset=utf-8" }],
+  ["/studio/config.mjs", { body: studioConfig, contentType: "text/javascript; charset=utf-8" }],
+  ["/studio/preview.css", { body: studioPreviewCss, contentType: "text/css; charset=utf-8" }],
+]);
 
 function withProductionHeaders(request: Request, response: Response) {
   const headers = new Headers(response.headers);
@@ -98,13 +108,18 @@ const worker = {
   async fetch(request: Request, env: Env, ctx: ExecutionContext): Promise<Response> {
     const url = new URL(request.url);
 
-    if (url.pathname === "/studio" || url.pathname === "/studio/") {
-      const studioRequest = new Request(new URL("/studio/", request.url), request);
-      return withProductionHeaders(request, await env.ASSETS.fetch(studioRequest));
+    const studioAsset = STUDIO_ASSETS.get(url.pathname);
+    if (studioAsset) {
+      return withProductionHeaders(
+        request,
+        new Response(studioAsset.body, {
+          headers: { "content-type": studioAsset.contentType },
+        }),
+      );
     }
 
     if (url.pathname.startsWith("/studio/")) {
-      return withProductionHeaders(request, await env.ASSETS.fetch(request));
+      return withProductionHeaders(request, new Response("Not found", { status: 404 }));
     }
 
     if (url.pathname === "/api/cms/auth" || url.pathname === "/api/cms/callback") {

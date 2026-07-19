@@ -7,7 +7,7 @@
   },
   "scripts": {
     "dev": "vinext dev",
-    "build": "vinext build",
+    "build": "node scripts/clean-build.mjs && vinext build",
     "start": "vinext start",
     "test": "npm run test:unit && npm run typecheck && npm run build && npm run test:worker && npm run audit",
     "test:unit": "node --experimental-strip-types --test tests/content-contract.test.mjs tests/search.test.mjs tests/discovery.test.mjs tests/cms-oauth.test.mjs tests/studio-config.test.mjs tests/obsidian-publishing.test.mjs tests/deployment-tools.test.mjs",

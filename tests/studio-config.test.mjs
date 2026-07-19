@@ -1,7 +1,7 @@
 import assert from "node:assert/strict";
 import { readFile } from "node:fs/promises";
 import test from "node:test";
-import { TAG_OPTIONS, createStudioConfig } from "../public/studio/config.mjs";
+import { TAG_OPTIONS, createStudioConfig } from "../studio/config.mjs";
 import { TAG_REGISTRY } from "../lib/content/contract.ts";
 
 test("maps the publishing studio to the single Git content source", () => {
@@ -32,7 +32,7 @@ test("keeps CMS tags and required content fields aligned with the contract", () 
 });
 
 test("pins the CMS asset and provides a useful loading failure", async () => {
-  const html = await readFile(new URL("../public/studio/index.html", import.meta.url), "utf8");
+  const html = await readFile(new URL("../studio/index.html", import.meta.url), "utf8");
   assert.match(html, /decap-cms-app@3\.14\.1/);
   assert.match(html, /integrity="sha384-[^"]+"/);
   assert.match(html, /编辑器资源加载失败/);

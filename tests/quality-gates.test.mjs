@@ -1,5 +1,5 @@
 import assert from "node:assert/strict";
-import { readdir, readFile, stat } from "node:fs/promises";
+import { access, readdir, readFile, stat } from "node:fs/promises";
 import test from "node:test";
 
 async function request(pathname = "/") {
@@ -145,12 +145,18 @@ test("applies the production security and cache baseline", async () => {
   );
 });
 
-test("ships the static Studio security fallback", async () => {
-  const staticHeaders = await readFile(new URL("../dist/client/_headers", import.meta.url), "utf8");
-  assert.match(staticHeaders, /\/studio\/\*/);
-  assert.match(staticHeaders, /Cache-Control: no-store/);
-  assert.match(staticHeaders, /Cross-Origin-Opener-Policy: same-origin-allow-popups/);
-  assert.match(staticHeaders, /Content-Security-Policy: default-src 'self'/);
+test("keeps Studio inside the Worker bundle instead of public assets", async () => {
+  for (const assetPath of ["studio", "_studio"]) {
+    await assert.rejects(
+      access(new URL(`../dist/client/${assetPath}`, import.meta.url)),
+      `${assetPath} must not be a public deployment asset`,
+    );
+  }
+  const generatedHeaders = await readFile(new URL("../dist/client/_headers", import.meta.url), "utf8");
+  assert.doesNotMatch(generatedHeaders, /\/studio/u);
+  const workerBundle = await readFile(new URL("../dist/server/index.js", import.meta.url), "utf8");
+  assert.match(workerBundle, /Publishing studio \/ Git-backed/);
+  assert.match(workerBundle, /decap-cms-app@3\.14\.1/);
 });
 
 test("keeps key HTML routes structurally valid and uniquely identified", async () => {

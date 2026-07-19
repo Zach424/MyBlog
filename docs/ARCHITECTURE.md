@@ -63,11 +63,10 @@ lib/
   site.ts                 全站名称、摘要与请求主机 URL 解析
 public/
   og.png                  1200 × 630 社交分享卡
-  _headers                Studio 静态资产安全头与 no-store 兜底
-  studio/
-    index.html            固定版本与完整性校验的 CMS 启动页
-    config.mjs            文章/项目字段、GitHub 后端与发布工作流
-    preview.css           复用博客 Token 的正文预览样式
+studio/
+  index.html              编译进 Worker 的 CMS 启动页
+  config.mjs              文章/项目字段、GitHub 后端与发布工作流
+  preview.css             复用博客 Token 的正文预览样式
 lib/
   cms-oauth.ts            有签名 state 的 GitHub OAuth 授权与回调
 .github/workflows/
@@ -75,6 +74,7 @@ lib/
   deploy.yml              经显式开关启用的所有者 Cloudflare 自动部署
   rollback.yml            可选版本回滚与稳定生产地址复核
 scripts/
+  clean-build.mjs          路径守卫后清理固定 dist，防止历史资产残留
   check-release-config.mjs 自助发布配置完整性检查
   check-migration-status.mjs 分支、远端同步与 Cloudflare 身份检查
   smoke-production.mjs     生产 origin、全 Sitemap 与发布端点冒烟
@@ -111,9 +111,9 @@ GitHub 仓库继续是唯一内容事实源。网页后台与 Obsidian 都只提
 
 Studio 路由单独使用允许 GitHub API 与固定 unpkg 资源的 CSP、`same-origin-allow-popups` 和 `no-store`；公开阅读路由继续使用更严格的原 CSP、`same-origin` 和边缘缓存。CMS 包锁定到 `3.14.1` 并使用 SHA-384 Subresource Integrity，资源异常时启动页给出可恢复提示。
 
-Cloudflare 静态资产默认可以绕过 Worker，因此生成配置对 `/studio`、`/studio/*` 与 `/api/cms/*` 显式启用 `run_worker_first`。Studio HTML、配置和预览样式都先经过 Worker 再从 `ASSETS` binding 读取，保证发布界面的安全头和缓存策略在真实平台上生效；其他普通静态资源仍由资产层直接提供。
+Cloudflare 静态资产默认可以绕过 Worker，Sites 实际生产还证明其路由顺序与本地 Wrangler 并不完全一致。Studio HTML、配置和预览样式因此不进入 `public`：Vite raw import 把它们编译进 Worker，公开 `/studio` 没有同名静态资产，只能由 Worker 白名单路由返回并附加 `no-store`、专用 CSP 与 COOP。生成配置仍对 `/studio` 和 `/api/cms/*` 保留 `run_worker_first` 作为显式意图。
 
-现有 Sites 托管表面在真实生产中仍可能优先返回 Studio 静态文件，因此 `public/_headers` 对 `/studio` 与 `/studio/*` 提供同等的 `no-store`、CSP 和 COOP 等安全策略。Worker 响应继续由代码设置；静态响应由 `_headers` 设置，二者的策略变更必须同步并由生产冒烟验证。
+每次 `npm run build` 先由 `clean-build.mjs` 验证目标确实是项目根目录下的 `dist`，再递归清理并构建。质量审计禁止 `dist/client/studio` 与 `_studio`，防止删除源码后历史产物继续进入部署包。
 
 部署动作使用 Wrangler 返回的本次 deployment URL 运行自动生产冒烟；回滚动作使用稳定的 `CLOUDFLARE_PRODUCTION_URL`，可选择明确 version ID 或上一版本。两个方向使用同一验收器检查内容页、搜索、发现端点、Studio/OAuth、安全头、全 Sitemap 和 404。
 

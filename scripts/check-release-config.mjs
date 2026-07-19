@@ -5,7 +5,6 @@ const requiredFiles = [
   ".github/workflows/deploy.yml",
   ".github/workflows/rollback.yml",
   ".env.example",
-  "public/_headers",
 ];
 
 for (const file of requiredFiles) {
@@ -39,18 +38,6 @@ const rollbackWorkflow = readFileSync(
 for (const marker of ["wrangler", "rollback", "--yes", "CLOUDFLARE_PRODUCTION_URL", "production:smoke"]) {
   if (!rollbackWorkflow.includes(marker)) {
     throw new Error(`Rollback workflow is missing required marker: ${marker}`);
-  }
-}
-
-const staticHeaders = readFileSync(new URL("../public/_headers", import.meta.url), "utf8");
-for (const marker of [
-  "/studio/*",
-  "Cache-Control: no-store",
-  "Content-Security-Policy:",
-  "Cross-Origin-Opener-Policy: same-origin-allow-popups",
-]) {
-  if (!staticHeaders.includes(marker)) {
-    throw new Error(`Static Studio headers are missing required marker: ${marker}`);
   }
 }
 
