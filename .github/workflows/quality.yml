@@ -34,8 +34,5 @@ jobs:
       - name: Run the complete quality gate
         run: npm run check
 
-      - name: Verify the Cloudflare package
-        run: npx wrangler deploy --dry-run --config dist/server/wrangler.json --outdir .wrangler/dry-run
-
       - name: Audit production dependencies
         run: npm audit --omit=dev --audit-level=high

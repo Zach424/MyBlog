@@ -41,7 +41,7 @@ export default function AboutPage() {
         <section>
           <span>03 / STACK</span>
           <h2>当前技术基线</h2>
-          <p>TypeScript、React、Vinext、Vite 与 Cloudflare。内容保存在 Git 中，通过构建期校验生成页面。</p>
+          <p>TypeScript、React、Next.js 与 Vercel。内容保存在 Git 中，通过构建期校验生成页面。</p>
         </section>
         <section>
           <span>04 / CONTACT</span>

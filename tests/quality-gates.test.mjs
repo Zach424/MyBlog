@@ -3,42 +3,15 @@ import { access, readdir, readFile, stat } from "node:fs/promises";
 import test from "node:test";
 
 async function request(pathname = "/") {
-  const workerUrl = new URL("../dist/server/index.js", import.meta.url);
-  workerUrl.searchParams.set("quality", `${process.pid}-${Date.now()}-${Math.random()}`);
-  const { default: worker } = await import(workerUrl.href);
-
-  return worker.fetch(
-    new Request(`http://localhost${pathname}`, {
-      headers: {
-        accept: "text/html",
-        "x-forwarded-host": "blog.example.test",
-        "x-forwarded-proto": "https",
-      },
-    }),
-    {
-      ASSETS: {
-        fetch: async (request) => {
-          const requestedPath = new URL(request.url).pathname.replace(/^\//u, "");
-          const assetPath = requestedPath.endsWith("/")
-            ? `${requestedPath}index.html`
-            : requestedPath;
-          try {
-            const body = await readFile(new URL(`../dist/client/${assetPath}`, import.meta.url));
-            const contentType = assetPath.endsWith(".html")
-              ? "text/html; charset=utf-8"
-              : "application/octet-stream";
-            return new Response(body, { headers: { "content-type": contentType } });
-          } catch {
-            return new Response("Not found", { status: 404 });
-          }
-        },
-      },
+  if (!process.env.TEST_BASE_URL) throw new Error("TEST_BASE_URL is required");
+  return fetch(new URL(pathname, process.env.TEST_BASE_URL), {
+    redirect: "manual",
+    headers: {
+      accept: "text/html",
+      "x-forwarded-host": "blog.example.test",
+      "x-forwarded-proto": "https",
     },
-    {
-      waitUntil() {},
-      passThroughOnException() {},
-    },
-  );
+  });
 }
 
 function visibleDocument(html) {
@@ -130,7 +103,7 @@ test("applies the production security and cache baseline", async () => {
   assert.match(rssResponse.headers.get("cache-control") ?? "", /max-age=3600/);
   const missingResponse = await request("/definitely-missing");
   assert.equal(missingResponse.status, 404);
-  assert.equal(missingResponse.headers.get("cache-control"), "no-store");
+  assert.match(missingResponse.headers.get("cache-control") ?? "", /no-store/);
 
   const studioResponse = await request("/studio");
   assert.equal(studioResponse.status, 200);
@@ -145,18 +118,20 @@ test("applies the production security and cache baseline", async () => {
   );
 });
 
-test("keeps Studio inside the Worker bundle instead of public assets", async () => {
-  for (const assetPath of ["studio", "_studio"]) {
-    await assert.rejects(
-      access(new URL(`../dist/client/${assetPath}`, import.meta.url)),
-      `${assetPath} must not be a public deployment asset`,
-    );
-  }
-  const generatedHeaders = await readFile(new URL("../dist/client/_headers", import.meta.url), "utf8");
-  assert.doesNotMatch(generatedHeaders, /\/studio/u);
-  const workerBundle = await readFile(new URL("../dist/server/index.js", import.meta.url), "utf8");
-  assert.match(workerBundle, /Publishing studio \/ Git-backed/);
-  assert.match(workerBundle, /decap-cms-app@3\.14\.1/);
+test("serves Studio through explicit Next.js routes instead of public assets", async () => {
+  await assert.rejects(access(new URL("../public/studio", import.meta.url)));
+  const [studio, config, preview, unknown] = await Promise.all([
+    request("/studio"),
+    request("/studio/config.mjs"),
+    request("/studio/preview.css"),
+    request("/studio/definitely-missing"),
+  ]);
+  assert.equal(studio.status, 200);
+  assert.match(await studio.text(), /Publishing studio \/ Git-backed/);
+  assert.match(await config.text(), /repo: "Zach424\/MyBlog"/);
+  assert.match(await preview.text(), /--canvas:/);
+  assert.equal(unknown.status, 404);
+  assert.match(unknown.headers.get("cache-control") ?? "", /no-store/);
 });
 
 test("keeps key HTML routes structurally valid and uniquely identified", async () => {
@@ -179,7 +154,7 @@ test("keeps key HTML routes structurally valid and uniquely identified", async (
     assert.equal(countMatches(html, /<h1\b/g), 1, `${pathname}: h1`);
     assert.match(html, /<html lang="zh-CN">/, pathname);
     assert.match(html, /<meta name="description" content="[^"]+"/, pathname);
-    assert.match(html, /<link rel="canonical" href="https:\/\/blog\.example\.test\//, pathname);
+    assert.match(html, /<link rel="canonical" href="https:\/\/blog\.example\.test(?:\/|\")/, pathname);
     assert.match(html, /<a class="skip-link" href="#main-content">/, pathname);
     assert.ok(Buffer.byteLength(html) < 100_000, `${pathname}: HTML exceeds 100 KB`);
 
@@ -211,20 +186,15 @@ test("keeps every visible internal navigation target healthy", async () => {
 });
 
 test("enforces deployment artifact budgets", async () => {
-  const clientFiles = await directoryStats(new URL("../dist/client/", import.meta.url));
-  const serverFiles = await directoryStats(new URL("../dist/server/", import.meta.url));
+  const clientFiles = await directoryStats(new URL("../.next/static/", import.meta.url));
   const clientBytes = clientFiles.reduce((total, file) => total + file.size, 0);
-  const serverBytes = serverFiles.reduce((total, file) => total + file.size, 0);
   const largestClientJavaScript = Math.max(
     ...clientFiles.filter((file) => file.url.pathname.endsWith(".js")).map((file) => file.size),
   );
-  const workerBytes = (await stat(new URL("../dist/server/index.js", import.meta.url))).size;
   const cssBytes = (await readFile(new URL("../app/globals.css", import.meta.url))).byteLength;
 
-  assert.ok(clientBytes < 2_000_000, `client total ${clientBytes} >= 2 MB`);
-  assert.ok(serverBytes < 5_000_000, `server total ${serverBytes} >= 5 MB`);
-  assert.ok(largestClientJavaScript < 250_000, `largest client JS ${largestClientJavaScript} >= 250 KB`);
-  assert.ok(workerBytes < 3_000_000, `worker ${workerBytes} >= 3 MB`);
+  assert.ok(clientBytes < 3_000_000, `client total ${clientBytes} >= 3 MB`);
+  assert.ok(largestClientJavaScript < 300_000, `largest client JS ${largestClientJavaScript} >= 300 KB`);
   assert.ok(cssBytes < 100_000, `global CSS ${cssBytes} >= 100 KB`);
 });
 

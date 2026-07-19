@@ -1,6 +1,6 @@
 # ADR-0001：采用 Vinext/Vite 的 Cloudflare-compatible 站点骨架
 
-- 状态：Accepted
+- 状态：Superseded by ADR-0003
 - 日期：2026-07-18
 
 ## 背景
@@ -34,3 +34,7 @@
 - 关键 Next 路由或构建能力无法在 Vinext 中稳定工作；
 - 内容发布需要运行时文件系统；
 - 生产构建无法重复或 Cloudflare 部署长期不稳定。
+
+## 结果
+
+2026-07-19 作者选择不再使用 Cloudflare。项目已触发上述重新评估条件，并在 ADR-0003 迁移为 Vercel 原生 Next.js。本文件保留为首个公开版本的历史依据。

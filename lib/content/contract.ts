@@ -8,6 +8,7 @@ export const TAG_REGISTRY = [
   { name: "Next.js", slug: "nextjs", aliases: ["next.js", "nextjs"] },
   { name: "TypeScript", slug: "typescript", aliases: ["typescript", "ts"] },
   { name: "Cloudflare", slug: "cloudflare", aliases: ["cloudflare"] },
+  { name: "Vercel", slug: "vercel", aliases: ["vercel"] },
   { name: "Design Systems", slug: "design-systems", aliases: ["design systems"] },
   { name: "Node.js", slug: "nodejs", aliases: ["node.js", "nodejs"] },
   { name: "Windows", slug: "windows", aliases: ["windows"] },

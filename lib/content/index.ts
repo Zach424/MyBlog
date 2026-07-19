@@ -1,6 +1,5 @@
-/// <reference types="vite/client" />
-
-declare const __CONTENT_BUILD_DATE__: string;
+import { readFileSync, readdirSync } from "node:fs";
+import path from "node:path";
 
 import {
   deriveContentIndexes,
@@ -11,15 +10,21 @@ import {
   sortProjects,
 } from "./contract";
 
-const postSources = import.meta.glob("../../content/posts/*.md", {
-  eager: true,
-  import: "default",
-}) as Record<string, string>;
+function readMarkdownDirectory(kind: "posts" | "projects") {
+  const directory = path.join(process.cwd(), "content", kind);
+  return Object.fromEntries(
+    readdirSync(directory, { withFileTypes: true })
+      .filter((entry) => entry.isFile() && entry.name.endsWith(".md"))
+      .sort((left, right) => left.name.localeCompare(right.name, "en"))
+      .map((entry) => {
+        const sourcePath = `content/${kind}/${entry.name}`;
+        return [sourcePath, readFileSync(path.join(directory, entry.name), "utf8")];
+      }),
+  );
+}
 
-const projectSources = import.meta.glob("../../content/projects/*.md", {
-  eager: true,
-  import: "default",
-}) as Record<string, string>;
+const postSources = readMarkdownDirectory("posts");
+const projectSources = readMarkdownDirectory("projects");
 
 const allPosts = Object.entries(postSources).map(([sourcePath, raw]) =>
   parsePostFile(sourcePath, raw),
@@ -28,7 +33,11 @@ const allProjects = Object.entries(projectSources).map(([sourcePath, raw]) =>
   parseProjectFile(sourcePath, raw),
 );
 
-const contentBuildDate = new Date(`${__CONTENT_BUILD_DATE__}T00:00:00.000Z`);
+if (!process.env.CONTENT_BUILD_DATE) {
+  throw new Error("CONTENT_BUILD_DATE was not injected by next.config.ts");
+}
+
+const contentBuildDate = new Date(`${process.env.CONTENT_BUILD_DATE}T00:00:00.000Z`);
 const publishedPosts = sortPosts(
   allPosts.filter((post) => isPublished(post, contentBuildDate)),
 );

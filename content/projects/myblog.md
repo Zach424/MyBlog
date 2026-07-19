@@ -1,11 +1,11 @@
 ---
 title: "MyBlog — 把学习记录做成工程资产"
-description: "从内容契约、工程轨迹设计到 Cloudflare 发布，构建一个可维护、可检索、可复盘的个人技术博客。"
+description: "从内容契约、工程轨迹设计到 Vercel 自动发布，构建一个可维护、可检索、可复盘的个人技术博客。"
 publishedAt: 2026-07-18
 updatedAt: 2026-07-19
 status: maintained
-stack: ["TypeScript", "React", "Vinext", "Vite", "Cloudflare"]
-tags: ["TypeScript", "React", "Cloudflare", "Personal Knowledge", "Design Systems"]
+stack: ["TypeScript", "React", "Next.js", "Vercel", "GitHub"]
+tags: ["TypeScript", "Next.js", "Vercel", "Personal Knowledge", "Design Systems"]
 draft: false
 featured: true
 repository: "https://github.com/Zach424/MyBlog"
@@ -22,13 +22,13 @@ demo: "https://zach424-engineering-notes.zhiqingchen792.chatgpt.site"
 
 - 中文内容优先，同时保留技术术语的准确性；
 - 新文章应在五分钟内完成本地预览和发布提交；
-- 生产环境运行在 Cloudflare，不依赖运行时文件系统；
-- 第一版不建设数据库、管理后台和用户系统；
+- 生产环境由 Vercel 托管，推送 `main` 后自动部署；
+- 公开内容不建设数据库或读者账号系统，作者后台只承担 Git 写作入口；
 - 所有开发轮次必须归档结构、设计、技术、功能、方法、验证和经验。
 
 ## 技术选择
 
-界面使用 React 19 与 Next.js 兼容 App Router，Vinext 和 Vite 负责生成 Cloudflare Worker-compatible ESM。内容以 Markdown 和 frontmatter 保存在 Git 中，构建期通过 Vite glob 打包，并在进入页面前完成 schema 与跨内容校验。
+界面使用 React 19 与原生 Next.js App Router，由 Vercel 提供构建、预览和生产部署。内容以 Markdown 和 frontmatter 保存在 Git 中，Next.js 构建期从受校验的内容目录读取，并在进入页面前完成 schema 与跨内容校验。
 
 样式使用 CSS 自定义属性表达设计 Token。Tailwind 只保留为构建入口，不用大量工具类掩盖页面的排版关系。
 
@@ -40,11 +40,13 @@ demo: "https://zach424-engineering-notes.zhiqingchen792.chatgpt.site"
 
 站内搜索在构建时把公开正文转换成轻量索引，在浏览器本地按标题、标签、摘要和正文加权匹配，不上传查询词。RSS、Sitemap 和 robots 与页面共用同一个公开内容索引，并根据请求主机生成绝对 URL。
 
-文章与项目详情分别输出 `BlogPosting` 和 `SoftwareSourceCode` JSON-LD；根布局声明作者、规范 URL、RSS、Open Graph 和站点图标。生产 Worker 统一补充 CSP、HSTS、点击劫持防护、权限策略与 HTML 边缘缓存，避免把平台默认值误当成已经完成的发布策略。
+文章与项目详情分别输出 `BlogPosting` 和 `SoftwareSourceCode` JSON-LD；根布局声明作者、规范 URL、RSS、Open Graph 和站点图标。`next.config.ts` 统一补充 CSP、HSTS、点击劫持防护、权限策略与 HTML 边缘缓存；Studio 和 OAuth 路由使用单独的 CSP、弹窗策略与 `no-store`。
 
 视觉系统以 Commit Trace 为唯一主要识别元素，把日期、文章类型和项目里程碑连成一条工程轨迹。Evidence Rail 只显示可验证状态，不展示虚构的完成率。
 
 ## 问题与解决
+
+2026-07-19 根据维护目标把托管从 Cloudflare/Sites 迁移到 Vercel。迁移删除 Vinext、Vite、Worker、Wrangler 与 Sites 托管标记，恢复原生 `next dev/build/start`；原先 Worker 中的 Studio 静态资源、OAuth 与安全响应头分别迁入 App Router Route Handlers 和 Next.js headers。内容仍以 Git 为唯一事实来源，Obsidian 与网页后台产生的提交都会触发 Vercel 自动部署，因此迁移没有数据库或媒体数据搬运。
 
 初始模板的 npm scripts 隐含了特定 shell，导致 Windows 开发失败。命令被收敛为跨平台的 Vinext 入口，并用实际构建验证。
 

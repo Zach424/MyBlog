@@ -10,33 +10,32 @@ test("extracts exact production routes from a Sitemap", () => {
   );
 });
 
-test("connects deployment, smoke testing, rollback, and Studio routing without interpolated credentials", async () => {
-  const [deploy, rollback, smoke, viteConfig, worker, packageJson, cleanBuild] = await Promise.all([
-    readFile(new URL("../.github/workflows/deploy.yml", import.meta.url), "utf8"),
+test("connects Vercel verification, rollback, and Studio routing without Cloudflare", async () => {
+  const [productionSmoke, rollback, smoke, nextConfig, authRoute, packageJson, vercelConfig] = await Promise.all([
+    readFile(new URL("../.github/workflows/production-smoke.yml", import.meta.url), "utf8"),
     readFile(new URL("../.github/workflows/rollback.yml", import.meta.url), "utf8"),
     readFile(new URL("../scripts/smoke-production.mjs", import.meta.url), "utf8"),
-    readFile(new URL("../vite.config.ts", import.meta.url), "utf8"),
-    readFile(new URL("../worker/index.ts", import.meta.url), "utf8"),
+    readFile(new URL("../next.config.ts", import.meta.url), "utf8"),
+    readFile(new URL("../app/api/cms/auth/route.ts", import.meta.url), "utf8"),
     readFile(new URL("../package.json", import.meta.url), "utf8"),
-    readFile(new URL("../scripts/clean-build.mjs", import.meta.url), "utf8"),
+    readFile(new URL("../vercel.json", import.meta.url), "utf8"),
   ]);
-  assert.match(deploy, /id: deploy/);
-  assert.match(deploy, /outputs\.deployment-url/);
-  assert.match(deploy, /--expect-oauth/);
-  assert.match(rollback, /npx wrangler/);
-  assert.match(rollback, /CLOUDFLARE_PRODUCTION_URL/);
+  assert.match(productionSmoke, /deployment_status/);
+  assert.match(productionSmoke, /environment_url/);
+  assert.match(productionSmoke, /--expect-oauth/);
+  assert.match(rollback, /vercel@56\.3\.2/);
+  assert.match(rollback, /VERCEL_PRODUCTION_URL/);
   assert.match(rollback, /args=\(rollback\)/);
-  assert.match(rollback, /--yes/);
   assert.match(smoke, /Sitemap 路由失败/);
   assert.match(smoke, /same-origin-allow-popups/);
   assert.match(smoke, /\/studio\/config\.mjs/);
   assert.match(smoke, /\/studio\/preview\.css/);
   assert.match(smoke, /frame-ancestors 'none'/);
   assert.doesNotMatch(smoke, /CLOUDFLARE_API_TOKEN|GITHUB_OAUTH_SECRET/);
-  assert.match(viteConfig, /run_worker_first: \["\/studio", "\/studio\/\*", "\/api\/cms\/\*"\]/);
-  assert.match(worker, /STUDIO_ASSETS\.get\(url\.pathname\)/);
-  assert.match(worker, /\.\.\/studio\/index\.html\?raw/);
-  assert.match(packageJson, /node scripts\/clean-build\.mjs && vinext build/);
-  assert.match(cleanBuild, /basename\(buildDirectory\) !== "dist"/);
-  assert.match(cleanBuild, /rmSync\(buildDirectory, \{ recursive: true, force: true \}\)/);
+  assert.match(nextConfig, /STUDIO_CONTENT_SECURITY_POLICY/);
+  assert.match(nextConfig, /same-origin-allow-popups/);
+  assert.match(authRoute, /handleCmsOAuth/);
+  assert.match(packageJson, /"build": "next build"/);
+  assert.doesNotMatch(packageJson, /cloudflare|vinext|wrangler/i);
+  assert.match(vercelConfig, /"framework": "nextjs"/);
 });

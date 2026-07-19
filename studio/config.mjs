@@ -2,6 +2,7 @@ export const TAG_OPTIONS = [
   "Next.js",
   "TypeScript",
   "Cloudflare",
+  "Vercel",
   "Design Systems",
   "Node.js",
   "Windows",

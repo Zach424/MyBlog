@@ -6,19 +6,19 @@
     "node": ">=22.13.0"
   },
   "scripts": {
-    "dev": "vinext dev",
-    "build": "node scripts/clean-build.mjs && vinext build",
-    "start": "vinext start",
-    "test": "npm run test:unit && npm run typecheck && npm run build && npm run test:worker && npm run audit",
+    "dev": "next dev",
+    "build": "next build",
+    "start": "next start",
+    "test": "npm run test:unit && npm run typecheck && npm run build && npm run test:app",
     "test:unit": "node --experimental-strip-types --test tests/content-contract.test.mjs tests/search.test.mjs tests/discovery.test.mjs tests/cms-oauth.test.mjs tests/studio-config.test.mjs tests/obsidian-publishing.test.mjs tests/deployment-tools.test.mjs",
-    "test:worker": "node --test tests/rendered-html.test.mjs",
-    "audit": "node --test tests/quality-gates.test.mjs",
+    "test:app": "node scripts/test-production.mjs tests/rendered-html.test.mjs tests/quality-gates.test.mjs",
+    "audit": "node scripts/test-production.mjs tests/quality-gates.test.mjs",
     "check": "npm run lint && npm test",
-    "release:check": "node scripts/check-release-config.mjs && npm run check && npm audit --omit=dev --audit-level=high && wrangler deploy --dry-run --config dist/server/wrangler.json --outdir .wrangler/dry-run",
+    "release:check": "node scripts/check-release-config.mjs && npm run check && npm audit --omit=dev --audit-level=high",
     "content:publish": "node --experimental-strip-types scripts/publish-note.mjs",
     "production:smoke": "node scripts/smoke-production.mjs",
     "migration:status": "node scripts/check-migration-status.mjs",
-    "lint": "eslint . --ignore-pattern dist --ignore-pattern .next --ignore-pattern .wrangler",
+    "lint": "eslint . --ignore-pattern .next --ignore-pattern .vercel",
     "typecheck": "tsc --noEmit"
   },
   "dependencies": {
@@ -34,22 +34,14 @@
     "zod": "4.4.3"
   },
   "devDependencies": {
-    "@cloudflare/vite-plugin": "1.37.1",
-    "@cloudflare/workers-types": "4.20260702.1",
     "@tailwindcss/postcss": "4.2.1",
     "@types/node": "22.19.19",
     "@types/react": "19.2.14",
     "@types/react-dom": "19.2.3",
-    "@vitejs/plugin-react": "6.0.2",
-    "@vitejs/plugin-rsc": "0.5.26",
     "eslint": "9.39.4",
     "eslint-config-next": "16.2.10",
-    "react-server-dom-webpack": "19.2.6",
     "tailwindcss": "4.2.1",
-    "typescript": "5.9.3",
-    "vinext": "0.0.50",
-    "vite": "8.0.13",
-    "wrangler": "4.92.0"
+    "typescript": "5.9.3"
   },
   "overrides": {
     "next": {

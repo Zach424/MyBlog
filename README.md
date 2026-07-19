@@ -1,51 +1,45 @@
-# Zach424 / MyBlog
+# Zach424 / Engineering Notes
 
-一个用于记录学习过程、技术判断和项目复盘的个人技术博客。
+记录学习路径、技术取舍和项目复盘的个人技术博客。内容、附件与历史都保存在 GitHub；作者可以使用网页发布后台或 Obsidian 写作，合并到 `main` 后由 Vercel 自动发布，不依赖 Codex 或 Cloudflare。
 
 ## 当前状态
 
-- 阶段：自助发布工程闭环完成；等待所有者账号授权、真实双入口验收与生产切换
-- 当前轮次：`0015-sites-studio-security`
-- 生产站点：<https://zach424-engineering-notes.zhiqingchen792.chatgpt.site>
-- 运行目标：Cloudflare Worker-compatible web application
-- 内容目标：学习笔记、完整文章、系列专题、项目复盘
-
-详细状态、设计和实现记录统一保存在 [`docs`](./docs/README.md)。每个开发轮次都必须遵循：
-
-1. 选择一个可验证的小范围目标；
-2. 实现并运行相关检查；
-3. 更新项目结构与全局状态；
-4. 在 `docs/iterations` 中归档经验和证据；
-5. 创建一个独立 Git 提交。
+- GitHub：<https://github.com/Zach424/MyBlog>
+- 当前公开回退站：<https://zach424-engineering-notes.zhiqingchen792.chatgpt.site>
+- 新生产目标：Vercel 原生 Next.js，完成账号关联与生产验收后切换公开入口
+- 内容入口：`/studio` 网页后台、仓库根目录 Obsidian Vault、普通 Git 编辑器
+- 数据模型：仓库内 Markdown + YAML frontmatter，无数据库
 
 ## 本地开发
+
+要求 Node.js 22.13 或更高版本。
 
 ```bash
 npm ci
 npm run dev
 ```
 
-默认访问地址为 `http://localhost:3000/`。
-
-## 常用检查
+常用检查：
 
 ```bash
 npm run check
-npm audit --omit=dev --audit-level=high
-npx wrangler deploy --dry-run --config dist/server/wrangler.json --outdir .wrangler/dry-run
+npm run release:check
+npm run production:smoke -- https://your-production.example --expect-oauth
 ```
 
-## 文档入口
+## 发布文章
 
-- [项目章程](./docs/PROJECT.md)
-- [技术架构](./docs/ARCHITECTURE.md)
-- [设计基线](./docs/DESIGN.md)
-- [搜索与发布发现](./docs/DISCOVERY.md)
-- [自助发布指南](./docs/PUBLISHING.md)
-- [所有者 Cloudflare 迁移清单](./docs/MIGRATION.md)
-- [发布质量基线](./docs/QUALITY.md)
-- [上线、维护与回滚手册](./docs/OPERATIONS.md)
-- [自助发布架构决策](./docs/decisions/0002-git-first-publishing.md)
-- [开发路线图](./docs/ROADMAP.md)
-- [架构决策](./docs/decisions/0001-runtime-and-hosting.md)
+网页方式打开生产站的 `/studio`，使用 GitHub 登录，创建草稿、预览并发布。Obsidian 方式在仓库根目录打开 Vault，从 `templates/obsidian` 新建笔记，再运行命令面板中的 `Publish current note to blog`。两种方式最终都产生 Git 提交；Vercel 只部署通过质量门并进入 `main` 的版本。
+
+完整步骤见 [发布手册](./docs/PUBLISHING.md) 和 [Vercel 迁移清单](./docs/MIGRATION.md)。
+
+## 文档索引
+
+- [项目与范围](./docs/PROJECT.md)
+- [设计说明](./docs/DESIGN.md)
+- [系统架构](./docs/ARCHITECTURE.md)
+- [内容模型](./docs/CONTENT_MODEL.md)
+- [质量标准](./docs/QUALITY.md)
+- [运行维护](./docs/OPERATIONS.md)
+- [路线图](./docs/ROADMAP.md)
 - [迭代归档](./docs/iterations/README.md)

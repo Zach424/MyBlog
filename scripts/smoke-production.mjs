@@ -83,7 +83,7 @@ export async function runProductionSmoke(originInput, { expectOAuth = false } = 
   }
   invariant(
     unknownStudioAsset.response.status === 404 &&
-      unknownStudioAsset.response.headers.get("cache-control") === "no-store",
+      (unknownStudioAsset.response.headers.get("cache-control") ?? "").includes("no-store"),
     "未知 Studio 子资源必须返回 404/no-store",
   );
 
@@ -122,7 +122,10 @@ export async function runProductionSmoke(originInput, { expectOAuth = false } = 
 
   const missing = await request(origin, `/definitely-missing-${Date.now()}`);
   invariant(missing.response.status === 404, `未知路由状态 ${missing.response.status}`);
-  invariant(missing.response.headers.get("cache-control") === "no-store", "404 必须 no-store");
+  invariant(
+    (missing.response.headers.get("cache-control") ?? "").includes("no-store"),
+    "404 必须 no-store",
+  );
 
   return { origin: origin.origin, sitemapCount: sitemapUrls.length, oauth: oauth.response.status };
 }

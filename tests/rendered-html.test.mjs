@@ -6,42 +6,15 @@ const developmentPreviewMeta =
   /<meta(?=[^>]*\bname=["']codex-preview["'])(?=[^>]*\bcontent=["']development["'])[^>]*>/i;
 
 async function render(pathname = "/") {
-  const workerUrl = new URL("../dist/server/index.js", import.meta.url);
-  workerUrl.searchParams.set("test", `${process.pid}-${Date.now()}`);
-  const { default: worker } = await import(workerUrl.href);
-
-  return worker.fetch(
-    new Request(`http://localhost${pathname}`, {
-      headers: {
-        accept: "text/html",
-        "x-forwarded-host": "blog.example.test",
-        "x-forwarded-proto": "https",
-      },
-    }),
-    {
-      ASSETS: {
-        fetch: async (request) => {
-          const requestedPath = new URL(request.url).pathname.replace(/^\//u, "");
-          const assetPath = requestedPath.endsWith("/")
-            ? `${requestedPath}index.html`
-            : requestedPath;
-          try {
-            const body = await readFile(new URL(`../dist/client/${assetPath}`, import.meta.url));
-            const contentType = assetPath.endsWith(".html")
-              ? "text/html; charset=utf-8"
-              : "application/octet-stream";
-            return new Response(body, { headers: { "content-type": contentType } });
-          } catch {
-            return new Response("Not found", { status: 404 });
-          }
-        },
-      },
+  if (!process.env.TEST_BASE_URL) throw new Error("TEST_BASE_URL is required");
+  return fetch(new URL(pathname, process.env.TEST_BASE_URL), {
+    redirect: "manual",
+    headers: {
+      accept: "text/html",
+      "x-forwarded-host": "blog.example.test",
+      "x-forwarded-proto": "https",
     },
-    {
-      waitUntil() {},
-      passThroughOnException() {},
-    },
-  );
+  });
 }
 
 test("server-renders the engineering log homepage", async () => {
@@ -59,7 +32,7 @@ test("server-renders the engineering log homepage", async () => {
   );
   assert.match(
     html,
-    /<link rel="canonical" href="https:\/\/blog\.example\.test\/"/i,
+    /<link rel="canonical" href="https:\/\/blog\.example\.test(?:\/|\")/i,
   );
   assert.match(
     html,
@@ -197,16 +170,16 @@ test("publishes RSS, Sitemap and robots from the same public content index", asy
   assert.match(robots, /Sitemap: https:\/\/blog\.example\.test\/sitemap\.xml/);
 });
 
-test("removes starter artifacts and keeps the design contract explicit", async () => {
-  const [page, layout, css, packageJson, worker, viteConfig, markdownPlugin, siteModule, ogImage, iconImage] = await Promise.all([
+test("removes starter artifacts and keeps the Vercel-native design contract explicit", async () => {
+  const [page, layout, css, packageJson, nextConfig, contentModule, siteModule, vercelConfig, ogImage, iconImage] = await Promise.all([
     readFile(new URL("../app/page.tsx", import.meta.url), "utf8"),
     readFile(new URL("../app/layout.tsx", import.meta.url), "utf8"),
     readFile(new URL("../app/globals.css", import.meta.url), "utf8"),
     readFile(new URL("../package.json", import.meta.url), "utf8"),
-    readFile(new URL("../worker/index.ts", import.meta.url), "utf8"),
-    readFile(new URL("../vite.config.ts", import.meta.url), "utf8"),
-    readFile(new URL("../build/markdown-source-plugin.ts", import.meta.url), "utf8"),
+    readFile(new URL("../next.config.ts", import.meta.url), "utf8"),
+    readFile(new URL("../lib/content/index.ts", import.meta.url), "utf8"),
     readFile(new URL("../lib/site.ts", import.meta.url), "utf8"),
+    readFile(new URL("../vercel.json", import.meta.url), "utf8"),
     readFile(new URL("../public/og.png", import.meta.url)),
     readFile(new URL("../app/icon.png", import.meta.url)),
   ]);
@@ -237,10 +210,12 @@ test("removes starter artifacts and keeps the design contract explicit", async (
   assert.match(packageJson, /"rehype-highlight": "7\.0\.2"/);
   assert.match(packageJson, /"remark-gfm": "4\.0\.1"/);
   assert.match(packageJson, /"typecheck": "tsc --noEmit"/);
-  assert.doesNotMatch(worker, /\bDB:\s*D1Database/);
-  assert.match(viteConfig, /validateContentRepository\(process\.cwd\(\)\)/);
-  assert.match(viteConfig, /markdownSourcePlugin\(\)/);
-  assert.match(markdownPlugin, /export default/);
+  assert.match(nextConfig, /validateContentRepository\(process\.cwd\(\)\)/);
+  assert.match(nextConfig, /CONTENT_BUILD_DATE/);
+  assert.match(nextConfig, /STUDIO_CONTENT_SECURITY_POLICY/);
+  assert.match(contentModule, /readMarkdownDirectory/);
+  assert.match(vercelConfig, /"framework": "nextjs"/);
+  assert.doesNotMatch(packageJson, /vinext|wrangler|@cloudflare\/vite-plugin/);
 
   assert.equal(ogImage.readUInt32BE(16), 1200);
   assert.equal(ogImage.readUInt32BE(20), 630);
@@ -259,5 +234,8 @@ test("removes starter artifacts and keeps the design contract explicit", async (
     assert.rejects(access(new URL("../db/index.ts", import.meta.url))),
     assert.rejects(access(new URL("../drizzle.config.ts", import.meta.url))),
     assert.rejects(access(new URL("../app/chatgpt-auth.ts", import.meta.url))),
+    assert.rejects(access(new URL("../vite.config.ts", import.meta.url))),
+    assert.rejects(access(new URL("../worker/index.ts", import.meta.url))),
+    assert.rejects(access(new URL("../.openai/hosting.json", import.meta.url))),
   ]);
 });

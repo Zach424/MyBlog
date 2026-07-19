@@ -20,6 +20,7 @@
 0013-obsidian-authoring.md
 0014-migration-and-cutover.md
 0015-sites-studio-security.md
+0016-vercel-native-migration.md
 ```
 
 ## 必填结构

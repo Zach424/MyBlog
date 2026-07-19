@@ -1,126 +1,78 @@
 # 内容模型
 
-- 状态：Frozen v1 in iteration 0002，implemented in iteration 0004
-- 目标：冻结一套无需数据库、可在构建期校验、可以稳定生成 URL 的 Markdown 契约。
+## 原则
 
-## 目录与 URL
+- GitHub 仓库是唯一事实源；
+- 文件名决定稳定 URL；
+- frontmatter 使用声明式 YAML，不执行 JavaScript；
+- 同一契约服务网页后台、Obsidian、构建和测试；
+- 草稿与未来内容在公开索引形成前过滤。
 
-```text
-content/
-  posts/
-    building-a-maintainable-blog.md
-  projects/
-    myblog.md
-```
+## 文章与 TIL
 
-| 内容 | 文件 | URL |
-| --- | --- | --- |
-| 文章 / TIL | `content/posts/<slug>.md` | `/posts/<slug>` |
-| 项目 | `content/projects/<slug>.md` | `/projects/<slug>` |
-| 专题 | 从文章的 `series` 字段派生 | `/series/<series-slug>` |
-| 标签 | 从内容的 `tags` 字段派生 | `/tags/<tag-slug>` |
-
-Slug 默认取文件名；发布日期变化时 URL 不变。已经发布的 slug 禁止直接修改，需要显式重定向。
-
-## 文章契约
+路径：`content/posts/<slug>.md`
 
 ```yaml
 ---
-title: "从零搭建可维护的个人技术博客"
-slug: building-a-maintainable-blog # 网页后台创建时必填，必须与文件名相同
-description: "如何先冻结内容、设计与交付边界，再开始写页面。"
+title: "标题"
+description: "独立摘要"
 type: article # article | til
-publishedAt: 2026-07-18
-updatedAt: 2026-07-18
-tags: ["Next.js", "TypeScript", "Cloudflare"]
-draft: false
-featured: true
+publishedAt: 2026-07-19
+updatedAt: 2026-07-19
+tags: ["Next.js", "TypeScript", "Vercel"]
+draft: true
+featured: false
 series:
   slug: build-my-blog
-  title: 从零构建个人博客
-  order: 1
+  title: "搭建个人博客"
+  order: 4
+canonical: "https://example.com/original"
+cover: "/uploads/example/cover.png"
 ---
 ```
 
-### 必填字段
+`series`、`canonical`、`cover`、`updatedAt` 可选。专题 order 必须从 1 连续增长。
 
-| 字段 | 类型 | 规则 |
-| --- | --- | --- |
-| `title` | string | 去除空白后非空，建议不超过 60 个中文字符 |
-| `description` | string | 独立摘要，建议 60–160 个中文字符 |
-| `type` | enum | `article` 或 `til` |
-| `publishedAt` | ISO date | 公开发布日期 |
-| `tags` | string[] | 1–5 个规范标签，去重 |
-| `draft` | boolean | 生产构建排除草稿 |
+## 项目复盘
 
-### 可选字段
-
-- `slug`：网页后台用于生成文件名；一旦存在必须与当前文件名完全一致。已有内容可以省略；已发布 slug 禁止直接修改。
-- `updatedAt`：必须不早于 `publishedAt`。
-- `featured`：首页精选，默认 `false`。
-- `series`：一旦存在，`slug`、`title`、`order` 必须同时存在，且同专题顺序唯一。
-- `canonical`：内容在其他站点首发时使用完整 HTTPS URL。
-- `cover`：仓库内相对资源路径；没有真实需要时不设置。
-
-## 项目契约
+路径：`content/projects/<slug>.md`
 
 ```yaml
 ---
-title: "MyBlog"
-description: "把学习记录做成可维护、可检索、可复盘的工程资产。"
-publishedAt: 2026-07-18
-updatedAt: 2026-07-18
-status: building # planning | building | maintained | archived
-stack: ["TypeScript", "React", "Cloudflare"]
-tags: ["Personal Knowledge", "Design Systems"]
+title: "项目名称"
+description: "项目摘要"
+publishedAt: 2026-07-19
+updatedAt: 2026-07-19
+status: maintained # planning | building | maintained | archived
+stack: ["TypeScript", "React", "Next.js", "Vercel"]
+tags: ["TypeScript", "React", "Vercel"]
 draft: false
 featured: true
-repository: "https://github.com/Zach424/MyBlog"
-demo: null
+repository: "https://github.com/example/repo"
+demo: "https://example.vercel.app"
 ---
 ```
 
-项目正文依次回答：背景与目标、约束、技术选择、关键实现、问题与解决、结果证据、复盘和下一步。没有证据的成果不写成确定结论。
+`repository`、`demo`、`cover`、`updatedAt` 可选；外部 URL 必须为 HTTPS。
 
-## 跨内容校验
+## Slug、标签与日期
 
-1. 文件名 slug 在对应集合中唯一，只使用小写 ASCII、数字和连字符。
-2. frontmatter 包含 `slug` 时必须与文件名一致，防止编辑字段与公开 URL 漂移。
-3. 生产环境排除 `draft: true` 和未来日期内容。
-4. 标签通过单一映射表规范化，避免 `TypeScript`、`typescript` 等重复概念。
-5. `updatedAt` 不早于 `publishedAt`。
-6. `repository`、`demo`、`canonical` 必须是完整 HTTPS URL。
-7. 精选内容不能是草稿。
-8. 专题顺序在同一 `series.slug` 内唯一且从 1 开始。
+Slug 只能使用小写英文字母、数字和连字符，并必须与文件名一致。首次公开后不可修改；若必须迁移，需要显式永久重定向。
 
-## 内容加载边界
+标签来自 `lib/content/contract.ts` 的注册表，Studio 从同一注册表维护等价选项。别名只用于输入归一化，页面始终输出规范名称和 slug。
 
-- 使用 Vite `import.meta.glob` 与项目的 Markdown pre-transform 将原文打包，避免 Cloudflare 运行时读取文件系统。
-- frontmatter 解析、schema 校验、目录提取和内容查询统一放在 `lib/content`；React 渲染组件放在 `components`。
-- 列表只暴露元数据，正文渲染按页面需要执行。
-- 构建失败应指出具体文件和字段，不能静默跳过错误内容。
+可见日期按作者时区 `Asia/Shanghai` 在构建时冻结。`draft: true`、发布日期晚于构建日期的记录不会出现在详情、集合、搜索、RSS 或 Sitemap。
 
-## 当前实现
+## 构建实现
 
-- `lib/content/contract.ts`：安全拆分 `---` 边界，使用 YAML 1.2 core schema 解析 frontmatter，并用 Zod 校验字段；
-- `lib/content/index.ts`：通过 `import.meta.glob` 打包 Markdown 原文，过滤草稿/未来内容，提供排序结果和查询函数；
-- `build/validate-content.ts`：Vinext/Vite 启动与构建前读取仓库内容并执行同一套校验；
-- `build/markdown-source-plugin.ts`：在 Vite 解析前把 `.md` 转成字符串模块，使生产构建与 Vinext RSC 热更新使用同一导入语义；
-- `lib/content/markdown.ts`：用 `github-slugger` 提取 H2/H3 目录，跳过 fenced code，并与页面标题锚点保持一致；
-- `components/MarkdownContent.tsx`：使用 React Markdown、GFM、rehype slug 和 highlight.js 输出正文；
-- Obsidian 草稿先停留在 `content/inbox`，发布脚本才会把它移动到正式目录并用同一解析函数验证；
-- Obsidian 的 `![[image.png]]` 和指向 `public/uploads` 的相对 Markdown 附件在发布时规范化为 `/uploads/image.png`；附件名只允许 ASCII 字母、数字、点、下划线和连字符；
-- 标签由 `TAG_REGISTRY` 统一名称与 slug，未知标签会让构建失败；
-- 专题和标签索引由已发布内容派生，不保存第二份索引文件；
-- 阅读时间同时估算中文字符与拉丁单词；文章与项目详情按需渲染正文，并生成目录、代码高亮和稳定元数据。
+- `build/validate-content.ts`：Next.js 配置加载时读取全部内容并执行 schema、重复 slug、标签和专题连续性校验；
+- `lib/content/index.ts`：使用 Node 文件系统读取 Markdown，并生成公开文章、项目、标签和专题索引；
+- `next.config.ts`：注入构建日期，并通过 `outputFileTracingIncludes` 把 Markdown 纳入 Vercel Serverless 产物；
+- `lib/content/markdown.ts`：生成与正文一致的目录锚点；
+- `lib/search.ts`、`lib/discovery.ts`：从同一公开集合生成搜索文档、RSS 和 Sitemap。
 
-最初试用的 `gray-matter` 会把可执行 JavaScript frontmatter 引擎中的直接 `eval` 带进 Worker 包，因此改用 `yaml` 并显式限制 schema。内容只允许声明式 YAML，不支持 JavaScript frontmatter。
+选择 `yaml` 而不是允许可执行 frontmatter 的解析器，避免把动态执行带进生产包，并让字段约束可审计。
 
-## 公开内容消费者
+## 附件
 
-`getAllContent()` 是跨文章与项目的公开集合入口，已经统一完成草稿和未来日期过滤。站内搜索、RSS 与 Sitemap 只能从这个入口或同一组派生索引读取，禁止再次扫描文件或维护第二份发布清单。
-
-- 搜索索引包含：类型、标题、摘要、日期、标签、稳定 URL 和去除 Markdown 标记后的正文；
-- RSS 包含全部公开文章、TIL 与项目，使用稳定绝对 URL 作为 `guid`；
-- Sitemap 包含核心集合页、全部详情、专题和标签页；
-- robots 公开允许抓取，并只声明当前请求主机下的 Sitemap。
+公开附件位于 `public/uploads/<slug>/`。Obsidian 发布器只处理当前笔记引用的仓库内附件，拒绝越界路径，并把 Wiki/Markdown 附件链接改写为网站绝对路径。网页后台使用相同目录。
