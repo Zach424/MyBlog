@@ -1,7 +1,10 @@
 import { spawnSync } from "node:child_process";
 import { existsSync, readFileSync, rmSync, writeFileSync } from "node:fs";
 import { resolve } from "node:path";
-import { prepareObsidianNote } from "../lib/obsidian-publishing.ts";
+import {
+  gitPathsForPublishedNote,
+  prepareObsidianNote,
+} from "../lib/obsidian-publishing.ts";
 
 function fail(message) {
   console.error(`[publish] ${message}`);
@@ -66,6 +69,12 @@ if (checkOnly) {
 }
 
 if (existsSync(resolve(process.cwd(), prepared.targetPath))) fail(`目标已存在：${prepared.targetPath}`);
+const sourceWasTracked = push
+  ? run("git", ["ls-files", "--error-unmatch", "--", prepared.sourcePath], {
+      capture: true,
+      allowFailure: true,
+    }).status === 0
+  : false;
 if (push) {
   const staged = run("git", ["diff", "--cached", "--name-only"], { capture: true });
   if (staged.stdout.trim()) fail("暂存区已有其他更改；请先提交或取消暂存后再使用 --push");
@@ -89,7 +98,13 @@ if (!push) {
 }
 
 try {
-  run("git", ["add", "-A", "--", prepared.sourcePath, prepared.targetPath, ...prepared.attachments]);
+  const pathsToStage = gitPathsForPublishedNote(
+    prepared.sourcePath,
+    prepared.targetPath,
+    prepared.attachments,
+    sourceWasTracked,
+  );
+  run("git", ["add", "-A", "--", ...pathsToStage]);
   run("git", ["commit", "-m", `content: publish ${prepared.slug}`]);
   run("git", ["push", "origin", "main"]);
   console.log(`[publish] 已同步 GitHub：${prepared.slug}`);

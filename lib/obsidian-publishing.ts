@@ -9,6 +9,20 @@ function normalizePath(value: string) {
   return value.replaceAll("\\", "/").replace(/^\.\//u, "");
 }
 
+export function gitPathsForPublishedNote(
+  sourcePath: string,
+  targetPath: string,
+  attachments: string[],
+  sourceWasTracked: boolean,
+) {
+  const paths = [
+    ...(sourceWasTracked ? [sourcePath] : []),
+    targetPath,
+    ...attachments,
+  ].map(normalizePath);
+  return [...new Set(paths)];
+}
+
 function inferKind(raw: string): ObsidianContentKind {
   const hasPostType = /^type:\s*(?:article|til)\s*$/mu.test(raw);
   const hasProjectStatus = /^status:\s*(?:planning|building|maintained|archived)\s*$/mu.test(raw);

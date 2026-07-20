@@ -21,11 +21,12 @@ test("connects Vercel verification, rollback, and Studio routing without Cloudfl
     readFile(new URL("../vercel.json", import.meta.url), "utf8"),
   ]);
   assert.match(productionSmoke, /deployment_status/);
+  assert.match(productionSmoke, /vars\.VERCEL_PRODUCTION_URL/);
   assert.match(productionSmoke, /environment_url/);
   assert.match(productionSmoke, /--expect-oauth/);
   assert.match(rollback, /vercel@56\.3\.2/);
   assert.match(rollback, /VERCEL_PRODUCTION_URL/);
-  assert.match(rollback, /args=\(rollback\)/);
+  assert.match(rollback, /args=\(rollback "\$DEPLOYMENT_URL"\)/);
   assert.match(smoke, /Sitemap 路由失败/);
   assert.match(smoke, /same-origin-allow-popups/);
   assert.match(smoke, /\/studio\/config\.mjs/);

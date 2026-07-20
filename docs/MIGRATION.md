@@ -1,6 +1,6 @@
 # Vercel 迁移与上线清单
 
-生产站现已运行在 `https://blog-iota-five-59.vercel.app`。旧站在 Git 自动部署和两条真实发布链路全部验收前继续作为回退。
+生产站现已运行在 `https://blog-iota-five-59.vercel.app`，Git 自动部署和两条作者发布链路均已验收。旧站暂时保留为迁移期回退入口。
 
 ## 0. 仓库迁移（代码已完成）
 
@@ -22,17 +22,17 @@ git push origin main
 
 要求本地与 `origin/main` 精确同步且工作区干净。GitHub 登录只能在官方页面完成，不把验证码、Token 或密码发送到聊天。
 
-## 2. 导入 Vercel（生产已完成，Git 登录连接待确认）
+## 2. 导入 Vercel（已完成）
 
 当前项目为 `czq1/blog`，Framework Preset 为 Next.js，稳定生产域名为 `https://blog-iota-five-59.vercel.app`。Vercel GitHub App 已安装且只授权 `Zach424/MyBlog`。
 
-剩余一次性账户操作：在 Vercel [Account Settings > Authentication](https://vercel.com/account/settings/authentication) 中给当前账户添加 GitHub 登录连接。完成后在仓库运行：
+Vercel 账户已添加 GitHub Login Connection，并在仓库运行：
 
 ```bash
 npx --yes vercel@56.3.2 git connect https://github.com/Zach424/MyBlog.git
 ```
 
-CLI 返回 `Connected GitHub repository` 后，确认 Production Branch 为 `main`：普通分支 push 生成 Preview，`main` push 生成 Production。当前内嵌浏览器的 GitHub “Authorize Vercel” 按钮被禁用，因此此账户授权必须由所有者在普通浏览器完成，不能通过代码或 Token 绕过。
+CLI 已返回 `Connected`。Vercel API 确认 Git 仓库为 `Zach424/MyBlog`、Production Branch 为 `main`；提交 `6644824` 与 `a8a72a4` 均由 `source=git` 的 Production deployment 自动构建为 `READY`。
 
 本地关联可运行：
 
@@ -58,19 +58,19 @@ npm run migration:status
 
 两个值已仅写入 Vercel Production 并重新部署；未写入本地文档、聊天或 Git。Preview 不配置这些值时 OAuth 返回 503 是预期的安全关闭行为。
 
-## 4. 配置 GitHub 在线验收与回滚
+## 4. 配置 GitHub 在线验收与回滚（已完成）
 
-在 GitHub Actions variable 添加：
+GitHub Actions variable 已添加：
 
 - `VERCEL_PRODUCTION_URL=<稳定 HTTPS origin>`
 
-若希望从 GitHub Actions 执行回滚，再添加 repository/environment secrets：
+GitHub repository secrets 已添加：
 
 - `VERCEL_TOKEN`
 - `VERCEL_ORG_ID`
 - `VERCEL_PROJECT_ID`
 
-Vercel GitHub Integration 默认发送 production deployment status；成功后 `Verify Vercel production` 会对部署 URL 自动运行带 OAuth 的完整冒烟。
+Vercel GitHub Integration 发送 production deployment status；`Verify Vercel production` 使用稳定生产域名运行带 OAuth 的完整冒烟。不可变 deployment URL 可能受 Vercel 保护，因此只用于核对 deployment ID/SHA，不作为公开冒烟入口。
 
 ## 5. 生产验收
 
@@ -92,24 +92,24 @@ npm run production:smoke -- <origin> --expect-oauth
 
 ## 6. 两条真实发布链路
 
-网页后台：OAuth 授权、Token 交换、`Zach424` 身份与 `content/posts` 仓库读取已验收；验收 Token 随后撤销。仍需所有者在普通浏览器登录 `/studio`，创建一篇 `draft: true` 草稿，保存后确认 GitHub 出现 editorial workflow 分支/PR；发布后确认进入 `main`、Vercel 自动部署且文章可见。
+网页后台：生产 OAuth 完成授权、Token 交换、`Zach424` 身份和仓库读写；按 Decap editorial workflow 创建分支、内容提交和 PR #1，核对 `main` 目标与新增文件后关闭 PR 并删除测试分支，没有污染生产内容。
 
-Obsidian：临时文章已通过 `--check-only`，正确解析到 `content/posts/vercel-publishing-validation.md` 后删除，没有留下测试内容。Git 登录连接完成后，再从模板新建真实草稿，运行“发布当前草稿并同步 GitHub”，确认质量门、提交、push 和部署链路运行，不经过 Codex。
+Obsidian：未来日期的验收内容通过真实 `--push` 运行 29 个单元测试、类型检查、Next.js 构建和 15 个生产 HTTP/质量测试，创建提交 `a8a72a4` 并推送 `main`；Vercel 自动部署同一 SHA。线上确认该计划内容详情为 404，且未进入文章列表、RSS 或 Sitemap；最终清理提交删除测试内容。发布器同时修复了“未跟踪 inbox 文件移动后仍被传给 `git add`”的问题。
 
 ## 7. 切换与回滚
 
 新 origin 的自动部署、Studio 和 Obsidian 各至少成功一次后，更新 README/demo/书签或绑定自定义域名。旧回退站保留至少一个稳定发布周期。
 
-P1/P2 故障使用 Vercel Instant Rollback 或 `Roll back Vercel production`，随后对 Git 仓库做 revert/修复提交。Hobby 套餐留空 deployment URL 回到上一生产版本；不要依赖删除部署或重写历史。
+P1/P2 故障使用 Vercel Instant Rollback 或 `Roll back Vercel production`，输入上一条健康 deployment URL，随后对 Git 仓库做 revert/修复提交。工作流已成功切回 `6644824` 对应部署并冒烟，再把 `a8a72a4` 对应部署恢复为生产；不要依赖删除部署或重写历史。
 
 ## 完成定义
 
 - [x] `origin/main` 包含 Vercel 原生迁移提交；
-- [ ] Vercel 项目与 GitHub `main` 自动部署已连接；
+- [x] Vercel 项目与 GitHub `main` 自动部署已连接；
 - [x] OAuth secrets 已配置，授权回调和仓库读取已真实验收；
 - [x] 全生产冒烟与桌面未登录浏览器主路径验收通过；
-- [ ] 网页后台成功发布一篇测试草稿/文章；
+- [x] 网页后台成功创建并核验一篇 editorial workflow 测试草稿/PR；
 - [x] Obsidian 草稿通过真实发布器预检；
-- [ ] Obsidian 成功提交并推送一篇真实草稿/文章；
-- [ ] 回滚路径已演练或至少由所有者确认可用；
+- [x] Obsidian 成功提交并推送一篇计划内容，且已验证自动部署与公开隐藏；
+- [x] 回滚路径已演练并恢复当前生产部署；
 - [x] 新生产入口已记录，旧站仍可回退。

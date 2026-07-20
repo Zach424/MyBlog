@@ -7,7 +7,7 @@
 - GitHub：<https://github.com/Zach424/MyBlog>
 - 当前生产站：<https://blog-iota-five-59.vercel.app>
 - 迁移期回退站：<https://zach424-engineering-notes.zhiqingchen792.chatgpt.site>
-- 发布状态：Vercel 原生 Next.js 已上线，Studio OAuth 与 Obsidian 预检已验收；GitHub 自动部署还需在 Vercel 账户中添加 GitHub 登录连接
+- 发布状态：Vercel 原生 Next.js、GitHub `main` 自动部署、Studio editorial workflow、Obsidian `--push`、生产冒烟与回滚恢复均已验收
 - 内容入口：`/studio` 网页后台、仓库根目录 Obsidian Vault、普通 Git 编辑器
 - 数据模型：仓库内 Markdown + YAML frontmatter，无数据库
 

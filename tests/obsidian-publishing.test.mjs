@@ -1,7 +1,10 @@
 import assert from "node:assert/strict";
 import { readFile } from "node:fs/promises";
 import test from "node:test";
-import { prepareObsidianNote } from "../lib/obsidian-publishing.ts";
+import {
+  gitPathsForPublishedNote,
+  prepareObsidianNote,
+} from "../lib/obsidian-publishing.ts";
 
 const article = `---
 title: "Obsidian 发布测试"
@@ -64,6 +67,30 @@ test("normalizes Obsidian attachment links into public blog URLs", () => {
   assert.deepEqual(result.attachments, [
     "public/uploads/obsidian-evidence.png",
     "public/uploads/second-image.webp",
+  ]);
+});
+
+test("stages an inbox deletion only when the source was already tracked", () => {
+  const untrackedPaths = gitPathsForPublishedNote(
+    "content/inbox/obsidian-publishing.md",
+    "content/posts/obsidian-publishing.md",
+    ["public/uploads/obsidian-evidence.png"],
+    false,
+  );
+  assert.deepEqual(untrackedPaths, [
+    "content/posts/obsidian-publishing.md",
+    "public/uploads/obsidian-evidence.png",
+  ]);
+
+  const trackedPaths = gitPathsForPublishedNote(
+    "content\\inbox\\obsidian-publishing.md",
+    "content/posts/obsidian-publishing.md",
+    [],
+    true,
+  );
+  assert.deepEqual(trackedPaths, [
+    "content/inbox/obsidian-publishing.md",
+    "content/posts/obsidian-publishing.md",
   ]);
 });
 

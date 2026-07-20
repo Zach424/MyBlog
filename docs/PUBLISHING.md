@@ -22,7 +22,7 @@
 2. 从 `templates/obsidian/article.md`、`til.md` 或 `project.md` 创建文件；
 3. 将工作文件放入 `content/inbox`，文件名直接使用稳定 slug，例如 `learning-vercel-deployments.md`；
 4. 图片可粘贴到 Obsidian 附件目录，发布器会移动到 `public/uploads/<slug>/` 并重写链接；
-5. 先运行“检查当前草稿”；确认通过后，运行“发布当前草稿并同步 GitHub”；
+5. 先运行“检查当前草稿”；确认内容已经可以公开后，运行“发布当前草稿并同步 GitHub”；该命令会把 `draft` 改为 `false`，未来日期内容会保持计划状态；
 6. 阅读预检摘要，确认目标路径、附件和 frontmatter；
 7. 发布器运行完整质量门、创建内容提交并 push `main`；Vercel Git 连接完成后会自动上线。若团队改用 PR 流程，则不要运行同步命令，改由普通 Git 客户端创建分支和 PR。
 
@@ -33,7 +33,7 @@ npm run content:publish -- content/inbox/learning-vercel-deployments.md --check-
 npm run content:publish -- content/inbox/learning-vercel-deployments.md --push
 ```
 
-`--check-only` 只验证 frontmatter、目标路径与附件，不修改文件。省略标志会生成正式内容并运行完整检查，但不提交；`--push` 会在检查通过后只暂存该草稿、目标内容和附件，创建提交并推送 `main`。运行 `--push` 前应确认暂存区为空。
+`--check-only` 只验证 frontmatter、目标路径与附件，不修改文件。省略标志会生成正式内容并运行完整检查，但不提交；`--push` 会关闭草稿状态，在检查通过后只暂存目标内容、受跟踪的源文件删除和附件，创建提交并推送 `main`。运行 `--push` 前应确认暂存区为空。
 
 ## 内容字段
 
