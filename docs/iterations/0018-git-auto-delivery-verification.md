@@ -71,7 +71,8 @@ GitHub deployment-status 工作流最初正确触发，但 immutable deployment 
 - Obsidian 提交 `a8a72a4` 成功 push；对应 deployment `dpl_8CrGho6sXJZzdtAo1H9v5URbZhQp` 为 Git Production `READY`；
 - 计划内容在线详情返回 404，文章列表、RSS 和 Sitemap 均不包含验收 slug；
 - `npm run production:smoke -- https://blog-iota-five-59.vercel.app --expect-oauth` 返回 `23 routes, OAuth 302`；
-- GitHub 自动冒烟失败 run `29712227112` 的日志明确显示受保护 deployment URL；稳定域名修复已进入最终提交；
+- GitHub 自动冒烟失败 run `29712227112` 的日志明确显示受保护 deployment URL；修复后，提交 `fd1012c` 对应 deployment `dpl_95vC7y5paSQrhNrJAHQxYE11BuU6` 为 Git Production `READY`；
+- `fd1012c` 的自动冒烟 run `29713062343` 状态为 completed/success，证明 deployment status → 稳定生产域名冒烟链路已闭环；
 - GitHub Actions 配置存在 `VERCEL_PRODUCTION_URL` 和 `VERCEL_TOKEN`、`VERCEL_ORG_ID`、`VERCEL_PROJECT_ID` 三个 secret 名称，值未读取回显；
 - 回滚 run `29712466275` 状态 completed/success；当前 deployment 随后 Promote 成功；
 - 恢复后稳定生产域名再次通过 23 路由与 OAuth 公网冒烟；
