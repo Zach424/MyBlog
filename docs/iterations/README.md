@@ -22,6 +22,7 @@
 0015-sites-studio-security.md
 0016-vercel-native-migration.md
 0017-vercel-production-and-authoring.md
+0018-git-auto-delivery-verification.md
 ```
 
 ## 必填结构
