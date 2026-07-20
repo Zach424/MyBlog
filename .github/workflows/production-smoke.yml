@@ -26,7 +26,7 @@ jobs:
     runs-on: ubuntu-latest
     timeout-minutes: 10
     env:
-      DEPLOYMENT_URL: ${{ github.event_name == 'workflow_dispatch' && inputs.deployment_url || github.event.deployment_status.environment_url }}
+      DEPLOYMENT_URL: ${{ github.event_name == 'workflow_dispatch' && inputs.deployment_url || vars.VERCEL_PRODUCTION_URL || github.event.deployment_status.environment_url }}
     steps:
       - name: Check out the production verifier
         uses: actions/checkout@v4
