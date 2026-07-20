@@ -4,8 +4,8 @@ on:
   workflow_dispatch:
     inputs:
       deployment_url:
-        description: "Optional previous deployment URL; blank selects the immediately previous production deployment"
-        required: false
+        description: "Previous production deployment URL to restore"
+        required: true
         type: string
       reason:
         description: "Reason recorded with the rollback deployment"
@@ -54,10 +54,7 @@ jobs:
       - name: Roll back the Vercel production deployment
         shell: bash
         run: |
-          args=(rollback)
-          if [[ -n "$DEPLOYMENT_URL" ]]; then
-            args+=("$DEPLOYMENT_URL")
-          fi
+          args=(rollback "$DEPLOYMENT_URL")
           args+=(--token "$VERCEL_TOKEN" --timeout 120s)
           npx --yes vercel@56.3.2 "${args[@]}"
 
