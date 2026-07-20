@@ -10,6 +10,13 @@ function command(executable, args) {
   return { status: result.status, output: `${result.stdout ?? ""}${result.stderr ?? ""}`.trim() };
 }
 
+function npx(args) {
+  if (process.platform === "win32") {
+    return command(process.env.ComSpec || "cmd.exe", ["/d", "/s", "/c", "npx", ...args]);
+  }
+  return command("npx", args);
+}
+
 const failures = [];
 const branch = command("git", ["branch", "--show-current"]);
 if (branch.output !== "main") failures.push(`当前分支是 ${branch.output || "unknown"}`);
@@ -23,7 +30,7 @@ if (sync.status !== 0 || sync.output !== "0\t0") failures.push(`本地与 origin
 if (!existsSync(".vercel/project.json")) {
   failures.push("Vercel 项目尚未关联；运行 npx --yes vercel@56.3.2 link 并由所有者完成授权");
 } else {
-  const vercel = command("npx", ["--yes", "vercel@56.3.2", "whoami"]);
+  const vercel = npx(["--yes", "vercel@56.3.2", "whoami"]);
   if (vercel.status !== 0 || /not currently logged in|not authenticated/iu.test(vercel.output)) {
     failures.push("Vercel 尚未登录；运行 npx --yes vercel@56.3.2 login 并由所有者完成浏览器授权");
   }

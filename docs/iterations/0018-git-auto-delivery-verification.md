@@ -73,6 +73,7 @@ GitHub deployment-status 工作流最初正确触发，但 immutable deployment 
 - `npm run production:smoke -- https://blog-iota-five-59.vercel.app --expect-oauth` 返回 `23 routes, OAuth 302`；
 - GitHub 自动冒烟失败 run `29712227112` 的日志明确显示受保护 deployment URL；修复后，提交 `fd1012c` 对应 deployment `dpl_95vC7y5paSQrhNrJAHQxYE11BuU6` 为 Git Production `READY`；
 - `fd1012c` 的自动冒烟 run `29713062343` 状态为 completed/success，证明 deployment status → 稳定生产域名冒烟链路已闭环；
+- 最终审计发现 Windows 下 `spawnSync("npx", ..., shell:false)` 无法解析 `npx.cmd`，导致 `migration:status` 把真实 Vercel 登录误报为未登录；脚本改为通过 `ComSpec /d /s /c npx` 调用，并加入静态回归契约；
 - GitHub Actions 配置存在 `VERCEL_PRODUCTION_URL` 和 `VERCEL_TOKEN`、`VERCEL_ORG_ID`、`VERCEL_PROJECT_ID` 三个 secret 名称，值未读取回显；
 - 回滚 run `29712466275` 状态 completed/success；当前 deployment 随后 Promote 成功；
 - 恢复后稳定生产域名再次通过 23 路由与 OAuth 公网冒烟；
