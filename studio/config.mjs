@@ -19,13 +19,15 @@ export const FRESHNESS_OPTIONS = [
 ];
 
 export const MEDIA_MAX_FILE_SIZE = 3 * 1024 * 1024;
+export const STUDIO_ENTRY_MEDIA_FOLDER = "/public/uploads/{{fields.slug}}";
+export const STUDIO_ENTRY_PUBLIC_FOLDER = "/uploads/{{fields.slug}}";
 
 const slugField = {
   label: "稳定网址 Slug",
   name: "slug",
   widget: "string",
   pattern: ["^[a-z0-9]+(?:-[a-z0-9]+)*$", "只使用小写字母、数字和连字符"],
-  hint: "例如 learning-cloudflare-workers。首次发布后不要修改；它就是文章网址。",
+  hint: "例如 learning-vercel-deployments。先填写本字段，再上传封面或正文图片；首次保存后不要修改，它就是内容网址和附件目录。",
 };
 
 const dateField = (label, name, required = true) => ({
@@ -66,7 +68,7 @@ const sharedFields = [
   tagsField,
   { label: "草稿", name: "draft", widget: "boolean", default: true, hint: "草稿不会进入公开页面、搜索、RSS 或 Sitemap。" },
   { label: "首页精选", name: "featured", widget: "boolean", default: false, hint: "草稿不能设为精选。" },
-  { label: "封面", name: "cover", widget: "image", required: false, choose_url: false, hint: "上传后会在详情页、Open Graph 与 Twitter 分享卡中使用。", media_library: { config: { max_file_size: MEDIA_MAX_FILE_SIZE } } },
+  { label: "封面", name: "cover", widget: "image", required: false, choose_url: false, hint: "先填写稳定 slug 再上传；图片会归档到当前条目的附件目录，并用于详情页和分享卡。", media_library: { config: { max_file_size: MEDIA_MAX_FILE_SIZE } } },
   { label: "封面替代文本", name: "coverAlt", widget: "string", required: false, hint: "设置封面时必填；简洁描述图片传达的信息，不要重复文章标题。" },
 ];
 
@@ -115,6 +117,8 @@ export function createStudioConfig(origin) {
         extension: "md",
         format: "frontmatter",
         slug: "{{fields.slug}}",
+        media_folder: STUDIO_ENTRY_MEDIA_FOLDER,
+        public_folder: STUDIO_ENTRY_PUBLIC_FOLDER,
         preview_path: "posts/{{slug}}",
         summary: "{{publishedAt}} · {{title}} · {{type}}",
         sortable_fields: ["publishedAt", "updatedAt", "title"],
@@ -139,7 +143,7 @@ export function createStudioConfig(origin) {
             ],
           },
           { label: "转载 Canonical URL", name: "canonical", widget: "string", required: false, pattern: ["^https://", "必须是完整 HTTPS URL"] },
-          { label: "正文", name: "body", widget: "markdown", modes: ["raw", "rich_text"], required: true },
+          { label: "正文", name: "body", widget: "markdown", modes: ["raw", "rich_text"], required: true, hint: "先填写稳定 slug 再插图；同一条目内使用不同文件名，避免替换已有附件。" },
         ],
       },
       {
@@ -152,6 +156,8 @@ export function createStudioConfig(origin) {
         extension: "md",
         format: "frontmatter",
         slug: "{{fields.slug}}",
+        media_folder: STUDIO_ENTRY_MEDIA_FOLDER,
+        public_folder: STUDIO_ENTRY_PUBLIC_FOLDER,
         preview_path: "projects/{{slug}}",
         summary: "{{publishedAt}} · {{title}} · {{status}}",
         sortable_fields: ["publishedAt", "updatedAt", "title"],
@@ -163,7 +169,7 @@ export function createStudioConfig(origin) {
           ...sharedFields.slice(7),
           { label: "源码地址", name: "repository", widget: "string", required: false, pattern: ["^https://", "必须是完整 HTTPS URL"] },
           { label: "演示地址", name: "demo", widget: "string", required: false, pattern: ["^https://", "必须是完整 HTTPS URL"] },
-          { label: "正文", name: "body", widget: "markdown", modes: ["raw", "rich_text"], required: true },
+          { label: "正文", name: "body", widget: "markdown", modes: ["raw", "rich_text"], required: true, hint: "先填写稳定 slug 再插图；同一条目内使用不同文件名，避免替换已有附件。" },
         ],
       },
     ],

@@ -99,7 +99,7 @@ test("accepts exact formal references and leaves root staging media unowned", as
     await writePost(
       root,
       "media-owner",
-      "![正文](/uploads/media-owner/evidence.webp)\n\n![共享暂存][shared]\n\n[shared]: /uploads/shared.webp",
+      "![正文](/uploads/media-owner/evidence.webp)",
       "/uploads/media-owner/cover.webp",
     );
     await writePost(
@@ -127,12 +127,44 @@ test("accepts exact formal references and leaves root staging media unowned", as
     ]);
     assert.deepEqual(references, {
       archivedImages: 3,
-      referencedImages: 4,
-      references: 4,
+      referencedImages: 3,
+      references: 3,
       stagingImages: 2,
     });
     assert.equal(media.images, 5);
     assert.ok(media.totalBytes > 0);
+  } finally {
+    await rm(root, { recursive: true, force: true });
+  }
+});
+
+test("rejects root staging media from formal body and cover references", async () => {
+  const root = await createFixture();
+  try {
+    await Promise.all([
+      writeMedia(root, "public/uploads/body-staging.webp"),
+      writeMedia(root, "public/uploads/cover-staging.webp"),
+    ]);
+    await writePost(
+      root,
+      "media-owner",
+      "![仍在暂存区](/uploads/body-staging.webp)",
+    );
+    await assert.rejects(
+      validateContentMediaReferences(root),
+      /正文第 1 行.*根暂存区.*\/uploads\/media-owner\//u,
+    );
+
+    await writePost(
+      root,
+      "media-owner",
+      "没有本地正文图片。",
+      "/uploads/cover-staging.webp",
+    );
+    await assert.rejects(
+      validateContentMediaReferences(root),
+      /cover.*根暂存区.*\/uploads\/media-owner\//u,
+    );
   } finally {
     await rm(root, { recursive: true, force: true });
   }

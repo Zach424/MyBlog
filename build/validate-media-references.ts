@@ -35,7 +35,13 @@ function assertArchivedOwnership(
 ) {
   const relativePath = targetPath.slice("public/uploads/".length);
   const segments = relativePath.split("/");
-  if (segments.length < 2 || segments[0] === record.slug) return;
+  if (segments.length < 2) {
+    throw new ContentValidationError(
+      record.sourcePath,
+      `${label}引用“/${targetPath.slice("public/".length)}”，该文件仍在根暂存区；正式内容必须归档到 /uploads/${record.slug}/...。请先填写稳定 slug，再在 Studio 重新选择图片，或使用 Obsidian 发布器归档`,
+    );
+  }
+  if (segments[0] === record.slug) return;
 
   throw new ContentValidationError(
     record.sourcePath,

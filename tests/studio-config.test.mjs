@@ -4,6 +4,8 @@ import test from "node:test";
 import {
   FRESHNESS_OPTIONS,
   MEDIA_MAX_FILE_SIZE,
+  STUDIO_ENTRY_MEDIA_FOLDER,
+  STUDIO_ENTRY_PUBLIC_FOLDER,
   TAG_OPTIONS,
   createStudioConfig,
 } from "../studio/config.mjs";
@@ -21,11 +23,24 @@ test("maps the publishing studio to the single Git content source", () => {
   assert.equal(config.backend.auth_endpoint, "/api/cms/auth");
   assert.equal(config.publish_mode, "editorial_workflow");
   assert.equal(config.media_folder, "public/uploads");
+  assert.equal(config.public_folder, "/uploads");
   assert.deepEqual(
     config.collections.map((collection) => collection.folder),
     ["content/posts", "content/projects"],
   );
   assert.ok(config.collections.every((collection) => collection.slug === "{{fields.slug}}"));
+  assert.ok(
+    config.collections.every(
+      (collection) => collection.media_folder === STUDIO_ENTRY_MEDIA_FOLDER,
+    ),
+  );
+  assert.ok(
+    config.collections.every(
+      (collection) => collection.public_folder === STUDIO_ENTRY_PUBLIC_FOLDER,
+    ),
+  );
+  assert.equal(STUDIO_ENTRY_MEDIA_FOLDER, "/public/uploads/{{fields.slug}}");
+  assert.equal(STUDIO_ENTRY_PUBLIC_FOLDER, "/uploads/{{fields.slug}}");
 });
 
 test("keeps CMS tags and required content fields aligned with the contract", () => {
@@ -47,6 +62,10 @@ test("keeps CMS tags and required content fields aligned with the contract", () 
     assert.equal(cover.choose_url, false);
     const coverAlt = collection.fields.find((field) => field.name === "coverAlt");
     assert.match(coverAlt.hint, /设置封面时必填/);
+    const slug = collection.fields.find((field) => field.name === "slug");
+    assert.match(slug.hint, /先填写.*再上传/);
+    const body = collection.fields.find((field) => field.name === "body");
+    assert.match(body.hint, /同一条目.*不同文件名/);
   }
 });
 

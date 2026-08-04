@@ -105,7 +105,7 @@ Slug 只能使用小写英文字母、数字和连字符，并必须与文件名
 
 ## 附件
 
-公开附件位于 `public/uploads/<slug>/`。Obsidian 的默认附件目录是 `public/uploads`；作者可以直接粘贴图片，发布器会把当前笔记引用的 Wiki/Markdown 图片移动到文章或项目的专属子目录，并把正文改写为 `/uploads/<slug>/<稳定文件名>`。
+公开附件位于 `public/uploads/<slug>/`。Obsidian 的默认附件目录是 `public/uploads`；作者可以直接粘贴图片，发布器会把当前笔记引用的 Wiki/Markdown 图片移动到文章或项目的专属子目录，并把正文改写为 `/uploads/<slug>/<稳定文件名>`。Studio 的 posts/projects 集合使用相同 slug 模板，作者先填写 slug 后上传时直接落入专属子目录。
 
 - 允许输入格式：PNG、JPEG、WebP、GIF、AVIF；静态 PNG/JPEG/WebP 发布为 `.webp`，GIF、AVIF 和动画 WebP 保持格式与原字节；
 - 原文件名已是小写 ASCII 安全名时保持 stem；空格、中文或其他不稳定字符会转换为可读前缀加 8 位路径哈希；静态格式共享同一个 `.webp` 目标命名空间，同 stem 冲突会被拒绝；
@@ -124,10 +124,11 @@ Slug 只能使用小写英文字母、数字和连字符，并必须与文件名
 - 路径解码后不能包含目录穿越、编码的 `/`/`\\`、空路径段或非法字符，末尾扩展名必须是受支持图片格式；
 - 引用按仓库原始大小写精确匹配真实文件，避免 Windows 通过但 Vercel/Linux 404；
 - `public/uploads/<slug>/...` 是已归档附件，只能由相同 slug 的正式文章或项目正文/cover 引用；没有引用的归档文件会让构建失败；
+- `public/uploads` 根目录只是 Obsidian inbox 与媒体库暂存区，正式 posts/projects 的正文和 cover 引用根文件会失败；
 - 行内 Markdown 图片和引用式图片都参与关系，行内代码、围栏代码和普通链接不参与；
-- 正式目录里的 draft/future 记录仍可拥有归档附件；`content/inbox` 不参与，`public/uploads` 根目录文件继续作为发布前暂存/Studio 兼容区。
+- 正式目录里的 draft/future 记录仍可拥有归档附件；`content/inbox` 不参与，未被正式内容引用的根暂存文件不做孤儿清理。
 
-外部 HTTPS 正文图片不进入附件移动流程，也不进入 `next/image` 远程优化白名单；页面以 lazy、异步解码、`no-referrer` 的原生图片明确降级，CSP 仅允许 HTTPS 图片源。网页后台继续写入同一公开目录和内容事实源。Obsidian frontmatter cover 会与正文附件一起归档、优化和回滚；Studio cover 只允许上传本地文件，并要求作者同时填写替代文本。
+外部 HTTPS 正文图片不进入附件移动流程，也不进入 `next/image` 远程优化白名单；页面以 lazy、异步解码、`no-referrer` 的原生图片明确降级，CSP 仅允许 HTTPS 图片源。网页后台继续写入同一公开目录和内容事实源。Obsidian frontmatter cover 会与正文附件一起归档、优化和回滚；Studio cover 只允许上传本地文件，直接归档到当前 slug，并要求作者同时填写替代文本。
 
 ## 站内链接与引用关系
 
