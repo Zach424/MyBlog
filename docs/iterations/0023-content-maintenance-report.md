@@ -72,7 +72,9 @@ CLI 先严格校验真实 ISO 日期和 `text|json`，再输出报告。Actions 
 - 过期演练 `2027-02-01`：显示逾期 1 天并捕获退出码 1；
 - `npm run lint` 与 `next typegen && tsc --noEmit` 通过；
 - 最终 `npm run release:check` 通过：报告为健康、46/46 单元测试、TypeScript、Next.js 16.3.0 build（33 个静态生成任务）、15/15 生产 HTTP/质量测试，生产依赖审计为 0；
-- GitHub、Vercel 与稳定生产域名证据将在实现提交后补入本档案。
+- 实现与初始归档提交 `d80e5a2` 已推送 `main`；GitHub Quality Gate `30893387552` 为 completed/success，job `91940477519` 中 `Report content maintenance` 步骤的真实结论为 success；
+- Vercel Production `dpl_Cp8RdPG7G4iTBBGsubqkNdaFg1fY` 的构建日志明确克隆 `d80e5a2e2b0b9c54850f31e14c3d69e895db5e66`，33/33 静态生成后为 Ready，不可变 URL 是 `https://blog-idmsfa9fl-czq1.vercel.app`；
+- 自动生产冒烟 `30893422269` 为 completed/success；独立稳定域名冒烟返回 `23 routes, OAuth 302`；网络命令只在当前进程使用本机代理，未写入永久配置。
 
 ## 8. 经验与教训
 
