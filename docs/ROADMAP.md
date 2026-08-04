@@ -8,11 +8,11 @@
 | 4. 作者自助写作 | done | `/studio` OAuth + editorial workflow PR、Obsidian Vault/模板/附件/真实 `--push` |
 | 5. Vercel 原生迁移 | production live | 原生 Next.js、无 Cloudflare 依赖、23 路由生产冒烟通过 |
 | 6. 所有者生产上线 | done | Git 自动 Production、稳定域名自动冒烟、双端发布、回滚与恢复均已验收 |
-| 7. 持续内容与作者体验 | in progress | Iteration 0033 完成版本化永久重定向、构建路由门禁、单跳 308 与线上交付验证 |
+| 7. 持续内容与作者体验 | in progress | Iteration 0034 完成全 inbox readiness、真实媒体候选、只读 CLI/Obsidian Modal 与线上交付验证 |
 
 ## 当前唯一主线
 
-进入持续内容与作者体验阶段。Iteration 0033 已把 URL 迁移从文档约定变成 Git 版本化契约：旧路径只能以有日期/原因的精确规则单跳 308 到同一构建中的公开 HTML 页面，当前路由、静态文件、保留命名空间、链和环路都在部署前失败。下一主线是建立 Obsidian inbox 发布就绪报告，让作者在执行单篇写入事务前先看到全部草稿、附件派生、目标冲突和阻塞原因。需要品牌域名时再绑定自定义域名，旧公开站继续只作为迁移历史证据。
+进入持续内容与作者体验阶段。Iteration 0034 已把逐篇 `--check-only` 前的盲区变成全 inbox 只读证据：CLI 与 Obsidian Modal 逐篇给出 ready/scheduled/blocked、真实媒体候选、正式目标和共享/跟踪附件冲突，且不写入作者文件。下一主线转向读者发现体验：把详情页已有的正文关系派生为公开、可访问的全站知识地图，同时保持 Markdown 链接为唯一事实源。需要品牌域名时再绑定自定义域名，旧公开站继续只作为迁移历史证据。
 
 ## 已知风险
 
@@ -29,9 +29,9 @@
 - Studio 的 slug 在首次保存后已由自定义控件只读保护，真正迁移仍须使用 Git 同步修改内容、引用和附件；控件依赖固定 Decap 3.14.1 bundle 的 `entry/newRecord` 契约，升级必须重审；
 - root `public/uploads` 已有确定性库存和 warning，但有意不自动删除；未跟踪附件只存在于作者工作区，GitHub Actions 无法看到，仍需本地运行报告后人工确认；
 - slug 迁移已有构建验证的精确单跳 redirect 注册表，但仍是需要作者审阅的 Git 操作；不支持通配参数或自动推断，迁移必须同步处理内容、附件和引用；
-- Obsidian 目前可逐篇 `--check-only`，但尚无一次查看全部 inbox 草稿发布就绪状态、目标冲突与附件派生结果的总览；
+- Obsidian 已有全 inbox readiness 总览，但该报告有意只代表本地单篇写入事务，不替代正式发布的完整仓库门禁，也不进入看不到未跟踪草稿的 Actions；
 - Current record 已有每周 60/30 天 Actions 提醒和过期门；若未来需要邮件/聊天通知，必须由所有者选择渠道后再接入；
-- 内部链接支持内容页和标题锚点，详情页同时展示 outgoing/backlinks；明确不支持 Obsidian 块引用，尚未提供全站关系图；
+- 内部链接支持内容页和标题锚点，详情页同时展示 outgoing/backlinks；明确不支持 Obsidian 块引用，尚未提供公开、可访问的全站知识地图；
 - 自定义域名、公开邮箱、统计和评论尚未选择，但不阻塞生产上线。
 
 ## 平台历史
