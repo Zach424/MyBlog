@@ -35,6 +35,7 @@
 0028-responsive-markdown-images.md
 0029-studio-slug-media-archive.md
 0030-studio-media-preflight.md
+0031-studio-stable-slug-lifecycle.md
 ```
 
 ## 必填结构
