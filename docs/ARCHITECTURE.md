@@ -30,6 +30,7 @@ app/
 components/                         站点框架、内容视图、Markdown、搜索
   ContentCover.tsx                  文章/项目共享的响应式封面与 Artifact Rail
   KnowledgeMap.tsx                  服务端 SVG 信号场、关系账本与孤立记录
+  MarkdownHeading.tsx               H2/H3 原生 fragment 永久链接的服务端边界
 content/
   posts/ projects/                  唯一公开内容源
   inbox/                            Obsidian 待发布区
@@ -44,6 +45,7 @@ lib/
     media-references.ts             Markdown 图片 AST 抽取与安全 `/uploads` 路径解析
     staging-media.ts                根暂存库存、inbox 引用、年龄证据与报告格式
   cms-oauth.ts                      签名 OAuth state 与 token 交换
+  heading-permalink.ts              标题 fragment 与 Markdown 深度标记纯函数
   media-policy.ts                   原图安全包络、WebP 优化与公开媒体预算的共享策略
   studio-media-manifest.ts          已归档媒体路径、字节数与 SHA-256 的确定性清单
   obsidian-publishing.ts            Obsidian 校验、附件与目标路径转换
@@ -86,6 +88,8 @@ vercel.json                         Vercel Next.js 框架声明
 `lib/content/media.ts` 是封面与正文图共享的服务端尺寸层。文件系统根静态收窄到 `public/uploads`，避免 Turbopack 把整个仓库追踪进 Serverless 产物；同一仓库路径的检查通过 React cache 复用。封面描述器附带 `coverAlt`，交给共享 `ContentCover` 和 OG/Twitter/JSON-LD；没有封面的记录不渲染 figure。`MarkdownContent` 则先从正文 AST 收集并去重 URL，只为本地 `/uploads/...` 建立描述器，再把真实宽高、作者 alt 和对应 48rem 阅读栏的 `sizes` 交给 `next/image`。两条详情路由必须传入内容 `sourcePath`，因此页面渲染与构建媒体契约使用同一安全路径边界。
 
 `MarkdownContent` 继续作为 Server Component 执行 GFM、slug、高亮和媒体描述；只有 fenced `pre` 把现有 code child 与从 `language-*` 类规范化的标签传给最小 `CodeBlock` Client Component。该客户端岛的 SSR 输出仍含完整 figure/figcaption/pre/code，COPY button 初始 hidden 并在 mount 后揭示；写入只使用当前 code DOM 的精确 `textContent` 和原生 Clipboard API，状态通过 button、data attribute 与 polite live region 表达。inline code 不进入该边界。CSS 额外锁定 `[hidden]`，移动端由 wrapper full-bleed、pre 独立 overflow，避免操作轨随长代码滚走。
+
+H2/H3 由 `MarkdownHeading` 服务端组件接收 `rehype-slug` 已写入的真实 `id`，在原 children 之后追加独立原生 `<a href="#id">`；组件不读取标题文本、不重新计算 slug，也不进入客户端 bundle。链接子节点仅呈现 Markdown 深度标记，避免与标题内作者链接形成嵌套锚点。桌面、窄屏、无悬停触控和打印只由 CSS 媒体条件改变可发现性，不改变 fragment、目录或关系抽取的数据源。
 
 内容目录通过 Next.js output tracing 显式包含在部署中，既支持 Vercel Serverless，也不会依赖开发机器路径。
 
@@ -160,6 +164,7 @@ Vercel GitHub Integration 负责每个分支的 Preview 和 `main` 的 Productio
 - Studio 会话媒体账本只能在合成 change 成功重放后登记；未提交检查、取消确认和重放错误不能改变同路径摘要基线。
 - 同一 Studio file input 只有最新真实 change 可以报告最终状态、重放文件或提交账本；任何旧异步结果都不能清空或覆盖最新选择。
 - fenced code 的服务端 HTML 必须始终保留完整 pre/code；COPY 只在 hydration 后出现，复制源只能是当前 code textContent，inline code 不得获得控件。
+- Markdown H2/H3 永久链接必须直接使用 renderer 已拥有的 id；不得重新 slug、包裹标题 children、要求 JavaScript 或改变目录与内容关系抽取，触控点击区不得小于 44px，打印不得输出标记。
 - Markdown 图片 alt 不能为空；本地图使用共享固有尺寸与响应式候选，HTTPS 外图不能进入开放优化主机列表。
 - cover 必须是仓库内图片并同时声明 `coverAlt`；详情页尺寸只能来自已验证文件，文章/项目共享组件与社交元数据选择不能分叉。
 - `/studio` 与 OAuth 永远不缓存、不索引，并维持同源 state 验证；只有版本化 CMS 运行时可不可变缓存。

@@ -8,11 +8,11 @@
 | 4. 作者自助写作 | done | `/studio` OAuth + editorial workflow PR、Obsidian Vault/模板/附件/真实 `--push` |
 | 5. Vercel 原生迁移 | production live | 原生 Next.js、无 Cloudflare 依赖、24 路由生产冒烟通过 |
 | 6. 所有者生产上线 | done | Git 自动 Production、稳定域名自动冒烟、双端发布、回滚与恢复均已验收 |
-| 7. 持续内容与作者体验 | in progress | Iteration 0042 完成 fenced code 语言标签、渐进复制、精确文本与可访问成功/失败反馈 |
+| 7. 持续内容与作者体验 | in progress | Iteration 0043 完成 H2/H3 服务端原生 permalink、中文 fragment、键盘/触控可发现性与打印降级 |
 
 ## 当前唯一主线
 
-进入持续内容与作者体验阶段。Iteration 0042 已把 fenced code block 做成最小客户端岛：服务端代码完整，无 JavaScript 时按钮隐藏；hydration 后语言、COPY/COPIED/FAILED、精确 textContent 与 polite live region 可用，320px 和生产浏览器均已验收。下一主线继续改善技术文章的可引用性：为 H2/H3 增加直接复用真实 id 的服务端 permalink，不增加客户端 bundle。需要品牌域名时再绑定自定义域名，旧公开站继续只作为迁移历史证据。
+进入持续内容与作者体验阶段。Iteration 0043 已让 Markdown H2/H3 直接复用 renderer 真实 id 输出原生 `##`/`###` permalink：不增加客户端 bundle，中文编码 fragment、键盘、触控、无 JavaScript、深浅色与打印边界均已验收。下一主线把技术文章做成可打印、可导出 PDF 的纸面记录：保留标题、事实、正文、代码和必要引用，隐藏只服务网页导航的界面，并约束分页与链接呈现。需要品牌域名时再绑定自定义域名，旧公开站继续只作为迁移历史证据。
 
 ## 已知风险
 
@@ -33,7 +33,7 @@
 - Current record 已有每周 60/30 天 Actions 提醒和过期门；若未来需要邮件/聊天通知，必须由所有者选择渠道后再接入；
 - 内部链接支持内容页和严格标题锚点，行内/引用式/自引用共享实际渲染 slug 规则，详情页与公开知识地图共享 outgoing/backlinks；明确不支持 Obsidian 块引用，标题改名必须同步深链，当前双列 SVG 为小型内容库优化，内容规模增长后需要过滤/分组；
 - 正文普通 HTTPS 与结构化 repository/demo/canonical 已有统一确定性库存和受控实时报告；实时 DNS/网络结果有意不进 Actions，timeout/限流不能冒充内容错误；
-- 技术代码块已有语言标签、渐进增强复制和屏幕阅读器状态反馈；正文 H2/H3 仍缺少可发现的原生 permalink，分享具体章节依赖目录或手工 fragment；
+- 技术代码块已有语言标签、渐进增强复制和屏幕阅读器状态反馈；正文 H2/H3 已有无脚本原生 permalink，但完整打印版式尚未定义，当前只保证 permalink 标记不进入纸面；
 - 自定义域名、公开邮箱、统计和评论尚未选择，但不阻塞生产上线。
 
 ## 平台历史

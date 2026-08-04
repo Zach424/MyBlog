@@ -46,6 +46,8 @@
 0039-studio-media-collision-preflight.md
 0040-studio-media-session-ledger.md
 0041-studio-media-latest-selection.md
+0042-accessible-code-copy.md
+0043-markdown-heading-permalinks.md
 ```
 
 ## 必填结构
