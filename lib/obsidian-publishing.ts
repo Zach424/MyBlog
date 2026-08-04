@@ -2,6 +2,9 @@ import { createHash } from "node:crypto";
 
 import { parsePostFile, parseProjectFile } from "./content/contract.ts";
 import {
+  decodeMarkdownHeadingFragment,
+  extractInternalContentReferences,
+  extractMarkdownHeadingAnchors,
   markdownHeadingAnchor,
   transformMarkdownProse,
 } from "./content/markdown.ts";
@@ -19,6 +22,7 @@ export interface PreparedAttachment {
 }
 
 export interface ObsidianLinkTarget {
+  body?: string;
   kind: ObsidianContentKind;
   slug: string;
 }
@@ -304,6 +308,48 @@ function normalizeObsidianContentLinks(
   });
 }
 
+function validatePreparedContentLinks(
+  markdown: string,
+  kind: ObsidianContentKind,
+  slug: string,
+  targets: ObsidianLinkTarget[],
+) {
+  const ownUrl = `/${kind === "post" ? "posts" : "projects"}/${slug}`;
+  const targetsByUrl = new Map(
+    targets.map((target) => [
+      `/${target.kind === "post" ? "posts" : "projects"}/${target.slug}`,
+      target,
+    ]),
+  );
+  const ownHeadingIds = new Set(
+    extractMarkdownHeadingAnchors(markdown).map((heading) => heading.id),
+  );
+
+  for (const reference of extractInternalContentReferences(markdown)) {
+    const targetUrl = reference.kind === "self" ? ownUrl : reference.url;
+    const target = reference.kind === "self" ? undefined : targetsByUrl.get(targetUrl);
+    if (reference.kind !== "self" && !target) {
+      throw new Error(`找不到站内内容链接目标：${targetUrl}`);
+    }
+    if (!reference.fragment) continue;
+
+    let fragment: string;
+    try {
+      fragment = decodeMarkdownHeadingFragment(reference.fragment);
+    } catch {
+      throw new Error(`站内链接标题锚点包含无效 URL 编码：${targetUrl}#${reference.fragment}`);
+    }
+    const headingIds = reference.kind === "self"
+      ? ownHeadingIds
+      : target?.body === undefined
+        ? undefined
+        : new Set(extractMarkdownHeadingAnchors(target.body).map((heading) => heading.id));
+    if (headingIds && !headingIds.has(fragment)) {
+      throw new Error(`站内链接标题锚点不存在：${targetUrl}#${reference.fragment}`);
+    }
+  }
+}
+
 export function prepareObsidianNote(
   sourcePath: string,
   raw: string,
@@ -336,6 +382,7 @@ export function prepareObsidianNote(
     throw new Error("无法关闭草稿状态，请检查 frontmatter 中的 draft 字段");
   }
 
+  validatePreparedContentLinks(prepared, kind, slug, linkTargets);
   if (kind === "post") parsePostFile(targetPath, prepared);
   else parseProjectFile(targetPath, prepared);
 

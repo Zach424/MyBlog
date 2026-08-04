@@ -55,8 +55,12 @@ featured: false
 项目正文。`;
 
 const linkTargets = [
-  { kind: "post", slug: "building-a-maintainable-blog" },
-  { kind: "project", slug: "myblog" },
+  {
+    body: "## 设计也要表达真实结构",
+    kind: "post",
+    slug: "building-a-maintainable-blog",
+  },
+  { body: "# MyBlog", kind: "project", slug: "myblog" },
 ];
 
 const publisherScriptPath = fileURLToPath(
@@ -333,6 +337,24 @@ test("rejects missing, ambiguous, and block-level Obsidian links", () => {
       linkTargets,
     ),
     /暂不支持 Obsidian 块引用/,
+  );
+  assert.throws(
+    () => prepareObsidianNote(
+      "content/inbox/obsidian-publishing.md",
+      withLink("[[building-a-maintainable-blog#不存在的标题]]"),
+      undefined,
+      linkTargets,
+    ),
+    /站内链接标题锚点不存在/,
+  );
+  assert.throws(
+    () => prepareObsidianNote(
+      "content/inbox/obsidian-publishing.md",
+      withLink("[[#不存在的标题]]"),
+      undefined,
+      linkTargets,
+    ),
+    /站内链接标题锚点不存在/,
   );
 });
 

@@ -1,4 +1,7 @@
 import GithubSlugger from "github-slugger";
+import { gfmFromMarkdown } from "mdast-util-gfm";
+import { fromMarkdown } from "mdast-util-from-markdown";
+import { gfm } from "micromark-extension-gfm";
 
 export interface TableOfContentsItem {
   depth: 2 | 3;
@@ -6,20 +9,92 @@ export interface TableOfContentsItem {
   text: string;
 }
 
-export interface InternalContentReference {
-  kind: "post" | "project";
-  slug: string;
-  url: `/posts/${string}` | `/projects/${string}`;
-  fragment?: string;
+export interface MarkdownHeadingAnchor {
+  depth: 1 | 2 | 3 | 4 | 5 | 6;
+  id: string;
+  line?: number;
+  text: string;
 }
 
-function plainHeadingText(markdown: string) {
-  return markdown
-    .replace(/!\[([^\]]*)\]\([^)]*\)/g, "$1")
-    .replace(/\[([^\]]+)\]\([^)]*\)/g, "$1")
-    .replace(/[`*_~]/g, "")
-    .replace(/\\([\\`*{}\[\]()#+.!_-])/g, "$1")
-    .trim();
+export type InternalContentReference =
+  | {
+      bodyLine?: number;
+      fragment?: string;
+      kind: "post" | "project";
+      slug: string;
+      url: `/posts/${string}` | `/projects/${string}`;
+    }
+  | {
+      bodyLine?: number;
+      fragment: string;
+      kind: "self";
+    };
+
+type MarkdownNode = {
+  children?: MarkdownNode[];
+  depth?: number;
+  identifier?: string;
+  position?: {
+    start?: {
+      line?: number;
+    };
+  };
+  type: string;
+  url?: string;
+  value?: string;
+};
+
+function parseMarkdown(markdown: string) {
+  return fromMarkdown(markdown, {
+    extensions: [gfm()],
+    mdastExtensions: [gfmFromMarkdown()],
+  }) as MarkdownNode;
+}
+
+function walkMarkdown(node: MarkdownNode, visit: (node: MarkdownNode) => void) {
+  visit(node);
+  for (const child of node.children ?? []) walkMarkdown(child, visit);
+}
+
+function renderedHeadingText(node: MarkdownNode): string {
+  if (node.type === "text" || node.type === "inlineCode") return node.value ?? "";
+  if (
+    node.type === "break" ||
+    node.type === "html" ||
+    node.type === "image" ||
+    node.type === "imageReference"
+  ) {
+    return "";
+  }
+  return (node.children ?? []).map(renderedHeadingText).join("");
+}
+
+function internalReferenceFromUrl(
+  value: string,
+  bodyLine?: number,
+): InternalContentReference | undefined {
+  const self = /^#([^#\s]+)$/u.exec(value);
+  if (self) {
+    return {
+      ...(bodyLine ? { bodyLine } : {}),
+      fragment: self[1],
+      kind: "self",
+    };
+  }
+
+  const target = /^\/(posts|projects)\/([^/#?\s]+)(?:#([^#\s]+))?$/u.exec(value);
+  if (!target) return undefined;
+  const kind = target[1] === "posts" ? "post" : "project";
+  const url = `/${target[1]}/${target[2]}` as
+    | `/posts/${string}`
+    | `/projects/${string}`;
+  return {
+    ...(bodyLine ? { bodyLine } : {}),
+    ...(target[3] ? { fragment: target[3] } : {}),
+    kind,
+    slug: target[2],
+    url,
+  };
 }
 
 function transformOutsideInlineCode(
@@ -89,66 +164,61 @@ export function transformMarkdownProse(
 }
 
 export function markdownHeadingAnchor(value: string) {
-  return new GithubSlugger().slug(plainHeadingText(value));
+  return extractMarkdownHeadingAnchors(`# ${value.replace(/\r?\n/gu, " ")}`)[0]?.id ?? "";
 }
 
 export function extractInternalContentReferences(markdown: string) {
-  const references = new Map<string, InternalContentReference>();
-
-  transformMarkdownProse(markdown, (segment) => {
-    for (const match of segment.matchAll(
-      /(?<!!)\[[^\]]+\]\((\/(posts|projects)\/([^/#)\s]+))(?:#([^\s)]+))?\)/gu,
-    )) {
-      const kind = match[2] === "posts" ? "post" : "project";
-      const url = match[1] as `/posts/${string}` | `/projects/${string}`;
-      if (!references.has(url)) {
-        references.set(url, {
-          kind,
-          slug: match[3],
-          url,
-          ...(match[4] ? { fragment: match[4] } : {}),
-        });
-      }
+  const tree = parseMarkdown(markdown);
+  const definitions = new Map<string, string>();
+  walkMarkdown(tree, (node) => {
+    if (node.type === "definition" && node.identifier && node.url) {
+      definitions.set(node.identifier, node.url);
     }
-    return segment;
   });
 
+  const references = new Map<string, InternalContentReference>();
+  walkMarkdown(tree, (node) => {
+    const value = node.type === "link"
+      ? node.url
+      : node.type === "linkReference" && node.identifier
+        ? definitions.get(node.identifier)
+        : undefined;
+    if (!value) return;
+    const reference = internalReferenceFromUrl(value, node.position?.start?.line);
+    if (!reference) return;
+    const key = reference.kind === "self"
+      ? `self#${reference.fragment}`
+      : `${reference.url}#${reference.fragment ?? ""}`;
+    if (!references.has(key)) references.set(key, reference);
+  });
   return [...references.values()];
 }
 
-export function extractTableOfContents(markdown: string) {
+export function extractMarkdownHeadingAnchors(markdown: string) {
   const slugger = new GithubSlugger();
-  const items: TableOfContentsItem[] = [];
-  let fencedCode = false;
-  let fenceMarker = "";
-
-  for (const line of markdown.split(/\r?\n/)) {
-    const fence = /^\s*(```+|~~~+)/.exec(line);
-    if (fence) {
-      if (!fencedCode) {
-        fencedCode = true;
-        fenceMarker = fence[1][0];
-      } else if (fence[1][0] === fenceMarker) {
-        fencedCode = false;
-        fenceMarker = "";
-      }
-      continue;
-    }
-
-    if (fencedCode) continue;
-
-    const heading = /^(#{2,3})\s+(.+?)\s*#*\s*$/.exec(line);
-    if (!heading) continue;
-
-    const text = plainHeadingText(heading[2]);
-    if (!text) continue;
-
-    items.push({
-      depth: heading[1].length as 2 | 3,
+  const anchors: MarkdownHeadingAnchor[] = [];
+  walkMarkdown(parseMarkdown(markdown), (node) => {
+    if (node.type !== "heading" || !node.depth || node.depth < 1 || node.depth > 6) return;
+    const text = renderedHeadingText(node);
+    anchors.push({
+      depth: node.depth as MarkdownHeadingAnchor["depth"],
       id: slugger.slug(text),
+      ...(node.position?.start?.line ? { line: node.position.start.line } : {}),
       text,
     });
-  }
+  });
+  return anchors;
+}
 
-  return items;
+export function decodeMarkdownHeadingFragment(fragment: string) {
+  return decodeURIComponent(fragment);
+}
+
+export function extractTableOfContents(markdown: string) {
+  return extractMarkdownHeadingAnchors(markdown)
+    .filter(
+      (heading): heading is MarkdownHeadingAnchor & { depth: 2 | 3 } =>
+        (heading.depth === 2 || heading.depth === 3) && Boolean(heading.text),
+    )
+    .map(({ depth, id, text }) => ({ depth, id, text }));
 }

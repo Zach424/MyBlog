@@ -105,7 +105,11 @@ async function contentLinkTargets(projectRoot: string): Promise<ObsidianLinkTarg
     });
     for (const entry of entries) {
       if (entry.isFile() && entry.name.endsWith(".md")) {
-        targets.push({ kind, slug: entry.name.slice(0, -3) });
+        targets.push({
+          body: await readFile(join(projectRoot, "content", directory, entry.name), "utf8"),
+          kind,
+          slug: entry.name.slice(0, -3),
+        });
       }
     }
   }

@@ -52,7 +52,11 @@ function contentLinkTargets() {
   ].flatMap(([kind, directory]) =>
     readdirSync(resolve(process.cwd(), directory), { withFileTypes: true })
       .filter((entry) => entry.isFile() && entry.name.endsWith(".md"))
-      .map((entry) => ({ kind, slug: entry.name.slice(0, -3) })),
+      .map((entry) => ({
+        body: readFileSync(resolve(process.cwd(), directory, entry.name), "utf8"),
+        kind,
+        slug: entry.name.slice(0, -3),
+      })),
   );
 }
 
