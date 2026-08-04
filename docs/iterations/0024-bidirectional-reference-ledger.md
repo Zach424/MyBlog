@@ -72,7 +72,10 @@ CSS 把外层标题、方向说明和记录行分开。桌面每个方向使用 
 - 浏览器 320px 复核：可布局宽度 305px，两个方向均折为单列 `272.667px`，横向溢出为 0；方向、标题、摘要和内容行可读；
 - 浏览器控制台 error/warning：0；临时 3000 端口生产服务器已停止，临时视口已恢复；
 - 最终 `npm run release:check`：维护报告健康、46/46 单元测试、TypeScript、33/33 构建页面、15/15 生产 HTTP/质量测试、production-only audit 0；
-- `git diff --check`：通过；线上 Quality Gate、Vercel deployment 与稳定域名冒烟将在推送后写入本档案。
+- `git diff --check`：通过；
+- 实现与初始归档提交 `c3f3e51354938f7d5cf258a94997cf9cac2fbb6b` 已推送 `main`；GitHub Quality Gate `30895600719`（Run 27）为 completed/success；
+- Vercel Production `dpl_Hq7Gg6yqZZ2bfTkvN4dFo2AKdTvD` 为 Ready，不可变 URL 是 `https://blog-jn3dykeg6-czq1.vercel.app`；完整日志明确克隆 `c3f3e51`，编译、TypeScript、33/33 页面生成与 Deployment completed 全部成功；
+- 自动生产冒烟 `30895637164`（Run 21）为 completed/success；独立稳定域名冒烟再次返回 `23 routes, OAuth 302`；网络命令只在当前进程使用本机代理，未写入永久配置。
 
 ## 8. 经验与教训
 
