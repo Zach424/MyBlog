@@ -1,14 +1,18 @@
 import assert from "node:assert/strict";
+import { createHash } from "node:crypto";
+import { readFile } from "node:fs/promises";
 import test from "node:test";
 import sharp from "sharp";
 import {
   STUDIO_IMAGE_ACCEPT,
   STUDIO_MEDIA_BUDGET,
   STUDIO_SUPPORTED_IMAGE_EXTENSIONS,
+  createStudioMediaConflictChecker,
   createStudioMediaPreflightHandler,
   formatStudioMediaInspection,
   inspectStudioMediaFile,
   installStudioMediaPreflight,
+  normalizeStudioMediaTargetFileName,
 } from "../studio/media-preflight.mjs";
 import {
   MEDIA_BUDGET,
@@ -63,8 +67,128 @@ test("recognizes and decodes every supported still image format", async () => {
     assert.equal(inspection.width, 320, name);
     assert.equal(inspection.height, 180, name);
     assert.equal(inspection.pages, 1, name);
+    assert.equal(
+      inspection.sha256,
+      createHash("sha256").update(bytes).digest("hex"),
+      name,
+    );
     assert.match(formatStudioMediaInspection(inspection), /320×180 px/u, name);
   }
+});
+
+test("normalizes filenames with the pinned Decap ASCII path contract", async () => {
+  assert.equal(
+    normalizeStudioMediaTargetFileName("Café Final.PNG"),
+    "cafe-final.png",
+  );
+  assert.equal(
+    normalizeStudioMediaTargetFileName("Evidence__Rail.WEBP"),
+    "evidence__rail.webp",
+  );
+  assert.throws(
+    () => normalizeStudioMediaTargetFileName("证据.png"),
+    /无法稳定转换的非 ASCII 字符/u,
+  );
+  assert.throws(
+    () => normalizeStudioMediaTargetFileName("CON.png"),
+    /无法生成安全的 Git 附件路径/u,
+  );
+
+  const runtimeMap = JSON.parse(await readFile(
+    new URL("../node_modules/decap-cms/dist/decap-cms.js.map", import.meta.url),
+    "utf8",
+  ));
+  const sourceContent = (suffix) => {
+    const index = runtimeMap.sources.findIndex((source) => source.endsWith(suffix));
+    assert.notEqual(index, -1, `runtime source map missing ${suffix}`);
+    return runtimeMap.sourcesContent[index];
+  };
+  assert.match(
+    sourceContent("/actions/mediaLibrary.js"),
+    /const fileName = sanitizeSlug\(file\.name\.toLowerCase\(\), state\.config\.slug\);[\s\S]*?selectMediaFilePath\(state\.config, collection, entry, fileName, field\)/u,
+  );
+  assert.match(
+    sourceContent("/lib/urlHelper.js"),
+    /stripDiacritics \? \[diacritics\.remove\][\s\S]*?sanitizeFilename[\s\S]*?normalizedSlug/u,
+  );
+});
+
+test("classifies entry media as new, identical, or explicit replacement", async () => {
+  const sameDigest = "a".repeat(64);
+  const manifest = {
+    entries: [{
+      bytes: 7,
+      path: "public/uploads/stable-entry/cover.webp",
+      sha256: sameDigest,
+    }],
+    root: "public/uploads",
+    version: 1,
+  };
+  let fetches = 0;
+  const confirmations = [];
+  const checker = createStudioMediaConflictChecker({
+    confirmReplace(message) {
+      confirmations.push(message);
+      return true;
+    },
+    documentRef: {
+      querySelectorAll: () => [{ value: "stable-entry" }],
+    },
+    fetchImpl: async () => {
+      fetches += 1;
+      return { json: async () => manifest, ok: true, status: 200 };
+    },
+  });
+
+  assert.deepEqual(
+    await checker({ bytes: 3, fileName: "diagram.png", sha256: "b".repeat(64) }),
+    { state: "new", targetPath: "public/uploads/stable-entry/diagram.png" },
+  );
+  assert.equal(
+    (await checker({ bytes: 7, fileName: "Cover.WEBP", sha256: sameDigest })).state,
+    "same",
+  );
+  const replacement = await checker({
+    bytes: 9,
+    fileName: "cover.webp",
+    sha256: "c".repeat(64),
+  });
+  assert.equal(replacement.state, "replace-confirmed");
+  assert.match(confirmations[0], /public\/uploads\/stable-entry\/cover\.webp/u);
+  assert.match(confirmations[0], /继续会替换公开地址下的原图/u);
+  assert.equal(fetches, 1, "one preflight session should reuse one immutable manifest snapshot");
+
+  const declined = createStudioMediaConflictChecker({
+    confirmReplace: () => false,
+    documentRef: { querySelectorAll: () => [{ value: "stable-entry" }] },
+    fetchImpl: async () => ({ json: async () => manifest, ok: true, status: 200 }),
+  });
+  await assert.rejects(
+    declined({ bytes: 9, fileName: "cover.webp", sha256: "d".repeat(64) }),
+    /已取消替换 public\/uploads\/stable-entry\/cover\.webp/u,
+  );
+});
+
+test("fails closed when an entry target or published manifest cannot be trusted", async () => {
+  const inspection = { bytes: 4, fileName: "cover.webp", sha256: "a".repeat(64) };
+  const noSlug = createStudioMediaConflictChecker({
+    documentRef: { querySelectorAll: () => [{ value: "" }] },
+  });
+  await assert.rejects(noSlug(inspection), /请先填写稳定 slug/u);
+
+  const failedManifest = createStudioMediaConflictChecker({
+    documentRef: { querySelectorAll: () => [{ value: "entry" }] },
+    fetchImpl: async () => ({ ok: false, status: 503 }),
+  });
+  await assert.rejects(failedManifest(inspection), /HTTP 503/u);
+
+  let fetched = false;
+  const globalLibrary = createStudioMediaConflictChecker({
+    documentRef: { querySelectorAll: () => [] },
+    fetchImpl: async () => { fetched = true; },
+  });
+  assert.deepEqual(await globalLibrary(inspection), { state: "unscoped" });
+  assert.equal(fetched, false);
 });
 
 test("rejects unsupported, spoofed, corrupt, oversized, and over-dimension images", async () => {
@@ -186,7 +310,16 @@ test("blocks the original change event and replays only approved files", async (
   };
   let prevented = 0;
   let stopped = 0;
+  let conflictCalls = 0;
   handler = createStudioMediaPreflightHandler({
+    checkConflict: async (inspection) => {
+      conflictCalls += 1;
+      assert.equal(inspection.fileName, "evidence.webp");
+      return {
+        state: "same",
+        targetPath: "public/uploads/stable-entry/evidence.webp",
+      };
+    },
     inspect: async () => {
       inspectCalls += 1;
       return {
@@ -211,8 +344,11 @@ test("blocks the original change event and replays only approved files", async (
   assert.equal(prevented, 1);
   assert.equal(stopped, 1);
   assert.equal(inspectCalls, 1);
+  assert.equal(conflictCalls, 1);
   assert.equal(input.accept, STUDIO_IMAGE_ACCEPT);
   assert.deepEqual(reports.map((report) => report.state), ["checking", "success"]);
+  assert.equal(reports[1].title, "图片与已发布文件相同");
+  assert.match(reports[1].detail, /public\/uploads\/stable-entry\/evidence\.webp/u);
 
   let rejectedDispatches = 0;
   const rejectedReports = [];

@@ -60,6 +60,7 @@ test("keeps CMS tags and required content fields aligned with the contract", () 
     const cover = collection.fields.find((field) => field.name === "cover");
     assert.equal(cover.media_library.config.max_file_size, MEDIA_BUDGET.maxBytes);
     assert.equal(cover.choose_url, false);
+    assert.match(cover.hint, /同名同内容可复用.*同名不同内容必须明确确认替换/u);
     const coverAlt = collection.fields.find((field) => field.name === "coverAlt");
     assert.match(coverAlt.hint, /设置封面时必填/);
     const slug = collection.fields.find((field) => field.name === "slug");
@@ -67,7 +68,7 @@ test("keeps CMS tags and required content fields aligned with the contract", () 
     assert.match(slug.hint, /先填写.*再上传/);
     assert.match(slug.hint, /首次保存后控件会锁定/);
     const body = collection.fields.find((field) => field.name === "body");
-    assert.match(body.hint, /同一条目.*不同文件名/);
+    assert.match(body.hint, /新增、同内容复用和同名替换.*必须确认/u);
   }
 });
 

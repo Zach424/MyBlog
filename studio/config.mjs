@@ -68,7 +68,7 @@ const sharedFields = [
   tagsField,
   { label: "草稿", name: "draft", widget: "boolean", default: true, hint: "草稿不会进入公开页面、搜索、RSS 或 Sitemap。" },
   { label: "首页精选", name: "featured", widget: "boolean", default: false, hint: "草稿不能设为精选。" },
-  { label: "封面", name: "cover", widget: "image", required: false, choose_url: false, hint: "先填写稳定 slug 再上传；图片会归档到当前条目的附件目录，并用于详情页和分享卡。", media_library: { config: { max_file_size: MEDIA_MAX_FILE_SIZE } } },
+  { label: "封面", name: "cover", widget: "image", required: false, choose_url: false, hint: "先填写稳定 slug 再上传；系统会核对附件目标，同名同内容可复用，同名不同内容必须明确确认替换。", media_library: { config: { max_file_size: MEDIA_MAX_FILE_SIZE } } },
   { label: "封面替代文本", name: "coverAlt", widget: "string", required: false, hint: "设置封面时必填；简洁描述图片传达的信息，不要重复文章标题。" },
 ];
 
@@ -143,7 +143,7 @@ export function createStudioConfig(origin) {
             ],
           },
           { label: "转载 Canonical URL", name: "canonical", widget: "string", required: false, pattern: ["^https://", "必须是完整 HTTPS URL"] },
-          { label: "正文", name: "body", widget: "markdown", modes: ["raw", "rich_text"], required: true, hint: "先填写稳定 slug 再插图；同一条目内使用不同文件名，避免替换已有附件。" },
+          { label: "正文", name: "body", widget: "markdown", modes: ["raw", "rich_text"], required: true, hint: "先填写稳定 slug 再插图；系统会识别新增、同内容复用和同名替换，替换公开图片前必须确认。" },
         ],
       },
       {
@@ -169,7 +169,7 @@ export function createStudioConfig(origin) {
           ...sharedFields.slice(7),
           { label: "源码地址", name: "repository", widget: "string", required: false, pattern: ["^https://", "必须是完整 HTTPS URL"] },
           { label: "演示地址", name: "demo", widget: "string", required: false, pattern: ["^https://", "必须是完整 HTTPS URL"] },
-          { label: "正文", name: "body", widget: "markdown", modes: ["raw", "rich_text"], required: true, hint: "先填写稳定 slug 再插图；同一条目内使用不同文件名，避免替换已有附件。" },
+          { label: "正文", name: "body", widget: "markdown", modes: ["raw", "rich_text"], required: true, hint: "先填写稳定 slug 再插图；系统会识别新增、同内容复用和同名替换，替换公开图片前必须确认。" },
         ],
       },
     ],

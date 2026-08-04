@@ -119,11 +119,12 @@ test("applies the production security and cache baseline", async () => {
   );
 });
 
-test("serves Studio through explicit Next.js routes instead of public assets", async () => {
+test("serves Studio and its media inventory through explicit Next.js routes", async () => {
   await assert.rejects(access(new URL("../public/studio", import.meta.url)));
-  const [studio, config, preflight, stableSlugWidget, preview, runtime, unknown] = await Promise.all([
+  const [studio, config, manifest, preflight, stableSlugWidget, preview, runtime, unknown] = await Promise.all([
     request("/studio"),
     request("/studio/config.mjs"),
+    request("/studio/media-manifest.json"),
     request("/studio/media-preflight.mjs"),
     request("/studio/stable-slug-widget.mjs"),
     request("/studio/preview.css"),
@@ -133,7 +134,26 @@ test("serves Studio through explicit Next.js routes instead of public assets", a
   assert.equal(studio.status, 200);
   assert.match(await studio.text(), /Publishing studio \/ Git-backed/);
   assert.match(await config.text(), /repo: "Zach424\/MyBlog"/);
+  assert.equal(manifest.status, 200);
+  assert.match(manifest.headers.get("content-type") ?? "", /^application\/json/u);
+  assert.equal(manifest.headers.get("cache-control"), "no-store");
+  assert.equal(manifest.headers.get("x-robots-tag"), "noindex, nofollow");
+  const mediaInventory = await manifest.json();
+  assert.equal(mediaInventory.version, 1);
+  assert.equal(mediaInventory.root, "public/uploads");
+  assert.deepEqual(
+    mediaInventory.entries.map((entry) => entry.path),
+    [
+      "public/uploads/building-a-maintainable-blog/content-delivery-pipeline.webp",
+      "public/uploads/myblog/cover.webp",
+    ],
+  );
+  for (const entry of mediaInventory.entries) {
+    assert.match(entry.sha256, /^[a-f0-9]{64}$/u);
+    assert.ok(entry.bytes > 0);
+  }
   assert.match(await preflight.text(), /inspectStudioMediaFile/);
+  assert.match(await request("/studio/media-preflight.mjs").then((response) => response.text()), /media-manifest\.json/u);
   assert.equal(preflight.headers.get("cache-control"), "no-store");
   assert.match(await stableSlugWidget.text(), /registerStableSlugWidget/);
   assert.equal(stableSlugWidget.headers.get("cache-control"), "no-store");

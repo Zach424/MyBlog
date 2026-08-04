@@ -200,6 +200,16 @@ async function decodeImageInBrowser(file) {
   }
 }
 
+async function digestBytesInBrowser(bytes) {
+  if (!globalThis.crypto?.subtle) {
+    throw new Error("当前浏览器不支持 SHA-256 媒体指纹");
+  }
+  const digest = await globalThis.crypto.subtle.digest("SHA-256", bytes);
+  return [...new Uint8Array(digest)]
+    .map((value) => value.toString(16).padStart(2, "0"))
+    .join("");
+}
+
 function assertInspectionWithinBudget(inspection) {
   const { bytes, fileName, height, pages, width } = inspection;
   if (bytes > STUDIO_MEDIA_BUDGET.maxBytes) {
@@ -231,7 +241,10 @@ function assertInspectionWithinBudget(inspection) {
 
 export async function inspectStudioMediaFile(
   file,
-  { decodeImage = decodeImageInBrowser } = {},
+  {
+    decodeImage = decodeImageInBrowser,
+    digestBytes = digestBytesInBrowser,
+  } = {},
 ) {
   const fileName = file?.name || "未命名文件";
   const extension = extensionOf(fileName);
@@ -285,10 +298,128 @@ export async function inspectStudioMediaFile(
     format: encoded.format,
     height,
     pages: encoded.pages,
+    sha256: await digestBytes(bytes),
     width,
   };
   assertInspectionWithinBudget(inspection);
   return inspection;
+}
+
+export function normalizeStudioMediaTargetFileName(fileName) {
+  const withoutAccents = fileName
+    .toLowerCase()
+    .normalize("NFKD")
+    .replace(/\p{Mark}/gu, "");
+  if ([...withoutAccents].some((character) => character.codePointAt(0) > 0x7f)) {
+    throw fileError(fileName, "文件名包含无法稳定转换的非 ASCII 字符；请改用英文、数字、连字符或下划线");
+  }
+
+  const normalized = [...withoutAccents]
+    .map((character) => /[\w.~\-]/u.test(character) ? character : "-")
+    .join("")
+    .replace(/-+/gu, "-")
+    .replace(/^-|-$/gu, "");
+  if (
+    !normalized ||
+    /^(?:con|prn|aux|nul|com\d|lpt\d)(?:\.|$)/iu.test(normalized) ||
+    normalized === "." ||
+    normalized === ".."
+  ) {
+    throw fileError(fileName, "文件名无法生成安全的 Git 附件路径；请重命名后再选择");
+  }
+  return normalized;
+}
+
+function readStudioEntrySlug(documentRef) {
+  const controls = [...(documentRef?.querySelectorAll?.("input[data-stable-slug-state]") ?? [])];
+  if (controls.length === 0) return undefined;
+  if (controls.length !== 1) {
+    throw new Error("[studio-media] 无法唯一识别当前条目的稳定 slug");
+  }
+  const slug = String(controls[0].value ?? "").trim();
+  if (!slug) throw new Error("[studio-media] 请先填写稳定 slug，再选择图片");
+  if (!/^[a-z0-9]+(?:-[a-z0-9]+)*$/u.test(slug)) {
+    throw new Error(`[studio-media] 稳定 slug ${slug} 格式无效`);
+  }
+  return slug;
+}
+
+function parseStudioMediaManifest(value) {
+  if (
+    !value ||
+    value.version !== 1 ||
+    value.root !== "public/uploads" ||
+    !Array.isArray(value.entries)
+  ) {
+    throw new Error("[studio-media] 已发布媒体清单格式无效");
+  }
+  const manifest = new Map();
+  for (const entry of value.entries) {
+    if (
+      !entry ||
+      typeof entry.path !== "string" ||
+      !/^public\/uploads\/(?!.*(?:^|\/)\.\.(?:\/|$))[^\\]+$/u.test(entry.path) ||
+      !Number.isSafeInteger(entry.bytes) ||
+      entry.bytes < 1 ||
+      typeof entry.sha256 !== "string" ||
+      !/^[a-f0-9]{64}$/u.test(entry.sha256) ||
+      manifest.has(entry.path)
+    ) {
+      throw new Error("[studio-media] 已发布媒体清单条目无效");
+    }
+    manifest.set(entry.path, entry);
+  }
+  return manifest;
+}
+
+export function createStudioMediaConflictChecker({
+  confirmReplace = globalThis.confirm,
+  documentRef = globalThis.document,
+  fetchImpl = globalThis.fetch,
+} = {}) {
+  let manifestPromise;
+  const getManifest = () => {
+    if (!manifestPromise) {
+      manifestPromise = (async () => {
+        if (typeof fetchImpl !== "function") {
+          throw new Error("[studio-media] 当前浏览器无法读取已发布媒体清单");
+        }
+        const response = await fetchImpl("/studio/media-manifest.json", {
+          cache: "no-store",
+          credentials: "same-origin",
+          headers: { accept: "application/json" },
+        });
+        if (!response?.ok) {
+          throw new Error(`[studio-media] 已发布媒体清单请求失败（HTTP ${response?.status ?? "unknown"}）`);
+        }
+        return parseStudioMediaManifest(await response.json());
+      })();
+    }
+    return manifestPromise;
+  };
+
+  return async function checkStudioMediaConflict(inspection) {
+    const slug = readStudioEntrySlug(documentRef);
+    if (!slug) return { state: "unscoped" };
+    const fileName = normalizeStudioMediaTargetFileName(inspection.fileName);
+    const targetPath = `public/uploads/${slug}/${fileName}`;
+    const existing = (await getManifest()).get(targetPath);
+    if (!existing) return { state: "new", targetPath };
+    if (existing.bytes === inspection.bytes && existing.sha256 === inspection.sha256) {
+      return { existing, state: "same", targetPath };
+    }
+
+    const confirmed = await confirmReplace?.([
+      `附件 ${targetPath} 已经存在，而且内容不同。`,
+      `已发布：${formatMegabytes(existing.bytes)} · ${existing.sha256.slice(0, 12)}`,
+      `新文件：${formatMegabytes(inspection.bytes)} · ${inspection.sha256.slice(0, 12)}`,
+      "继续会替换公开地址下的原图。确认替换吗？",
+    ].join("\n"));
+    if (!confirmed) {
+      throw fileError(inspection.fileName, `已取消替换 ${targetPath}`);
+    }
+    return { existing, state: "replace-confirmed", targetPath };
+  };
 }
 
 export function formatStudioMediaInspection(inspection) {
@@ -306,6 +437,7 @@ function isStudioImageInput(target) {
 }
 
 export function createStudioMediaPreflightHandler({
+  checkConflict = async () => ({ state: "unscoped" }),
   EventConstructor = globalThis.Event,
   inspect = inspectStudioMediaFile,
   report = () => {},
@@ -329,13 +461,23 @@ export function createStudioMediaPreflightHandler({
 
     try {
       const inspection = await inspect(file);
+      const conflict = await checkConflict(inspection);
       const optimizationNote = ["jpeg", "png"].includes(inspection.format)
         ? "Studio 会保留原格式；需要自动转 WebP 时请使用 Obsidian 发布器。"
         : "文件会按当前格式进入 Git 草稿。";
+      const conflictNote = conflict.targetPath
+        ? `目标 ${conflict.targetPath}。`
+        : "当前是全局媒体库，未绑定条目附件目录。";
+      const title = {
+        new: "新增图片预检通过",
+        "replace-confirmed": "已确认替换现有图片",
+        same: "图片与已发布文件相同",
+        unscoped: "图片预检通过",
+      }[conflict.state] ?? "图片预检通过";
       report({
-        detail: `${formatStudioMediaInspection(inspection)}。${optimizationNote}`,
+        detail: `${formatStudioMediaInspection(inspection)}。${conflictNote}${optimizationNote}`,
         state: "success",
-        title: "图片预检通过",
+        title,
       });
       approvedFiles.add(file);
       input.dispatchEvent(new EventConstructor("change", { bubbles: true }));
@@ -360,7 +502,7 @@ function createStatusReporter(documentRef) {
       status.id = "studio-media-preflight";
       status.setAttribute("aria-atomic", "true");
       status.innerHTML = [
-        '<p data-preflight-label>Media preflight / local only</p>',
+        '<p data-preflight-label>Media preflight / published inventory</p>',
         '<strong data-preflight-title></strong>',
         '<span data-preflight-detail></span>',
       ].join("");
@@ -384,7 +526,12 @@ export function installStudioMediaPreflight({
   }
 
   const report = createStatusReporter(documentRef);
-  const handleChange = createStudioMediaPreflightHandler({ report });
+  const checkConflict = createStudioMediaConflictChecker({
+    confirmReplace: windowRef.confirm?.bind(windowRef),
+    documentRef,
+    fetchImpl: windowRef.fetch?.bind(windowRef),
+  });
+  const handleChange = createStudioMediaPreflightHandler({ checkConflict, report });
   const handleClick = (event) => {
     if (isStudioImageInput(event.target)) event.target.accept = STUDIO_IMAGE_ACCEPT;
   };

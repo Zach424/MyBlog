@@ -105,8 +105,9 @@ export async function runProductionSmoke(originInput, { expectOAuth = false } = 
   invariant(studioPolicy.includes("https://api.github.com"), "Studio CSP 缺少 GitHub API");
   invariant(studioPolicy.includes("frame-ancestors 'none'"), "Studio CSP 未禁止嵌入");
 
-  const [studioConfig, studioPreflight, stableSlugWidget, studioPreview, studioRuntime, unknownStudioAsset] = await Promise.all([
+  const [studioConfig, studioManifest, studioPreflight, stableSlugWidget, studioPreview, studioRuntime, unknownStudioAsset] = await Promise.all([
     request(origin, "/studio/config.mjs", { accept: "text/javascript" }),
+    request(origin, "/studio/media-manifest.json", { accept: "application/json" }),
     request(origin, "/studio/media-preflight.mjs", { accept: "text/javascript" }),
     request(origin, "/studio/stable-slug-widget.mjs", { accept: "text/javascript" }),
     request(origin, "/studio/preview.css", { accept: "text/css" }),
@@ -121,10 +122,32 @@ export async function runProductionSmoke(originInput, { expectOAuth = false } = 
     studioConfig.response.headers.get("content-type")?.startsWith("text/javascript"),
     "Studio 配置模块类型不正确",
   );
+  let mediaInventory;
+  try {
+    mediaInventory = JSON.parse(studioManifest.body);
+  } catch {
+    throw new Error("Studio 媒体清单不是有效 JSON");
+  }
+  invariant(
+    studioManifest.response.status === 200 &&
+      studioManifest.response.headers.get("content-type")?.startsWith("application/json") &&
+      studioManifest.response.headers.get("cache-control") === "no-store" &&
+      mediaInventory.version === 1 &&
+      mediaInventory.root === "public/uploads" &&
+      Array.isArray(mediaInventory.entries) &&
+      mediaInventory.entries.length >= 2 &&
+      mediaInventory.entries.every((entry) =>
+        typeof entry.path === "string" &&
+        Number.isSafeInteger(entry.bytes) &&
+        /^[a-f0-9]{64}$/u.test(entry.sha256)
+      ),
+    "Studio 媒体清单不可用",
+  );
   invariant(
     studioPreflight.response.status === 200 &&
       studioPreflight.body.includes("inspectStudioMediaFile") &&
-      studioPreflight.body.includes("createImageBitmap"),
+      studioPreflight.body.includes("createImageBitmap") &&
+      studioPreflight.body.includes("media-manifest.json"),
     "Studio 媒体预检模块不可用",
   );
   invariant(
@@ -149,7 +172,7 @@ export async function runProductionSmoke(originInput, { expectOAuth = false } = 
     studioPreview.response.headers.get("content-type")?.startsWith("text/css"),
     "Studio 预览样式类型不正确",
   );
-  for (const asset of [studioConfig, studioPreflight, stableSlugWidget, studioPreview]) {
+  for (const asset of [studioConfig, studioManifest, studioPreflight, stableSlugWidget, studioPreview]) {
     invariant(asset.response.headers.get("cache-control") === "no-store", "Studio 子资源必须 no-store");
   }
   invariant(
