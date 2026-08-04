@@ -106,6 +106,8 @@ Studio 的全局 `media_folder`/`public_folder` 保留为根暂存与媒体库�
 
 同一个 conflict checker 还持有仅存于页面内存的 `approvedTargets` Map。生产清单是初始基线，成功重放过的目标成为会话优先基线；后续同路径同摘要返回 same-session，不同摘要返回 replace-session-confirmed 并再次要求证据型确认。检查函数只返回幂等 `commit()`，handler 在合成 change 事件成功返回后才调用；取消、格式/清单失败或重放异常均不写账本。卸载并重新安装预检或刷新页面会创建新 Map，不使用 localStorage、IndexedDB 或远端状态。
 
+media handler 另用 `WeakMap<input, generation>` 实现 latest-wins。每个真实 change 在任何 await 前同步递增代次，合成重放由 approved `File` 提前识别且不递增；`isCurrent()` 同时核对 token 和当前 `input.files[0]`。图片解码、manifest、确认等异步边界后，旧代次返回显式 stale 或静默结束。过期成功不能 report/dispatch/commit，过期失败不能清空最新 input 或覆盖 Evidence Rail；空文件 change 也会递增代次以使在途选择失效。底层解码/fetch 不伪装成已取消，只是失去产生副作用的权限。
+
 posts/projects 的顶层 slug 使用项目自有 `stable-slug` custom widget，专题内的普通 slug 仍使用内建 string。实际提供给浏览器的 Decap 3.14.1 bundle 把当前 Immutable `entry` 传给 control；其 reducer 用 `newRecord=true` 标记新建/复制，用 `false` 标记已加载的正式或 editorial workflow 条目。控件因此只在 `newRecord=false` 时使用原生 `readOnly`，保存值仍参与序列化且可复制；新建、复制和未保存本地备份保持可编辑。已有条目若字段值与 entry 顶层 slug/path 身份不一致，`isValid` 在保存前返回可执行错误。控件使用官方全局 `createClass`/`h` 注册，在 CMS init 前安装，并以 DOM data 属性提供无内容写入的浏览器可观测性；当前内部 `entry/newRecord` 传递由所发布 bundle 的 source map 回归测试锁定，升级 Decap 时必须重审。
 
 Obsidian 草稿中的 Wiki 图片嵌入、指向 `public/uploads` 的 Markdown 图片和 frontmatter `cover` 会在发布前转换。文件进入 `public/uploads/<内容 slug>/<稳定文件名>`，正文或 cover 改写为对应 `/uploads/...` URL；文件名不稳定时使用可读 ASCII 名加路径哈希消除冲突。静态 PNG/JPEG/WebP 的公开文件名统一使用 `.webp`，相同 stem 的多种源格式因而会在修改工作区前被拒绝为目标冲突；GIF 和 AVIF 保持扩展名。cover 与正文附件登记到同一映射，所以共享源不会重复移动，且都受同一 staging、安装与回滚事务保护。
@@ -154,6 +156,7 @@ Vercel GitHub Integration 负责每个分支的 Preview 和 `main` 的 Productio
 - Studio 本地图片进入 Decap 草稿前必须通过与公开媒体策略一致的真实格式、尺寸、体积和动图总像素预检；预检通过后必须透传原始 `File`，不能悄悄改变附件字节。
 - Studio 条目媒体必须由稳定 slug 与固定 Decap 文件名规则得到唯一目标；已发布清单不可用时失败关闭，同路径不同 SHA-256 必须明确确认后才能交给 Decap。
 - Studio 会话媒体账本只能在合成 change 成功重放后登记；未提交检查、取消确认和重放错误不能改变同路径摘要基线。
+- 同一 Studio file input 只有最新真实 change 可以报告最终状态、重放文件或提交账本；任何旧异步结果都不能清空或覆盖最新选择。
 - Markdown 图片 alt 不能为空；本地图使用共享固有尺寸与响应式候选，HTTPS 外图不能进入开放优化主机列表。
 - cover 必须是仓库内图片并同时声明 `coverAlt`；详情页尺寸只能来自已验证文件，文章/项目共享组件与社交元数据选择不能分叉。
 - `/studio` 与 OAuth 永远不缓存、不索引，并维持同源 state 验证；只有版本化 CMS 运行时可不可变缓存。
