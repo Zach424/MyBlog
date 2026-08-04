@@ -93,6 +93,7 @@ export function createSitemapXml(siteUrl: URL, input: SitemapInput) {
     { path: "/projects", lastModified: newestDate(input.projects), changeFrequency: "monthly", priority: 0.8 },
     { path: "/series", lastModified: newestDate(input.posts), changeFrequency: "monthly", priority: 0.7 },
     { path: "/tags", lastModified: siteDate, changeFrequency: "monthly", priority: 0.6 },
+    { path: "/knowledge", lastModified: siteDate, changeFrequency: "monthly", priority: 0.7 },
     { path: "/search", lastModified: siteDate, changeFrequency: "weekly", priority: 0.7 },
     { path: "/about", lastModified: siteDate, changeFrequency: "monthly", priority: 0.5 },
     ...input.posts.map((post) => ({

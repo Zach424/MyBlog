@@ -25,10 +25,11 @@ app/
   api/cms/{auth,callback}/route.ts  GitHub OAuth 同源端点
   studio/                           Studio HTML、配置、样式、媒体预检、slug 控件和版本化 CMS 运行时路由
   posts/ projects/ series/ tags/   集合与详情页
-  search/ about/                    搜索和关于页
+  knowledge/ search/ about/         知识地图、搜索和关于页
   rss.xml/ sitemap.xml/ robots.txt/ 发现端点
 components/                         站点框架、内容视图、Markdown、搜索
   ContentCover.tsx                  文章/项目共享的响应式封面与 Artifact Rail
+  KnowledgeMap.tsx                  服务端 SVG 信号场、关系账本与孤立记录
 content/
   posts/ projects/                  唯一公开内容源
   inbox/                            Obsidian 待发布区
@@ -37,6 +38,7 @@ public/uploads/<slug>/              按内容隔离的公开图片附件
 lib/
   content/                          内容契约、维护报告、文件读取、派生索引与引用关系
     inbox-readiness.ts              全部 Obsidian 草稿的只读发布就绪聚合
+    knowledge-graph.ts              公开节点、有向边、邻接与孤立状态派生
     media.ts                        封面与正文图共享的固有尺寸描述器
     media-references.ts             Markdown 图片 AST 抽取与安全 `/uploads` 路径解析
     staging-media.ts                根暂存库存、inbox 引用、年龄证据与报告格式
@@ -74,6 +76,8 @@ vercel.json                         Vercel Next.js 框架声明
 `lib/content/staging-media.ts` 只扫描 `public/uploads` 根文件，并复用 Obsidian 发布器自己的 Wiki/Markdown/cover 附件解析语义，交叉建立 inbox 草稿引用账本。现存文件分为单草稿引用、多草稿共享和未引用；报告还列出缺失引用与无法审计的草稿。干净且已跟踪的文件以 Git 最后提交日计算年龄，本地修改或未跟踪文件以明确标注的 filesystem mtime 作为观察证据；默认 30 天进入陈旧复核，但任何发现都只产生建议和 Actions warning，不删除文件、不改变构建结果。`scripts/report-staging-media.mjs` 提供文本/JSON、固定日期/阈值与 GitHub 摘要，Quality Gate 每次运行和每周复核都会生成库存。
 
 `lib/content/inbox-readiness.ts` 在作者工作区逐篇隔离检查直接位于 `content/inbox` 的 Markdown：复用真实发布器完成类型/slug/frontmatter/站内链接与附件目标派生，再把每张附件交给同一媒体发布策略，在系统临时目录生成并校验实际候选产物。报告额外交叉检查正式目标、附件目标、Git 跟踪附件和多草稿共享源；一个坏草稿不会阻止其他草稿产生证据。状态分为现在可发布的 `ready`、可以提交但尚未到公开日的 `scheduled` 和需要处理诊断的 `blocked`。临时目录在成功和失败路径都删除，作者 Markdown 与附件不写入；`scripts/report-inbox-readiness.mjs` 提供文本/JSON，Obsidian 桌面插件 1.1.0 用只读 Modal 显示同一文本。它不接入 Actions，因为未跟踪本地草稿对 CI 天然不可见。
+
+`lib/content/knowledge-graph.ts` 接收同一公开文章/项目集合与已经校验的引用关系，确定性派生节点、有向边、每个节点的 outgoing/backlinks、唯一邻居数和孤立状态。`app/knowledge/page.tsx` 在服务端读取该结果；`KnowledgeMap.tsx` 同时输出可聚焦的 SVG 链接信号场、原生 HTML 有序关系账本和孤立记录列表。桌面端按文章/项目双列绘制，互相引用分轨显示；`≤ 42rem` 隐藏需要宽画布的 SVG，保留完整关系账本和说明，因此辅助技术、搜索引擎、无 JavaScript 与 320px 设备都不依赖 Canvas、客户端布局或另一份索引。新增/修改正文站内链接会在下一次构建自动更新详情页与知识地图。
 
 `lib/content/media.ts` 是封面与正文图共享的服务端尺寸层。文件系统根静态收窄到 `public/uploads`，避免 Turbopack 把整个仓库追踪进 Serverless 产物；同一仓库路径的检查通过 React cache 复用。封面描述器附带 `coverAlt`，交给共享 `ContentCover` 和 OG/Twitter/JSON-LD；没有封面的记录不渲染 figure。`MarkdownContent` 则先从正文 AST 收集并去重 URL，只为本地 `/uploads/...` 建立描述器，再把真实宽高、作者 alt 和对应 48rem 阅读栏的 `sizes` 交给 `next/image`。两条详情路由必须传入内容 `sourcePath`，因此页面渲染与构建媒体契约使用同一安全路径边界。
 
@@ -130,7 +134,7 @@ Vercel GitHub Integration 负责每个分支的 Preview 和 `main` 的 Productio
 - 稳定 URL 来自文件名/slug，不随日期和平台变化。
 - 必要的 URL 迁移必须登记为有日期和原因的单跳永久重定向；来源不能遮蔽现有路由或文件，目标必须在同一构建中公开。
 - 草稿、未来内容不能进入页面、搜索、RSS 或 Sitemap。
-- 公开站内链接必须指向同一构建中的公开文章或项目；outgoing 与 backlinks 只能从同一正文链接集合派生。
+- 公开站内链接必须指向同一构建中的公开文章或项目；详情页 outgoing/backlinks 与 `/knowledge` 的节点、边和孤立状态只能从同一正文链接集合派生。
 - 公开内容必须声明语境和复核日期；Current record 超过 180 天未复核不能进入新部署。
 - Current record 的报告状态与构建硬门必须复用同一日龄计算；Historical、草稿和未来内容不进入维护队列。
 - `public/uploads` 只能包含真实可解码且扩展名匹配的白名单图片，并满足共享公开媒体预算；Obsidian 自动优化只能从受限原图包络进入 staging，验证产物后才能原子安装。

@@ -6,7 +6,7 @@
 npm run check
 ```
 
-顺序为 ESLint → 95 项内容/维护/inbox/暂存媒体/关系/搜索/OAuth/Studio/Obsidian/媒体/重定向/交付单元测试 → Next 路由类型生成与 TypeScript → 原生 Next.js 生产构建（35 个静态页面）→ 16 项真实生产 HTTP 与质量审计。任何一步失败都阻止合并和生产部署。
+顺序为 ESLint → 98 项内容/维护/inbox/暂存媒体/关系/知识图/搜索/OAuth/Studio/Obsidian/媒体/重定向/交付单元测试 → Next 路由类型生成与 TypeScript → 原生 Next.js 生产构建（36 个页面）→ 17 项真实生产 HTTP 与质量审计。任何一步失败都阻止合并和生产部署。
 
 发布候选额外执行：
 
@@ -77,8 +77,9 @@ npm run production:smoke -- https://example.vercel.app --expect-oauth
 - 页面具有 description、canonical、跳转主内容链接和唯一 id；
 - 所有可见内部导航目标返回成功；
 - 有站内关系的文章/项目必须服务端渲染语义独立的 outgoing/backlinks 分组；两侧都为空时不渲染空账本；
+- `/knowledge` 必须从同一关系值服务端输出 SVG 节点/有向边、HTML 关系账本和孤立记录；节点为原生链接，不用 Canvas 或客户端脚本承担唯一语义；
 - 文本设计 Token 达到 WCAG AA；
-- 320px 不允许根布局强制最小宽度或横向溢出；
+- 320px 不允许根布局强制最小宽度或横向溢出；知识地图在该宽度隐藏宽 SVG、显示完整关系账本；
 - 焦点可见、Reduced Motion 和系统深色偏好保留。
 - 本地 Markdown 正文图必须服务端输出 alt、真实宽高、正文栏 `sizes` 和 `srcSet`；Markdown 组件不能把 AST `node` 泄漏成 HTML 属性。
 

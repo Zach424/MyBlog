@@ -16,6 +16,7 @@ import { loadContentRepository } from "./validate-content.ts";
 const STATIC_HTML_ROUTES = [
   "/",
   "/about",
+  "/knowledge",
   "/posts",
   "/projects",
   "/search",

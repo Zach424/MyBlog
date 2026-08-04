@@ -61,6 +61,7 @@ export async function runProductionSmoke(originInput, { expectOAuth = false } = 
   for (const [pathname, marker] of [
     ["/posts", "文章与 TIL"],
     ["/projects", "项目复盘"],
+    ["/knowledge", "知识之间，应该看得见来路"],
     ["/posts/building-a-maintainable-blog", "从零搭建可维护的个人技术博客"],
     ["/projects/myblog", "MyBlog"],
     ["/search?q=cloudflare", "Cloudflare"],

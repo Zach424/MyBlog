@@ -11,6 +11,7 @@ export function SiteHeader() {
         <Link href="/posts">文章</Link>
         <Link href="/series">专题</Link>
         <Link href="/projects">项目</Link>
+        <Link href="/knowledge">地图</Link>
         <Link href="/search">搜索</Link>
         <Link href="/about">关于</Link>
       </nav>

@@ -77,6 +77,7 @@ test("server-renders every public content collection and detail route", async ()
     ["/tags", /技术标签/],
     ["/tags/typescript", /TypeScript/],
     ["/search", /检索工程轨迹/],
+    ["/knowledge", /知识之间，应该看得见来路/],
     ["/about", /学习不是收藏答案，而是更新判断/],
   ];
 
@@ -85,6 +86,26 @@ test("server-renders every public content collection and detail route", async ()
     assert.equal(response.status, 200, pathname);
     assert.match(await response.text(), expectation, pathname);
   }
+});
+
+test("server-renders an accessible knowledge map from Markdown relations", async () => {
+  const response = await render("/knowledge");
+  assert.equal(response.status, 200);
+
+  const html = await response.text();
+  assert.match(
+    html,
+    /<link rel="canonical" href="https:\/\/blog\.example\.test\/knowledge"/,
+  );
+  assert.match(html, /<title id="knowledge-map-svg-title">公开内容关系图<\/title>/);
+  assert.match(html, /id="knowledge-map-svg-description"/);
+  assert.equal((html.match(/class="knowledge-node(?:\s| knowledge-node-)/g) ?? []).length, 4);
+  assert.equal((html.match(/class="knowledge-edge knowledge-edge-/g) ?? []).length, 4);
+  assert.equal((html.match(/class="knowledge-edge-record"/g) ?? []).length, 8);
+  assert.match(html, /MyBlog — 把学习记录做成工程资产/);
+  assert.match(html, /为什么先写项目章程，再写首页/);
+  assert.match(html, /尚未连线，不等于没有价值/);
+  assert.doesNotMatch(html, /<canvas\b/i);
 });
 
 test("permanently redirects the legacy blog entry to its canonical route in one hop", async () => {
@@ -242,6 +263,7 @@ test("publishes RSS, Sitemap and robots from the same public content index", asy
   assert.match(sitemapResponse.headers.get("content-type") ?? "", /^application\/xml/i);
   const sitemap = await sitemapResponse.text();
   assert.match(sitemap, /https:\/\/blog\.example\.test\/search/);
+  assert.match(sitemap, /https:\/\/blog\.example\.test\/knowledge/);
   assert.match(sitemap, /https:\/\/blog\.example\.test\/tags\/typescript/);
   assert.match(sitemap, /https:\/\/blog\.example\.test\/series\/build-my-blog/);
   const sitemapContentUrls = [

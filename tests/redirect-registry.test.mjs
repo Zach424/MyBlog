@@ -10,12 +10,13 @@ import {
 } from "../lib/redirects.ts";
 
 const context = {
-  canonicalRoutes: new Set(["/", "/posts", "/posts/current", "/projects/myblog"]),
+  canonicalRoutes: new Set(["/", "/posts", "/posts/current", "/projects/myblog", "/knowledge"]),
   currentRoutes: new Set([
     "/",
     "/posts",
     "/posts/current",
     "/projects/myblog",
+    "/knowledge",
     "/og.png",
   ]),
   reportDate: "2026-08-05",
@@ -53,10 +54,10 @@ test("loads the repository registry and converts it to permanent Next redirects"
 
 test("accepts several direct legacy sources for one canonical target and sorts them", () => {
   const rules = validateRedirectRegistry(
-    registry([rule("/old-b"), rule("/old-a")]),
+    registry([rule("/old-b"), rule("/old-map", "/knowledge"), rule("/old-a")]),
     context,
   );
-  assert.deepEqual(rules.map((entry) => entry.source), ["/old-a", "/old-b"]);
+  assert.deepEqual(rules.map((entry) => entry.source), ["/old-a", "/old-b", "/old-map"]);
 });
 
 test("rejects non-literal, encoded, uppercase, and trailing-slash paths", () => {

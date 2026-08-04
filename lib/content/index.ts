@@ -11,6 +11,7 @@ import {
   sortProjects,
 } from "./contract";
 import { deriveContentRelations } from "./relations";
+import { deriveKnowledgeGraph } from "./knowledge-graph";
 
 function readMarkdownDirectory(kind: "posts" | "projects") {
   const directory = path.join(process.cwd(), "content", kind);
@@ -48,6 +49,10 @@ const publishedProjects = sortProjects(
 );
 const indexes = deriveContentIndexes(publishedPosts, publishedProjects);
 const relations = deriveContentRelations([...publishedPosts, ...publishedProjects]);
+const knowledgeGraph = deriveKnowledgeGraph(
+  [...publishedPosts, ...publishedProjects],
+  relations,
+);
 
 export function getAllPosts() {
   return publishedPosts;
@@ -105,6 +110,10 @@ export function getOutgoingReferencesFor(record: ContentRecord) {
   return relations.outgoingByUrl.get(record.url) ?? [];
 }
 
+export function getKnowledgeGraph() {
+  return knowledgeGraph;
+}
+
 export type {
   ContentRecord,
   PostRecord,
@@ -112,3 +121,8 @@ export type {
   SeriesIndexEntry,
   TagIndexEntry,
 } from "./contract";
+export type {
+  KnowledgeGraph,
+  KnowledgeGraphEdge,
+  KnowledgeGraphNode,
+} from "./knowledge-graph";

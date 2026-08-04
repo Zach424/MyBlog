@@ -57,7 +57,7 @@ npm run release:check
 npm run production:smoke -- https://your-production.example --expect-oauth
 ```
 
-必须验证：首页、集合、文章、项目、搜索、RSS、robots、Sitemap 全部 URL、Studio HTML/配置/预览/固定版本运行时、OAuth 跳转、安全头、缓存和真实 404。首次上线或域名切换还需用未登录浏览器覆盖桌面、320px、深色和键盘路径。
+必须验证：首页、集合、文章、项目、知识地图、搜索、RSS、robots、Sitemap 全部 URL、Studio HTML/配置/预览/固定版本运行时、OAuth 跳转、安全头、缓存和真实 404。首次上线或域名切换还需用未登录浏览器覆盖桌面、320px、深色和键盘路径。
 
 ## 故障等级
 

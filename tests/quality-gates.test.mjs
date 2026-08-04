@@ -153,6 +153,7 @@ test("keeps key HTML routes structurally valid and uniquely identified", async (
     "/series/build-my-blog",
     "/tags/typescript",
     "/search?q=cloudflare",
+    "/knowledge",
     "/about",
   ];
 
@@ -184,6 +185,7 @@ test("keeps every visible internal navigation target healthy", async () => {
     "/series",
     "/tags",
     "/search",
+    "/knowledge",
     "/about",
   ];
   const targetPaths = new Set();
@@ -246,4 +248,7 @@ test("keeps the root layout fluid at 320px viewports", async () => {
   assert.doesNotMatch(htmlBlock, /min-width\s*:/, "html must not force horizontal overflow");
   assert.doesNotMatch(bodyBlock, /min-width\s*:/, "body must not force horizontal overflow");
   assert.match(css, /\.page-shell\s*{[^}]*width:\s*min\(calc\(100%/s);
+  assert.match(css, /\.knowledge-map-scroll\s*{[^}]*overflow-x:\s*auto/s);
+  assert.match(css, /@media \(max-width:\s*42rem\)[\s\S]*?\.knowledge-map-frame\s*{[^}]*display:\s*none/s);
+  assert.match(css, /@media \(max-width:\s*42rem\)[\s\S]*?\.knowledge-mobile-note\s*{[^}]*display:\s*block/s);
 });
