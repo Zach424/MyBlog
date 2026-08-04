@@ -5,6 +5,7 @@ import ReactMarkdown, { type Components } from "react-markdown";
 import remarkGfm from "remark-gfm";
 import { Children, isValidElement } from "react";
 import { CodeBlock } from "@/components/CodeBlock";
+import { MarkdownHeading } from "@/components/MarkdownHeading";
 import { getCodeLanguageLabel } from "@/lib/code-block";
 import {
   getMarkdownContentImages,
@@ -29,6 +30,20 @@ function createMarkdownComponents(
         >
           {children}
         </a>
+      );
+    },
+    h2({ children, id }) {
+      return (
+        <MarkdownHeading id={id} level={2}>
+          {children}
+        </MarkdownHeading>
+      );
+    },
+    h3({ children, id }) {
+      return (
+        <MarkdownHeading id={id} level={3}>
+          {children}
+        </MarkdownHeading>
       );
     },
     img({ src, alt, title }) {

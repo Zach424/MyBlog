@@ -1302,8 +1302,52 @@ input:focus-visible {
 }
 
 .markdown-content h3 {
+  position: relative;
   margin: 2.5rem 0 1rem;
   font-size: 1.375rem;
+}
+
+.markdown-content .heading-permalink {
+  position: absolute;
+  z-index: 1;
+  right: 100%;
+  display: inline-flex;
+  width: 2.5rem;
+  min-height: 1.75em;
+  align-items: center;
+  justify-content: flex-end;
+  padding-right: 0.5rem;
+  color: var(--faint);
+  font-family: var(--mono);
+  font-size: 0.55em;
+  font-weight: 650;
+  letter-spacing: -0.08em;
+  line-height: 1;
+  text-decoration: none;
+  opacity: 0;
+}
+
+.markdown-content h2 > .heading-permalink {
+  top: 1.5rem;
+}
+
+.markdown-content h3 > .heading-permalink {
+  top: 0;
+}
+
+.markdown-content h2:hover > .heading-permalink,
+.markdown-content h3:hover > .heading-permalink,
+.markdown-content .heading-permalink:focus-visible,
+.markdown-content h2:target > .heading-permalink,
+.markdown-content h3:target > .heading-permalink {
+  opacity: 1;
+}
+
+.markdown-content .heading-permalink:hover,
+.markdown-content .heading-permalink:focus-visible,
+.markdown-content h2:target > .heading-permalink,
+.markdown-content h3:target > .heading-permalink {
+  color: var(--signal);
 }
 
 .markdown-content h4 {
@@ -2975,6 +3019,22 @@ input:focus-visible {
     font-size: 0.9375rem;
   }
 
+  .markdown-content .heading-permalink,
+  .markdown-content h2 > .heading-permalink,
+  .markdown-content h3 > .heading-permalink {
+    position: relative;
+    top: auto;
+    right: auto;
+    width: 2.75rem;
+    min-height: 2.75rem;
+    margin-left: 0.25rem;
+    padding-right: 0;
+    justify-content: center;
+    color: var(--faint);
+    vertical-align: middle;
+    opacity: 0.78;
+  }
+
   .markdown-content pre {
     margin-inline: calc(var(--page-x) * -1);
     padding-inline: var(--page-x);
@@ -3136,6 +3196,24 @@ input:focus-visible {
   }
 }
 
+@media (hover: none) {
+  .markdown-content .heading-permalink,
+  .markdown-content h2 > .heading-permalink,
+  .markdown-content h3 > .heading-permalink {
+    position: relative;
+    top: auto;
+    right: auto;
+    width: 2.75rem;
+    min-height: 2.75rem;
+    margin-left: 0.25rem;
+    padding-right: 0;
+    justify-content: center;
+    color: var(--faint);
+    vertical-align: middle;
+    opacity: 0.78;
+  }
+}
+
 @media (prefers-reduced-motion: reduce) {
   html {
     scroll-behavior: auto;
@@ -3148,5 +3226,11 @@ input:focus-visible {
     animation-iteration-count: 1 !important;
     transition-duration: 0.01ms !important;
     scroll-behavior: auto !important;
+  }
+}
+
+@media print {
+  .markdown-content .heading-permalink {
+    display: none;
   }
 }

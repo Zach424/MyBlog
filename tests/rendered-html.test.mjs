@@ -146,6 +146,12 @@ test("renders Markdown articles with metadata, anchors, code and navigation", as
   assert.match(html, /从零搭建可维护的个人技术博客/);
   assert.match(html, /<nav aria-label="本文目录">/);
   assert.match(html, /id="先冻结内容契约"/);
+  assert.match(
+    html,
+    /<h2 id="先冻结内容契约">先冻结内容契约<a aria-label="本节永久链接" class="heading-permalink" href="#先冻结内容契约"><span aria-hidden="true">##<\/span><\/a><\/h2>/,
+  );
+  assert.equal((html.match(/class="heading-permalink"/g) ?? []).length, 5);
+  assert.doesNotMatch(html, /<h4[^>]*>[\s\S]*?class="heading-permalink"/u);
   assert.match(html, /class="[^"]*hljs[^"]*"/);
   assert.match(
     html,
@@ -218,6 +224,10 @@ test("renders project Markdown and returns a real 404 for unknown content", asyn
   assert.match(projectHtml, /https:\/\/github\.com\/Zach424\/MyBlog/);
   assert.match(projectHtml, /Current record/);
   assert.match(projectHtml, /https:\/\/blog-iota-five-59\.vercel\.app/);
+  assert.match(
+    projectHtml,
+    /<h3 id="vercel-阶段当前">Vercel 阶段（当前）<a aria-label="本节永久链接" class="heading-permalink" href="#vercel-阶段当前"><span aria-hidden="true">###<\/span><\/a><\/h3>/,
+  );
   assert.doesNotMatch(
     projectHtml,
     /href="https:\/\/zach424-engineering-notes\.zhiqingchen792\.chatgpt\.site"/,
