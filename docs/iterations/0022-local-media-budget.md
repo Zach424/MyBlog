@@ -74,7 +74,9 @@ Windows 专项测试暴露 libvips 默认操作缓存会在 `metadata()` 完成�
 - 清理后最终 `npm run release:check` 通过：41/41 单元测试、TypeScript、Next.js 16.3.0 build（33 个静态生成任务）、15/15 生产 HTTP/质量测试，`npm audit --omit=dev --audit-level=high` 为 0；
 - 初始实现提交 `72c74bc` 推送后，Vercel deployment `blog-1fu6xcyps-czq1.vercel.app` 在加载 `next.config.ts` 时失败：全新检出没有 Git 无法保存的空 `public/uploads`，扫描器抛出 `ENOENT`；失败部署未切换稳定域名；
 - 修复后专项媒体测试 3/3 与完整 `release:check` 再次通过；测试现在先在完全不存在上传目录的临时项目上断言 `{ images: 0, totalBytes: 0 }`，再创建目录验证严格递归；
-- 最终 GitHub、Vercel 与稳定生产域名证据将在修复提交后补入本档案。
+- 实现提交 `72c74bc` 与纯净检出修复 `b0a9e73` 均已推送 `main`；初始 Quality Gate `30890750967` 与初始 Vercel 构建因相同空目录边界失败，修复后的 Quality Gate `30891109735` 为 completed/success；
+- Vercel Production `dpl_8vrMebtVbUAD6R4XJ643YCErfg4P` 的构建日志明确克隆 `b0a9e73c5ba9e2999f2a38f22294244ac1f1f7aa`，33/33 静态生成后为 Ready，不可变 URL 是 `https://blog-iib7y8u01-czq1.vercel.app`；
+- 自动生产冒烟 `30891142711` 为 completed/success；独立稳定域名冒烟返回 `23 routes, OAuth 302`；网络命令只在当前进程使用本机代理，未写入永久配置。
 
 ## 8. 经验与教训
 
