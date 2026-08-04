@@ -11,7 +11,7 @@
 ## 2. 项目结构状态
 
 - `lib/media-policy.ts`：媒体预算、扩展名/真实格式映射、Sharp 元数据检查和人类可读摘要；
-- `build/validate-media.ts`：递归扫描 `public/uploads`，拒绝链接、非图片和策略违规；
+- `build/validate-media.ts`：递归扫描 `public/uploads`，拒绝链接、非图片和策略违规；全新检出尚无上传目录时视为合法空仓库；
 - `scripts/publish-note.mjs`：附件移动前执行检查，`--check-only` 输出逐图证据；
 - `next.config.ts`：启动/构建时并行执行内容与媒体仓库校验；
 - `studio/config.mjs`：封面选择器最大文件体积从 5 MiB 对齐为 3 MiB；
@@ -53,13 +53,15 @@
 
 ## 6. 实现方法
 
-`MEDIA_BUDGET` 是 Node 侧的权威常量。检查器先用 `stat` 执行便宜的普通文件与体积判断，再调用 Sharp 元数据读取；这样超大伪造文件不会先进入解码器。AVIF 的扩展名不能直接与 `metadata.format` 字符串比较，因为 Sharp 报告底层容器为 `heif`，因此映射表明确记录该差异，输出时仍向作者显示 AVIF。
+`MEDIA_BUDGET` 是 Node 侧的权威常量。检查器先用 `stat` 执行便宜的普通文件与体积判断，再调用 Sharp 元数据读取；这样超大伪造文件不会先进入解码器。AVIF 的扩展名不能直接与 `metadata.format` 字符串比较，因为 Sharp 报告底层容器为 `heif`，还需确认 AV1 compression，因此映射与判断明确记录该差异，输出时仍向作者显示 AVIF。
 
 多页图片用 `pageHeight` 作为单帧高度、`pages` 作为帧数，避免把所有帧拼接后的总高度误当单帧尺寸。JPEG 等带方向元数据的单页图片优先使用 `autoOrient` 宽高。检查顺序保持稳定：类型、文件属性、体积、解码、格式、宽高、单帧像素、动图总像素，错误总带 `[media] <path>` 前缀。
 
 Obsidian 发布器在任何写入前建立附件检查结果表。检查模式只格式化这份结果；正式模式沿用已通过的文件，然后才写正式 Markdown、删除收件箱草稿和移动附件。完整质量门仍负责最后兜底并保留既有回滚。Studio 的 JavaScript 配置无法浏览器导入 Node/TypeScript Sharp 模块，因此只导出同值体积常量，由测试强制与权威预算相等；真实格式和像素仍以构建门为准。
 
 Windows 专项测试暴露 libvips 默认操作缓存会在 `metadata()` 完成后短暂保留输入句柄，导致立即删除/移动 WebP 报 `EBUSY`。媒体策略关闭此短命校验进程的 Sharp 缓存，并在 `finally` 销毁管线；随后测试和真实发布都能立即移动/清理附件。这里不能用延时重试掩盖，因为发布器承诺确定性地先检查后移动。
+
+纯净 Git 检出还有另一条边界：Git 不保存空目录。在尚未提交第一张图片时，开发机可以保留空 `public/uploads`，Vercel 检出却没有该路径。扫描器先检查根上传目录；根目录不存在等价于零张图片，存在后则严格递归，子项读取错误不会被当成空仓库吞掉。
 
 ## 7. 验证证据
 
@@ -70,7 +72,9 @@ Windows 专项测试暴露 libvips 默认操作缓存会在 `metadata()` 完成�
 - 真实无推送完整发布：图片检查后成功移动，草稿转换为正式内容，41/41 单元测试、TypeScript、Next.js build（含临时内容时 34 个静态生成任务）和 15/15 生产 HTTP/质量测试全部通过；
 - 临时 Markdown、源图片、归档图片和目录已按路径守卫清理，Git 状态只保留本轮实现与文档；
 - 清理后最终 `npm run release:check` 通过：41/41 单元测试、TypeScript、Next.js 16.3.0 build（33 个静态生成任务）、15/15 生产 HTTP/质量测试，`npm audit --omit=dev --audit-level=high` 为 0；
-- 最终发布候选、GitHub、Vercel 与稳定生产域名证据将在实现提交后补入本档案。
+- 初始实现提交 `72c74bc` 推送后，Vercel deployment `blog-1fu6xcyps-czq1.vercel.app` 在加载 `next.config.ts` 时失败：全新检出没有 Git 无法保存的空 `public/uploads`，扫描器抛出 `ENOENT`；失败部署未切换稳定域名；
+- 修复后专项媒体测试 3/3 与完整 `release:check` 再次通过；测试现在先在完全不存在上传目录的临时项目上断言 `{ images: 0, totalBytes: 0 }`，再创建目录验证严格递归；
+- 最终 GitHub、Vercel 与稳定生产域名证据将在修复提交后补入本档案。
 
 ## 8. 经验与教训
 
@@ -82,6 +86,7 @@ Windows 专项测试暴露 libvips 默认操作缓存会在 `metadata()` 完成�
 - “检查后立即移动”在 Windows 上是一条真实平台不变量，测试必须包含句柄释放而不只是读取成功；
 - 自动压缩会改变证据，不应偷偷塞进格式门；拒绝和可操作诊断是更清晰的第一阶段边界；
 - 动态生成测试图片比长期维护二进制 fixture 更容易验证尺寸边界，也不会污染 Git 历史。
+- 本地存在的空目录不是 Git 仓库结构；任何构建期目录契约都必须在纯净检出中验证“尚未创建”的合法状态。
 
 ## 9. 全局状态、风险与未解决问题
 

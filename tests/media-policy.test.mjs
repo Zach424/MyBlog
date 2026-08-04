@@ -89,6 +89,11 @@ test("rejects extension spoofing, corrupt images, oversized files, and dimension
 test("validates every nested upload and rejects non-image repository files", async () => {
   const projectRoot = await temporaryDirectory();
   try {
+    assert.deepEqual(await validateMediaRepository(projectRoot), {
+      images: 0,
+      totalBytes: 0,
+    });
+
     const uploadsDirectory = join(projectRoot, "public", "uploads", "post-slug");
     await mkdir(uploadsDirectory, { recursive: true });
     const cover = await sharp({

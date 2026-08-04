@@ -1,4 +1,4 @@
-import { readdir } from "node:fs/promises";
+import { access, readdir } from "node:fs/promises";
 import path from "node:path";
 import {
   inspectMediaFile,
@@ -37,6 +37,14 @@ async function imagePaths(directory: string): Promise<string[]> {
 
 export async function validateMediaRepository(projectRoot: string) {
   const uploadsDirectory = path.join(projectRoot, "public", "uploads");
+  try {
+    await access(uploadsDirectory);
+  } catch (error) {
+    if ((error as NodeJS.ErrnoException).code === "ENOENT") {
+      return { images: 0, totalBytes: 0 };
+    }
+    throw error;
+  }
   const paths = await imagePaths(uploadsDirectory);
   const inspections = await Promise.all(
     paths.map((absolutePath) =>
