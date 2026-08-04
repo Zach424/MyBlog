@@ -65,7 +65,9 @@
 - 初次针对性运行发现 Node TypeScript ESM 内部导入缺少 `.ts`，Next 可解析但测试器报 `ERR_MODULE_NOT_FOUND`；统一显式扩展名后通过；
 - `npm run lint`、`npm run typecheck`、`git diff --check`：通过；
 - `npm run release:check`：维护报告健康、58/58 单元测试、TypeScript、33/33 页面构建、15/15 生产 HTTP/质量测试、production-only audit 0；
-- 实现提交、GitHub Quality Gate、Vercel Production 和稳定域名冒烟将在推送后补入本档案。
+- 实现与初始归档提交 `3f007a1e4c58ba028cd35952badf8419ef4b1f0a` 已推送 `main`；GitHub Quality Gate `30920970584`（Run 31）为 completed/success；
+- Vercel Production `dpl_B9bHtsY9JNKoDJfYrzPcFhrt2f8d` 为 Ready，不可变 URL 是 `https://blog-earl4yaaa-czq1.vercel.app`；完整日志明确克隆 `3f007a1`，编译、TypeScript、33/33 页面生成与 Deployment completed 全部成功；
+- 自动生产冒烟 `30921015269`（Run 25）为 completed/success；独立稳定域名冒烟再次返回 `23 routes, OAuth 302`；网络命令只在当前进程使用本机代理，未写入永久配置。
 
 ## 8. 经验与教训
 

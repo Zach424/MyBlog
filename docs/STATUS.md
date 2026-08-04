@@ -42,9 +42,9 @@ MyBlog 是 Zach424 的个人技术知识库与公开工程日志。它把学习�
 
 - 仓库：<https://github.com/Zach424/MyBlog>，生产分支 `main`；
 - 生产站：<https://blog-iota-five-59.vercel.app>；
-- 本轮候选：正式内容与上传附件双向引用完整性门禁，交付证据将在推送后补入；
-- 上一轮自动交付：Quality Gate `30918539573`、Production smoke `30918580120` 均成功；Vercel Production `dpl_4trWgH63hxQq6KjvNC1qBuRWqpQB` 精确构建 `87494a302c2bca9cf286cba22f342d9fbc240100`，不可变 URL 为 `https://blog-ov3kmvadc-czq1.vercel.app`；
-- 最新完成迭代：0026 内容—媒体引用完整性（本地候选）；
+- 本轮实现提交：`3f007a1`（AST 图片提取、精确路径、slug 所有权、孤儿门禁、测试与归档）；
+- 自动交付：Quality Gate `30920970584`、Production smoke `30921015269` 均成功；Vercel Production `dpl_B9bHtsY9JNKoDJfYrzPcFhrt2f8d` 精确构建 `3f007a1e4c58ba028cd35952badf8419ef4b1f0a`，不可变 URL 为 `https://blog-earl4yaaa-czq1.vercel.app`；
+- 最新完成迭代：0026 内容—媒体引用完整性；
 - Obsidian 状态：仓库根目录就是 Vault，`docs/STATUS.md` 与 `docs/iterations/*.md` 可直接阅读和维护；
 - 手动外部接入：自定义域名、统计、评论、公开邮箱均暂缓，不阻塞当前开发。
 
