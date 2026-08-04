@@ -9,7 +9,7 @@
 1. 打开生产站 `/studio`；
 2. 点击 GitHub 登录，仅在 GitHub 官方页面授权；
 3. 选择“文章与 TIL”或“项目复盘”，创建条目；
-4. 填写稳定 slug、标题、摘要、内容语境、复核日期、标签和正文；历史记录选择 Historical，持续维护说明选择 Current；
+4. 填写稳定 slug、标题、摘要、内容语境、复核日期、标签和正文；历史记录选择 Historical，持续维护说明选择 Current；需要封面时上传仓库图片并填写不重复标题的“封面替代文本”；
 5. 草稿阶段保持 `draft: true`，通过 editorial workflow 保存；
 6. 预览并把状态推进到 Ready；
 7. 发布后确认 GitHub 提交/PR、Quality Gate、Vercel Production 和在线文章全部成功。
@@ -21,7 +21,7 @@
 1. 在 Obsidian 选择“打开文件夹作为仓库”，打开项目根目录；
 2. 从 `templates/obsidian/article.md`、`til.md` 或 `project.md` 创建文件；
 3. 将工作文件放入 `content/inbox`，文件名直接使用稳定 slug，例如 `learning-vercel-deployments.md`；
-4. 图片可直接粘贴到 Obsidian；默认先进入 `public/uploads`，发布器会移动到 `public/uploads/<slug>/`、规范化带空格或中文的文件名，并重写 Wiki/Markdown 图片链接；静态 PNG/JPEG/WebP 自动优化为 WebP，GIF/AVIF 和动画 WebP 保持原文件；
+4. 图片可直接粘贴到 Obsidian；默认先进入 `public/uploads`，发布器会移动到 `public/uploads/<slug>/`、规范化带空格或中文的文件名，并重写 Wiki/Markdown 图片链接；需要封面时取消模板中 `cover`/`coverAlt` 的注释，cover 指向同一附件目录中的图片；静态 PNG/JPEG/WebP 自动优化为 WebP，GIF/AVIF 和动画 WebP 保持原文件；
 5. 链接已有文章或项目时可以写 `[[note]]`、`[[note#标题|别名]]`、`[[projects/slug]]` 或相对 Markdown 链接；发布器会转换为稳定 `/posts/...`、`/projects/...` URL 和标题锚点；
 6. 选择 `freshness`：学习过程和阶段性方案通常用 `historical`，需要持续准确的项目/操作说明用 `current`；`reviewedAt` 填写本次确认事实的日期；
 7. 先运行“检查当前草稿”；确认内容已经可以公开后，运行“发布当前草稿并同步 GitHub”；该命令会把 `draft` 改为 `false`，未来日期内容会保持计划状态；
@@ -35,7 +35,7 @@ npm run content:publish -- content/inbox/learning-vercel-deployments.md --check-
 npm run content:publish -- content/inbox/learning-vercel-deployments.md --push
 ```
 
-`--check-only` 会在仓库同盘的忽略 staging 中完成真实媒体处理，验证 frontmatter、目标路径、附件与站内链接，并列出每个附件的归档路径和源/产物差异；随后删除 staging，不修改文件。省略标志会关闭草稿状态、原子归档已验证附件、把 Obsidian 链接转换为稳定站点 URL、生成正式内容并运行完整检查，但不提交；完整检查还会确认正式图片 URL 精确存在、归档目录与内容 slug 一致且没有孤立文件。如果检查失败，草稿与全部附件会按原路径、原文本和原字节恢复。`--push` 在同一流程通过后只暂存目标内容、受跟踪的源文件删除和归档附件，创建提交并推送 `main`。运行 `--push` 前应确认暂存区为空。
+`--check-only` 会在仓库同盘的忽略 staging 中完成真实媒体处理，验证 frontmatter、目标路径、正文附件、cover 与站内链接，并列出每个附件的归档路径和源/产物差异；随后删除 staging，不修改文件。省略标志会关闭草稿状态、原子归档已验证附件、把 Obsidian 链接与 cover 转换为稳定站点 URL、生成正式内容并运行完整检查，但不提交；完整检查还会确认正式图片 URL 精确存在、归档目录与内容 slug 一致且没有孤立文件。如果检查失败，草稿与全部附件会按原路径、原文本和原字节恢复。`--push` 在同一流程通过后只暂存目标内容、受跟踪的源文件删除和归档附件，创建提交并推送 `main`。运行 `--push` 前应确认暂存区为空。
 
 ## 本地图片预算
 
@@ -64,7 +64,7 @@ npm run content:status -- --format json
 
 ## 内容字段
 
-所有内容共有：`title`、`description`、`publishedAt`、`freshness`、`reviewedAt`、`tags`、`draft`、`featured` 和正文。文章额外有 `type`、可选 `series`/`canonical`；项目额外有 `status`、`stack`、可选 `repository`/`demo`。详细契约见 [CONTENT_MODEL.md](./CONTENT_MODEL.md)。
+所有内容共有：`title`、`description`、`publishedAt`、`freshness`、`reviewedAt`、`tags`、`draft`、`featured`、可选且成对出现的 `cover`/`coverAlt` 和正文。文章额外有 `type`、可选 `series`/`canonical`；项目额外有 `status`、`stack`、可选 `repository`/`demo`。详细契约见 [CONTENT_MODEL.md](./CONTENT_MODEL.md)。
 
 ## 发布前自检
 
@@ -77,7 +77,7 @@ npm run content:status -- --format json
 - 外链使用 HTTPS；
 - 裸 Wiki 链接的 slug 在文章与项目间唯一；同名时显式写 `posts/slug` 或 `projects/slug`；
 - 不使用 Obsidian `#^block-id` 块引用；公开知识链接使用笔记或标题链接；
-- 图片有替代文本，附件不含隐私信息；
+- 正文图片有替代文本；设置 cover 时同时填写 1–200 字符的 coverAlt，未设置 cover 时不保留孤立 coverAlt；附件不含隐私信息；
 - 图片通过真实格式与媒体预算；Obsidian 静态图可由发布器自动生成 WebP，GIF/AVIF/动画 WebP 需预先满足公开预算；
 - 正式本地图片/cover 使用 `/uploads/...`，大小写与真实文件一致；归档子目录等于内容 slug，不保留无人引用的归档文件；
 - 本地图片位于 Obsidian 配置的 `public/uploads`，不要复用已经被其他公开内容跟踪的源图片；

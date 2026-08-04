@@ -29,11 +29,12 @@ series:
   title: "搭建个人博客"
   order: 4
 canonical: "https://example.com/original"
-cover: "/uploads/example/cover.png"
+cover: "/uploads/example/cover.webp"
+coverAlt: "文档与部署节点沿一条提交轨迹连接"
 ---
 ```
 
-`series`、`canonical`、`cover`、`updatedAt` 可选。专题 order 必须从 1 连续增长。
+`series`、`canonical`、`cover`、`updatedAt` 可选。设置 `cover` 时 `coverAlt` 必填，未设置 cover 时不能单独保留 coverAlt。专题 order 必须从 1 连续增长。
 
 ## 项目复盘
 
@@ -54,10 +55,12 @@ draft: false
 featured: true
 repository: "https://github.com/example/repo"
 demo: "https://example.vercel.app"
+cover: "/uploads/project-slug/cover.webp"
+coverAlt: "项目输入、构建与发布阶段组成的工程档案图"
 ---
 ```
 
-`repository`、`demo`、`cover`、`updatedAt` 可选；外部 URL 必须为 HTTPS。
+`repository`、`demo`、`cover`、`updatedAt` 可选；外部 URL 必须为 HTTPS。cover 必须是仓库内 `/uploads/...` 图片并与 coverAlt 成对出现。
 
 ## Slug、标签与日期
 
@@ -115,14 +118,15 @@ Slug 只能使用小写英文字母、数字和连字符，并必须与文件名
 
 正式 `content/posts` 与 `content/projects` 还必须满足引用完整性：
 
-- `cover` 和 Markdown 图片的本地 URL 必须使用 `/uploads/...`；相对路径、`public/uploads/...`、HTTP、协议相对 URL、查询参数和锚点均会失败；
+- `cover` 和 Markdown 图片的本地 URL 必须使用 `/uploads/...`；相对路径、`public/uploads/...`、HTTP、协议相对 URL、查询参数和锚点均会失败；Markdown 正文可以使用完整 HTTPS 外图，但 cover 必须本地化；
+- `coverAlt` 为 1–200 字符的可访问描述，与 cover 成对存在；详情页从真实文件读取宽高，用同一 alt 输出响应式图片、OG/Twitter 和 JSON-LD；
 - 路径解码后不能包含目录穿越、编码的 `/`/`\\`、空路径段或非法字符，末尾扩展名必须是受支持图片格式；
 - 引用按仓库原始大小写精确匹配真实文件，避免 Windows 通过但 Vercel/Linux 404；
 - `public/uploads/<slug>/...` 是已归档附件，只能由相同 slug 的正式文章或项目正文/cover 引用；没有引用的归档文件会让构建失败；
 - 行内 Markdown 图片和引用式图片都参与关系，行内代码、围栏代码和普通链接不参与；
 - 正式目录里的 draft/future 记录仍可拥有归档附件；`content/inbox` 不参与，`public/uploads` 根目录文件继续作为发布前暂存/Studio 兼容区。
 
-外部 HTTPS 图片不进入附件移动流程。网页后台继续写入同一公开目录和内容事实源。
+外部 HTTPS 正文图片不进入附件移动流程。网页后台继续写入同一公开目录和内容事实源。Obsidian frontmatter cover 会与正文附件一起归档、优化和回滚；Studio cover 只允许上传本地文件，并要求作者同时填写替代文本。
 
 ## 站内链接与引用关系
 

@@ -56,6 +56,8 @@ Cloudflare、Sites、Vinext、Vite Worker 和 Wrangler 仅属于 2026-07-18 至 
 
 视觉系统以 Commit Trace 为唯一主要识别元素，把日期、文章类型和项目里程碑连成一条工程轨迹。Evidence Rail 只显示可验证状态，不展示虚构的完成率。
 
+详情页封面是仓库内的正式内容资产：`cover` 与 `coverAlt` 成对校验，服务端读取真实宽高，文章与项目共享 `next/image` 响应式组件；同一图片同时进入 Open Graph、Twitter 和结构化数据。Obsidian 会把 frontmatter 封面与正文附件放入同一压缩、归档和回滚事务，没有封面的内容保持原布局。
+
 ## 问题与解决
 
 2026-07-19 根据维护目标把托管从 Cloudflare/Sites 迁移到 Vercel。迁移删除 Vinext、Vite、Worker、Wrangler 与 Sites 托管标记，恢复原生 `next dev/build/start`；原先 Worker 中的 Studio 静态资源、OAuth 与安全响应头分别迁入 App Router Route Handlers 和 Next.js headers。内容仍以 Git 为唯一事实来源，Obsidian 与网页后台产生的提交都会触发 Vercel 自动部署，因此迁移没有数据库或媒体数据搬运。
@@ -82,7 +84,7 @@ Sites 首次生产发布后，首页与集合页返回 200，但没有任何内�
 
 ### Vercel 阶段（当前）
 
-当前站点使用原生 Next.js、GitHub 自动 Production 和稳定域名冒烟；Studio GitHub OAuth、Obsidian 模板/附件/链接发布、构建期内容关系、文章与项目反向引用、Vercel 回滚与恢复均已验收。Iteration 0020 的最终质量门通过 37 项单元测试、15 项生产 HTTP/质量测试和 33 个静态生成任务，生产依赖审计为 0；稳定域名冒烟覆盖 23 条路由并确认 OAuth 302。项目保持 `maintained`，当前生产站面向公众访问且不依赖 Cloudflare。
+当前站点使用原生 Next.js、GitHub 自动 Production 和稳定域名冒烟；Studio GitHub OAuth、Obsidian 模板/附件/封面/链接发布、构建期内容关系、文章与项目反向引用、Vercel 回滚与恢复均已验收。Iteration 0027 的实现质量门通过 60 项单元测试、15 项生产 HTTP/质量测试和 33 个静态生成任务，生产依赖审计为 0；稳定域名冒烟覆盖 23 条路由并确认 OAuth 302，MyBlog 项目页的响应式封面和分享元数据已在线。项目保持 `maintained`，当前生产站面向公众访问且不依赖 Cloudflare。
 
 ## 复盘
 
