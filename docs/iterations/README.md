@@ -40,6 +40,7 @@
 0033-permanent-redirect-registry.md
 0034-obsidian-inbox-readiness.md
 0035-accessible-knowledge-map.md
+0036-external-link-inventory.md
 ```
 
 ## 必填结构

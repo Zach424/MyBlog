@@ -25,6 +25,7 @@ MyBlog 是 Zach424 的个人技术知识库与公开工程日志。它把学习�
 | 永久链接迁移 | done | Git 版本化 redirect 注册表、当前路由/静态文件冲突门、公开目标校验、单跳 308 与生产冒烟 |
 | 内容新鲜度 | done | Current/Historical 可见语境、复核日期、当前记录 180 天构建门、现行 Demo |
 | 内容维护报告 | done | 本地文本/JSON、60/30 天分级、Actions 摘要与每周自动复核 |
+| 外部链接库存 | done | 公开正文 GFM HTTPS 来源/次数/issue 离线报告，显式公网 HEAD 检查与非硬门状态分类 |
 | 根暂存媒体审计 | done | inbox 引用账本、Git/文件系统年龄证据、共享/未引用/陈旧/缺失报告与 Actions warning，零自动删除 |
 | 媒体门禁 | done | 真实格式解码、3 MiB/2560 px/像素与动图预算、Studio 上传前诊断、Obsidian 优化与构建扫描 |
 | 媒体引用完整性 | done | Markdown AST 图片抽取、精确路径存在性、根暂存拒绝、slug 所有权与已归档孤儿附件门禁 |
@@ -38,7 +39,7 @@ MyBlog 是 Zach424 的个人技术知识库与公开工程日志。它把学习�
 - 阅读：react-markdown、remark-gfm、rehype-slug、rehype-highlight；
 - 发布：Decap CMS 3.14.1、GitHub OAuth、stable slug 自定义控件、Obsidian 自有插件 1.1.0、inbox readiness CLI 与 Node 发布脚本；
 - 媒体：Sharp 0.35.3、浏览器 magic/帧结构解析与 `createImageBitmap`、mdast-util-from-markdown 2.0.3、`next/image`、固有尺寸、WebP 优化、引用所有权与 Git 附件跟踪；
-- 维护：内容新鲜度与根暂存媒体的确定日期报告 CLI、GitHub Actions 注解与每周一自动复核；
+- 维护：内容新鲜度、根暂存媒体与正文外链的 CLI；确定性库存进入本地发布候选，时间/DNS 敏感的外链 HEAD 只显式运行；
 - 路由：严格 YAML + Zod 永久重定向注册表、Next `redirects()` 308、构建期现行路由与静态文件交叉校验；
 - 知识图：纯函数派生有向节点/边、语义 SVG + HTML 账本、零客户端布局依赖与 320px 明确降级；
 - 托管：Vercel 原生 Next.js，当前链路不依赖 Cloudflare；
@@ -48,15 +49,15 @@ MyBlog 是 Zach424 的个人技术知识库与公开工程日志。它把学习�
 
 - 仓库：<https://github.com/Zach424/MyBlog>，生产分支 `main`；
 - 生产站：<https://blog-iota-five-59.vercel.app>；
-- 本轮实现提交：`be33fa5`（Markdown 派生知识图、公开 `/knowledge`、语义 SVG/关系账本、响应式与发现/质量连接）；
-- 自动交付：Quality Gate `30943278286`、Production verification `30943781842` 均成功；Vercel Production `dpl_J9Mq3n5A1iR6wBjSKU4fhvVmTVTB` 从同一实现 HEAD 直接发布并为 Ready，稳定生产域名保持公开；
-- 最新完成迭代：0035 公开可访问知识地图；
+- 本轮实现提交：`681f191`（GFM 外链库存、隐私 issue、公网固定地址 HEAD、受控重定向/超时/重试与本地发布候选连接）；
+- 自动交付：Quality Gate `30945915192`、Production verification `30945961879` 均成功；GitHub Production deployment `5750663393` 精确对应实现 SHA 且状态为 success，稳定生产域名保持公开；
+- 最新完成迭代：0036 外部 HTTPS 链接库存与受控健康检查；
 - Obsidian 状态：仓库根目录就是 Vault，`docs/STATUS.md` 与 `docs/iterations/*.md` 可直接阅读和维护；
 - 手动外部接入：自定义域名、统计、评论、公开邮箱均暂缓，不阻塞当前开发。
 
 ## 本轮新增能力
 
-`/knowledge` 现在从公开 Markdown 正文关系确定性派生 4 个节点、4 条有向边和 1 条孤立记录。桌面端用文章/项目双列信号场显示方向与互引，节点是可聚焦原生链接；同一图值继续输出 HTML 关系账本和孤立记录。320px 主动隐藏宽 SVG、保留完整账本，根宽度实测 320/320；页面无 Canvas、第三方图服务、数据库或客户端布局脚本。主导航、canonical、Open Graph、Sitemap、重定向目标和生产冒烟均已连接。当前完整门禁为 98/98 单元测试、36 个构建页面和 17/17 HTTP 测试，稳定域名 24 路由、OAuth 302。
+`npm run links:external` 现在用与阅读页一致的 GFM AST 离线列出公开正文普通 HTTPS 链接、来源、正文相对行、标签和次数；当前真实库存是 4 条公开记录、1 个 URL、1 次出现、0 个本地问题。HTTP/协议相对/无效/含凭据 URL 形成不泄露凭据的 issue。显式 `--check` 才发送固定公网地址的 HEAD，并限制 HTTPS/443、全部 DNS、私网、重定向、并发、超时与重试；不下载正文、不改写链接。timeout/network/5xx/受限只标暂不可确认，确定 4xx/unsafe/坏重定向才是 broken；实时检查不进 Actions。当前完整门禁为 108/108 单元测试、36 个构建页面和 17/17 HTTP 测试，稳定域名 24 路由、OAuth 302。
 
 ## 风险与下一步
 
@@ -65,8 +66,10 @@ MyBlog 是 Zach424 的个人技术知识库与公开工程日志。它把学习�
 3. inbox readiness 已覆盖全部本地草稿，但有意不进入 Actions：未跟踪草稿和附件天然不在 CI 检出中；当前真实 inbox 为空，正向/阻塞路径由临时 Git/媒体夹具验证，首次实际多草稿使用时仍应按 Modal 逐项复核；
 4. Current record 已有每周分级报告，但提醒只存在于本地输出和 GitHub Actions 摘要/注解，不发送外部消息；这是当前有意的无服务边界；
 5. Obsidian 块引用是专有语法，当前明确拒绝；知识地图已公开，但当前 SVG 双列布局为小型内容库优化，内容增长后需要在不牺牲 HTML 语义的前提下增加过滤或分组；
-6. Studio OAuth origin、GitHub 凭据、Vercel deployment URL 保护和 Hobby 回滚范围仍需按运行手册维护；
-7. 统计、评论和自定义域名需要所有者最终选择，现阶段不主动接入；
-8. `decap-cms` 的开发依赖树仍有上游无修复的高危审计项；它不进入公开服务端生产依赖，但其浏览器编辑器包仅对已授权作者开放，后续应单独评估升级或替代方案。
+6. 正文 HTTPS 外链已有离线库存和显式健康检查，但 DNS/限流/网络是观察证据而非稳定事实；本机直连 Vercel 域名已出现 timeout 假阴性，因此实时检查不进 Actions，结构化 repository/demo/canonical 仍按原 schema/维护清单复核；
+7. 站内链接已验证目标内容是否公开，但带 `#fragment` 的深链尚未证明目标 heading id 存在；
+8. Studio OAuth origin、GitHub 凭据、Vercel deployment URL 保护和 Hobby 回滚范围仍需按运行手册维护；
+9. 统计、评论和自定义域名需要所有者最终选择，现阶段不主动接入；
+10. `decap-cms` 的开发依赖树仍有上游无修复的高危审计项；它不进入公开服务端生产依赖，但其浏览器编辑器包仅对已授权作者开放，后续应单独评估升级或替代方案。
 
-下一轮唯一主任务：建立公开内容的外部 HTTPS 链接库存与可选健康报告。用标准 Markdown AST 只抽取普通外链并忽略图片、代码、站内 URL 与锚点；提供确定性文本/JSON 清单和有超时/并发/重试边界的显式实时检查。临时网络故障不得进入默认构建硬门，也不得抓取/保存第三方正文、自动改写链接或新增云服务。
+下一轮唯一主任务：建立站内标题锚点完整性门禁。所有 `/posts|projects/<slug>#fragment` 与 Obsidian 标题链接必须命中目标正文实际渲染的 heading id；覆盖 URL 编码、重复标题、H2–H6、自引用、引用式/行内链接和代码忽略。坏锚点必须在构建/发布前以来源路径和 fragment 失败，不做模糊匹配、客户端修复或独立索引。
