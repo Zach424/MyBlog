@@ -66,6 +66,21 @@ coverAlt: "项目输入、构建与发布阶段组成的工程档案图"
 
 Slug 只能使用小写英文字母、数字和连字符，并必须与文件名一致。Studio 新建和复制条目在首次保存前可编辑顶层 slug；条目一旦获得稳定 Git 身份，控件会变为可聚焦、可复制但不可改写的 readOnly，并在值与 entry slug/path 不一致时阻止保存。首次公开后不可修改；若必须迁移，需要用 Git 同步移动内容文件和 `public/uploads/<slug>/`、修改正文/cover URL，并提供显式永久重定向。
 
+### 永久重定向注册表
+
+`content/redirects.yml` 是旧公开地址到当前规范页面的唯一注册表。格式固定为 `version: 1`，每条记录包含 `source`、`destination`、`addedAt` 和足以解释迁移原因的 `reason`：
+
+```yaml
+version: 1
+redirects:
+  - source: /blog
+    destination: /posts
+    addedAt: 2026-08-05
+    reason: 将旧式通用博客入口统一到文章集合页
+```
+
+来源和目标都必须是无查询、无锚点、无编码段、无尾斜杠的小写 ASCII 绝对路径。来源不得与当前页面、公开文件、`/_next`、`/api`、`/studio` 或 `/uploads` 冲突；目标必须是当前构建中已公开的 HTML 页面，不能指向草稿、未来内容、静态文件或运维端点。重复来源、自跳转、重定向链和环路都会让构建失败；多个历史来源可以直接指向同一个最终规范页面。所有规则统一输出 308，不在数据中重复声明状态码。
+
 标签来自 `lib/content/contract.ts` 的注册表，Studio 从同一注册表维护等价选项。别名只用于输入归一化，页面始终输出规范名称和 slug。
 
 可见日期按作者时区 `Asia/Shanghai` 在构建时冻结。`draft: true`、发布日期晚于构建日期的记录不会出现在详情、集合、搜索、RSS 或 Sitemap。

@@ -37,6 +37,18 @@ npm run content:publish -- content/inbox/learning-vercel-deployments.md --push
 
 `--check-only` 会在仓库同盘的忽略 staging 中完成真实媒体处理，验证 frontmatter、目标路径、正文附件、cover 与站内链接，并列出每个附件的归档路径和源/产物差异；随后删除 staging，不修改文件。省略标志会关闭草稿状态、原子归档已验证附件、把 Obsidian 链接与 cover 转换为稳定站点 URL、生成正式内容并运行完整检查，但不提交；完整检查还会确认正式图片 URL 精确存在、归档目录与内容 slug 一致且没有孤立文件。如果检查失败，草稿与全部附件会按原路径、原文本和原字节恢复。`--push` 在同一流程通过后只暂存目标内容、受跟踪的源文件删除和归档附件，创建提交并推送 `main`。运行 `--push` 前应确认暂存区为空。
 
+## 迁移已公开 URL
+
+正常发布不要修改 slug。确需迁移时使用普通 Git 分支一次完成以下事项：
+
+1. 移动 Markdown 文件并同步修改 frontmatter slug；
+2. 将 `public/uploads/<旧 slug>/` 移到新 slug，并更新 cover、正文图片、站内链接和引用；
+3. 在 `content/redirects.yml` 增加旧 URL 到最终新 URL 的记录，填写当天 `addedAt` 和清晰的 `reason`；
+4. 直接指向最终公开页面，不把旧地址串成多跳链；
+5. 运行 `npm run check`，合并后再确认旧地址返回 308 且 `Location` 是新地址。
+
+注册表中的 `/blog -> /posts` 是可运行示例。不要为草稿、未来内容、静态附件、Studio/API 路径建立重定向，也不要移除仍有外部访问或搜索索引价值的旧地址。若误配，回滚对应 Git 提交即可恢复上一版路由表。
+
 ## 本地图片预算
 
 | 检查 | 上限或规则 |

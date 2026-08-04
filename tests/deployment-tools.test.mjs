@@ -36,6 +36,7 @@ test("connects Vercel verification, maintenance reporting, rollback, and Studio 
   assert.match(rollback, /VERCEL_PRODUCTION_URL/);
   assert.match(rollback, /args=\(rollback "\$DEPLOYMENT_URL"\)/);
   assert.match(smoke, /Sitemap 路由失败/);
+  assert.match(smoke, /\/blog 永久重定向/);
   assert.match(smoke, /same-origin-allow-popups/);
   assert.match(smoke, /\/studio\/config\.mjs/);
   assert.match(smoke, /\/studio\/media-preflight\.mjs/);

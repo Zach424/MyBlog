@@ -30,6 +30,12 @@ Secret 只保存在 Vercel/GitHub 的加密设置中，不进入 `.env.example`�
 6. Vercel 自动创建生产部署，deployment status 工作流检查稳定公开生产域名；
 7. 打开文章、RSS 和 Sitemap，确认新内容可见且绝对 URL 指向当前生产域名。
 
+## URL 迁移
+
+已公开 slug 原则上保持不变。确需迁移时，在同一 Git 提交中移动内容与归档附件、修正所有引用，并把旧路径登记到 `content/redirects.yml`，直接指向最终公开 HTML 页面。每条记录必须填写迁移日期和原因；不要使用查询、锚点、通配参数、链式跳转，也不要覆盖现有页面、静态文件、`/_next`、`/api`、`/studio` 或 `/uploads`。
+
+提交前运行 `npm run check`；上线后用 `curl -I https://<生产域名>/<旧路径>` 或完整生产冒烟确认状态为 308、`Location` 为同源最终地址、目标为 200。误配时回滚注册表和同一次迁移提交；若内容已在错误新地址短暂公开，保留所有曾公开地址并直接指向最终规范页面，避免制造新的链。
+
 Current record 至少每 180 天逐项复核一次架构、版本、状态、外链和操作步骤；有事实变化时同步更新正文与 `updatedAt`，无变化时只更新 `reviewedAt`。Historical snapshot 不要求持续追新，但正文必须说明记录时间与当前去向。
 
 每周 Quality Gate 会在周一 09:00（Asia/Shanghai）生成维护摘要；也可随时运行 `npm run content:status`。剩余 60/30 天分别进入“准备复核/即将到期”，warning 不阻断构建；越过最后有效日才失败。处理提醒时按报告清单逐项验证，不要只更新日期。
@@ -64,7 +70,7 @@ npm run production:smoke -- https://your-production.example --expect-oauth
 
 Vercel Hobby 默认可立即回到上一生产部署；更早的指定部署取决于套餐能力。优先在 Vercel Deployments 执行 Instant Rollback，或手动运行 GitHub Actions 的 `Roll back Vercel production`，填写上一条已验证的 deployment URL。回滚完成后工作流自动检查 `VERCEL_PRODUCTION_URL`。
 
-路由恢复后，用 `git revert` 或新的修复提交使 `main` 与生产重新一致。禁止强制推送、`reset --hard` 或删除旧部署作为第一响应。
+路由恢复后，用 `git revert` 或新的修复提交使 `main` 与生产重新一致。若事故来自重定向，先确认回滚版本不会让已经公开的旧地址失去去向；必要时用新的单跳规则修复，而不是删除历史入口。禁止强制推送、`reset --hard` 或删除旧部署作为第一响应。
 
 ## 域名与可选能力
 

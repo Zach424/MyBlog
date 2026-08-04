@@ -1,0 +1,6 @@
+version: 1
+redirects:
+  - source: /blog
+    destination: /posts
+    addedAt: 2026-08-05
+    reason: 将旧式通用博客入口统一到文章集合页

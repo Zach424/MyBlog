@@ -6,7 +6,7 @@
 npm run check
 ```
 
-顺序为 ESLint → 82 项内容/维护/暂存媒体/关系/搜索/OAuth/Studio/Obsidian/媒体/交付单元测试 → Next 路由类型生成与 TypeScript → 原生 Next.js 生产构建（35 个静态页面）→ 15 项真实生产 HTTP 与质量审计。任何一步失败都阻止合并和生产部署。
+顺序为 ESLint → 90 项内容/维护/暂存媒体/关系/搜索/OAuth/Studio/Obsidian/媒体/重定向/交付单元测试 → Next 路由类型生成与 TypeScript → 原生 Next.js 生产构建（35 个静态页面）→ 16 项真实生产 HTTP 与质量审计。任何一步失败都阻止合并和生产部署。
 
 发布候选额外执行：
 
@@ -45,7 +45,11 @@ npm run media:staging -- --date 2026-08-05 --stale-days 30 --format json
 npm run production:smoke -- https://example.vercel.app --expect-oauth
 ```
 
-检查代表内容、搜索、Studio HTML/配置/媒体预检/稳定 slug 控件/预览/同源 CMS 运行时、OAuth、RSS、robots、全 Sitemap、安全头、缓存与随机 404。`--expect-oauth` 只用于已配置 GitHub OAuth 的生产环境；本地和 Preview 允许 OAuth 以 503 安全关闭。
+检查代表内容、搜索、Studio HTML/配置/媒体预检/稳定 slug 控件/预览/同源 CMS 运行时、OAuth、RSS、robots、全 Sitemap、永久重定向、安全头、缓存与随机 404。永久重定向检查要求 `/blog` 返回 308、同源 `Location` 直达 `/posts`，且目标只需一次请求即返回 200。`--expect-oauth` 只用于已配置 GitHub OAuth 的生产环境；本地和 Preview 允许 OAuth 以 503 安全关闭。
+
+## 永久重定向质量门
+
+构建从 `content/redirects.yml` 读取严格 YAML 与 Zod schema，未知字段、重复键、弱原因、未来加入日期都会失败。测试还覆盖路径编码/大小写/尾斜杠、当前路由或静态文件遮蔽、受保护命名空间、缺失/草稿/未来目标、重复、自跳转、链与环路。真实 Next 进程验证 308 和查询参数透传，生产冒烟验证同源单跳目标，防止只在纯函数层面正确而部署行为漂移。
 
 ## 内容质量
 

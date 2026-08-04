@@ -70,6 +70,24 @@ export async function runProductionSmoke(originInput, { expectOAuth = false } = 
     invariant(page.body.includes(marker), `${pathname} 缺少预期内容`);
   }
 
+  const legacyBlog = await request(origin, "/blog", { redirect: "manual" });
+  invariant(legacyBlog.response.status === 308, `/blog 永久重定向状态 ${legacyBlog.response.status}`);
+  const legacyLocation = new URL(
+    legacyBlog.response.headers.get("location") ?? "",
+    origin,
+  );
+  invariant(
+    legacyLocation.origin === origin.origin && legacyLocation.pathname === "/posts",
+    `/blog 永久重定向目标不正确：${legacyLocation.href}`,
+  );
+  const legacyDestination = await request(origin, legacyLocation.pathname, {
+    redirect: "manual",
+  });
+  invariant(
+    legacyDestination.response.status === 200 && legacyDestination.body.includes("文章与 TIL"),
+    "/blog 永久重定向没有单跳到有效页面",
+  );
+
   const studio = await request(origin, "/studio");
   invariant(studio.response.status === 200, `Studio 状态 ${studio.response.status}`);
   invariant(

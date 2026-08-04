@@ -87,6 +87,21 @@ test("server-renders every public content collection and detail route", async ()
   }
 });
 
+test("permanently redirects the legacy blog entry to its canonical route in one hop", async () => {
+  const response = await render("/blog?from=legacy");
+  assert.equal(response.status, 308);
+  const location = new URL(
+    response.headers.get("location") ?? "",
+    process.env.TEST_BASE_URL,
+  );
+  assert.equal(location.pathname, "/posts");
+  assert.equal(location.search, "?from=legacy");
+
+  const destination = await render(location.pathname);
+  assert.equal(destination.status, 200);
+  assert.match(await destination.text(), /文章与 TIL/u);
+});
+
 test("serves the owner publishing studio without exposing OAuth when unconfigured", async () => {
   const studioResponse = await render("/studio");
   assert.equal(studioResponse.status, 200);
@@ -292,6 +307,8 @@ test("removes starter artifacts and keeps the Vercel-native design contract expl
     /validateContentRepository\(process\.cwd\(\), contentBuildDate\)/,
   );
   assert.match(nextConfig, /validateMediaRepository\(process\.cwd\(\)\)/);
+  assert.match(nextConfig, /createNextRedirects\(process\.cwd\(\), contentBuildDate\)/);
+  assert.match(nextConfig, /async redirects\(\)/);
   assert.match(nextConfig, /CONTENT_BUILD_DATE: contentBuildDate/);
   assert.match(nextConfig, /STUDIO_CONTENT_SECURITY_POLICY/);
   assert.match(contentModule, /readMarkdownDirectory/);

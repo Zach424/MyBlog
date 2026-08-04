@@ -3,6 +3,7 @@ import { resolveContentBuildDate } from "./build/content-build-date";
 import { validateContentRepository } from "./build/validate-content";
 import { validateMediaRepository } from "./build/validate-media";
 import { validateContentMediaReferences } from "./build/validate-media-references";
+import { createNextRedirects } from "./build/validate-redirects";
 
 const CONTENT_SECURITY_POLICY = [
   "default-src 'self'",
@@ -57,10 +58,11 @@ const contentCacheHeader = {
 
 export default async function createNextConfig(): Promise<NextConfig> {
   const contentBuildDate = resolveContentBuildDate();
-  await Promise.all([
+  const [, , , redirects] = await Promise.all([
     validateContentRepository(process.cwd(), contentBuildDate),
     validateMediaRepository(process.cwd()),
     validateContentMediaReferences(process.cwd()),
+    createNextRedirects(process.cwd(), contentBuildDate),
   ]);
 
   return {
@@ -74,6 +76,9 @@ export default async function createNextConfig(): Promise<NextConfig> {
         "./studio/**/*",
         "./node_modules/decap-cms/dist/decap-cms.js",
       ],
+    },
+    async redirects() {
+      return redirects;
     },
     async headers() {
       return [
