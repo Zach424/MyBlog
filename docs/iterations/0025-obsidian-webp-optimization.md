@@ -67,7 +67,9 @@ WebP 参数固定为 quality 82、alpha quality 100、effort 6、smart subsample
 - 真实 CLI 失败测试让质量门以 7 退出，确认 inbox 文本、PNG 与 JPEG 两个源附件逐字节恢复，正式 Markdown 和两个 WebP 均不存在，staging 为空；
 - `npm run lint`、`npm run typecheck`、`git diff --check`：通过；
 - `npm run release:check`：维护报告健康、53/53 单元测试、TypeScript、33/33 页面构建、15/15 生产 HTTP/质量测试、production-only audit 0；
-- 实现提交、GitHub Quality Gate、Vercel Production 和稳定域名冒烟将在推送后补入本档案。
+- 实现与初始归档提交 `ba2ec7d2e82597bf8da6ad630cecb7daac6b44d4` 已推送 `main`；GitHub Quality Gate `30917479414`（Run 29）为 completed/success；
+- Vercel Production `dpl_EWrWKpYXe8aTYtnBDopoAQi2yUyx` 为 Ready，不可变 URL 是 `https://blog-ehjeo0ehq-czq1.vercel.app`；完整日志明确克隆 `ba2ec7d`，编译、TypeScript、33/33 页面生成与 Deployment completed 全部成功；
+- 自动生产冒烟 `30917517129`（Run 23）为 completed/success；独立稳定域名冒烟再次返回 `23 routes, OAuth 302`；网络命令只在当前进程使用本机代理，未写入永久配置。
 
 ## 8. 经验与教训
 

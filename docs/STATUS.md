@@ -41,9 +41,9 @@ MyBlog 是 Zach424 的个人技术知识库与公开工程日志。它把学习�
 
 - 仓库：<https://github.com/Zach424/MyBlog>，生产分支 `main`；
 - 生产站：<https://blog-iota-five-59.vercel.app>；
-- 本轮候选：Obsidian 附件确定性 WebP 优化与事务回滚，交付证据将在推送后补入；
-- 上一轮自动交付：Quality Gate `30895980908`、Production smoke `30896015839` 均成功；Vercel Production `dpl_9guSoJzC4dh6DAtPtBWYyZU1Dco3` 精确构建 `be65b507933dfd1560c564f398fd4df6f7fd79a4`，不可变 URL 为 `https://blog-1zbse2mlv-czq1.vercel.app`；
-- 最新完成迭代：0025 Obsidian 自动 WebP 优化（本地候选）；
+- 本轮实现提交：`ba2ec7d`（媒体准备、同盘事务、WebP 命名、真实 CLI 测试与归档）；
+- 自动交付：Quality Gate `30917479414`、Production smoke `30917517129` 均成功；Vercel Production `dpl_EWrWKpYXe8aTYtnBDopoAQi2yUyx` 精确构建 `ba2ec7d2e82597bf8da6ad630cecb7daac6b44d4`，不可变 URL 为 `https://blog-ehjeo0ehq-czq1.vercel.app`；
+- 最新完成迭代：0025 Obsidian 自动 WebP 优化；
 - Obsidian 状态：仓库根目录就是 Vault，`docs/STATUS.md` 与 `docs/iterations/*.md` 可直接阅读和维护；
 - 手动外部接入：自定义域名、统计、评论、公开邮箱均暂缓，不阻塞当前开发。
 
