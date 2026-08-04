@@ -6,6 +6,7 @@ import {
   ContentHeader,
   ContentNeighbors,
   ContentReferenceLedger,
+  PrintSource,
   TableOfContents,
 } from "@/components/ContentViews";
 import { ContentCover } from "@/components/ContentCover";
@@ -138,6 +139,7 @@ export default async function PostPage({ params }: PostPageProps) {
           ) : null
         }
       />
+      <PrintSource url={canonicalUrl} />
       {cover ? (
         <ContentCover
           cover={cover}

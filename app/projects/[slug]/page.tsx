@@ -5,6 +5,7 @@ import { notFound } from "next/navigation";
 import {
   ContentHeader,
   ContentReferenceLedger,
+  PrintSource,
   TableOfContents,
 } from "@/components/ContentViews";
 import { ContentCover } from "@/components/ContentCover";
@@ -137,6 +138,7 @@ export default async function ProjectPage({ params }: ProjectPageProps) {
           </div>
         }
       />
+      <PrintSource url={projectUrl} />
       {cover ? <ContentCover cover={cover} kind="Project" /> : null}
       <div className="reading-layout">
         <article className="reading-article">

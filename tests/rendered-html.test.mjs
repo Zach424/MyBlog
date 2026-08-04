@@ -199,6 +199,10 @@ test("renders Markdown articles with metadata, anchors, code and navigation", as
     html,
     /<link rel="canonical" href="https:\/\/blog\.example\.test\/posts\/building-a-maintainable-blog"/,
   );
+  assert.match(
+    html.replaceAll("<!-- -->", ""),
+    /<p class="print-source">Source \/ <a href="https:\/\/blog\.example\.test\/posts\/building-a-maintainable-blog">https:\/\/blog\.example\.test\/posts\/building-a-maintainable-blog<\/a><\/p>/,
+  );
 
   const isolatedResponse = await render("/posts/project-charter-before-homepage");
   assert.equal(isolatedResponse.status, 200);
@@ -224,6 +228,10 @@ test("renders project Markdown and returns a real 404 for unknown content", asyn
   assert.match(projectHtml, /https:\/\/github\.com\/Zach424\/MyBlog/);
   assert.match(projectHtml, /Current record/);
   assert.match(projectHtml, /https:\/\/blog-iota-five-59\.vercel\.app/);
+  assert.match(
+    projectHtml.replaceAll("<!-- -->", ""),
+    /<p class="print-source">Source \/ <a href="https:\/\/blog\.example\.test\/projects\/myblog">https:\/\/blog\.example\.test\/projects\/myblog<\/a><\/p>/,
+  );
   assert.match(
     projectHtml,
     /<h3 id="vercel-阶段当前">Vercel 阶段（当前）<a aria-label="本节永久链接" class="heading-permalink" href="#vercel-阶段当前"><span aria-hidden="true">###<\/span><\/a><\/h3>/,

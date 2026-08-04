@@ -151,6 +151,14 @@ export function ContentHeader({
   );
 }
 
+export function PrintSource({ url }: { url: string }) {
+  return (
+    <p className="print-source">
+      Source / <a href={url}>{url}</a>
+    </p>
+  );
+}
+
 export function TableOfContents({ items }: { items: TableOfContentsItem[] }) {
   if (items.length === 0) return null;
 

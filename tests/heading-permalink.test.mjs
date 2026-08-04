@@ -31,6 +31,6 @@ test("keeps heading permalinks server-rendered, discoverable and printable", asy
   assert.match(styles, /@media \(hover: none\)[\s\S]*?min-height:\s*2\.75rem;/u);
   assert.match(
     styles,
-    /@media print\s*\{[\s\S]*?\.markdown-content \.heading-permalink\s*\{\s*display:\s*none;/u,
+    /@media print\s*\{[\s\S]*?\.markdown-content \.heading-permalink\s*\{\s*display:\s*none !important;/u,
   );
 });
