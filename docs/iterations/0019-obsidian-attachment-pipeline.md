@@ -73,7 +73,9 @@ public/uploads/Pasted image 20260804 120000.PNG
 - 首次最终 `release:check` 的代码、类型、33 项静态生成和 15/15 生产 HTTP 测试均通过，但动态 npm 审计发现 Next.js 16.2.10、PostCSS 8.5.10 与 sharp 的新高危通告，发布门按设计失败；
 - 对照 GitHub Advisory 与 Next.js 官方 v16.3.0 发布，依赖升级为 Next.js/ESLint Config 16.3.0、PostCSS 8.5.23、sharp 0.35.3；`npm audit --omit=dev --audit-level=high` 随后为 0；
 - 本轮最终 `npm run release:check` 通过：31/31 单元测试、TypeScript、Next.js 16.3.0 build（33 项生成）、15/15 生产 HTTP 测试与生产依赖 0 漏洞；
-- Git 提交、推送、自动部署与线上冒烟证据在提交后补录。
+- 实现提交 `cd7666a` 已推送 `main`；直连 GitHub 两次超时后，仅对当前 Git 命令使用本机 `127.0.0.1:7897` 代理完成推送，未更改永久配置；
+- GitHub Quality Gate run `30884132095` 为 completed/success；Vercel Production deployment `5739036748` 的 SHA 精确等于 `cd7666a7e0f97a96893fb6c70d9c22df1a5303d5`，状态 success，immutable URL 为 `https://blog-4ynawjo6y-czq1.vercel.app`；
+- GitHub 自动生产冒烟 run `30884170756` 为 completed/success；独立运行 `npm run production:smoke -- https://blog-iota-five-59.vercel.app --expect-oauth` 返回 `23 routes, OAuth 302`。第一次直连复核只发生网络连接失败，启用当前进程 Node 环境代理后通过，未修改系统配置。
 
 ## 8. 经验与教训
 

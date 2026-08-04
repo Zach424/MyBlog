@@ -36,7 +36,7 @@ MyBlog 是 Zach424 的个人技术知识库与公开工程日志。它把学习�
 
 - 仓库：<https://github.com/Zach424/MyBlog>，生产分支 `main`；
 - 生产站：<https://blog-iota-five-59.vercel.app>；
-- 当前基线提交：本轮提交前为 `79154a5`；
+- 本轮实现提交：`cd7666a`（Obsidian 附件发布、内容增长测试与 Next.js 安全升级）；
 - 最新完成迭代：0019 Obsidian 附件发布管线；
 - Obsidian 状态：仓库根目录就是 Vault，`docs/STATUS.md` 与 `docs/iterations/*.md` 可直接阅读和维护；
 - 手动外部接入：自定义域名、统计、评论、公开邮箱均暂缓，不阻塞当前开发。
