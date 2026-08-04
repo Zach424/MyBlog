@@ -12,7 +12,7 @@ MyBlog 是 Zach424 的个人技术知识库与公开工程日志。它把学习�
 | --- | --- | --- |
 | 内容契约 | done | YAML + Zod 校验文章、TIL、项目、标签、专题、日期、URL、内容语境、复核日期与本地封面替代文本 |
 | 公开阅读 | done | 首页、文章、项目、专题、标签、搜索、关于、响应式、深色模式与详情页封面 |
-| Markdown | done | GFM、代码高亮、语言标签、渐进增强的一键复制、与实际渲染一致的 H1–H6 heading id、H2/H3 目录与原生永久链接、阅读时间、相邻文章与响应式正文图片 |
+| Markdown | done | GFM、代码高亮、语言标签、渐进增强的一键复制、与实际渲染一致的 H1–H6 heading id、H2/H3 目录与原生永久链接、A4 打印/PDF 版式、阅读时间、相邻文章与响应式正文图片 |
 | 内容发现 | done | SEO、内容级 OG/Twitter 封面、JSON-LD、RSS、Sitemap、robots、本地全文搜索 |
 | 网页写作 | done | `/studio`、GitHub OAuth、Decap workflow、PR、按 slug 归档媒体、稳定 slug 锁定、双层 SHA-256 冲突预检与快速重选 latest-wins |
 | Obsidian 写作 | done | Vault、模板、桌面发布插件、带目标标题校验的 `--check-only`、`--push` |
@@ -36,7 +36,7 @@ MyBlog 是 Zach424 的个人技术知识库与公开工程日志。它把学习�
 - 视觉方向：Commit Trace / Evidence Rail，中文优先、工程档案感、浅深色响应式；
 - 运行时：Next.js 16.3.0、React 19.2.6、TypeScript 5、Node.js 22+；
 - 内容：仓库内 Markdown、YAML、Zod，GitHub 是唯一事实源；
-- 阅读：react-markdown、remark-gfm、rehype-slug、rehype-highlight；服务端 Markdown 与 MarkdownHeading 永久链接、最小 CodeBlock 客户端岛、Clipboard API 与 aria-live；H2/H3 直接使用 renderer id，GFM mdast 与 GitHubSlugger 继续复现同一标题和链接语义；
+- 阅读：react-markdown、remark-gfm、rehype-slug、rehype-highlight；服务端 Markdown、MarkdownHeading 永久链接与 PrintSource 可信来源，最小 CodeBlock 客户端岛、Clipboard API 与 aria-live；H2/H3 直接使用 renderer id，GFM mdast 与 GitHubSlugger 继续复现同一标题和链接语义；A4 `@page` 与 scoped print CSS 只重排既有语义 DOM；
 - 发布：Decap CMS 3.14.1、GitHub OAuth、stable slug 自定义控件、同源媒体清单、内存会话账本、per-input generation 与 SHA-256 冲突确认、Obsidian 自有插件 1.1.0、inbox readiness CLI 与 Node 发布脚本；
 - 媒体：Sharp 0.35.3、浏览器 magic/帧结构解析、`createImageBitmap` 与 Web Crypto、构建期确定性摘要清单、mdast-util-from-markdown 2.0.3、`next/image`、固有尺寸、WebP 优化、引用所有权与 Git 附件跟踪；
 - 维护：内容新鲜度、根暂存媒体与正文/结构化端点外链的 CLI；确定性库存进入本地发布候选，时间/DNS 敏感的外链 HEAD 只显式运行；
@@ -49,19 +49,19 @@ MyBlog 是 Zach424 的个人技术知识库与公开工程日志。它把学习�
 
 - 仓库：<https://github.com/Zach424/MyBlog>，生产分支 `main`；
 - 生产站：<https://blog-iota-five-59.vercel.app>；
-- 本轮实现提交：`1bd0793`（H2/H3 服务端原生 permalink、真实 renderer id、Markdown 深度标记、键盘/触控可发现性与打印隐藏）；
-- 自动交付：Quality Gate `30958657382`、Production verification `30958690310` 均成功；GitHub Production deployment `5752937315` 精确对应实现 SHA 且状态为 success，稳定生产域名保持公开；
-- 最新完成迭代：0043 Markdown 标题永久链接；
+- 本轮实现提交：`df671ec`（文章/项目服务端打印来源、A4 详情页纸面布局、分页与长 URL/代码/表格/引用契约）；
+- 自动交付：Quality Gate `30961145805`、Production verification `30961173906` 均成功；GitHub Production deployment `5753354034` 精确对应实现 SHA 且状态为 success，稳定生产域名保持公开；
+- 最新完成迭代：0044 可打印技术内容；
 - Obsidian 状态：仓库根目录就是 Vault，`docs/STATUS.md` 与 `docs/iterations/*.md` 可直接阅读和维护；
 - 手动外部接入：自定义域名、统计、评论、公开邮箱均暂缓，不阻塞当前开发。
 
 ## 本轮新增能力
 
-Markdown 正文 H2/H3 现在由服务端组件在原标题内容之后追加独立的 `##`/`###` 永久链接，直接使用 `rehype-slug` 已写入的真实 id，不重新计算 slug、不包裹作者链接，也不增加客户端 bundle。桌面标记进入标题左侧索引沟并在 hover/focus/target 时显现；320px 与所有 `hover:none` 触控设备常显为 44×44；深浅色共用现有 token，打印隐藏。原生 fragment 在 JavaScript 禁用时仍可导航，中文 URL 由浏览器编码并命中同一 `:target`。完整门禁为 124/124 单元测试、37 个构建页面和 17/17 HTTP 测试，稳定域名 24 路由、OAuth 302，生产浏览器 fragment 命中且控制台 0 error/0 warning。
+文章与项目详情页现在具有独立的 A4 技术记录版式。服务器把可信 canonical URL 输出为仅打印可见来源；纸面保留完整标题、摘要、标签、五列事实、封面、正文、代码、图片、表格、外链地址和必要引用，隐藏站点头尾、面包屑、目录、邻接、复制按钮与 permalink。分页规则避免标题孤立、代码/图片/表格行被随意切断；代码改为浅色且自动折行，引用账本压缩为标题和相对路径。屏幕版、无 JavaScript 能力和客户端 bundle 均未改变。完整门禁为 126/126 单元测试、37 个构建页面和 17/17 HTTP 测试；稳定域名 24 路由、OAuth 302；生产 Edge print media 计算样式正确且控制台 0 error/0 warning；最终文章 3 页、项目 5 页，8 页 PDF 全部渲染复核通过。
 
 ## 风险与下一步
 
-1. Studio 已完成真实格式/预算、生产/会话摘要和快速重选竞态边界，但有意不自动缩放或转 WebP；读者侧代码复制与章节 permalink 已闭环。下一直接缺口是技术文章尚无完整纸面阅读契约：当前只隐藏 permalink，站点导航、事实栏、代码分页、外链提示与引用区的打印行为仍未统一；
+1. Studio 已完成真实格式/预算、生产/会话摘要和快速重选竞态边界，但有意不自动缩放或转 WebP；读者侧代码复制、章节 permalink 与 A4 打印/PDF 已闭环。下一直接缺口是 Obsidian 常用的 `[^id]` 脚注还不能进入网页语义：需要选择与现有 Markdown AST/renderer 兼容的解析链，保证编号、脚注区、回链、可访问名称、打印分页和内部关系抽取不把脚注定义误判为独立导航；
 2. 首次保存后的 slug 已在 Studio 控件层锁定；真正迁移仍只能通过 Git 同步修改内容文件、正文引用、附件目录和 `content/redirects.yml`。注册表不自动推断迁移且有意只支持精确单跳路径；该控件依赖固定 Decap 3.14.1 bundle 的 `entry/newRecord` 契约，升级时必须重审；
 3. inbox readiness 已覆盖全部本地草稿，但有意不进入 Actions：未跟踪草稿和附件天然不在 CI 检出中；当前真实 inbox 为空，正向/阻塞路径由临时 Git/媒体夹具验证，首次实际多草稿使用时仍应按 Modal 逐项复核；
 4. Current record 已有每周分级报告，但提醒只存在于本地输出和 GitHub Actions 摘要/注解，不发送外部消息；这是当前有意的无服务边界；
@@ -72,4 +72,4 @@ Markdown 正文 H2/H3 现在由服务端组件在原标题内容之后追加独�
 9. 统计、评论和自定义域名需要所有者最终选择，现阶段不主动接入；
 10. `decap-cms` 的开发依赖树仍有上游无修复的高危审计项；它不进入公开服务端生产依赖，但其浏览器编辑器包仅对已授权作者开放，后续应单独评估升级或替代方案。
 
-下一轮唯一主任务：为文章与项目详情页建立可打印、可导出 PDF 的技术文档版式。必须保留标题、内容事实、正文、代码、图片替代信息与必要引用，隐藏站点导航、目录交互、复制按钮和仅供网页浏览的邻接界面；控制标题/代码块/表格的分页，给外部链接提供纸面可辨来源，并保持屏幕样式、无 JavaScript 和客户端 bundle 不变。补齐 print CSS 契约、真实浏览器 print media、生成 PDF 的视觉复核、中文/代码/长 URL、浅深色来源、320px 回归与生产 HTML 验证。
+下一轮唯一主任务：支持 Obsidian 兼容的 Markdown 脚注/尾注。作者应能使用 `[^id]` 与对应定义记录证据来源，网页输出语义化编号、脚注区和可返回正文的链接；同一脚注多次引用、中文 id、脚注内链接与代码、无 JavaScript、键盘/屏幕阅读器、打印分页和深浅色都要有明确契约。实现不得让脚注定义污染搜索摘要、目录或内容关系，也不能引入外部服务；先核对当前 unified/remark 官方能力与依赖边界，再以真实 Obsidian 草稿和生产 HTML/PDF 验证。

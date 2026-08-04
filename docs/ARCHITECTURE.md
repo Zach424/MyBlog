@@ -28,6 +28,7 @@ app/
   knowledge/ search/ about/         知识地图、搜索和关于页
   rss.xml/ sitemap.xml/ robots.txt/ 发现端点
 components/                         站点框架、内容视图、Markdown、搜索
+  ContentViews.tsx                  详情页事实、目录、引用账本与打印来源
   ContentCover.tsx                  文章/项目共享的响应式封面与 Artifact Rail
   KnowledgeMap.tsx                  服务端 SVG 信号场、关系账本与孤立记录
   MarkdownHeading.tsx               H2/H3 原生 fragment 永久链接的服务端边界
@@ -90,6 +91,8 @@ vercel.json                         Vercel Next.js 框架声明
 `MarkdownContent` 继续作为 Server Component 执行 GFM、slug、高亮和媒体描述；只有 fenced `pre` 把现有 code child 与从 `language-*` 类规范化的标签传给最小 `CodeBlock` Client Component。该客户端岛的 SSR 输出仍含完整 figure/figcaption/pre/code，COPY button 初始 hidden 并在 mount 后揭示；写入只使用当前 code DOM 的精确 `textContent` 和原生 Clipboard API，状态通过 button、data attribute 与 polite live region 表达。inline code 不进入该边界。CSS 额外锁定 `[hidden]`，移动端由 wrapper full-bleed、pre 独立 overflow，避免操作轨随长代码滚走。
 
 H2/H3 由 `MarkdownHeading` 服务端组件接收 `rehype-slug` 已写入的真实 `id`，在原 children 之后追加独立原生 `<a href="#id">`；组件不读取标题文本、不重新计算 slug，也不进入客户端 bundle。链接子节点仅呈现 Markdown 深度标记，避免与标题内作者链接形成嵌套锚点。桌面、窄屏、无悬停触控和打印只由 CSS 媒体条件改变可发现性，不改变 fragment、目录或关系抽取的数据源。
+
+文章和项目详情路由从同一已解析记录生成 canonical URL，并把它交给 `ContentViews.PrintSource` 服务端输出。来源节点在屏幕上隐藏，在打印媒体中显示，因此 PDF 不读取 `window.location`、不增加客户端脚本，也不会因浏览器 hydration 状态缺失出处。`@page` 固定 A4 和毫米页边距；全局打印作用域只重排详情页现有语义 DOM，隐藏站点框架与网页交互，保留正文资产。标题/后继内容、代码、图片、表格行和关系分组使用分页约束；代码在纸面改为 `pre-wrap`，表格取消屏幕最小宽度，外链与引用路径用 CSS 生成可辨来源。屏幕基础规则不被修改。
 
 内容目录通过 Next.js output tracing 显式包含在部署中，既支持 Vercel Serverless，也不会依赖开发机器路径。
 
