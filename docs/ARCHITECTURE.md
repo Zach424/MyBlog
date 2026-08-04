@@ -10,7 +10,7 @@ MyBlog 是 Git-first 个人技术博客。公开阅读不依赖数据库；网�
 | --- | --- | --- |
 | 界面 | React 19、Next.js 16 App Router | 页面、元数据、Route Handlers 与服务端渲染 |
 | 内容 | Markdown、YAML、Zod | 文章/项目解析、字段校验、草稿过滤与派生索引 |
-| 维护 | Node CLI、GitHub Actions | Current record 日龄、根媒体库存、分级队列、摘要与过期门 |
+| 维护 | Node CLI、GitHub Actions | Current record 日龄、根媒体库存、外链库存、分级队列、摘要与过期门 |
 | 阅读 | react-markdown、remark-gfm、rehype | GFM、标题锚点、代码高亮与目录 |
 | 发现 | 本地搜索、RSS、Sitemap、robots、JSON-LD | 检索、订阅与搜索引擎发现 |
 | 发布 | Decap CMS、Obsidian、GitHub | 两个作者入口，共用同一内容事实源 |
@@ -38,6 +38,7 @@ public/uploads/<slug>/              按内容隔离的公开图片附件
 lib/
   content/                          内容契约、维护报告、文件读取、派生索引与引用关系
     inbox-readiness.ts              全部 Obsidian 草稿的只读发布就绪聚合
+    external-links.ts               GFM 外链库存、受控 HEAD 检查与公网目标防护
     knowledge-graph.ts              公开节点、有向边、邻接与孤立状态派生
     media.ts                        封面与正文图共享的固有尺寸描述器
     media-references.ts             Markdown 图片 AST 抽取与安全 `/uploads` 路径解析
@@ -49,7 +50,7 @@ lib/
   studio-assets.ts                  构建期 Studio 资源响应
 studio/                             Decap CMS、浏览器媒体预检与稳定 slug 控件源文件（不放入 public）
 templates/obsidian/                 文章、TIL、项目模板
-scripts/                            发布、inbox/内容/暂存媒体报告、冒烟、迁移和生产测试器
+scripts/                            发布、inbox/内容/暂存媒体/外链报告、冒烟、迁移和生产测试器
 build/validate-media.ts             构建前递归扫描全部公开上传图片
 build/validate-media-references.ts  正式内容图片存在性、slug 所有权和孤儿附件门禁
 build/validate-redirects.ts         当前公开路由、静态文件与重定向关系门禁
@@ -76,6 +77,8 @@ vercel.json                         Vercel Next.js 框架声明
 `lib/content/staging-media.ts` 只扫描 `public/uploads` 根文件，并复用 Obsidian 发布器自己的 Wiki/Markdown/cover 附件解析语义，交叉建立 inbox 草稿引用账本。现存文件分为单草稿引用、多草稿共享和未引用；报告还列出缺失引用与无法审计的草稿。干净且已跟踪的文件以 Git 最后提交日计算年龄，本地修改或未跟踪文件以明确标注的 filesystem mtime 作为观察证据；默认 30 天进入陈旧复核，但任何发现都只产生建议和 Actions warning，不删除文件、不改变构建结果。`scripts/report-staging-media.mjs` 提供文本/JSON、固定日期/阈值与 GitHub 摘要，Quality Gate 每次运行和每周复核都会生成库存。
 
 `lib/content/inbox-readiness.ts` 在作者工作区逐篇隔离检查直接位于 `content/inbox` 的 Markdown：复用真实发布器完成类型/slug/frontmatter/站内链接与附件目标派生，再把每张附件交给同一媒体发布策略，在系统临时目录生成并校验实际候选产物。报告额外交叉检查正式目标、附件目标、Git 跟踪附件和多草稿共享源；一个坏草稿不会阻止其他草稿产生证据。状态分为现在可发布的 `ready`、可以提交但尚未到公开日的 `scheduled` 和需要处理诊断的 `blocked`。临时目录在成功和失败路径都删除，作者 Markdown 与附件不写入；`scripts/report-inbox-readiness.mjs` 提供文本/JSON，Obsidian 桌面插件 1.1.0 用只读 Modal 显示同一文本。它不接入 Actions，因为未跟踪本地草稿对 CI 天然不可见。
+
+`lib/content/external-links.ts` 用与正文渲染一致的 GFM AST 读取公开文章/项目正文，只收集普通 HTTPS 链接并保留 URL、来源、正文相对行、标签与出现次数；图片、代码、站内链接、锚点和邮件链接不参与，HTTP、协议相对、无效 HTTPS 与含凭据 URL 进入本地 issue 且凭据不会写入报告。`scripts/report-external-links.mjs` 默认只输出确定性文本/JSON 库存并进入本地 `release:check`。只有显式 `--check` 才发送 HEAD：每跳限制 HTTPS/443/无凭据，拒绝本地命名空间和任一私网/回环/链路本地/保留 DNS 结果，再把连接固定到已验证公网地址以收窄 DNS rebinding；并发 1–8、超时 500–30000ms、重试 0–2、重定向 0–10。响应头到达后立即关闭，不下载或保存正文。404/410、其他确定 4xx、安全或重定向错误才计入 broken；403/429/HEAD 不支持、5xx、超时和网络错误保留为暂不可确认。实时检查不进入 Actions 或默认构建硬门。
 
 `lib/content/knowledge-graph.ts` 接收同一公开文章/项目集合与已经校验的引用关系，确定性派生节点、有向边、每个节点的 outgoing/backlinks、唯一邻居数和孤立状态。`app/knowledge/page.tsx` 在服务端读取该结果；`KnowledgeMap.tsx` 同时输出可聚焦的 SVG 链接信号场、原生 HTML 有序关系账本和孤立记录列表。桌面端按文章/项目双列绘制，互相引用分轨显示；`≤ 42rem` 隐藏需要宽画布的 SVG，保留完整关系账本和说明，因此辅助技术、搜索引擎、无 JavaScript 与 320px 设备都不依赖 Canvas、客户端布局或另一份索引。新增/修改正文站内链接会在下一次构建自动更新详情页与知识地图。
 

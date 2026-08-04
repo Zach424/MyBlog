@@ -41,6 +41,8 @@ Current record 至少每 180 天逐项复核一次架构、版本、状态、外
 
 每周 Quality Gate 会在周一 09:00（Asia/Shanghai）生成维护摘要；也可随时运行 `npm run content:status`。剩余 60/30 天分别进入“准备复核/即将到期”，warning 不阻断构建；越过最后有效日才失败。处理提醒时按报告清单逐项验证，不要只更新日期。
 
+外部链接使用 `npm run links:external` 做本地确定性库存；命令默认不访问网络并随 `release:check` 输出。需要现场证据时运行 `npm run links:external -- --check`，但 403/429、HEAD 不支持、5xx、超时和网络错误只进入人工复核，不能直接作为生产事故或默认构建失败。检查器不下载正文、不访问私网、不改写链接；若显式 `--fail-on-broken` 返回失败，先在普通浏览器复核确定 4xx 或坏重定向再修改内容。
+
 本地图片必须是扩展名与真实格式一致的 PNG/JPEG/WebP/GIF/AVIF，单文件不超过 3 MiB，宽高各不超过 2560 px；大截图和照片优先导出为 AVIF/WebP。即使绕过 Studio/Obsidian 直接提交，Next 构建也会扫描全部 `public/uploads` 并阻止损坏或超预算媒体进入生产。
 
 ## 发布前检查
@@ -49,7 +51,7 @@ Current record 至少每 180 天逐项复核一次架构、版本、状态、外
 npm run release:check
 ```
 
-该命令先输出内容维护队列、当前作者工作区的 inbox 发布就绪状态和根暂存媒体库存，并覆盖内容契约、Studio 配置、Obsidian 发布器、TypeScript、原生 Next.js 构建、生产 HTTP、安全头、全站内部链接、体积预算和生产依赖审计。inbox blocked 不阻断未涉及它的既有生产版本，但发布对应草稿前必须处理；报告不会执行任何发布动作。
+该命令先输出内容维护队列、当前作者工作区的 inbox 发布就绪状态、根暂存媒体库存和离线外链库存，并覆盖内容契约、Studio 配置、Obsidian 发布器、TypeScript、原生 Next.js 构建、生产 HTTP、安全头、全站内部链接、体积预算和生产依赖审计。inbox blocked 与外链 issue 都不会阻断未涉及它们的既有生产版本，但发布对应草稿前必须处理；报告不会执行任何发布或网络健康检查动作。
 
 ## 发布后检查
 
