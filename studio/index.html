@@ -85,6 +85,28 @@
         line-height: 1.55;
         overflow-wrap: anywhere;
       }
+      .stable-slug-control { width: 100%; }
+      .stable-slug-control input[data-stable-slug-state="locked"] {
+        border-color: #486f78;
+        color: #435c67;
+        background: #e7eff1;
+        cursor: text;
+      }
+      .stable-slug-lifecycle {
+        margin: 0;
+        padding: 0.5rem 0 0 0.65rem;
+        border-left: 2px solid #486f78;
+        color: #566d77;
+        font: 0.72rem/1.55 "Cascadia Code", Consolas, monospace;
+      }
+      .stable-slug-lifecycle strong {
+        color: #486f78;
+        font-weight: 700;
+      }
+      .stable-slug-lifecycle[data-state="editable"] {
+        border-left-color: #b9431f;
+      }
+      .stable-slug-lifecycle[data-state="editable"] strong { color: #b9431f; }
       @media (prefers-color-scheme: dark) {
         body { color: #edf4f5; background: #101820; }
         .loading-shell p, .loading-shell span { color: #a8b9be; }
@@ -96,6 +118,18 @@
         }
         #studio-media-preflight [data-preflight-label],
         #studio-media-preflight [data-preflight-detail] { color: #a8b9be; }
+        .stable-slug-control input[data-stable-slug-state="locked"] {
+          border-color: #5f8f99;
+          color: #a8b9be;
+          background: #16232c;
+        }
+        .stable-slug-lifecycle { color: #a8b9be; border-left-color: #5f8f99; }
+        .stable-slug-lifecycle strong { color: #a8b9be; }
+        .stable-slug-lifecycle[data-state="editable"] {
+          color: #ff7851;
+          border-left-color: #ff7851;
+        }
+        .stable-slug-lifecycle[data-state="editable"] strong { color: #ff7851; }
       }
     </style>
     <script>window.CMS_MANUAL_INIT = true;</script>
@@ -108,6 +142,7 @@
     <script type="module">
       import { createStudioConfig } from "/studio/config.mjs";
       import { installStudioMediaPreflight } from "/studio/media-preflight.mjs";
+      import { registerStableSlugWidget } from "/studio/stable-slug-widget.mjs";
 
       installStudioMediaPreflight();
 
@@ -115,6 +150,14 @@
         if (!window.CMS) {
           document.querySelector(".loading-shell span").textContent =
             "编辑器资源加载失败。请检查网络后刷新页面。";
+          return;
+        }
+        try {
+          registerStableSlugWidget();
+        } catch (error) {
+          document.querySelector(".loading-shell span").textContent =
+            "稳定 slug 控件加载失败。请刷新页面；若持续失败，请改用 Obsidian 或 Git。";
+          console.error(error);
           return;
         }
         window.CMS.registerPreviewStyle("/studio/preview.css");

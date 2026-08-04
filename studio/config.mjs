@@ -25,9 +25,9 @@ export const STUDIO_ENTRY_PUBLIC_FOLDER = "/uploads/{{fields.slug}}";
 const slugField = {
   label: "稳定网址 Slug",
   name: "slug",
-  widget: "string",
+  widget: "stable-slug",
   pattern: ["^[a-z0-9]+(?:-[a-z0-9]+)*$", "只使用小写字母、数字和连字符"],
-  hint: "例如 learning-vercel-deployments。先填写本字段，再上传封面或正文图片；首次保存后不要修改，它就是内容网址和附件目录。",
+  hint: "例如 learning-vercel-deployments。先填写本字段，再上传图片；首次保存后控件会锁定，它就是内容文件、公开网址和附件目录。复制条目时必须先换成新值。",
 };
 
 const dateField = (label, name, required = true) => ({

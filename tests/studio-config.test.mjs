@@ -63,7 +63,9 @@ test("keeps CMS tags and required content fields aligned with the contract", () 
     const coverAlt = collection.fields.find((field) => field.name === "coverAlt");
     assert.match(coverAlt.hint, /设置封面时必填/);
     const slug = collection.fields.find((field) => field.name === "slug");
+    assert.equal(slug.widget, "stable-slug");
     assert.match(slug.hint, /先填写.*再上传/);
+    assert.match(slug.hint, /首次保存后控件会锁定/);
     const body = collection.fields.find((field) => field.name === "body");
     assert.match(body.hint, /同一条目.*不同文件名/);
   }
@@ -77,9 +79,12 @@ test("pins the CMS asset and provides a useful loading failure", async () => {
   assert.equal(packageJson.devDependencies["decap-cms"], "3.14.1");
   assert.match(html, /src="\/studio\/editor-runtime-3\.14\.1\.js"/);
   assert.match(html, /from "\/studio\/media-preflight\.mjs"/);
+  assert.match(html, /from "\/studio\/stable-slug-widget\.mjs"/);
   assert.match(html, /installStudioMediaPreflight\(\)/);
+  assert.match(html, /registerStableSlugWidget\(\)/);
   assert.match(html, /#studio-media-preflight/);
   assert.match(html, /data-state="error"/);
+  assert.match(html, /data-stable-slug-state="locked"/);
   assert.doesNotMatch(html, /unpkg\.com/);
   assert.match(html, /integrity="sha384-[^"]+"/);
   assert.match(html, /编辑器资源加载失败/);

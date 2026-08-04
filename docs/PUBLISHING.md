@@ -9,7 +9,7 @@
 1. 打开生产站 `/studio`；
 2. 点击 GitHub 登录，仅在 GitHub 官方页面授权；
 3. 选择“文章与 TIL”或“项目复盘”，创建条目；
-4. 先填写稳定 slug，再上传封面或在正文插图；Studio 会在本地先检查真实格式、体积、宽高与动图总像素，通过后才把原文件交给 Git 草稿，并显示格式/尺寸/帧数/体积 Evidence Rail。图片直接保存到 `public/uploads/<slug>/`，正文写入 `/uploads/<slug>/...`。同一条目内的图片使用不同文件名，避免替换已有附件；然后填写标题、摘要、内容语境、复核日期、标签和正文，历史记录选择 Historical，持续维护说明选择 Current；需要封面时同时填写不重复标题的“封面替代文本”；
+4. 先填写稳定 slug，再上传封面或在正文插图；首次保存后该字段会显示 `Identity state / locked` 并变为只读。复制已有条目时必须在第一次保存前换成新的 slug。Studio 会在本地先检查真实格式、体积、宽高与动图总像素，通过后才把原文件交给 Git 草稿，并显示格式/尺寸/帧数/体积 Evidence Rail。图片直接保存到 `public/uploads/<slug>/`，正文写入 `/uploads/<slug>/...`。同一条目内的图片使用不同文件名，避免替换已有附件；然后填写标题、摘要、内容语境、复核日期、标签和正文，历史记录选择 Historical，持续维护说明选择 Current；需要封面时同时填写不重复标题的“封面替代文本”；
 5. 草稿阶段保持 `draft: true`，通过 editorial workflow 保存；
 6. 预览并把状态推进到 Ready；
 7. 发布后确认 GitHub 提交/PR、Quality Gate、Vercel Production 和在线文章全部成功。
@@ -97,6 +97,7 @@ npm run content:status -- --format json
 - 构建提示图片不存在或大小写不一致：核对 Markdown/cover 的 `/uploads/...` 与仓库文件名；不要依赖 Windows 的大小写不敏感行为。
 - 构建提示图片仍在根暂存区：Studio 中先确认 slug 正确，再删除该字段中的旧引用并重新选择图片；Obsidian 草稿则运行发布器完成归档。不要手工让正式内容长期引用 `/uploads/<文件名>`。
 - 修改 slug 后图片目录不一致：恢复首次保存时的 slug；若内容尚未发布且确实必须改名，先移除旧图片和引用，再用新 slug 重新上传，避免留下孤儿附件。
+- Studio 的 slug 显示 locked：这是已有条目的身份保护，不是权限故障。不要用浏览器开发工具解除；确需迁移时在 Git 中同时处理 Markdown 文件名、frontmatter、附件目录、全部引用和永久重定向。
 - 构建提示归档附件无人引用：删除无用文件，或从同 slug 内容的正文/cover 正确引用；代码块中的示例不算引用。
 - 构建提示正文图片替代文本为空：在 `![这里填写图片内容](地址)` 的方括号内描述读者无法看到图片时需要知道的信息。
 - Preview 无法登录 Studio：Preview 默认关闭 OAuth，这是安全设计；在 Production 验收发布。

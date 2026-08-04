@@ -37,6 +37,7 @@ test("connects Vercel verification, maintenance reporting, rollback, and Studio 
   assert.match(smoke, /same-origin-allow-popups/);
   assert.match(smoke, /\/studio\/config\.mjs/);
   assert.match(smoke, /\/studio\/media-preflight\.mjs/);
+  assert.match(smoke, /\/studio\/stable-slug-widget\.mjs/);
   assert.match(smoke, /\/studio\/preview\.css/);
   assert.match(smoke, /frame-ancestors 'none'/);
   assert.doesNotMatch(smoke, /CLOUDFLARE_API_TOKEN|GITHUB_OAUTH_SECRET/);

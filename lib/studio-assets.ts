@@ -5,12 +5,14 @@ type StudioAssetName =
   | "index.html"
   | "config.mjs"
   | "media-preflight.mjs"
+  | "stable-slug-widget.mjs"
   | "preview.css";
 
 const contentTypes: Record<StudioAssetName, string> = {
   "index.html": "text/html; charset=utf-8",
   "config.mjs": "text/javascript; charset=utf-8",
   "media-preflight.mjs": "text/javascript; charset=utf-8",
+  "stable-slug-widget.mjs": "text/javascript; charset=utf-8",
   "preview.css": "text/css; charset=utf-8",
 };
 

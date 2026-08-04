@@ -30,7 +30,7 @@ npm run production:smoke -- https://your-production.example --expect-oauth
 
 ## 发布文章
 
-网页方式打开 [生产站 Studio](https://blog-iota-five-59.vercel.app/studio)，使用 GitHub 登录，创建草稿、上传图片、预览并发布；图片在进入 Git 草稿前会检查真实格式、体积、尺寸和动图帧预算。Obsidian 方式在仓库根目录打开 Vault，从 `templates/obsidian` 新建笔记，可以用 `[[note#heading|显示文字]]` 链接已发布文章或项目，再运行命令面板中的“发布当前草稿并同步 GitHub”。两种方式最终都产生 Git 提交；Vercel 只部署通过质量门并进入 `main` 的版本。
+网页方式打开 [生产站 Studio](https://blog-iota-five-59.vercel.app/studio)，使用 GitHub 登录，创建草稿、上传图片、预览并发布；图片在进入 Git 草稿前会检查真实格式、体积、尺寸和动图帧预算，稳定 slug 在首次保存后自动锁定。Obsidian 方式在仓库根目录打开 Vault，从 `templates/obsidian` 新建笔记，可以用 `[[note#heading|显示文字]]` 链接已发布文章或项目，再运行命令面板中的“发布当前草稿并同步 GitHub”。两种方式最终都产生 Git 提交；Vercel 只部署通过质量门并进入 `main` 的版本。
 
 完整步骤见 [发布手册](./docs/PUBLISHING.md) 和 [Vercel 迁移清单](./docs/MIGRATION.md)。
 
