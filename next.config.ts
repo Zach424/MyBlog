@@ -2,6 +2,7 @@ import type { NextConfig } from "next";
 import { resolveContentBuildDate } from "./build/content-build-date";
 import { validateContentRepository } from "./build/validate-content";
 import { validateMediaRepository } from "./build/validate-media";
+import { validateContentMediaReferences } from "./build/validate-media-references";
 
 const CONTENT_SECURITY_POLICY = [
   "default-src 'self'",
@@ -59,6 +60,7 @@ export default async function createNextConfig(): Promise<NextConfig> {
   await Promise.all([
     validateContentRepository(process.cwd(), contentBuildDate),
     validateMediaRepository(process.cwd()),
+    validateContentMediaReferences(process.cwd()),
   ]);
 
   return {

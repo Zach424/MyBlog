@@ -35,7 +35,7 @@ npm run content:publish -- content/inbox/learning-vercel-deployments.md --check-
 npm run content:publish -- content/inbox/learning-vercel-deployments.md --push
 ```
 
-`--check-only` 会在仓库同盘的忽略 staging 中完成真实媒体处理，验证 frontmatter、目标路径、附件与站内链接，并列出每个附件的归档路径和源/产物差异；随后删除 staging，不修改文件。省略标志会关闭草稿状态、原子归档已验证附件、把 Obsidian 链接转换为稳定站点 URL、生成正式内容并运行完整检查，但不提交；如果检查失败，草稿与全部附件会按原路径、原文本和原字节恢复。`--push` 在同一流程通过后只暂存目标内容、受跟踪的源文件删除和归档附件，创建提交并推送 `main`。运行 `--push` 前应确认暂存区为空。
+`--check-only` 会在仓库同盘的忽略 staging 中完成真实媒体处理，验证 frontmatter、目标路径、附件与站内链接，并列出每个附件的归档路径和源/产物差异；随后删除 staging，不修改文件。省略标志会关闭草稿状态、原子归档已验证附件、把 Obsidian 链接转换为稳定站点 URL、生成正式内容并运行完整检查，但不提交；完整检查还会确认正式图片 URL 精确存在、归档目录与内容 slug 一致且没有孤立文件。如果检查失败，草稿与全部附件会按原路径、原文本和原字节恢复。`--push` 在同一流程通过后只暂存目标内容、受跟踪的源文件删除和归档附件，创建提交并推送 `main`。运行 `--push` 前应确认暂存区为空。
 
 ## 本地图片预算
 
@@ -47,7 +47,7 @@ npm run content:publish -- content/inbox/learning-vercel-deployments.md --push
 | 单帧像素 | `≤ 8,000,000` |
 | 动图总像素 | `宽 × 高 × 帧数 ≤ 80,000,000` |
 
-Obsidian 的静态 PNG/JPEG/WebP 原图可以在发布前暂时超过公开预算，但不得超过 25 MiB、8192×8192 px 或 4000 万像素的安全包络；发布器会自动校正方向、等比缩放并生成 WebP，产物仍必须通过上表。GIF、AVIF 和动画 WebP 不自动重编码，输入本身必须符合上表。网页 Studio 会先拒绝超过 3 MiB 的选择；`next dev`、`next build` 和 GitHub Quality Gate 会重新递归校验 `public/uploads`，所以普通 Git 编辑器也不能绕过格式、损坏文件或尺寸门。不要只改扩展名。
+Obsidian 的静态 PNG/JPEG/WebP 原图可以在发布前暂时超过公开预算，但不得超过 25 MiB、8192×8192 px 或 4000 万像素的安全包络；发布器会自动校正方向、等比缩放并生成 WebP，产物仍必须通过上表。GIF、AVIF 和动画 WebP 不自动重编码，输入本身必须符合上表。网页 Studio 会先拒绝超过 3 MiB 的选择；`next dev`、`next build` 和 GitHub Quality Gate 会重新递归校验 `public/uploads` 及正式内容引用，所以普通 Git 编辑器也不能绕过格式、损坏文件、尺寸、缺失路径或孤儿附件门。不要只改扩展名。
 
 ## 内容维护报告
 
@@ -79,6 +79,7 @@ npm run content:status -- --format json
 - 不使用 Obsidian `#^block-id` 块引用；公开知识链接使用笔记或标题链接；
 - 图片有替代文本，附件不含隐私信息；
 - 图片通过真实格式与媒体预算；Obsidian 静态图可由发布器自动生成 WebP，GIF/AVIF/动画 WebP 需预先满足公开预算；
+- 正式本地图片/cover 使用 `/uploads/...`，大小写与真实文件一致；归档子目录等于内容 slug，不保留无人引用的归档文件；
 - 本地图片位于 Obsidian 配置的 `public/uploads`，不要复用已经被其他公开内容跟踪的源图片；
 - 公开前把 `draft` 改为 `false`；
 - `npm run check` 或 GitHub Quality Gate 通过。
@@ -92,4 +93,6 @@ npm run content:status -- --format json
 - Actions 显示“进入复核窗口/即将到期”：运行 `npm run content:status` 查看剩余天数和清单；warning 是提前安排复核，不是构建失败。
 - Obsidian 拒绝发布：根据错误修正 slug、标签、日期、附件路径、站内链接或字段；目标不存在/未公开时先发布目标，歧义时写明 `posts/` 或 `projects/`，不要绕过校验。
 - 图片提示格式不一致或无法解码：重新从原工具导出为受支持格式，不要重命名后缀；静态原图超过 25 MiB/8192 px/4000 万像素时先裁切，GIF/AVIF/动画 WebP 超过公开预算时先在原工具优化。
+- 构建提示图片不存在或大小写不一致：核对 Markdown/cover 的 `/uploads/...` 与仓库文件名；不要依赖 Windows 的大小写不敏感行为。
+- 构建提示归档附件无人引用：删除无用文件，或从同 slug 内容的正文/cover 正确引用；代码块中的示例不算引用。
 - Preview 无法登录 Studio：Preview 默认关闭 OAuth，这是安全设计；在 Production 验收发布。

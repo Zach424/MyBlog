@@ -30,6 +30,7 @@
 0023-content-maintenance-report.md
 0024-bidirectional-reference-ledger.md
 0025-obsidian-webp-optimization.md
+0026-content-media-reference-integrity.md
 ```
 
 ## 必填结构

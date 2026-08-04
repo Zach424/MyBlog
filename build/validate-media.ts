@@ -35,22 +35,27 @@ async function imagePaths(directory: string): Promise<string[]> {
   return paths;
 }
 
-export async function validateMediaRepository(projectRoot: string) {
+export async function listMediaRepositoryFiles(projectRoot: string) {
   const uploadsDirectory = path.join(projectRoot, "public", "uploads");
   try {
     await access(uploadsDirectory);
   } catch (error) {
-    if ((error as NodeJS.ErrnoException).code === "ENOENT") {
-      return { images: 0, totalBytes: 0 };
-    }
+    if ((error as NodeJS.ErrnoException).code === "ENOENT") return [];
     throw error;
   }
-  const paths = await imagePaths(uploadsDirectory);
+
+  return (await imagePaths(uploadsDirectory)).map((absolutePath) =>
+    path.relative(projectRoot, absolutePath).replaceAll("\\", "/"),
+  );
+}
+
+export async function validateMediaRepository(projectRoot: string) {
+  const paths = await listMediaRepositoryFiles(projectRoot);
   const inspections = await Promise.all(
-    paths.map((absolutePath) =>
+    paths.map((sourcePath) =>
       inspectMediaFile(
-        absolutePath,
-        path.relative(projectRoot, absolutePath).replaceAll("\\", "/"),
+        path.join(projectRoot, ...sourcePath.split("/")),
+        sourcePath,
       ),
     ),
   );
