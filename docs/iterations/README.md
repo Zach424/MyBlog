@@ -26,6 +26,7 @@
 0019-obsidian-attachment-pipeline.md
 0020-content-knowledge-links.md
 0021-content-freshness-contract.md
+0022-local-media-budget.md
 ```
 
 ## 必填结构

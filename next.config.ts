@@ -1,6 +1,7 @@
 import type { NextConfig } from "next";
 import { resolveContentBuildDate } from "./build/content-build-date";
 import { validateContentRepository } from "./build/validate-content";
+import { validateMediaRepository } from "./build/validate-media";
 
 const CONTENT_SECURITY_POLICY = [
   "default-src 'self'",
@@ -55,7 +56,10 @@ const contentCacheHeader = {
 
 export default async function createNextConfig(): Promise<NextConfig> {
   const contentBuildDate = resolveContentBuildDate();
-  await validateContentRepository(process.cwd(), contentBuildDate);
+  await Promise.all([
+    validateContentRepository(process.cwd(), contentBuildDate),
+    validateMediaRepository(process.cwd()),
+  ]);
 
   return {
     poweredByHeader: false,

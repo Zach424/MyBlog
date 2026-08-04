@@ -21,7 +21,8 @@ MyBlog 是 Zach424 的个人技术知识库与公开工程日志。它把学习�
 | 恢复能力 | done | Vercel 显式目标回滚、当前版本恢复、再次冒烟 |
 | 内容知识网络 | done | Obsidian/Markdown 站内链接转换、构建期完整性校验、文章与项目反向引用账本 |
 | 内容新鲜度 | done | Current/Historical 可见语境、复核日期、当前记录 180 天构建门、现行 Demo |
-| 媒体优化 | pending | 图片尺寸/体积预算、压缩和响应式派生尚未实现 |
+| 媒体门禁 | done | 真实格式解码、3 MiB/2560 px/像素预算、Obsidian 诊断、Studio 限额与构建扫描 |
+| 媒体派生 | pending | 自动压缩和响应式图片派生尚未实现 |
 
 ## 设计与技术
 
@@ -30,6 +31,7 @@ MyBlog 是 Zach424 的个人技术知识库与公开工程日志。它把学习�
 - 内容：仓库内 Markdown、YAML、Zod，GitHub 是唯一事实源；
 - 阅读：react-markdown、remark-gfm、rehype-slug、rehype-highlight；
 - 发布：Decap CMS 3.14.1、GitHub OAuth、Obsidian 自有插件与 Node 发布脚本；
+- 媒体：Sharp 0.35.3、本地格式/体积/尺寸/动图预算，图片仍由 Git 跟踪；
 - 托管：Vercel 原生 Next.js，当前链路不依赖 Cloudflare；
 - 质量：ESLint、Node test、TypeScript、Next build、真实生产服务器 HTTP 测试、npm audit、线上冒烟。
 
@@ -37,23 +39,23 @@ MyBlog 是 Zach424 的个人技术知识库与公开工程日志。它把学习�
 
 - 仓库：<https://github.com/Zach424/MyBlog>，生产分支 `main`；
 - 生产站：<https://blog-iota-five-59.vercel.app>；
-- 本轮实现提交：`4177647`（内容语境/复核契约、180 天时效门、现行 Vercel 内容校准）；
-- 自动交付：Quality Gate `30888792915`、Production smoke `30888826725` 均成功；Vercel Production deployment `5739866714` 精确对应实现 SHA；
-- 最新完成迭代：0021 内容新鲜度契约与公开现状校准；
+- 上一轮最终归档提交：`cd19bd5`（内容新鲜度契约、交付证据与公开现状校准）；
+- 上一轮自动交付：Quality Gate `30889018081`、Production smoke `30889045326` 均成功；Vercel Production deployment `5739905800` 精确对应 `cd19bd52b7cc57b492036bc52881dc100d0dfe10`；
+- 最新完成迭代：0022 本地媒体预算与发布门禁；
 - Obsidian 状态：仓库根目录就是 Vault，`docs/STATUS.md` 与 `docs/iterations/*.md` 可直接阅读和维护；
 - 手动外部接入：自定义域名、统计、评论、公开邮箱均暂缓，不阻塞当前开发。
 
 ## 本轮新增能力
 
-所有正式内容现在必须声明 `freshness: current | historical` 和 `reviewedAt`。详情页事实栏公开显示 Current record / Historical snapshot 与复核日期；历史文章正文明确说明 Cloudflare/Vinext 是首版记录，MyBlog 项目页新增 2026-08-04 当前状态并把 Live demo 切换到 Vercel。`reviewedAt` 不能早于发布/更新日期或晚于构建日期，公开 Current record 超过 180 天未复核会阻断构建；Historical snapshot 保留证据但不承诺持续更新。
+本地图片现在必须能被 Sharp 真实解码，扩展名与 PNG/JPEG/WebP/GIF/AVIF 实际格式一致，单文件不超过 3 MiB、宽高不超过 2560 px、单帧不超过 800 万像素、动图不超过 8000 万总像素。Obsidian 检查模式在移动前报告格式、宽高、帧数和体积，正式发布复用同一检查；Studio 先限制体积，Next 配置加载时扫描整个 `public/uploads`，因此任何入口都不能把伪装、损坏或超预算图片带入新部署。
 
 ## 风险与下一步
 
-1. 图片仍以原始体积进入 Git，缺少大小/像素预算、压缩建议与响应式派生；
+1. 图片仍以原始文件进入 Git；当前会拒绝超预算文件并建议 AVIF/WebP，但尚未自动压缩或生成响应式派生；
 2. 当前维护内容最迟需要在 180 天窗口结束前复核；当前 MyBlog 记录的下一失效边界为 2027-01-31，尚未提供提前提醒；
 3. Obsidian 块引用是专有语法，当前明确拒绝；知识网络也尚无全站图谱或正文“引用去向”视图；
 4. Studio OAuth origin、GitHub 凭据和 Vercel Hobby 回滚范围仍需按运行手册维护；
 5. 统计、评论和自定义域名需要所有者最终选择，现阶段不主动接入；
 6. `decap-cms` 的开发依赖树仍有上游无修复的高危审计项；它不进入公开服务端生产依赖，但其浏览器编辑器包仅对已授权作者开放，后续应单独评估升级或替代方案。
 
-下一轮唯一主任务：为 Obsidian/Studio 图片建立体积、像素和格式预检预算，提供明确优化诊断，并把预算纳入发布与构建质量门。
+下一轮唯一主任务：建立内容维护状态报告，在 Current record 到期前给出确定的剩余天数、分级提醒和可执行复核清单；先完成本地/CI 报告，不接入通知服务。

@@ -18,6 +18,8 @@ export const FRESHNESS_OPTIONS = [
   { label: "历史快照", value: "historical" },
 ];
 
+export const MEDIA_MAX_FILE_SIZE = 3 * 1024 * 1024;
+
 const slugField = {
   label: "稳定网址 Slug",
   name: "slug",
@@ -64,7 +66,7 @@ const sharedFields = [
   tagsField,
   { label: "草稿", name: "draft", widget: "boolean", default: true, hint: "草稿不会进入公开页面、搜索、RSS 或 Sitemap。" },
   { label: "首页精选", name: "featured", widget: "boolean", default: false, hint: "草稿不能设为精选。" },
-  { label: "封面", name: "cover", widget: "image", required: false, choose_url: false, media_library: { config: { max_file_size: 5242880 } } },
+  { label: "封面", name: "cover", widget: "image", required: false, choose_url: false, media_library: { config: { max_file_size: MEDIA_MAX_FILE_SIZE } } },
 ];
 
 export function createStudioConfig(origin) {

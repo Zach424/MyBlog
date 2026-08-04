@@ -243,11 +243,13 @@ test("removes starter artifacts and keeps the Vercel-native design contract expl
   assert.match(packageJson, /"react-markdown": "10\.1\.0"/);
   assert.match(packageJson, /"rehype-highlight": "7\.0\.2"/);
   assert.match(packageJson, /"remark-gfm": "4\.0\.1"/);
+  assert.match(packageJson, /"sharp": "0\.35\.3"/);
   assert.match(packageJson, /"typecheck": "next typegen && tsc --noEmit"/);
   assert.match(
     nextConfig,
     /validateContentRepository\(process\.cwd\(\), contentBuildDate\)/,
   );
+  assert.match(nextConfig, /validateMediaRepository\(process\.cwd\(\)\)/);
   assert.match(nextConfig, /CONTENT_BUILD_DATE: contentBuildDate/);
   assert.match(nextConfig, /STUDIO_CONTENT_SECURITY_POLICY/);
   assert.match(contentModule, /readMarkdownDirectory/);

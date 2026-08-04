@@ -302,4 +302,6 @@ test("ships a desktop Obsidian command without hidden shell interpolation", asyn
   assert.match(script, /function contentLinkTargets/);
   assert.match(script, /content\/posts/);
   assert.match(script, /content\/projects/);
+  assert.match(script, /inspectMediaFile/);
+  assert.match(script, /formatMediaInspection/);
 });

@@ -13,6 +13,10 @@ import {
   gitPathsForPublishedNote,
   prepareObsidianNote,
 } from "../lib/obsidian-publishing.ts";
+import {
+  formatMediaInspection,
+  inspectMediaFile,
+} from "../lib/media-policy.ts";
 
 function fail(message) {
   console.error(`[publish] ${message}`);
@@ -78,6 +82,7 @@ try {
   fail(error instanceof Error ? error.message : String(error));
 }
 
+const attachmentInspections = new Map();
 for (const attachment of prepared.attachments) {
   const absoluteAttachmentSource = resolve(process.cwd(), attachment.sourcePath);
   const absoluteAttachmentTarget = resolve(process.cwd(), attachment.targetPath);
@@ -99,6 +104,14 @@ for (const attachment of prepared.attachments) {
   ) {
     fail(`附件已被其他内容跟踪，拒绝移动：${attachment.sourcePath}`);
   }
+  try {
+    attachmentInspections.set(
+      attachment.sourcePath,
+      await inspectMediaFile(absoluteAttachmentSource, attachment.sourcePath),
+    );
+  } catch (error) {
+    fail(error instanceof Error ? error.message : String(error));
+  }
 }
 
 if (checkOnly) {
@@ -106,6 +119,10 @@ if (checkOnly) {
   console.log(`[publish] 引用附件：${prepared.attachments.length} 个`);
   for (const attachment of prepared.attachments) {
     console.log(`[publish] 附件归档：${attachment.sourcePath} -> ${attachment.targetPath}`);
+    const inspection = attachmentInspections.get(attachment.sourcePath);
+    if (inspection) {
+      console.log(`[publish] 媒体预算：${formatMediaInspection(inspection)}`);
+    }
   }
   process.exit(0);
 }

@@ -10,7 +10,7 @@
     "build": "next build",
     "start": "next start",
     "test": "npm run test:unit && npm run typecheck && npm run build && npm run test:app",
-    "test:unit": "node --experimental-strip-types --test tests/content-contract.test.mjs tests/content-relations.test.mjs tests/search.test.mjs tests/discovery.test.mjs tests/cms-oauth.test.mjs tests/studio-config.test.mjs tests/obsidian-publishing.test.mjs tests/deployment-tools.test.mjs",
+    "test:unit": "node --experimental-strip-types --test tests/content-contract.test.mjs tests/content-relations.test.mjs tests/search.test.mjs tests/discovery.test.mjs tests/cms-oauth.test.mjs tests/studio-config.test.mjs tests/obsidian-publishing.test.mjs tests/media-policy.test.mjs tests/deployment-tools.test.mjs",
     "test:app": "node scripts/test-production.mjs tests/rendered-html.test.mjs tests/quality-gates.test.mjs",
     "audit": "node scripts/test-production.mjs tests/quality-gates.test.mjs",
     "check": "npm run lint && npm test",
@@ -30,6 +30,7 @@
     "rehype-highlight": "7.0.2",
     "rehype-slug": "6.0.0",
     "remark-gfm": "4.0.1",
+    "sharp": "0.35.3",
     "yaml": "2.9.0",
     "zod": "4.4.3"
   },

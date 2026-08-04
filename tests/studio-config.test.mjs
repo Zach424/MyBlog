@@ -3,6 +3,7 @@ import { readFile } from "node:fs/promises";
 import test from "node:test";
 import {
   FRESHNESS_OPTIONS,
+  MEDIA_MAX_FILE_SIZE,
   TAG_OPTIONS,
   createStudioConfig,
 } from "../studio/config.mjs";
@@ -10,6 +11,7 @@ import {
   CONTENT_FRESHNESS_VALUES,
   TAG_REGISTRY,
 } from "../lib/content/contract.ts";
+import { MEDIA_BUDGET } from "../lib/media-policy.ts";
 
 test("maps the publishing studio to the single Git content source", () => {
   const config = createStudioConfig("https://blog.example.test/path");
@@ -34,11 +36,14 @@ test("keeps CMS tags and required content fields aligned with the contract", () 
   );
 
   const config = createStudioConfig("https://blog.example.test");
+  assert.equal(MEDIA_MAX_FILE_SIZE, MEDIA_BUDGET.maxBytes);
   for (const collection of config.collections) {
     const names = collection.fields.map((field) => field.name);
     for (const required of ["title", "slug", "description", "publishedAt", "freshness", "reviewedAt", "tags", "draft", "featured", "body"]) {
       assert.ok(names.includes(required), `${collection.name}: ${required}`);
     }
+    const cover = collection.fields.find((field) => field.name === "cover");
+    assert.equal(cover.media_library.config.max_file_size, MEDIA_BUDGET.maxBytes);
   }
 });
 

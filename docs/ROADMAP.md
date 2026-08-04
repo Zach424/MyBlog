@@ -8,11 +8,11 @@
 | 4. 作者自助写作 | done | `/studio` OAuth + editorial workflow PR、Obsidian Vault/模板/附件/真实 `--push` |
 | 5. Vercel 原生迁移 | production live | 原生 Next.js、无 Cloudflare 依赖、23 路由生产冒烟通过 |
 | 6. 所有者生产上线 | done | Git 自动 Production、稳定域名自动冒烟、双端发布、回滚与恢复均已验收 |
-| 7. 持续内容与作者体验 | in progress | Iteration 0021 完成内容语境/复核契约、180 天新鲜度门与公开架构校准 |
+| 7. 持续内容与作者体验 | in progress | Iteration 0022 完成图片真实格式、体积、尺寸和动图预算，并覆盖双发布入口与构建 |
 
 ## 当前唯一主线
 
-进入持续内容与作者体验阶段。Iteration 0021 已把早期 Cloudflare/Vinext 内容标记为 Historical snapshot，把 MyBlog 项目维护为 Current record，并以 `reviewedAt` 和 180 天构建门防止现行事实长期失效。下一主线进入媒体体积治理：先建立本地图片预算和可操作预检，不接入外部图片服务。需要品牌域名时再绑定自定义域名，旧公开站继续只作为迁移历史证据。
+进入持续内容与作者体验阶段。Iteration 0022 已用一个共享策略约束 Obsidian、Studio 与 Next 构建：图片需真实可解码，扩展名匹配格式，并满足 3 MiB、2560 px、单帧/动图总像素预算；不依赖外部图床。下一主线处理 Current record 到期前的维护可见性，让作者在 180 天硬门之前获得分级报告和复核清单。需要品牌域名时再绑定自定义域名，旧公开站继续只作为迁移历史证据。
 
 ## 已知风险
 
@@ -25,7 +25,7 @@
 - Vercel 不可变 deployment URL 可能受保护；自动冒烟必须以 `VERCEL_PRODUCTION_URL` 为公开检查目标，同时用 deployment 元数据核对 SHA；
 - Windows Git 凭据保存在系统凭据管理器；撤销 GitHub OAuth 授权后，Obsidian `--push` 需要重新登录；
 - 内容持续增长后要继续观察 `.next/static`、Serverless 函数体积和构建时间；
-- 附件目前依赖 Git 仓库存储，发布器尚未执行图片压缩和尺寸预算；图片增长后需要加入体积门与优化建议；
+- 附件仍依赖 Git 仓库存储；格式/体积/尺寸预算已建立，但尚未自动压缩或生成响应式派生；
 - 当前维护内容的 180 天复核门会在过期时阻断构建；这是有意的准确性保护，但还缺少到期前提醒；
 - 内部链接目前支持内容页和标题锚点，明确不支持 Obsidian 块引用；反向引用仅出现在详情页，尚未提供全站关系图；
 - 自定义域名、公开邮箱、统计和评论尚未选择，但不阻塞生产上线。
