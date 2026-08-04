@@ -126,7 +126,7 @@ Studio 的浏览器选择器只接受上述扩展名，并在文件进入 Decap 
 - 路径解码后不能包含目录穿越、编码的 `/`/`\\`、空路径段或非法字符，末尾扩展名必须是受支持图片格式；
 - 引用按仓库原始大小写精确匹配真实文件，避免 Windows 通过但 Vercel/Linux 404；
 - `public/uploads/<slug>/...` 是已归档附件，只能由相同 slug 的正式文章或项目正文/cover 引用；没有引用的归档文件会让构建失败；
-- `public/uploads` 根目录只是 Obsidian inbox 与媒体库暂存区，正式 posts/projects 的正文和 cover 引用根文件会失败；
+- `public/uploads` 根目录只是 Obsidian inbox 与媒体库暂存区，正式 posts/projects 的正文和 cover 引用根文件会失败；`npm run media:staging` 会交叉列出 inbox 引用、Git/文件系统年龄和清理建议，但不会自动删除；
 - 行内 Markdown 图片和引用式图片都参与关系，行内代码、围栏代码和普通链接不参与；
 - 正式目录里的 draft/future 记录仍可拥有归档附件；`content/inbox` 不参与，未被正式内容引用的根暂存文件不做孤儿清理。
 

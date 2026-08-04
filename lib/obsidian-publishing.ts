@@ -112,20 +112,33 @@ function stableAttachmentName(sourcePath: string) {
   return `${normalizedBase || "asset"}-${digest}.${publishedExtension}`;
 }
 
-function normalizeAttachmentLinks(markdown: string, slug: string) {
+function normalizeAttachmentLinks(
+  markdown: string,
+  slug: string,
+  onIssue?: (message: string) => void,
+) {
   const attachments = new Map<string, PreparedAttachment>();
   const targetSources = new Map<string, string>();
 
   function register(reference: string, allowBareName: boolean) {
-    const sourcePath = sourceAttachmentPath(reference, allowBareName);
+    let sourcePath: string | undefined;
+    try {
+      sourcePath = sourceAttachmentPath(reference, allowBareName);
+    } catch (error) {
+      if (!onIssue) throw error;
+      onIssue(error instanceof Error ? error.message : String(error));
+      return undefined;
+    }
     if (!sourcePath) return undefined;
 
     const targetPath = `public/uploads/${slug}/${stableAttachmentName(sourcePath)}`;
     const existingSource = targetSources.get(targetPath);
     if (existingSource && existingSource !== sourcePath) {
-      throw new Error(`多个附件会生成同一目标文件：${existingSource}、${sourcePath}`);
+      const message = `多个附件会生成同一目标文件：${existingSource}、${sourcePath}`;
+      if (!onIssue) throw new Error(message);
+      onIssue(message);
     }
-    targetSources.set(targetPath, sourcePath);
+    if (!existingSource) targetSources.set(targetPath, sourcePath);
     attachments.set(sourcePath, {
       sourcePath,
       targetPath,
@@ -170,6 +183,25 @@ function normalizeAttachmentLinks(markdown: string, slug: string) {
     attachments: [...attachments.values()].sort((left, right) =>
       left.targetPath.localeCompare(right.targetPath, "en"),
     ),
+  };
+}
+
+export function extractObsidianAttachmentPaths(markdown: string) {
+  return normalizeAttachmentLinks(markdown, "staging-audit").attachments.map(
+    (attachment) => attachment.sourcePath,
+  );
+}
+
+export function inspectObsidianAttachmentPaths(markdown: string) {
+  const issues: string[] = [];
+  const normalized = normalizeAttachmentLinks(
+    markdown,
+    "staging-audit",
+    (message) => issues.push(message),
+  );
+  return {
+    issues,
+    paths: normalized.attachments.map((attachment) => attachment.sourcePath),
   };
 }
 

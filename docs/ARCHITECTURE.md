@@ -10,7 +10,7 @@ MyBlog 是 Git-first 个人技术博客。公开阅读不依赖数据库；网�
 | --- | --- | --- |
 | 界面 | React 19、Next.js 16 App Router | 页面、元数据、Route Handlers 与服务端渲染 |
 | 内容 | Markdown、YAML、Zod | 文章/项目解析、字段校验、草稿过滤与派生索引 |
-| 维护 | Node CLI、GitHub Actions | Current record 日龄、分级队列、摘要与过期门 |
+| 维护 | Node CLI、GitHub Actions | Current record 日龄、根媒体库存、分级队列、摘要与过期门 |
 | 阅读 | react-markdown、remark-gfm、rehype | GFM、标题锚点、代码高亮与目录 |
 | 发现 | 本地搜索、RSS、Sitemap、robots、JSON-LD | 检索、订阅与搜索引擎发现 |
 | 发布 | Decap CMS、Obsidian、GitHub | 两个作者入口，共用同一内容事实源 |
@@ -37,13 +37,14 @@ lib/
   content/                          内容契约、维护报告、文件读取、派生索引与引用关系
     media.ts                        封面与正文图共享的固有尺寸描述器
     media-references.ts             Markdown 图片 AST 抽取与安全 `/uploads` 路径解析
+    staging-media.ts                根暂存库存、inbox 引用、年龄证据与报告格式
   cms-oauth.ts                      签名 OAuth state 与 token 交换
   media-policy.ts                   原图安全包络、WebP 优化与公开媒体预算的共享策略
   obsidian-publishing.ts            Obsidian 校验、附件与目标路径转换
   studio-assets.ts                  构建期 Studio 资源响应
 studio/                             Decap CMS、浏览器媒体预检与稳定 slug 控件源文件（不放入 public）
 templates/obsidian/                 文章、TIL、项目模板
-scripts/                            发布、内容维护报告、冒烟、迁移和生产测试器
+scripts/                            发布、内容/暂存媒体维护报告、冒烟、迁移和生产测试器
 build/validate-media.ts             构建前递归扫描全部公开上传图片
 build/validate-media-references.ts  正式内容图片存在性、slug 所有权和孤儿附件门禁
 tests/                              单元、生产 HTTP 与质量审计
@@ -63,6 +64,8 @@ vercel.json                         Vercel Next.js 框架声明
 每条正式内容声明 `freshness` 和 `reviewedAt`。`historical` 是保留当时决策的快照，不随时间失效；`current` 承诺与现行系统一致，公开后最多 180 天必须复核。复核日期不能早于内容更新日期、不能晚于构建日期。详情页服务端渲染 Context 与 Reviewed；结构化数据的 `dateModified` 使用复核日期。
 
 `lib/content/maintenance.ts` 复用构建硬门的 UTC 完整日计算，把公开 Current record 派生为 healthy、review-soon、due-soon、overdue。60 天进入复核窗口，30 天进入紧急队列，第 180 天仍是最后有效日，第 181 天过期。`scripts/report-content-maintenance.mjs` 提供文本/JSON、固定日期演练、GitHub Markdown 摘要和源文件注解；Historical、草稿与未来记录不参与队列。Quality Gate 在 push、PR、手动运行和每周一 01:00 UTC 执行报告，只有 overdue 返回非零，预警不改变原 180 天契约。
+
+`lib/content/staging-media.ts` 只扫描 `public/uploads` 根文件，并复用 Obsidian 发布器自己的 Wiki/Markdown/cover 附件解析语义，交叉建立 inbox 草稿引用账本。现存文件分为单草稿引用、多草稿共享和未引用；报告还列出缺失引用与无法审计的草稿。干净且已跟踪的文件以 Git 最后提交日计算年龄，本地修改或未跟踪文件以明确标注的 filesystem mtime 作为观察证据；默认 30 天进入陈旧复核，但任何发现都只产生建议和 Actions warning，不删除文件、不改变构建结果。`scripts/report-staging-media.mjs` 提供文本/JSON、固定日期/阈值与 GitHub 摘要，Quality Gate 每次运行和每周复核都会生成库存。
 
 `lib/content/media.ts` 是封面与正文图共享的服务端尺寸层。文件系统根静态收窄到 `public/uploads`，避免 Turbopack 把整个仓库追踪进 Serverless 产物；同一仓库路径的检查通过 React cache 复用。封面描述器附带 `coverAlt`，交给共享 `ContentCover` 和 OG/Twitter/JSON-LD；没有封面的记录不渲染 figure。`MarkdownContent` 则先从正文 AST 收集并去重 URL，只为本地 `/uploads/...` 建立描述器，再把真实宽高、作者 alt 和对应 48rem 阅读栏的 `sizes` 交给 `next/image`。两条详情路由必须传入内容 `sourcePath`，因此页面渲染与构建媒体契约使用同一安全路径边界。
 
@@ -93,7 +96,7 @@ Obsidian 草稿中的 Wiki 图片嵌入、指向 `public/uploads` 的 Markdown �
 
 媒体策略只接受 PNG、JPEG、WebP、GIF 和 AVIF，扩展名必须匹配解码格式。自动优化原图安全包络为 25 MiB、8192×8192 px、4000 万单帧像素；公开单文件上限仍为 3 MiB，宽高上限均为 2560 px，单帧上限 800 万像素，动图上限 8000 万总像素。Studio 在捕获阶段接管 Decap 的本地图片 `change` 事件，先读取 magic bytes、PNG/GIF/WebP 动画结构并用 `createImageBitmap` 解码真实宽高；通过后把同一个 `File` 重新派发给 Decap，失败则清空选择并给出本地 Evidence Rail 诊断。浏览器预检不上传、不重编码、不改变 editorial workflow、per-slug 路径、重名确认或 Git 回滚语义；JPEG/PNG 需要自动 WebP 时仍使用 Obsidian 发布器。动画 AVIF 因浏览器端不能可靠计帧而 fail closed。构建扫描仍是所有入口的权威门禁。Sharp 的 libvips 缓存在短命发布/校验进程中关闭，避免 Windows 保留附件句柄。
 
-正式内容的本地图片 URL 必须是 `/uploads/...`，且不能包含查询、锚点、编码路径分隔符、空/`.`/`..` 段或 Windows 非法字符；Markdown 图片必须填写非空 alt。正文的非本地图只允许完整 HTTPS URL：它不加入 `next/image` 的开放远程白名单，而是明确降级为 `loading=lazy`、异步解码、`no-referrer` 的原生图片；公开 CSP 的 `img-src` 只额外允许 `https:`。cover 必须本地化以保证构建期宽高和社交元数据可确定。文件清单保留仓库中的原始大小写，因此 Windows 开发机也能在部署前发现会在 Linux/Vercel 失效的大小写漂移。`public/uploads/<slug>/...` 被视为已归档命名空间，只能由同 slug 的 post/project 正文或 cover 引用；根目录文件只保留给 Obsidian inbox 与媒体库暂存，不做孤儿清理，也不能被正式 posts/projects 引用。正式目录的 draft/future 内容参与所有权，避免编辑分支在公开前被门禁阻断；`content/inbox` 不参与正式引用关系。
+正式内容的本地图片 URL 必须是 `/uploads/...`，且不能包含查询、锚点、编码路径分隔符、空/`.`/`..` 段或 Windows 非法字符；Markdown 图片必须填写非空 alt。正文的非本地图只允许完整 HTTPS URL：它不加入 `next/image` 的开放远程白名单，而是明确降级为 `loading=lazy`、异步解码、`no-referrer` 的原生图片；公开 CSP 的 `img-src` 只额外允许 `https:`。cover 必须本地化以保证构建期宽高和社交元数据可确定。文件清单保留仓库中的原始大小写，因此 Windows 开发机也能在部署前发现会在 Linux/Vercel 失效的大小写漂移。`public/uploads/<slug>/...` 被视为已归档命名空间，只能由同 slug 的 post/project 正文或 cover 引用；根目录文件只保留给 Obsidian inbox 与媒体库暂存，不能被正式 posts/projects 引用，也不会被自动删除，而是进入独立库存报告供作者复核。正式目录的 draft/future 内容参与所有权，避免编辑分支在公开前被门禁阻断；`content/inbox` 只参与根暂存报告，不参与正式所有权关系。
 
 同一发布阶段还会读取 `content/posts` 与 `content/projects` 的稳定文件名，把 Obsidian Wiki/Markdown 笔记链接转换为站点 URL。裸 slug 只有在文章和项目之间唯一时才可使用；显式 `posts/<slug>`、`projects/<slug>`、别名和标题链接均受支持，块引用被明确拒绝。转换跳过行内代码和围栏代码，避免把教程中的语法示例当成真实关系。
 
@@ -122,6 +125,7 @@ Vercel GitHub Integration 负责每个分支的 Preview 和 `main` 的 Productio
 - `public/uploads` 只能包含真实可解码且扩展名匹配的白名单图片，并满足共享公开媒体预算；Obsidian 自动优化只能从受限原图包络进入 staging，验证产物后才能原子安装。
 - 正式 Markdown/cover 的每个本地图片必须精确存在；已归档附件必须由同 slug 内容引用，代码示例不能形成媒体所有权。
 - 正式 Markdown/cover 不能引用根暂存图片；Studio 必须先填写稳定 slug，再把媒体直接写入同 slug 归档目录。
+- 根暂存媒体必须可由确定性报告区分引用、共享、未引用、陈旧与缺失；报告不得自动删除作者文件或把提醒升级为构建失败。
 - Studio 新建/复制条目的顶层 slug 在首次保存前可编辑；已有条目必须以 readOnly 控件锁定并继续序列化，身份漂移必须在保存前失败。
 - Studio 本地图片进入 Decap 草稿前必须通过与公开媒体策略一致的真实格式、尺寸、体积和动图总像素预检；预检通过后必须透传原始 `File`，不能悄悄改变附件字节。
 - Markdown 图片 alt 不能为空；本地图使用共享固有尺寸与响应式候选，HTTPS 外图不能进入开放优化主机列表。

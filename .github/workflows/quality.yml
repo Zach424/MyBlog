@@ -36,6 +36,9 @@ jobs:
       - name: Report content maintenance
         run: npm run content:status -- --github-summary
 
+      - name: Report staging media inventory
+        run: npm run media:staging -- --github-summary
+
       - name: Run the complete quality gate
         run: npm run check
 
