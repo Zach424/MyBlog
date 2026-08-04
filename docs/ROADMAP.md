@@ -8,11 +8,11 @@
 | 4. 作者自助写作 | done | `/studio` OAuth + editorial workflow PR、Obsidian Vault/模板/附件/真实 `--push` |
 | 5. Vercel 原生迁移 | production live | 原生 Next.js、无 Cloudflare 依赖、23 路由生产冒烟通过 |
 | 6. 所有者生产上线 | done | Git 自动 Production、稳定域名自动冒烟、双端发布、回滚与恢复均已验收 |
-| 7. 持续内容与作者体验 | in progress | Iteration 0031 完成 Studio 首次保存后稳定 slug 锁定、漂移校验与线上交付验证 |
+| 7. 持续内容与作者体验 | in progress | Iteration 0032 完成根暂存媒体库存、inbox 引用/年龄证据、零删除 CLI/Actions 与线上交付验证 |
 
 ## 当前唯一主线
 
-进入持续内容与作者体验阶段。Iteration 0031 已通过 Decap custom widget 把 slug 生命周期收紧为“新建/复制可编辑，首次保存后只读”，并用 custom `isValid` 阻断异常身份漂移；控件保持可聚焦/复制，不依赖生成类名，实际 bundle 状态契约也有回归测试。下一主线是把 root `public/uploads` 暂存区的人工审计变成确定性库存与陈旧报告：区分 inbox/待发布引用和未引用文件，提供证据但不自动删除。需要品牌域名时再绑定自定义域名，旧公开站继续只作为迁移历史证据。
+进入持续内容与作者体验阶段。Iteration 0032 已把 root `public/uploads` 从人工记忆风险变成确定性库存：本地 CLI 和 Actions 使用同一 inbox 引用账本、Git/文件系统年龄证据与零删除建议，且坏引用不会抹掉同篇其他合法附件的占用。下一主线是建立版本化永久重定向注册表，真正闭合 slug/URL 迁移所需的旧路径单跳 308、目标存在性与冲突/链/循环门禁。需要品牌域名时再绑定自定义域名，旧公开站继续只作为迁移历史证据。
 
 ## 已知风险
 
@@ -27,7 +27,8 @@
 - 内容持续增长后要继续观察 `.next/static`、Serverless 函数体积和构建时间；
 - 附件仍依赖 Git 仓库存储；封面和正文图的引用/展示/Studio 归档与预检已闭环，但 Studio/普通 Git 入口没有自动优化，同 slug 重复文件名仍需作者在选择前规避；
 - Studio 的 slug 在首次保存后已由自定义控件只读保护，真正迁移仍须使用 Git 同步修改内容、引用和附件；控件依赖固定 Decap 3.14.1 bundle 的 `entry/newRecord` 契约，升级必须重审；
-- root `public/uploads` 暂存区不会自动清理，目前仍依赖人工判断；下一轮将补确定性库存与陈旧报告，但不会自动删除作者文件；
+- root `public/uploads` 已有确定性库存和 warning，但有意不自动删除；未跟踪附件只存在于作者工作区，GitHub Actions 无法看到，仍需本地运行报告后人工确认；
+- slug 迁移文档要求永久重定向，但仓库尚无经过构建验证的 redirect 注册表；目前应优先恢复原 slug，直到下一轮闭合旧 URL；
 - Current record 已有每周 60/30 天 Actions 提醒和过期门；若未来需要邮件/聊天通知，必须由所有者选择渠道后再接入；
 - 内部链接支持内容页和标题锚点，详情页同时展示 outgoing/backlinks；明确不支持 Obsidian 块引用，尚未提供全站关系图；
 - 自定义域名、公开邮箱、统计和评论尚未选择，但不阻塞生产上线。

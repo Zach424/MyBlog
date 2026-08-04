@@ -36,6 +36,7 @@
 0029-studio-slug-media-archive.md
 0030-studio-media-preflight.md
 0031-studio-stable-slug-lifecycle.md
+0032-staging-media-inventory.md
 ```
 
 ## 必填结构
