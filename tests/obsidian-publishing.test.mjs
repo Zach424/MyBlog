@@ -180,6 +180,31 @@ test("normalizes Obsidian attachment links into public blog URLs", () => {
   ]);
 });
 
+test("archives and rewrites an Obsidian cover with the same media transaction", () => {
+  const withCover = article.replace(
+    "featured: false",
+    'featured: false\ncover: "/uploads/obsidian-evidence.png"\ncoverAlt: "构建结果截图"',
+  ).replace("正文图片 ![evidence](/uploads/obsidian-evidence.png)。", "正文不重复引用封面。");
+
+  const result = prepareObsidianNote(
+    "content/inbox/obsidian-publishing.md",
+    withCover,
+  );
+
+  assert.match(
+    result.content,
+    /cover: "\/uploads\/obsidian-publishing\/obsidian-evidence\.webp"/u,
+  );
+  assert.match(result.content, /coverAlt: "构建结果截图"/u);
+  assert.deepEqual(result.attachments, [
+    {
+      sourcePath: "public/uploads/obsidian-evidence.png",
+      targetPath: "public/uploads/obsidian-publishing/obsidian-evidence.webp",
+      publicUrl: "/uploads/obsidian-publishing/obsidian-evidence.webp",
+    },
+  ]);
+});
+
 test("scopes and stabilizes Obsidian pasted-image filenames", () => {
   const withPastedImages = article.replace(
     "![evidence](/uploads/obsidian-evidence.png)",

@@ -66,7 +66,8 @@ const sharedFields = [
   tagsField,
   { label: "草稿", name: "draft", widget: "boolean", default: true, hint: "草稿不会进入公开页面、搜索、RSS 或 Sitemap。" },
   { label: "首页精选", name: "featured", widget: "boolean", default: false, hint: "草稿不能设为精选。" },
-  { label: "封面", name: "cover", widget: "image", required: false, choose_url: false, media_library: { config: { max_file_size: MEDIA_MAX_FILE_SIZE } } },
+  { label: "封面", name: "cover", widget: "image", required: false, choose_url: false, hint: "上传后会在详情页、Open Graph 与 Twitter 分享卡中使用。", media_library: { config: { max_file_size: MEDIA_MAX_FILE_SIZE } } },
+  { label: "封面替代文本", name: "coverAlt", widget: "string", required: false, hint: "设置封面时必填；简洁描述图片传达的信息，不要重复文章标题。" },
 ];
 
 export function createStudioConfig(origin) {

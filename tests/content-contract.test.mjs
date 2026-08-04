@@ -22,6 +22,8 @@ function postSource({
   featured = false,
   series,
   canonical,
+  cover,
+  coverAlt,
 } = {}) {
   const effectiveReviewedAt = reviewedAt ?? updatedAt ?? publishedAt;
 
@@ -35,7 +37,7 @@ reviewedAt: ${effectiveReviewedAt}
 tags: ${tags}
 draft: ${draft}
 featured: ${featured}
-${series ? `series:\n  slug: ${series.slug}\n  title: ${series.title}\n  order: ${series.order}\n` : ""}${canonical ? `canonical: "${canonical}"\n` : ""}---
+${series ? `series:\n  slug: ${series.slug}\n  title: ${series.title}\n  order: ${series.order}\n` : ""}${canonical ? `canonical: "${canonical}"\n` : ""}${cover ? `cover: "${cover}"\n` : ""}${coverAlt ? `coverAlt: "${coverAlt}"\n` : ""}---
 
 ## 正文
 
@@ -46,6 +48,8 @@ function projectSource({
   tags = '["TypeScript", "React"]',
   repository = "https://github.com/Zach424/MyBlog",
   demo = "null",
+  cover,
+  coverAlt,
 } = {}) {
   return `---
 title: "MyBlog"
@@ -60,7 +64,7 @@ draft: false
 featured: true
 repository: "${repository}"
 demo: ${demo}
----
+${cover ? `cover: "${cover}"\n` : ""}${coverAlt ? `coverAlt: "${coverAlt}"\n` : ""}---
 
 ## 背景与目标
 
@@ -175,6 +179,46 @@ test("enforces date and HTTPS URL invariants", () => {
         projectSource({ repository: "http://github.com/example/repo" }),
       ),
     /repository.*HTTPS/,
+  );
+});
+
+test("requires a repository-local cover and accessible alternative text", () => {
+  const covered = parsePostFile(
+    "content/posts/covered.md",
+    postSource({
+      cover: "/uploads/covered/cover.webp",
+      coverAlt: "一条提交轨迹连接文档与部署节点",
+    }),
+  );
+  assert.equal(covered.cover, "/uploads/covered/cover.webp");
+  assert.equal(covered.coverAlt, "一条提交轨迹连接文档与部署节点");
+
+  assert.throws(
+    () =>
+      parsePostFile(
+        "content/posts/missing-cover-alt.md",
+        postSource({ cover: "/uploads/missing-cover-alt/cover.webp" }),
+      ),
+    /coverAlt.*必须填写封面替代文本/,
+  );
+  assert.throws(
+    () =>
+      parseProjectFile(
+        "content/projects/remote-cover.md",
+        projectSource({
+          cover: "https://example.com/cover.webp",
+          coverAlt: "远程封面",
+        }),
+      ),
+    /cover.*必须使用 \/uploads/,
+  );
+  assert.throws(
+    () =>
+      parseProjectFile(
+        "content/projects/dangling-cover-alt.md",
+        projectSource({ coverAlt: "没有对应封面的描述" }),
+      ),
+    /coverAlt.*不能单独填写/,
   );
 });
 

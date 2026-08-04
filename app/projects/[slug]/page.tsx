@@ -7,6 +7,7 @@ import {
   ContentReferenceLedger,
   TableOfContents,
 } from "@/components/ContentViews";
+import { ContentCover } from "@/components/ContentCover";
 import { MarkdownContent } from "@/components/MarkdownContent";
 import { StructuredData } from "@/components/StructuredData";
 import {
@@ -17,6 +18,7 @@ import {
   getTagSlug,
 } from "@/lib/content";
 import { extractTableOfContents } from "@/lib/content/markdown";
+import { getContentCover } from "@/lib/content/cover";
 import { absoluteSiteUrl, resolveSiteUrl } from "@/lib/site";
 
 type ProjectPageProps = {
@@ -33,6 +35,15 @@ export async function generateMetadata({
   const { slug } = await params;
   const project = getProjectBySlug(slug);
   if (!project) return { title: "项目不存在" };
+  const cover = await getContentCover(project);
+  const socialImage = cover
+    ? {
+        url: cover.src,
+        width: cover.width,
+        height: cover.height,
+        alt: cover.alt,
+      }
+    : undefined;
 
   return {
     title: project.title,
@@ -43,10 +54,13 @@ export async function generateMetadata({
       title: project.title,
       description: project.description,
       url: project.url,
+      images: socialImage ? [socialImage] : undefined,
     },
     twitter: {
+      card: cover ? "summary_large_image" : undefined,
       title: project.title,
       description: project.description,
+      images: socialImage ? [socialImage] : undefined,
     },
   };
 }
@@ -55,6 +69,7 @@ export default async function ProjectPage({ params }: ProjectPageProps) {
   const { slug } = await params;
   const project = getProjectBySlug(slug);
   if (!project) notFound();
+  const cover = await getContentCover(project);
 
   const toc = extractTableOfContents(project.body);
   const backlinks = getBacklinksFor(project);
@@ -79,6 +94,7 @@ export default async function ProjectPage({ params }: ProjectPageProps) {
           inLanguage: "zh-CN",
           keywords: project.tags,
           url: projectUrl,
+          image: cover ? absoluteSiteUrl(siteUrl, cover.src) : undefined,
           codeRepository: project.repository,
           programmingLanguage: project.stack,
           author: {
@@ -121,6 +137,7 @@ export default async function ProjectPage({ params }: ProjectPageProps) {
           </div>
         }
       />
+      {cover ? <ContentCover cover={cover} kind="Project" /> : null}
       <div className="reading-layout">
         <article className="reading-article">
           <MarkdownContent source={project.body} />

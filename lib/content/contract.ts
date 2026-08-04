@@ -50,6 +50,17 @@ const httpsUrlSchema = z
   .url("必须是完整 URL")
   .refine((value) => new URL(value).protocol === "https:", "必须使用 HTTPS");
 
+const coverSchema = z
+  .string()
+  .trim()
+  .regex(/^\/uploads\//, "必须使用 /uploads/... 仓库内图片路径");
+
+const coverAltSchema = z
+  .string()
+  .trim()
+  .min(1, "封面替代文本不能为空")
+  .max(200, "封面替代文本过长");
+
 const rawTagsSchema = z
   .array(z.string().trim().min(1, "标签不能为空"))
   .min(1, "至少需要 1 个标签")
@@ -82,7 +93,8 @@ const postFrontmatterSchema = z
     featured: z.boolean().default(false),
     series: seriesSchema.optional(),
     canonical: httpsUrlSchema.optional(),
-    cover: z.string().trim().min(1).optional(),
+    cover: coverSchema.optional(),
+    coverAlt: coverAltSchema.optional(),
   })
   .strict()
   .superRefine((value, context) => {
@@ -107,6 +119,22 @@ const postFrontmatterSchema = z
         code: "custom",
         path: ["featured"],
         message: "草稿不能设为精选",
+      });
+    }
+
+    if (value.cover && !value.coverAlt) {
+      context.addIssue({
+        code: "custom",
+        path: ["coverAlt"],
+        message: "设置 cover 时必须填写封面替代文本",
+      });
+    }
+
+    if (!value.cover && value.coverAlt) {
+      context.addIssue({
+        code: "custom",
+        path: ["coverAlt"],
+        message: "未设置 cover 时不能单独填写封面替代文本",
       });
     }
   });
@@ -127,7 +155,8 @@ const projectFrontmatterSchema = z
     featured: z.boolean().default(false),
     repository: httpsUrlSchema.optional(),
     demo: httpsUrlSchema.nullable().optional(),
-    cover: z.string().trim().min(1).optional(),
+    cover: coverSchema.optional(),
+    coverAlt: coverAltSchema.optional(),
   })
   .strict()
   .superRefine((value, context) => {
@@ -152,6 +181,22 @@ const projectFrontmatterSchema = z
         code: "custom",
         path: ["featured"],
         message: "草稿不能设为精选",
+      });
+    }
+
+    if (value.cover && !value.coverAlt) {
+      context.addIssue({
+        code: "custom",
+        path: ["coverAlt"],
+        message: "设置 cover 时必须填写封面替代文本",
+      });
+    }
+
+    if (!value.cover && value.coverAlt) {
+      context.addIssue({
+        code: "custom",
+        path: ["coverAlt"],
+        message: "未设置 cover 时不能单独填写封面替代文本",
       });
     }
   });

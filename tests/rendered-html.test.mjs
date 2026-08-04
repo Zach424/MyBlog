@@ -116,6 +116,7 @@ test("renders Markdown articles with metadata, anchors, code and navigation", as
   assert.match(html, /Historical snapshot/);
   assert.match(html, /<dt>Reviewed<\/dt>/);
   assert.match(html, /2026-08-04/);
+  assert.doesNotMatch(html, /class="content-cover"/);
   assert.match(html, /<section class="content-relations" aria-labelledby="reference-ledger-title">/);
   assert.equal(
     [
@@ -161,6 +162,25 @@ test("renders project Markdown and returns a real 404 for unknown content", asyn
   assert.match(projectHtml, /href="\/posts\/building-a-maintainable-blog"/);
   assert.match(projectHtml, /href="\/posts\/cross-platform-npm-scripts"/);
   assert.match(projectHtml, /"@type":"SoftwareSourceCode"/);
+  assert.match(projectHtml, /<figure class="content-cover">/);
+  assert.match(projectHtml, /<figcaption class="content-cover-rail">/);
+  assert.match(projectHtml, /Project(?:<!-- -->)? \/ Cover/);
+  assert.match(
+    projectHtml,
+    /<img(?=[^>]*alt="文档、提交节点、网页与部署层沿一条工程轨迹连接成可维护博客系统")(?=[^>]*width="1672")(?=[^>]*height="941")(?=[^>]*srcSet=)[^>]*>/,
+  );
+  assert.match(
+    projectHtml,
+    /<meta property="og:image" content="https:\/\/blog\.example\.test\/uploads\/myblog\/cover\.webp"/,
+  );
+  assert.match(
+    projectHtml,
+    /<meta name="twitter:image" content="https:\/\/blog\.example\.test\/uploads\/myblog\/cover\.webp"/,
+  );
+  assert.match(
+    projectHtml,
+    /"image":"https:\/\/blog\.example\.test\/uploads\/myblog\/cover\.webp"/,
+  );
 
   const missingResponse = await render("/posts/does-not-exist");
   assert.equal(missingResponse.status, 404);

@@ -11,6 +11,8 @@ tags:
   - Tooling
 draft: true
 featured: false
+# cover: "/uploads/<slug>/cover.webp"
+# coverAlt: ""
 ---
 
 ## 今天遇到什么

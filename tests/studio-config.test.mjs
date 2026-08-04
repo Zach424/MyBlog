@@ -39,11 +39,14 @@ test("keeps CMS tags and required content fields aligned with the contract", () 
   assert.equal(MEDIA_MAX_FILE_SIZE, MEDIA_BUDGET.maxBytes);
   for (const collection of config.collections) {
     const names = collection.fields.map((field) => field.name);
-    for (const required of ["title", "slug", "description", "publishedAt", "freshness", "reviewedAt", "tags", "draft", "featured", "body"]) {
+    for (const required of ["title", "slug", "description", "publishedAt", "freshness", "reviewedAt", "tags", "draft", "featured", "cover", "coverAlt", "body"]) {
       assert.ok(names.includes(required), `${collection.name}: ${required}`);
     }
     const cover = collection.fields.find((field) => field.name === "cover");
     assert.equal(cover.media_library.config.max_file_size, MEDIA_BUDGET.maxBytes);
+    assert.equal(cover.choose_url, false);
+    const coverAlt = collection.fields.find((field) => field.name === "coverAlt");
+    assert.match(coverAlt.hint, /设置封面时必填/);
   }
 });
 

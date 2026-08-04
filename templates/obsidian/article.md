@@ -11,6 +11,8 @@ tags:
   - TypeScript
 draft: true
 featured: false
+# cover: "/uploads/<slug>/cover.webp"
+# coverAlt: ""
 ---
 
 ## 要解决的问题

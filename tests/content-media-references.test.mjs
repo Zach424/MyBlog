@@ -36,7 +36,7 @@ reviewedAt: ${publishedAt}
 tags: ["Tooling"]
 draft: ${draft}
 featured: false
-${cover ? `cover: "${cover}"\n` : ""}---
+${cover ? `cover: "${cover}"\ncoverAlt: "${slug} 封面"\n` : ""}---
 
 ${body}`;
 }

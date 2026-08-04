@@ -10,6 +10,8 @@ stack: ["TypeScript", "React", "Next.js", "Vercel", "GitHub"]
 tags: ["TypeScript", "Next.js", "Vercel", "Personal Knowledge", "Design Systems"]
 draft: false
 featured: true
+cover: "/uploads/myblog/cover.webp"
+coverAlt: "文档、提交节点、网页与部署层沿一条工程轨迹连接成可维护博客系统"
 repository: "https://github.com/Zach424/MyBlog"
 demo: "https://blog-iota-five-59.vercel.app"
 ---

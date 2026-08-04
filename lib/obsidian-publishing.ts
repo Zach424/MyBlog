@@ -134,7 +134,15 @@ function normalizeAttachmentLinks(markdown: string, slug: string) {
     return attachments.get(sourcePath);
   }
 
-  const content = transformMarkdownProse(markdown, (segment) => {
+  const withNormalizedCover = markdown.replace(
+    /(^|\r?\n)cover:\s*(["']?)([^"'\r\n]+)\2\s*(?=\r?\n)/u,
+    (match, prefix: string, _quote: string, reference: string) => {
+      const attachment = register(reference, false);
+      return attachment ? `${prefix}cover: "${attachment.publicUrl}"` : match;
+    },
+  );
+
+  const content = transformMarkdownProse(withNormalizedCover, (segment) => {
     const withMarkdownEmbeds = segment.replace(
       /!\[([^\]]*)\]\(([^\s)]+)(?:\s+["'][^"']*["'])?\)/gu,
       (match, altText: string, reference: string) => {

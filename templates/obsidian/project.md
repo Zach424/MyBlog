@@ -13,6 +13,8 @@ tags:
   - Project Management
 draft: true
 featured: false
+# cover: "/uploads/<slug>/cover.webp"
+# coverAlt: ""
 # repository: "https://github.com/owner/repository"
 # demo: "https://example.com"
 ---
