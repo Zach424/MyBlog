@@ -3,8 +3,8 @@ import Link from "next/link";
 import { headers } from "next/headers";
 import { notFound } from "next/navigation";
 import {
-  ContentBacklinks,
   ContentHeader,
+  ContentReferenceLedger,
   TableOfContents,
 } from "@/components/ContentViews";
 import { MarkdownContent } from "@/components/MarkdownContent";
@@ -12,6 +12,7 @@ import { StructuredData } from "@/components/StructuredData";
 import {
   getAllProjects,
   getBacklinksFor,
+  getOutgoingReferencesFor,
   getProjectBySlug,
   getTagSlug,
 } from "@/lib/content";
@@ -57,6 +58,7 @@ export default async function ProjectPage({ params }: ProjectPageProps) {
 
   const toc = extractTableOfContents(project.body);
   const backlinks = getBacklinksFor(project);
+  const outgoing = getOutgoingReferencesFor(project);
   const siteUrl = resolveSiteUrl(await headers());
   const projectUrl = absoluteSiteUrl(siteUrl, project.url);
   const tags = project.tags.map((name) => ({
@@ -125,7 +127,7 @@ export default async function ProjectPage({ params }: ProjectPageProps) {
         </article>
         <TableOfContents items={toc} />
       </div>
-      <ContentBacklinks items={backlinks} />
+      <ContentReferenceLedger outgoing={outgoing} backlinks={backlinks} />
     </main>
   );
 }

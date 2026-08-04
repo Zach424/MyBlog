@@ -8,11 +8,11 @@
 | 4. 作者自助写作 | done | `/studio` OAuth + editorial workflow PR、Obsidian Vault/模板/附件/真实 `--push` |
 | 5. Vercel 原生迁移 | production live | 原生 Next.js、无 Cloudflare 依赖、23 路由生产冒烟通过 |
 | 6. 所有者生产上线 | done | Git 自动 Production、稳定域名自动冒烟、双端发布、回滚与恢复均已验收 |
-| 7. 持续内容与作者体验 | in progress | Iteration 0023 完成 Current record 本地/JSON 报告、60/30 天分级和每周 CI 摘要 |
+| 7. 持续内容与作者体验 | in progress | Iteration 0024 完成文章/项目 outgoing 与 backlinks 双向引用账本，服务端渲染并通过 320px 复核 |
 
 ## 当前唯一主线
 
-进入持续内容与作者体验阶段。Iteration 0023 已让 Current record 在 180 天硬门前进入 60/30 天分级队列，本地、JSON、发布候选和每周 Quality Gate 使用同一日龄语义；当前不依赖外部通知服务。下一主线补齐内容关系的读者侧闭环：现有 backlinks 继续保留，再在详情页公开正文指向的站内内容。需要品牌域名时再绑定自定义域名，旧公开站继续只作为迁移历史证据。
+进入持续内容与作者体验阶段。Iteration 0024 已让正文关系在详情页形成读者侧闭环：同一服务端索引同时输出 outgoing 与 backlinks，空关系不制造界面噪声，也不依赖图数据库。下一主线转向作者附件体验：在现有 Sharp 媒体门禁前增加可回滚的本地 WebP 优化，减少手工压缩和 Git 媒体体积。需要品牌域名时再绑定自定义域名，旧公开站继续只作为迁移历史证据。
 
 ## 已知风险
 
@@ -27,7 +27,7 @@
 - 内容持续增长后要继续观察 `.next/static`、Serverless 函数体积和构建时间；
 - 附件仍依赖 Git 仓库存储；格式/体积/尺寸预算已建立，但尚未自动压缩或生成响应式派生；
 - Current record 已有每周 60/30 天 Actions 提醒和过期门；若未来需要邮件/聊天通知，必须由所有者选择渠道后再接入；
-- 内部链接目前支持内容页和标题锚点，明确不支持 Obsidian 块引用；反向引用仅出现在详情页，尚未提供全站关系图；
+- 内部链接支持内容页和标题锚点，详情页同时展示 outgoing/backlinks；明确不支持 Obsidian 块引用，尚未提供全站关系图；
 - 自定义域名、公开邮箱、统计和评论尚未选择，但不阻塞生产上线。
 
 ## 平台历史

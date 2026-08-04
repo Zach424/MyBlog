@@ -81,7 +81,7 @@ Obsidian 草稿中的 Wiki 图片嵌入和指向 `public/uploads` 的 Markdown �
 
 同一发布阶段还会读取 `content/posts` 与 `content/projects` 的稳定文件名，把 Obsidian Wiki/Markdown 笔记链接转换为站点 URL。裸 slug 只有在文章和项目之间唯一时才可使用；显式 `posts/<slug>`、`projects/<slug>`、别名和标题链接均受支持，块引用被明确拒绝。转换跳过行内代码和围栏代码，避免把教程中的语法示例当成真实关系。
 
-`lib/content/markdown.ts` 从公开正文抽取 `/posts/*` 与 `/projects/*` 链接，`lib/content/relations.ts` 校验目标并派生 outgoing/backlink 索引。详情页按目标 URL 查询来源并渲染 Reference ledger。关系不存入 frontmatter 或数据库，正文链接就是唯一事实源；草稿或未来目标不在公开集合中，因此公开内容不能引用尚未公开的目标。
+`lib/content/markdown.ts` 从公开正文抽取 `/posts/*` 与 `/projects/*` 链接，`lib/content/relations.ts` 校验目标并一次派生 `outgoingByUrl`/`backlinksByUrl`。`lib/content/index.ts` 只暴露两个只读查询，文章与项目详情页在服务端把它们交给同一 Reference ledger：`→` 追溯当前正文引用的依据，`←` 继续阅读引用当前记录的后续实践；空方向省略，两侧都空时不产生账本。关系不存入 frontmatter、客户端状态或数据库，正文链接就是唯一事实源；草稿或未来目标不在公开集合中，因此公开内容不能引用尚未公开的目标。
 
 ## 6. 安全与缓存
 
@@ -100,7 +100,7 @@ Vercel GitHub Integration 负责每个分支的 Preview 和 `main` 的 Productio
 - GitHub 仓库是内容、附件、版本和回滚的唯一事实源。
 - 稳定 URL 来自文件名/slug，不随日期和平台变化。
 - 草稿、未来内容不能进入页面、搜索、RSS 或 Sitemap。
-- 公开站内链接必须指向同一构建中的公开文章或项目；反向引用只能从正文链接派生。
+- 公开站内链接必须指向同一构建中的公开文章或项目；outgoing 与 backlinks 只能从同一正文链接集合派生。
 - 公开内容必须声明语境和复核日期；Current record 超过 180 天未复核不能进入新部署。
 - Current record 的报告状态与构建硬门必须复用同一日龄计算；Historical、草稿和未来内容不进入维护队列。
 - `public/uploads` 只能包含真实可解码且扩展名匹配的白名单图片，并满足共享媒体预算。

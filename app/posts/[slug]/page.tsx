@@ -3,9 +3,9 @@ import Link from "next/link";
 import { headers } from "next/headers";
 import { notFound } from "next/navigation";
 import {
-  ContentBacklinks,
   ContentHeader,
   ContentNeighbors,
+  ContentReferenceLedger,
   TableOfContents,
 } from "@/components/ContentViews";
 import { MarkdownContent } from "@/components/MarkdownContent";
@@ -13,6 +13,7 @@ import { StructuredData } from "@/components/StructuredData";
 import {
   getAllPosts,
   getBacklinksFor,
+  getOutgoingReferencesFor,
   getPostBySlug,
   getSeriesBySlug,
   getTagSlug,
@@ -66,6 +67,7 @@ export default async function PostPage({ params }: PostPageProps) {
   const series = post.series ? getSeriesBySlug(post.series.slug) : undefined;
   const toc = extractTableOfContents(post.body);
   const backlinks = getBacklinksFor(post);
+  const outgoing = getOutgoingReferencesFor(post);
   const siteUrl = resolveSiteUrl(await headers());
   const canonicalUrl = post.canonical ?? absoluteSiteUrl(siteUrl, post.url);
   const tags = post.tags.map((name) => ({
@@ -126,7 +128,7 @@ export default async function PostPage({ params }: PostPageProps) {
         </article>
         <TableOfContents items={toc} />
       </div>
-      <ContentBacklinks items={backlinks} />
+      <ContentReferenceLedger outgoing={outgoing} backlinks={backlinks} />
       <ContentNeighbors previous={previous} next={next} />
     </main>
   );

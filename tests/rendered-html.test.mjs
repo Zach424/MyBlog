@@ -116,7 +116,18 @@ test("renders Markdown articles with metadata, anchors, code and navigation", as
   assert.match(html, /Historical snapshot/);
   assert.match(html, /<dt>Reviewed<\/dt>/);
   assert.match(html, /2026-08-04/);
-  assert.match(html, /<section class="content-backlinks" aria-labelledby="backlinks-title">/);
+  assert.match(html, /<section class="content-relations" aria-labelledby="reference-ledger-title">/);
+  assert.equal(
+    [
+      ...html.matchAll(
+        /<section class="content-relation-group" aria-labelledby="(?:outgoing|incoming)-references-title">/g,
+      ),
+    ].length,
+    2,
+  );
+  assert.match(html, /id="outgoing-references-title">这条记录引用/);
+  assert.match(html, /id="incoming-references-title">引用这条记录/);
+  assert.match(html, /这条记录引用/);
   assert.match(html, /引用这条记录/);
   assert.match(html, /href="\/projects\/myblog"/);
   assert.match(html, /"@type":"BlogPosting"/);
@@ -125,6 +136,10 @@ test("renders Markdown articles with metadata, anchors, code and navigation", as
     html,
     /<link rel="canonical" href="https:\/\/blog\.example\.test\/posts\/building-a-maintainable-blog"/,
   );
+
+  const isolatedResponse = await render("/posts/project-charter-before-homepage");
+  assert.equal(isolatedResponse.status, 200);
+  assert.doesNotMatch(await isolatedResponse.text(), /class="content-relations"/);
 });
 
 test("renders project Markdown and returns a real 404 for unknown content", async () => {
@@ -140,7 +155,9 @@ test("renders project Markdown and returns a real 404 for unknown content", asyn
     projectHtml,
     /href="https:\/\/zach424-engineering-notes\.zhiqingchen792\.chatgpt\.site"/,
   );
-  assert.match(projectHtml, /<section class="content-backlinks" aria-labelledby="backlinks-title">/);
+  assert.match(projectHtml, /<section class="content-relations" aria-labelledby="reference-ledger-title">/);
+  assert.match(projectHtml, /这条记录引用/);
+  assert.match(projectHtml, /引用这条记录/);
   assert.match(projectHtml, /href="\/posts\/building-a-maintainable-blog"/);
   assert.match(projectHtml, /href="\/posts\/cross-platform-npm-scripts"/);
   assert.match(projectHtml, /"@type":"SoftwareSourceCode"/);

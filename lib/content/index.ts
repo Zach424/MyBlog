@@ -101,6 +101,10 @@ export function getBacklinksFor(record: ContentRecord) {
   return relations.backlinksByUrl.get(record.url) ?? [];
 }
 
+export function getOutgoingReferencesFor(record: ContentRecord) {
+  return relations.outgoingByUrl.get(record.url) ?? [];
+}
+
 export type {
   ContentRecord,
   PostRecord,

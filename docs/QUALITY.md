@@ -54,6 +54,7 @@ npm run production:smoke -- https://example.vercel.app --expect-oauth
 - 每页一个 `<main>` 和 `<h1>`，`lang=zh-CN`；
 - 页面具有 description、canonical、跳转主内容链接和唯一 id；
 - 所有可见内部导航目标返回成功；
+- 有站内关系的文章/项目必须服务端渲染语义独立的 outgoing/backlinks 分组；两侧都为空时不渲染空账本；
 - 文本设计 Token 达到 WCAG AA；
 - 320px 不允许根布局强制最小宽度或横向溢出；
 - 焦点可见、Reduced Motion 和系统深色偏好保留。

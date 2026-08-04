@@ -28,6 +28,7 @@
 0021-content-freshness-contract.md
 0022-local-media-budget.md
 0023-content-maintenance-report.md
+0024-bidirectional-reference-ledger.md
 ```
 
 ## 必填结构

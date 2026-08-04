@@ -19,7 +19,7 @@ MyBlog 是 Zach424 的个人技术知识库与公开工程日志。它把学习�
 | 附件发布 | done | Wiki/Markdown 图片转换、按内容隔离、稳定命名、越界保护、失败回滚 |
 | 自动交付 | done | GitHub `main` → Vercel Production → 稳定域名冒烟 |
 | 恢复能力 | done | Vercel 显式目标回滚、当前版本恢复、再次冒烟 |
-| 内容知识网络 | done | Obsidian/Markdown 站内链接转换、构建期完整性校验、文章与项目反向引用账本 |
+| 内容知识网络 | done | Obsidian/Markdown 站内链接转换、构建期完整性校验、文章与项目双向引用账本 |
 | 内容新鲜度 | done | Current/Historical 可见语境、复核日期、当前记录 180 天构建门、现行 Demo |
 | 内容维护报告 | done | 本地文本/JSON、60/30 天分级、Actions 摘要与每周自动复核 |
 | 媒体门禁 | done | 真实格式解码、3 MiB/2560 px/像素预算、Obsidian 诊断、Studio 限额与构建扫描 |
@@ -41,23 +41,23 @@ MyBlog 是 Zach424 的个人技术知识库与公开工程日志。它把学习�
 
 - 仓库：<https://github.com/Zach424/MyBlog>，生产分支 `main`；
 - 生产站：<https://blog-iota-five-59.vercel.app>；
-- 本轮实现提交：`d80e5a2`（维护模型、CLI、每周 Actions 报告与完整归档）；
-- 自动交付：Quality Gate `30893387552`、Production smoke `30893422269` 均成功；Vercel Production `dpl_Cp8RdPG7G4iTBBGsubqkNdaFg1fY` 精确构建 `d80e5a2e2b0b9c54850f31e14c3d69e895db5e66`；
-- 最新完成迭代：0023 内容维护状态报告；
+- 本轮候选：文章与项目详情页的站内双向引用账本，交付证据将在推送后补入；
+- 上一轮自动交付：Quality Gate `30893387552`、Production smoke `30893422269` 均成功；Vercel Production `dpl_Cp8RdPG7G4iTBBGsubqkNdaFg1fY` 精确构建 `d80e5a2e2b0b9c54850f31e14c3d69e895db5e66`；
+- 最新完成迭代：0024 站内双向引用账本；
 - Obsidian 状态：仓库根目录就是 Vault，`docs/STATUS.md` 与 `docs/iterations/*.md` 可直接阅读和维护；
 - 手动外部接入：自定义域名、统计、评论、公开邮箱均暂缓，不阻塞当前开发。
 
 ## 本轮新增能力
 
-`npm run content:status` 现在从与构建相同的内容读取层计算所有公开 Current record 的复核年龄、最后有效日和剩余天数。状态分为健康（>60 天）、进入复核窗口（31–60 天）、即将到期（0–30 天）和已过期；Historical、草稿和未来内容不会污染队列。`release:check` 先展示本地报告，Quality Gate 每次提交及每周一 09:00（Asia/Shanghai）写入可勾选摘要；60/30 天窗口产生源文件 warning，真正超过 180 天才返回失败并与构建硬门一致。当前 MyBlog 为健康，最后有效日 2027-01-31。
+文章与项目详情页现在同时消费关系层的 `outgoingByUrl` 与 `backlinksByUrl`。统一的 Reference ledger 用 `→ 这条记录引用` 表示正文指向的公开内容，用 `← 引用这条记录` 表示后续来源；每个方向按既有内容排序输出标题、摘要、类型、日期与阅读/项目状态。只有一侧有内容时只显示该侧，两侧都为空时整个账本不渲染。它保持为 React Server Component，不增加客户端状态、关系数据库或图形库；320px 实机视口无横向溢出。
 
 ## 风险与下一步
 
 1. 图片仍以原始文件进入 Git；当前会拒绝超预算文件并建议 AVIF/WebP，但尚未自动压缩或生成响应式派生；
 2. Current record 已有每周分级报告，但提醒只存在于本地输出和 GitHub Actions 摘要/注解，不发送外部消息；这是当前有意的无服务边界；
-3. Obsidian 块引用是专有语法，当前明确拒绝；知识网络也尚无全站图谱或正文“引用去向”视图；
+3. Obsidian 块引用是专有语法，当前明确拒绝；双向关系只在详情页按正文链接展示，尚无全站图谱；
 4. Studio OAuth origin、GitHub 凭据和 Vercel Hobby 回滚范围仍需按运行手册维护；
 5. 统计、评论和自定义域名需要所有者最终选择，现阶段不主动接入；
 6. `decap-cms` 的开发依赖树仍有上游无修复的高危审计项；它不进入公开服务端生产依赖，但其浏览器编辑器包仅对已授权作者开放，后续应单独评估升级或替代方案。
 
-下一轮唯一主任务：在文章与项目详情页增加正文“引用去向”账本，复用现有关系索引，让读者同时看见 outgoing 与 backlinks；不引入图数据库或客户端图形库。
+下一轮唯一主任务：为 Obsidian 附件发布增加确定性的自动 WebP 优化。先在临时 staging 中压缩静态 PNG/JPEG/WebP，验证实际格式、尺寸和预算后再原子归档并改写正文；失败必须恢复草稿与附件，GIF/AVIF 先保持现状，不接入外部图片服务。

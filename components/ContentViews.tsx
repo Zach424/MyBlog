@@ -199,17 +199,63 @@ export function ContentNeighbors({
   );
 }
 
-export function ContentBacklinks({ items }: { items: ContentRecord[] }) {
+function ContentRelationGroup({
+  direction,
+  items,
+}: {
+  direction: "outgoing" | "incoming";
+  items: ContentRecord[];
+}) {
   if (items.length === 0) return null;
 
+  const isOutgoing = direction === "outgoing";
+  const titleId = `${direction}-references-title`;
+
   return (
-    <section className="content-backlinks" aria-labelledby="backlinks-title">
-      <header className="content-backlinks-intro">
-        <p className="section-label">Reference ledger</p>
-        <h2 id="backlinks-title">引用这条记录</h2>
-        <p>{items.length} 条公开内容把这里的判断用于后续学习或项目实践。</p>
+    <section className="content-relation-group" aria-labelledby={titleId}>
+      <header className="content-relation-group-intro">
+        <span className="content-relation-arrow" aria-hidden="true">
+          {isOutgoing ? "→" : "←"}
+        </span>
+        <div>
+          <p className="section-label">{isOutgoing ? "Outgoing" : "Incoming"}</p>
+          <h3 id={titleId}>{isOutgoing ? "这条记录引用" : "引用这条记录"}</h3>
+          <p>
+            {isOutgoing
+              ? `${items.length} 条公开内容提供了这里继续展开的背景或依据。`
+              : `${items.length} 条公开内容把这里的判断用于后续学习或项目实践。`}
+          </p>
+        </div>
       </header>
       <ContentIndexList items={items} />
+    </section>
+  );
+}
+
+export function ContentReferenceLedger({
+  outgoing,
+  backlinks,
+}: {
+  outgoing: ContentRecord[];
+  backlinks: ContentRecord[];
+}) {
+  if (outgoing.length === 0 && backlinks.length === 0) return null;
+
+  return (
+    <section className="content-relations" aria-labelledby="reference-ledger-title">
+      <header className="content-relations-intro">
+        <div>
+          <p className="section-label">Reference ledger</p>
+          <h2 id="reference-ledger-title">站内引用</h2>
+        </div>
+        <p>
+          正文链接形成的双向账本：向外追溯依据，也从这里继续阅读后续实践。
+        </p>
+      </header>
+      <div className="content-relation-groups">
+        <ContentRelationGroup direction="outgoing" items={outgoing} />
+        <ContentRelationGroup direction="incoming" items={backlinks} />
+      </div>
     </section>
   );
 }
