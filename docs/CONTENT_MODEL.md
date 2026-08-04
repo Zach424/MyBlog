@@ -78,9 +78,21 @@ Slug 只能使用小写英文字母、数字和连字符，并必须与文件名
 
 详情页事实栏显示 `Context` 与 `Reviewed`。`dateModified` 使用 `reviewedAt`，因此搜索引擎和读者看到同一复核证据。更新正文后必须同步更新 `updatedAt` 和 `reviewedAt`；只做事实复核也需要更新 `reviewedAt`。
 
+维护状态不是 frontmatter 字段，而是从 `reviewedAt` 与报告日期确定性派生：
+
+| 状态 | 剩余有效天数 | 行为 |
+| --- | --- | --- |
+| `healthy` | 61–180 天 | 保持当前维护节奏 |
+| `review-soon` | 31–60 天 | Actions warning，开始安排复核 |
+| `due-soon` | 0–30 天 | Actions warning，优先完成复核 |
+| `overdue` | 小于 0 天 | 报告和构建失败 |
+
+运行 `npm run content:status` 查看人类可读队列，增加 `--format json` 可获得机器可读结果；`--date YYYY-MM-DD` 只用于确定性演练。报告中的 `reviewBy` 是第 180 天最后有效日，不能把提醒状态写回 Markdown，否则会随时间腐化。
+
 ## 构建实现
 
 - `build/validate-content.ts`：Next.js 配置加载时读取全部内容并执行 schema、重复 slug、标签、专题、关系与 180 天新鲜度校验；
+- `lib/content/maintenance.ts`：从公开 Current record 派生日龄、剩余天数、最后有效日与分级状态；
 - `lib/content/index.ts`：使用 Node 文件系统读取 Markdown，并生成公开文章、项目、标签和专题索引；
 - `next.config.ts`：注入构建日期，并通过 `outputFileTracingIncludes` 把 Markdown 纳入 Vercel Serverless 产物；
 - `lib/content/markdown.ts`：生成与正文一致的目录锚点；

@@ -352,16 +352,19 @@ export function isPublished(record: ContentRecord, now = new Date()) {
   return !record.draft && record.publishedAt <= today;
 }
 
+export function contentReviewAgeDays(reviewedAt: string, buildDate: string) {
+  const buildTime = Date.parse(`${buildDate}T00:00:00Z`);
+  const reviewedTime = Date.parse(`${reviewedAt}T00:00:00Z`);
+  return Math.floor((buildTime - reviewedTime) / 86_400_000);
+}
+
 export function validateContentFreshness(
   records: ContentRecord[],
   buildDate: string,
   maxAgeDays = CURRENT_CONTENT_MAX_AGE_DAYS,
 ) {
-  const buildTime = Date.parse(`${buildDate}T00:00:00Z`);
-
   for (const record of records) {
-    const reviewedTime = Date.parse(`${record.reviewedAt}T00:00:00Z`);
-    const ageDays = Math.floor((buildTime - reviewedTime) / 86_400_000);
+    const ageDays = contentReviewAgeDays(record.reviewedAt, buildDate);
 
     if (ageDays < 0) {
       throw new ContentValidationError(

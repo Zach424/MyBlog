@@ -49,6 +49,19 @@ npm run content:publish -- content/inbox/learning-vercel-deployments.md --push
 
 网页 Studio 会先拒绝超过 3 MiB 的选择；Obsidian 会在移动前给出完整诊断；`next dev`、`next build` 和 GitHub Quality Gate 会重新递归校验 `public/uploads`。所以普通 Git 编辑器也不能绕过格式、损坏文件或尺寸门。超限时先裁掉无效区域、缩小导出尺寸，照片/大截图优先转换为 AVIF 或 WebP；不要只改扩展名。
 
+## 内容维护报告
+
+随时运行：
+
+```bash
+npm run content:status
+npm run content:status -- --format json
+```
+
+报告只列出已经公开的 Current record，显示最近复核日、最后有效日和剩余天数；Historical snapshot、草稿和未来内容不进入队列。剩余 60 天进入复核窗口，剩余 30 天标为即将到期，第 180 天仍可发布，第 181 天报告与构建失败。GitHub Quality Gate 每次提交和每周一 09:00（Asia/Shanghai）自动生成同一份可勾选摘要，预警直接标注到源 Markdown，但不会在到期前阻断发布。
+
+复核时逐项检查架构、版本、项目状态、操作步骤和关键外链；事实变化时更新正文与 `updatedAt`，全部确认后再更新 `reviewedAt`。不要只改日期绕过复核。
+
 ## 内容字段
 
 所有内容共有：`title`、`description`、`publishedAt`、`freshness`、`reviewedAt`、`tags`、`draft`、`featured` 和正文。文章额外有 `type`、可选 `series`/`canonical`；项目额外有 `status`、`stack`、可选 `repository`/`demo`。详细契约见 [CONTENT_MODEL.md](./CONTENT_MODEL.md)。
@@ -76,6 +89,7 @@ npm run content:publish -- content/inbox/learning-vercel-deployments.md --push
 - GitHub 登录回调失败：OAuth App 的 Homepage/Callback 与当前生产 origin 不一致。
 - 内容未上线：确认 PR 已进入 `main`、Vercel Production 成功，并检查 `draft` 和日期。
 - 构建提示“超过 180 天未复核”：逐项复查 Current record 的架构、外链、版本和状态，更新正文/`updatedAt`（如有变化）与 `reviewedAt`；不要只改日期绕过复核。
+- Actions 显示“进入复核窗口/即将到期”：运行 `npm run content:status` 查看剩余天数和清单；warning 是提前安排复核，不是构建失败。
 - Obsidian 拒绝发布：根据错误修正 slug、标签、日期、附件路径、站内链接或字段；目标不存在/未公开时先发布目标，歧义时写明 `posts/` 或 `projects/`，不要绕过校验。
 - 图片提示格式不一致或无法解码：重新从原工具导出为受支持格式，不要重命名后缀；提示超预算时先裁切、缩放或转为 AVIF/WebP。
 - Preview 无法登录 Studio：Preview 默认关闭 OAuth，这是安全设计；在 Production 验收发布。

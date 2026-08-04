@@ -10,6 +10,7 @@ MyBlog 是 Git-first 个人技术博客。公开阅读不依赖数据库；网�
 | --- | --- | --- |
 | 界面 | React 19、Next.js 16 App Router | 页面、元数据、Route Handlers 与服务端渲染 |
 | 内容 | Markdown、YAML、Zod | 文章/项目解析、字段校验、草稿过滤与派生索引 |
+| 维护 | Node CLI、GitHub Actions | Current record 日龄、分级队列、摘要与过期门 |
 | 阅读 | react-markdown、remark-gfm、rehype | GFM、标题锚点、代码高亮与目录 |
 | 发现 | 本地搜索、RSS、Sitemap、robots、JSON-LD | 检索、订阅与搜索引擎发现 |
 | 发布 | Decap CMS、Obsidian、GitHub | 两个作者入口，共用同一内容事实源 |
@@ -32,18 +33,18 @@ content/
   inbox/                            Obsidian 待发布区
 public/uploads/<slug>/              按内容隔离的公开图片附件
 lib/
-  content/                          内容契约、文件读取、派生索引与引用关系
+  content/                          内容契约、维护报告、文件读取、派生索引与引用关系
   cms-oauth.ts                      签名 OAuth state 与 token 交换
   media-policy.ts                   图片格式、体积、尺寸和帧预算的共享策略
   obsidian-publishing.ts            Obsidian 校验、附件与目标路径转换
   studio-assets.ts                  构建期 Studio 资源响应
 studio/                             Decap CMS 源文件（不放入 public）
 templates/obsidian/                 文章、TIL、项目模板
-scripts/                            发布、冒烟、迁移和生产测试器
+scripts/                            发布、内容维护报告、冒烟、迁移和生产测试器
 build/validate-media.ts             构建前递归扫描全部公开上传图片
 tests/                              单元、生产 HTTP 与质量审计
 .github/workflows/
-  quality.yml                       PR/main 完整质量门
+  quality.yml                       PR/main/每周完整质量门与维护摘要
   production-smoke.yml              Vercel 生产部署成功后的在线验收
   rollback.yml                      所有者手动 Vercel 回滚与复核
 vercel.json                         Vercel Next.js 框架声明
@@ -56,6 +57,8 @@ vercel.json                         Vercel Next.js 框架声明
 公开日期按 `Asia/Shanghai` 在 Next.js 配置加载时冻结为 `CONTENT_BUILD_DATE`。同一个部署内的页面、搜索和 Feed 因而共享确定内容集合，不会因 Serverless 实例启动时间变化。
 
 每条正式内容声明 `freshness` 和 `reviewedAt`。`historical` 是保留当时决策的快照，不随时间失效；`current` 承诺与现行系统一致，公开后最多 180 天必须复核。复核日期不能早于内容更新日期、不能晚于构建日期。详情页服务端渲染 Context 与 Reviewed；结构化数据的 `dateModified` 使用复核日期。
+
+`lib/content/maintenance.ts` 复用构建硬门的 UTC 完整日计算，把公开 Current record 派生为 healthy、review-soon、due-soon、overdue。60 天进入复核窗口，30 天进入紧急队列，第 180 天仍是最后有效日，第 181 天过期。`scripts/report-content-maintenance.mjs` 提供文本/JSON、固定日期演练、GitHub Markdown 摘要和源文件注解；Historical、草稿与未来记录不参与队列。Quality Gate 在 push、PR、手动运行和每周一 01:00 UTC 执行报告，只有 overdue 返回非零，预警不改变原 180 天契约。
 
 内容目录通过 Next.js output tracing 显式包含在部署中，既支持 Vercel Serverless，也不会依赖开发机器路径。
 
@@ -99,6 +102,7 @@ Vercel GitHub Integration 负责每个分支的 Preview 和 `main` 的 Productio
 - 草稿、未来内容不能进入页面、搜索、RSS 或 Sitemap。
 - 公开站内链接必须指向同一构建中的公开文章或项目；反向引用只能从正文链接派生。
 - 公开内容必须声明语境和复核日期；Current record 超过 180 天未复核不能进入新部署。
+- Current record 的报告状态与构建硬门必须复用同一日龄计算；Historical、草稿和未来内容不进入维护队列。
 - `public/uploads` 只能包含真实可解码且扩展名匹配的白名单图片，并满足共享媒体预算。
 - `/studio` 与 OAuth 永远不缓存、不索引，并维持同源 state 验证；只有版本化 CMS 运行时可不可变缓存。
 - 发布平台不能成为写作前置条件；Obsidian 和 Git 提交在本地仍可完成。

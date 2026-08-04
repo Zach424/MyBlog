@@ -27,6 +27,7 @@
 0020-content-knowledge-links.md
 0021-content-freshness-contract.md
 0022-local-media-budget.md
+0023-content-maintenance-report.md
 ```
 
 ## 必填结构

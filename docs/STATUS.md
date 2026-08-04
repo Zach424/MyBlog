@@ -21,6 +21,7 @@ MyBlog 是 Zach424 的个人技术知识库与公开工程日志。它把学习�
 | 恢复能力 | done | Vercel 显式目标回滚、当前版本恢复、再次冒烟 |
 | 内容知识网络 | done | Obsidian/Markdown 站内链接转换、构建期完整性校验、文章与项目反向引用账本 |
 | 内容新鲜度 | done | Current/Historical 可见语境、复核日期、当前记录 180 天构建门、现行 Demo |
+| 内容维护报告 | done | 本地文本/JSON、60/30 天分级、Actions 摘要与每周自动复核 |
 | 媒体门禁 | done | 真实格式解码、3 MiB/2560 px/像素预算、Obsidian 诊断、Studio 限额与构建扫描 |
 | 媒体派生 | pending | 自动压缩和响应式图片派生尚未实现 |
 
@@ -32,6 +33,7 @@ MyBlog 是 Zach424 的个人技术知识库与公开工程日志。它把学习�
 - 阅读：react-markdown、remark-gfm、rehype-slug、rehype-highlight；
 - 发布：Decap CMS 3.14.1、GitHub OAuth、Obsidian 自有插件与 Node 发布脚本；
 - 媒体：Sharp 0.35.3、本地格式/体积/尺寸/动图预算，图片仍由 Git 跟踪；
+- 维护：确定日期报告 CLI、GitHub Actions 注解与每周一自动状态复核；
 - 托管：Vercel 原生 Next.js，当前链路不依赖 Cloudflare；
 - 质量：ESLint、Node test、TypeScript、Next build、真实生产服务器 HTTP 测试、npm audit、线上冒烟。
 
@@ -39,23 +41,23 @@ MyBlog 是 Zach424 的个人技术知识库与公开工程日志。它把学习�
 
 - 仓库：<https://github.com/Zach424/MyBlog>，生产分支 `main`；
 - 生产站：<https://blog-iota-five-59.vercel.app>；
-- 本轮实现提交：`72c74bc`（媒体预算）与 `b0a9e73`（纯净检出空媒体仓库修复）；
-- 自动交付：Quality Gate `30891109735`、Production smoke `30891142711` 均成功；Vercel Production `dpl_8vrMebtVbUAD6R4XJ643YCErfg4P` 精确构建 `b0a9e73c5ba9e2999f2a38f22294244ac1f1f7aa`；
-- 最新完成迭代：0022 本地媒体预算与发布门禁；
+- 上一轮最终归档提交：`0bc3309`（本地媒体门禁与交付证据）；
+- 上一轮自动交付：Quality Gate `30891616491`、Production smoke `30891646576` 均成功；Vercel Production `dpl_HGiPvEwEgwgXVDnPN9rP6pSZ5mJo` 精确构建 `0bc3309ce0a8651c6f475dd811417b6dd4abbdee`；
+- 最新完成迭代：0023 内容维护状态报告；
 - Obsidian 状态：仓库根目录就是 Vault，`docs/STATUS.md` 与 `docs/iterations/*.md` 可直接阅读和维护；
 - 手动外部接入：自定义域名、统计、评论、公开邮箱均暂缓，不阻塞当前开发。
 
 ## 本轮新增能力
 
-本地图片现在必须能被 Sharp 真实解码，扩展名与 PNG/JPEG/WebP/GIF/AVIF 实际格式一致，单文件不超过 3 MiB、宽高不超过 2560 px、单帧不超过 800 万像素、动图不超过 8000 万总像素。Obsidian 检查模式在移动前报告格式、宽高、帧数和体积，正式发布复用同一检查；Studio 先限制体积，Next 配置加载时扫描整个 `public/uploads`，因此任何入口都不能把伪装、损坏或超预算图片带入新部署。
+`npm run content:status` 现在从与构建相同的内容读取层计算所有公开 Current record 的复核年龄、最后有效日和剩余天数。状态分为健康（>60 天）、进入复核窗口（31–60 天）、即将到期（0–30 天）和已过期；Historical、草稿和未来内容不会污染队列。`release:check` 先展示本地报告，Quality Gate 每次提交及每周一 09:00（Asia/Shanghai）写入可勾选摘要；60/30 天窗口产生源文件 warning，真正超过 180 天才返回失败并与构建硬门一致。当前 MyBlog 为健康，最后有效日 2027-01-31。
 
 ## 风险与下一步
 
 1. 图片仍以原始文件进入 Git；当前会拒绝超预算文件并建议 AVIF/WebP，但尚未自动压缩或生成响应式派生；
-2. 当前维护内容最迟需要在 180 天窗口结束前复核；当前 MyBlog 记录的下一失效边界为 2027-01-31，尚未提供提前提醒；
+2. Current record 已有每周分级报告，但提醒只存在于本地输出和 GitHub Actions 摘要/注解，不发送外部消息；这是当前有意的无服务边界；
 3. Obsidian 块引用是专有语法，当前明确拒绝；知识网络也尚无全站图谱或正文“引用去向”视图；
 4. Studio OAuth origin、GitHub 凭据和 Vercel Hobby 回滚范围仍需按运行手册维护；
 5. 统计、评论和自定义域名需要所有者最终选择，现阶段不主动接入；
 6. `decap-cms` 的开发依赖树仍有上游无修复的高危审计项；它不进入公开服务端生产依赖，但其浏览器编辑器包仅对已授权作者开放，后续应单独评估升级或替代方案。
 
-下一轮唯一主任务：建立内容维护状态报告，在 Current record 到期前给出确定的剩余天数、分级提醒和可执行复核清单；先完成本地/CI 报告，不接入通知服务。
+下一轮唯一主任务：在文章与项目详情页增加正文“引用去向”账本，复用现有关系索引，让读者同时看见 outgoing 与 backlinks；不引入图数据库或客户端图形库。

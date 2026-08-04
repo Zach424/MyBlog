@@ -10,11 +10,13 @@ test("extracts exact production routes from a Sitemap", () => {
   );
 });
 
-test("connects Vercel verification, rollback, and Studio routing without Cloudflare", async () => {
-  const [productionSmoke, rollback, smoke, migrationStatus, nextConfig, authRoute, packageJson, vercelConfig] = await Promise.all([
+test("connects Vercel verification, maintenance reporting, rollback, and Studio routing without Cloudflare", async () => {
+  const [productionSmoke, quality, rollback, smoke, maintenance, migrationStatus, nextConfig, authRoute, packageJson, vercelConfig] = await Promise.all([
     readFile(new URL("../.github/workflows/production-smoke.yml", import.meta.url), "utf8"),
+    readFile(new URL("../.github/workflows/quality.yml", import.meta.url), "utf8"),
     readFile(new URL("../.github/workflows/rollback.yml", import.meta.url), "utf8"),
     readFile(new URL("../scripts/smoke-production.mjs", import.meta.url), "utf8"),
+    readFile(new URL("../scripts/report-content-maintenance.mjs", import.meta.url), "utf8"),
     readFile(new URL("../scripts/check-migration-status.mjs", import.meta.url), "utf8"),
     readFile(new URL("../next.config.ts", import.meta.url), "utf8"),
     readFile(new URL("../app/api/cms/auth/route.ts", import.meta.url), "utf8"),
@@ -25,6 +27,9 @@ test("connects Vercel verification, rollback, and Studio routing without Cloudfl
   assert.match(productionSmoke, /vars\.VERCEL_PRODUCTION_URL/);
   assert.match(productionSmoke, /environment_url/);
   assert.match(productionSmoke, /--expect-oauth/);
+  assert.match(quality, /content:status/);
+  assert.match(quality, /--github-summary/);
+  assert.match(quality, /cron: "0 1 \* \* 1"/);
   assert.match(rollback, /vercel@56\.3\.2/);
   assert.match(rollback, /VERCEL_PRODUCTION_URL/);
   assert.match(rollback, /args=\(rollback "\$DEPLOYMENT_URL"\)/);
@@ -34,12 +39,15 @@ test("connects Vercel verification, rollback, and Studio routing without Cloudfl
   assert.match(smoke, /\/studio\/preview\.css/);
   assert.match(smoke, /frame-ancestors 'none'/);
   assert.doesNotMatch(smoke, /CLOUDFLARE_API_TOKEN|GITHUB_OAUTH_SECRET/);
+  assert.match(maintenance, /GITHUB_STEP_SUMMARY/);
+  assert.match(maintenance, /formatContentMaintenanceAnnotations/);
   assert.match(migrationStatus, /process\.env\.ComSpec/);
   assert.match(migrationStatus, /vercel@56\.3\.2", "whoami/);
   assert.match(nextConfig, /STUDIO_CONTENT_SECURITY_POLICY/);
   assert.match(nextConfig, /same-origin-allow-popups/);
   assert.match(authRoute, /handleCmsOAuth/);
   assert.match(packageJson, /"build": "next build"/);
+  assert.match(packageJson, /"content:status"/);
   assert.doesNotMatch(packageJson, /cloudflare|vinext|wrangler/i);
   assert.match(vercelConfig, /"framework": "nextjs"/);
 });

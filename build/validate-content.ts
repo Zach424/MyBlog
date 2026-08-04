@@ -6,10 +6,10 @@ import {
   parsePostFile,
   parseProjectFile,
   validateContentFreshness,
-} from "../lib/content/contract";
-import { deriveContentRelations } from "../lib/content/relations";
+} from "../lib/content/contract.ts";
+import { deriveContentRelations } from "../lib/content/relations.ts";
 
-async function readMarkdownDirectory(directory: string) {
+async function readMarkdownDirectory(directory: string, projectRoot: string) {
   const entries = await readdir(directory, { withFileTypes: true });
   const unexpected = entries.filter(
     (entry) => !entry.isFile() || !entry.name.endsWith(".md"),
@@ -29,7 +29,7 @@ async function readMarkdownDirectory(directory: string) {
       .map(async (entry) => {
         const absolutePath = path.join(directory, entry.name);
         return {
-          sourcePath: path.relative(process.cwd(), absolutePath).replaceAll("\\", "/"),
+          sourcePath: path.relative(projectRoot, absolutePath).replaceAll("\\", "/"),
           raw: await readFile(absolutePath, "utf8"),
         };
       }),
@@ -40,15 +40,7 @@ export async function validateContentRepository(
   projectRoot: string,
   contentBuildDate: string,
 ) {
-  const [postSources, projectSources] = await Promise.all([
-    readMarkdownDirectory(path.join(projectRoot, "content", "posts")),
-    readMarkdownDirectory(path.join(projectRoot, "content", "projects")),
-  ]);
-
-  const posts = postSources.map(({ sourcePath, raw }) => parsePostFile(sourcePath, raw));
-  const projects = projectSources.map(({ sourcePath, raw }) =>
-    parseProjectFile(sourcePath, raw),
-  );
+  const { posts, projects } = await loadContentRepository(projectRoot);
 
   deriveContentIndexes(posts, projects);
   deriveContentRelations([...posts, ...projects]);
@@ -59,4 +51,18 @@ export async function validateContentRepository(
   );
 
   return { posts: posts.length, projects: projects.length };
+}
+
+export async function loadContentRepository(projectRoot: string) {
+  const [postSources, projectSources] = await Promise.all([
+    readMarkdownDirectory(path.join(projectRoot, "content", "posts"), projectRoot),
+    readMarkdownDirectory(path.join(projectRoot, "content", "projects"), projectRoot),
+  ]);
+
+  const posts = postSources.map(({ sourcePath, raw }) => parsePostFile(sourcePath, raw));
+  const projects = projectSources.map(({ sourcePath, raw }) =>
+    parseProjectFile(sourcePath, raw),
+  );
+
+  return { posts, projects };
 }

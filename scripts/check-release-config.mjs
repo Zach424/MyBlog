@@ -16,6 +16,16 @@ const smokeWorkflow = readFileSync(
   "utf8",
 );
 
+const qualityWorkflow = readFileSync(
+  new URL("../.github/workflows/quality.yml", import.meta.url),
+  "utf8",
+);
+for (const marker of ["schedule:", 'cron: "0 1 * * 1"', "content:status", "--github-summary"]) {
+  if (!qualityWorkflow.includes(marker)) {
+    throw new Error(`Quality workflow is missing content maintenance marker: ${marker}`);
+  }
+}
+
 for (const marker of [
   "deployment_status",
   "Production",

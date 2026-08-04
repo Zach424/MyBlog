@@ -6,7 +6,7 @@
 npm run check
 ```
 
-顺序为 ESLint → 41 项内容/搜索/OAuth/Studio/Obsidian/媒体/交付单元测试 → Next 路由类型生成与 TypeScript → 原生 Next.js 生产构建 → 15 项真实生产 HTTP 与质量审计。任何一步失败都阻止合并和生产部署。
+顺序为 ESLint → 46 项内容/维护/搜索/OAuth/Studio/Obsidian/媒体/交付单元测试 → Next 路由类型生成与 TypeScript → 原生 Next.js 生产构建 → 15 项真实生产 HTTP 与质量审计。任何一步失败都阻止合并和生产部署。
 
 发布候选额外执行：
 
@@ -14,7 +14,21 @@ npm run check
 npm run release:check
 ```
 
-它会校验 Vercel 冒烟/回滚配置并执行 production-only `npm audit`。不使用会强制改变主版本的 `npm audit fix --force`。
+它会先输出 Current record 维护状态，再校验 Vercel 冒烟/回滚配置并执行 production-only `npm audit`。不使用会强制改变主版本的 `npm audit fix --force`。
+
+## 内容维护质量门
+
+```bash
+npm run content:status
+npm run content:status -- --date 2027-01-01 --format json
+```
+
+- `healthy`：剩余 61 天以上；
+- `review-soon`：剩余 31–60 天，Actions warning；
+- `due-soon`：剩余 0–30 天，Actions warning；
+- `overdue`：已越过第 180 天，命令返回 1，后续构建也会失败。
+
+Quality Gate 在 PR、`main`、手动触发和每周一 01:00 UTC 自动运行。报告写入 `GITHUB_STEP_SUMMARY`，并把预警绑定到对应 Markdown 源文件。固定 `--date` 用于边界测试，正常维护不应伪造日期。
 
 ## 生产冒烟
 
