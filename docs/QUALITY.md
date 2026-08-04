@@ -6,7 +6,7 @@
 npm run check
 ```
 
-顺序为 ESLint → 111 项内容/维护/inbox/暂存媒体/关系/标题锚点/知识图/外链库存与检查/搜索/OAuth/Studio/Obsidian/媒体/重定向/交付单元测试 → Next 路由类型生成与 TypeScript → 原生 Next.js 生产构建（36 个页面）→ 17 项真实生产 HTTP 与质量审计。任何一步失败都阻止合并和生产部署。
+顺序为 ESLint → 116 项内容/维护/inbox/暂存媒体/关系/标题锚点/知识图/外链库存与检查/搜索/OAuth/Studio/Obsidian/媒体/重定向/交付单元测试 → Next 路由类型生成与 TypeScript → 原生 Next.js 生产构建（37 个页面）→ 17 项真实生产 HTTP 与质量审计。任何一步失败都阻止合并和生产部署。
 
 发布候选额外执行：
 
@@ -66,7 +66,7 @@ npm run links:external -- --check --timeout-ms 5000 --concurrency 4 --retries 1
 npm run production:smoke -- https://example.vercel.app --expect-oauth
 ```
 
-检查代表内容、搜索、Studio HTML/配置/媒体预检/稳定 slug 控件/预览/同源 CMS 运行时、OAuth、RSS、robots、全 Sitemap、永久重定向、安全头、缓存与随机 404。永久重定向检查要求 `/blog` 返回 308、同源 `Location` 直达 `/posts`，且目标只需一次请求即返回 200。`--expect-oauth` 只用于已配置 GitHub OAuth 的生产环境；本地和 Preview 允许 OAuth 以 503 安全关闭。
+检查代表内容、搜索、Studio HTML/配置/媒体清单/媒体预检/稳定 slug 控件/预览/同源 CMS 运行时、OAuth、RSS、robots、全 Sitemap、永久重定向、安全头、缓存与随机 404。媒体清单必须是 `version: 1`、根为 `public/uploads`，每项包含安全路径、正整数节数与 64 位 SHA-256，并保持 `no-store`。永久重定向检查要求 `/blog` 返回 308、同源 `Location` 直达 `/posts`，且目标只需一次请求即返回 200。`--expect-oauth` 只用于已配置 GitHub OAuth 的生产环境；本地和 Preview 允许 OAuth 以 503 安全关闭。
 
 ## 永久重定向质量门
 
@@ -117,7 +117,7 @@ npm run production:smoke -- https://example.vercel.app --expect-oauth
 | 单帧像素 | `≤ 8,000,000` |
 | 动图总像素 | `≤ 80,000,000` |
 
-Obsidian 检查、正式发布和 Next 配置加载复用 `lib/media-policy.ts`；Studio 的独立浏览器模块用回归测试锁定同一扩展名与公开预算，并覆盖真实格式识别、浏览器解码、扩展名伪装、损坏文件、静态格式、GIF/WebP 帧计数、动画总像素、动画 AVIF fail-closed、事件拦截/重放和安装幂等清理。Obsidian 静态 PNG/JPEG/WebP 可先进入 25 MiB、8192 px、4000 万像素的原图安全包络，再自动校正方向、缩放并以固定参数生成 WebP；产物必须重新通过上表。Studio 不重编码，通过后向 Decap 透传原始 `File`。GIF、AVIF、动画 WebP 与已经更高效的 WebP 保持原字节。构建递归检查 `public/uploads`，符号链接、普通非图片、损坏文件和伪装扩展名均失败。测试还覆盖确定性字节、格式碰撞、真实 CLI 预览/发布和多附件逐字节回滚；响应式候选由 Next.js 在请求时派生，不作为新的 Git 资产保存。
+Obsidian 检查、正式发布和 Next 配置加载复用 `lib/media-policy.ts`；Studio 的独立浏览器模块用回归测试锁定同一扩展名与公开预算，并覆盖真实格式识别、浏览器解码、扩展名伪装、损坏文件、静态格式、GIF/WebP 帧计数、动画总像素、动画 AVIF fail-closed、事件拦截/重放和安装幂等清理。媒体冲突测试还锁定已发布 Decap bundle 的文件名转换调用，覆盖构建清单确定排序与真实仓库摘要、new/same/replace-confirmed、取消替换、空 slug、清单 HTTP 故障、全局媒体库降级，以及成功后才重放事件。Obsidian 静态 PNG/JPEG/WebP 可先进入 25 MiB、8192 px、4000 万像素的原图安全包络，再自动校正方向、缩放并以固定参数生成 WebP；产物必须重新通过上表。Studio 不重编码，通过后向 Decap 透传原始 `File`。GIF、AVIF、动画 WebP 与已经更高效的 WebP 保持原字节。构建递归检查 `public/uploads`，符号链接、普通非图片、损坏文件和伪装扩展名均失败。测试还覆盖确定性字节、格式碰撞、真实 CLI 预览/发布和多附件逐字节回滚；响应式候选由 Next.js 在请求时派生，不作为新的 Git 资产保存。
 
 `lib/content/media-references.ts` 使用标准 Markdown AST 抽取行内/引用式图片并忽略代码，`build/validate-media-references.ts` 在每次 Next 配置加载时交叉检查正式 posts/projects 与精确媒体文件清单。测试覆盖安全 URL、缺失/大小写错误、根暂存引用拒绝、跨 slug 所有权、代码伪引用、归档孤儿、cover 和 draft/future 所有权；没有被正式内容引用的根目录 inbox 暂存文件仍获豁免。正文图片 alt 为空时在对应行失败；本地 URL 去重后读取固有尺寸，生产 HTML 证明 `sizes`/`srcSet`/宽高同时存在。外部 HTTPS 图片不占用本地所有权，使用受 CSP 允许但不经 Next 优化器的明确降级；其他协议或相对图片路径失败。
 

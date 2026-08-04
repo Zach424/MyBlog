@@ -23,7 +23,7 @@ MyBlog 是 Git-first 个人技术博客。公开阅读不依赖数据库；网�
 ```text
 app/
   api/cms/{auth,callback}/route.ts  GitHub OAuth 同源端点
-  studio/                           Studio HTML、配置、样式、媒体预检、slug 控件和版本化 CMS 运行时路由
+  studio/                           Studio HTML、配置、媒体清单、预检、slug 控件和版本化 CMS 运行时路由
   posts/ projects/ series/ tags/   集合与详情页
   knowledge/ search/ about/         知识地图、搜索和关于页
   rss.xml/ sitemap.xml/ robots.txt/ 发现端点
@@ -45,6 +45,7 @@ lib/
     staging-media.ts                根暂存库存、inbox 引用、年龄证据与报告格式
   cms-oauth.ts                      签名 OAuth state 与 token 交换
   media-policy.ts                   原图安全包络、WebP 优化与公开媒体预算的共享策略
+  studio-media-manifest.ts          已归档媒体路径、字节数与 SHA-256 的确定性清单
   obsidian-publishing.ts            Obsidian 校验、附件与目标路径转换
   redirects.ts                      重定向 schema、路径不变量与 Next 规则转换
   studio-assets.ts                  构建期 Studio 资源响应
@@ -97,9 +98,11 @@ Obsidian ─────┘                                      │
 
 Studio 在浏览器中用当前 origin 生成 `base_url`。`/api/cms/auth` 创建十分钟有效、HMAC 签名且绑定 origin 的 state；`/api/cms/callback` 交换 GitHub token，并且只向发起授权的同源窗口发送结果。未设置 `GITHUB_OAUTH_ID` 或 `GITHUB_OAUTH_SECRET` 时返回 503，发布入口安全关闭。
 
-Studio HTML、配置、预览样式、媒体预检和稳定 slug 控件保留在仓库根 `studio`；完整 `decap-cms@3.14.1` 浏览器包作为构建期依赖，六类资源都由显式 Route Handler 同源返回。未知子资源返回真实 404。资源不进入 `public`，以便统一应用专用 CSP、`X-Robots-Tag` 与 OAuth 弹窗策略。
+Studio HTML、配置、预览样式、媒体预检和稳定 slug 控件保留在仓库根 `studio`；完整 `decap-cms@3.14.1` 浏览器包作为构建期依赖。上述资源与构建期媒体清单共七类端点，全部由显式 Route Handler 同源返回。未知子资源返回真实 404。资源不进入 `public`，以便统一应用专用 CSP、`X-Robots-Tag` 与 OAuth 弹窗策略。
 
-Studio 的全局 `media_folder`/`public_folder` 保留为根暂存与媒体库兼容入口；posts/projects 集合各自覆盖为绝对仓库模板 `/public/uploads/{{fields.slug}}` 与公开模板 `/uploads/{{fields.slug}}`。编辑器因此在作者填写稳定 slug 后，把封面和 Markdown 正文图直接写入该内容的归档目录。slug 同时决定内容文件名、公开 URL 与附件命名空间，首次保存后不可修改；重复文件名必须由作者在选择前区分，避免替换同条目附件。
+Studio 的全局 `media_folder`/`public_folder` 保留为根暂存与媒体库兼容入口；posts/projects 集合各自覆盖为绝对仓库模板 `/public/uploads/{{fields.slug}}` 与公开模板 `/uploads/{{fields.slug}}`。编辑器因此在作者填写稳定 slug 后，把封面和 Markdown 正文图直接写入该内容的归档目录。slug 同时决定内容文件名、公开 URL 与附件命名空间，首次保存后不可修改。
+
+构建期 `lib/studio-media-manifest.ts` 递归读取 `public/uploads` 的普通文件，按仓库路径排序并计算字节数与 SHA-256；`/studio/media-manifest.json` 以静态、同源、`no-store`/`noindex` 响应提供这一不可写快照。浏览器预检在读取和解码同一份原始字节后计算摘要，按固定 Decap 3.14.1 的小写、去音调和 ASCII 文件名规则推导 `public/uploads/<slug>/<filename>`。不存在为 new；路径与摘要/字节相同为 same；同路径不同内容必须展示双方体积与摘要前缀，并由作者明确确认。稳定 slug 缺失、清单失败或清单结构异常时条目上传失败关闭；全局媒体库没有条目身份时只执行原媒体预算预检。文件通过后仍透传原始 `File`，不在浏览器内改写字节。
 
 posts/projects 的顶层 slug 使用项目自有 `stable-slug` custom widget，专题内的普通 slug 仍使用内建 string。实际提供给浏览器的 Decap 3.14.1 bundle 把当前 Immutable `entry` 传给 control；其 reducer 用 `newRecord=true` 标记新建/复制，用 `false` 标记已加载的正式或 editorial workflow 条目。控件因此只在 `newRecord=false` 时使用原生 `readOnly`，保存值仍参与序列化且可复制；新建、复制和未保存本地备份保持可编辑。已有条目若字段值与 entry 顶层 slug/path 身份不一致，`isValid` 在保存前返回可执行错误。控件使用官方全局 `createClass`/`h` 注册，在 CMS init 前安装，并以 DOM data 属性提供无内容写入的浏览器可观测性；当前内部 `entry/newRecord` 传递由所发布 bundle 的 source map 回归测试锁定，升级 Decap 时必须重审。
 
@@ -147,6 +150,7 @@ Vercel GitHub Integration 负责每个分支的 Preview 和 `main` 的 Productio
 - inbox 就绪报告必须逐篇隔离错误、真实派生媒体候选并识别目标/共享源冲突；无论 ready、scheduled 或 blocked 都不能移动、改写、提交或推送作者文件。
 - Studio 新建/复制条目的顶层 slug 在首次保存前可编辑；已有条目必须以 readOnly 控件锁定并继续序列化，身份漂移必须在保存前失败。
 - Studio 本地图片进入 Decap 草稿前必须通过与公开媒体策略一致的真实格式、尺寸、体积和动图总像素预检；预检通过后必须透传原始 `File`，不能悄悄改变附件字节。
+- Studio 条目媒体必须由稳定 slug 与固定 Decap 文件名规则得到唯一目标；已发布清单不可用时失败关闭，同路径不同 SHA-256 必须明确确认后才能交给 Decap。
 - Markdown 图片 alt 不能为空；本地图使用共享固有尺寸与响应式候选，HTTPS 外图不能进入开放优化主机列表。
 - cover 必须是仓库内图片并同时声明 `coverAlt`；详情页尺寸只能来自已验证文件，文章/项目共享组件与社交元数据选择不能分叉。
 - `/studio` 与 OAuth 永远不缓存、不索引，并维持同源 state 验证；只有版本化 CMS 运行时可不可变缓存。

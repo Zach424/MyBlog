@@ -43,6 +43,7 @@
 0036-external-link-inventory.md
 0037-internal-heading-anchor-integrity.md
 0038-structured-external-endpoints.md
+0039-studio-media-collision-preflight.md
 ```
 
 ## 必填结构
