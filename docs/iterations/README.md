@@ -39,6 +39,7 @@
 0032-staging-media-inventory.md
 0033-permanent-redirect-registry.md
 0034-obsidian-inbox-readiness.md
+0035-accessible-knowledge-map.md
 ```
 
 ## 必填结构

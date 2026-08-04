@@ -6,13 +6,13 @@
 | 2. 视觉与阅读路径 | done | Commit Trace、响应式/深色、文章/项目/专题/标签/搜索 |
 | 3. 发布发现与质量 | done | SEO、OG、JSON-LD、RSS、Sitemap、robots、全链路测试 |
 | 4. 作者自助写作 | done | `/studio` OAuth + editorial workflow PR、Obsidian Vault/模板/附件/真实 `--push` |
-| 5. Vercel 原生迁移 | production live | 原生 Next.js、无 Cloudflare 依赖、23 路由生产冒烟通过 |
+| 5. Vercel 原生迁移 | production live | 原生 Next.js、无 Cloudflare 依赖、24 路由生产冒烟通过 |
 | 6. 所有者生产上线 | done | Git 自动 Production、稳定域名自动冒烟、双端发布、回滚与恢复均已验收 |
-| 7. 持续内容与作者体验 | in progress | Iteration 0034 完成全 inbox readiness、真实媒体候选、只读 CLI/Obsidian Modal 与线上交付验证 |
+| 7. 持续内容与作者体验 | in progress | Iteration 0035 完成 Markdown 派生公开知识地图、语义双轨呈现、320px 降级与线上交付验证 |
 
 ## 当前唯一主线
 
-进入持续内容与作者体验阶段。Iteration 0034 已把逐篇 `--check-only` 前的盲区变成全 inbox 只读证据：CLI 与 Obsidian Modal 逐篇给出 ready/scheduled/blocked、真实媒体候选、正式目标和共享/跟踪附件冲突，且不写入作者文件。下一主线转向读者发现体验：把详情页已有的正文关系派生为公开、可访问的全站知识地图，同时保持 Markdown 链接为唯一事实源。需要品牌域名时再绑定自定义域名，旧公开站继续只作为迁移历史证据。
+进入持续内容与作者体验阶段。Iteration 0035 已把详情页关系扩展为公开 `/knowledge`：同一 Markdown 链接派生有向图，桌面端呈现可聚焦 SVG 信号场，所有环境保留 HTML 关系账本和孤立记录，320px 无根横向溢出。下一主线转向内容维护的外部依赖证据：先建立普通 HTTPS 外链库存与显式可选健康检查，不让不稳定网络进入默认构建硬门。需要品牌域名时再绑定自定义域名，旧公开站继续只作为迁移历史证据。
 
 ## 已知风险
 
@@ -31,7 +31,8 @@
 - slug 迁移已有构建验证的精确单跳 redirect 注册表，但仍是需要作者审阅的 Git 操作；不支持通配参数或自动推断，迁移必须同步处理内容、附件和引用；
 - Obsidian 已有全 inbox readiness 总览，但该报告有意只代表本地单篇写入事务，不替代正式发布的完整仓库门禁，也不进入看不到未跟踪草稿的 Actions；
 - Current record 已有每周 60/30 天 Actions 提醒和过期门；若未来需要邮件/聊天通知，必须由所有者选择渠道后再接入；
-- 内部链接支持内容页和标题锚点，详情页同时展示 outgoing/backlinks；明确不支持 Obsidian 块引用，尚未提供公开、可访问的全站知识地图；
+- 内部链接支持内容页和标题锚点，详情页与公开知识地图共享 outgoing/backlinks；明确不支持 Obsidian 块引用，当前双列 SVG 为小型内容库优化，内容规模增长后需要过滤/分组；
+- 正文外部 HTTPS 链接仍依赖作者逐项人工复核，尚无确定性库存和受控实时健康报告；
 - 自定义域名、公开邮箱、统计和评论尚未选择，但不阻塞生产上线。
 
 ## 平台历史
