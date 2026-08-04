@@ -14,7 +14,7 @@ MyBlog 是 Zach424 的个人技术知识库与公开工程日志。它把学习�
 | 公开阅读 | done | 首页、文章、项目、专题、标签、搜索、关于、响应式、深色模式与详情页封面 |
 | Markdown | done | GFM、代码高亮、与实际渲染一致的 H1–H6 heading id、H2/H3 目录、阅读时间、相邻文章与响应式正文图片 |
 | 内容发现 | done | SEO、内容级 OG/Twitter 封面、JSON-LD、RSS、Sitemap、robots、本地全文搜索 |
-| 网页写作 | done | `/studio`、GitHub OAuth、Decap editorial workflow、PR、按内容 slug 归档媒体、稳定 slug 锁定、已发布附件 SHA-256 冲突预检 |
+| 网页写作 | done | `/studio`、GitHub OAuth、Decap editorial workflow、PR、按 slug 归档媒体、稳定 slug 锁定、生产/会话双层 SHA-256 冲突预检 |
 | Obsidian 写作 | done | Vault、模板、桌面发布插件、带目标标题校验的 `--check-only`、`--push` |
 | Inbox 发布就绪 | done | 全草稿 ready/scheduled/blocked、真实媒体候选、目标/共享附件诊断、CLI 与 Obsidian 只读弹窗 |
 | 附件发布 | done | Wiki/Markdown 图片转换、按内容隔离、稳定命名、越界保护、失败回滚 |
@@ -37,7 +37,7 @@ MyBlog 是 Zach424 的个人技术知识库与公开工程日志。它把学习�
 - 运行时：Next.js 16.3.0、React 19.2.6、TypeScript 5、Node.js 22+；
 - 内容：仓库内 Markdown、YAML、Zod，GitHub 是唯一事实源；
 - 阅读：react-markdown、remark-gfm、rehype-slug、rehype-highlight；GFM mdast 与 GitHubSlugger 复现同一标题和链接语义；
-- 发布：Decap CMS 3.14.1、GitHub OAuth、stable slug 自定义控件、同源媒体清单与 SHA-256 冲突确认、Obsidian 自有插件 1.1.0、inbox readiness CLI 与 Node 发布脚本；
+- 发布：Decap CMS 3.14.1、GitHub OAuth、stable slug 自定义控件、同源媒体清单、内存会话账本与 SHA-256 冲突确认、Obsidian 自有插件 1.1.0、inbox readiness CLI 与 Node 发布脚本；
 - 媒体：Sharp 0.35.3、浏览器 magic/帧结构解析、`createImageBitmap` 与 Web Crypto、构建期确定性摘要清单、mdast-util-from-markdown 2.0.3、`next/image`、固有尺寸、WebP 优化、引用所有权与 Git 附件跟踪；
 - 维护：内容新鲜度、根暂存媒体与正文/结构化端点外链的 CLI；确定性库存进入本地发布候选，时间/DNS 敏感的外链 HEAD 只显式运行；
 - 路由：严格 YAML + Zod 永久重定向注册表、Next `redirects()` 308、构建期现行路由与静态文件交叉校验；
@@ -49,19 +49,19 @@ MyBlog 是 Zach424 的个人技术知识库与公开工程日志。它把学习�
 
 - 仓库：<https://github.com/Zach424/MyBlog>，生产分支 `main`；
 - 生产站：<https://blog-iota-five-59.vercel.app>；
-- 本轮实现提交：`02de1c2`（Studio 已发布媒体清单、SHA-256 与 new/same/replace-risk 选择前确认）；
-- 自动交付：Quality Gate `30951228136`、Production verification `30951273507` 均成功；GitHub Production deployment `5751636882` 精确对应实现 SHA 且状态为 success，稳定生产域名保持公开；
-- 最新完成迭代：0039 Studio 媒体目标冲突预检；
+- 本轮实现提交：`c97c452`（Studio 页面会话媒体目标账本、same-session 与替换基线提交时序）；
+- 自动交付：Quality Gate `30952501983`、Production verification `30952538991` 均成功；GitHub Production deployment `5751862018` 精确对应实现 SHA 且状态为 success，稳定生产域名保持公开；
+- 最新完成迭代：0040 Studio 媒体会话账本；
 - Obsidian 状态：仓库根目录就是 Vault，`docs/STATUS.md` 与 `docs/iterations/*.md` 可直接阅读和维护；
 - 手动外部接入：自定义域名、统计、评论、公开邮箱均暂缓，不阻塞当前开发。
 
 ## 本轮新增能力
 
-Studio 现在从构建期同源 `/studio/media-manifest.json` 读取已归档媒体的仓库路径、字节数与 SHA-256。作者选择图片后，现有格式/尺寸/帧预算预检会继续计算新文件摘要，结合 stable slug 与固定 Decap 文件名规则得到最终目标：不存在显示新增；目标与摘要/字节相同显示可复用；同路径不同内容展示双方体积和摘要前缀，只有明确确认才继续。空 slug、清单 HTTP/结构错误和不稳定非 ASCII 文件名均失败关闭；全局媒体库保留无条目身份的预算预检。当前真实清单为 2 个文件，合计 190,044 B。完整门禁为 116/116 单元测试、37 个构建页面和 17/17 HTTP 测试，稳定域名 24 路由、OAuth 302。
+Studio 的冲突预检现在有两层确定基线：构建期 `/studio/media-manifest.json` 表示当前生产 Git 快照，页面内存 `approvedTargets` 表示本次页面已经成功重放的目标。第一次检查只返回带 `commit()` 的结果，不改变账本；合成 change 成功返回后才登记路径、字节数和 SHA-256。随后同路径同摘要显示 same-session，不同摘要展示会话基线/新文件证据并要求确认；取消保留旧基线，确认且重放成功后才更新。刷新页面或卸载重装会清空 Map，不写浏览器持久存储或远端。完整门禁为 117/117 单元测试、37 个构建页面和 17/17 HTTP 测试，稳定域名 24 路由、OAuth 302。
 
 ## 风险与下一步
 
-1. Studio 已在浏览器内完成真实格式/预算和已发布同路径摘要预检，但有意不自动缩放或转 WebP；清单是当前生产构建快照，同一页面会话中新选但尚未进入生产清单的附件仍由 Decap 通用确认兜底，尚无项目自有的会话内目标账本；
+1. Studio 已完成真实格式/预算、生产快照和顺序会话选择的同路径摘要预检，但有意不自动缩放或转 WebP；快速连续选择仍可能让两次异步解码/清单检查乱序完成，旧选择需要显式 stale-result 边界，不能晚于新选择重放或改写状态；
 2. 首次保存后的 slug 已在 Studio 控件层锁定；真正迁移仍只能通过 Git 同步修改内容文件、正文引用、附件目录和 `content/redirects.yml`。注册表不自动推断迁移且有意只支持精确单跳路径；该控件依赖固定 Decap 3.14.1 bundle 的 `entry/newRecord` 契约，升级时必须重审；
 3. inbox readiness 已覆盖全部本地草稿，但有意不进入 Actions：未跟踪草稿和附件天然不在 CI 检出中；当前真实 inbox 为空，正向/阻塞路径由临时 Git/媒体夹具验证，首次实际多草稿使用时仍应按 Modal 逐项复核；
 4. Current record 已有每周分级报告，但提醒只存在于本地输出和 GitHub Actions 摘要/注解，不发送外部消息；这是当前有意的无服务边界；
@@ -72,4 +72,4 @@ Studio 现在从构建期同源 `/studio/media-manifest.json` 读取已归档媒
 9. 统计、评论和自定义域名需要所有者最终选择，现阶段不主动接入；
 10. `decap-cms` 的开发依赖树仍有上游无修复的高危审计项；它不进入公开服务端生产依赖，但其浏览器编辑器包仅对已授权作者开放，后续应单独评估升级或替代方案。
 
-下一轮唯一主任务：为 Studio 冲突预检增加页面会话内的已批准媒体目标账本。第一次通过的新附件应立即登记目标路径、字节数与 SHA-256；同一页面再次选择相同目标时，即使它尚未进入生产清单，也必须区分 same-session 与 replace-session-risk，并在不同字节时复用明确替换确认。账本只存在内存、页面刷新即清空，不读取文件第二次、不上传文件、不接 GitHub API、不绕过 Decap 或构建门，并补齐多次选择与事件重放测试。
+下一轮唯一主任务：为 Studio 媒体预检增加每个 file input 的选择代次与 stale-result 丢弃。新的 change 到达后，旧一轮即使稍后完成解码、清单读取或确认，也不得重放旧文件、清空当前 input、覆盖最新 Evidence Rail 或提交会话账本；最新选择仍走完整预算/冲突流程。实现只用 WeakMap/单调 token 和可注入时序测试，不读取文件第二次、不引入 AbortController 假取消、不持久化、不调用外部 API，并覆盖“旧成功晚到”“旧失败晚到”“确认期间变旧”和正常单选重放。

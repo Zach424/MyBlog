@@ -8,11 +8,11 @@
 | 4. 作者自助写作 | done | `/studio` OAuth + editorial workflow PR、Obsidian Vault/模板/附件/真实 `--push` |
 | 5. Vercel 原生迁移 | production live | 原生 Next.js、无 Cloudflare 依赖、24 路由生产冒烟通过 |
 | 6. 所有者生产上线 | done | Git 自动 Production、稳定域名自动冒烟、双端发布、回滚与恢复均已验收 |
-| 7. 持续内容与作者体验 | in progress | Iteration 0039 完成 Studio 已发布媒体清单、目标路径/SHA-256 分类与危险替换显式确认 |
+| 7. 持续内容与作者体验 | in progress | Iteration 0040 完成 Studio 页面内已批准目标账本、same-session 分类与重放后提交 |
 
 ## 当前唯一主线
 
-进入持续内容与作者体验阶段。Iteration 0039 已在文件进入 Decap 草稿前，用 stable slug、固定文件名规则和构建期 SHA-256 清单提供目标路径与已发布附件冲突证据，危险替换不再只依赖通用确认。下一主线补齐同一页面会话里尚未进入生产快照的新附件：维护纯内存已批准目标账本，让第二次选择也能给出 same-session/replace-session-risk 证据。需要品牌域名时再绑定自定义域名，旧公开站继续只作为迁移历史证据。
+进入持续内容与作者体验阶段。Iteration 0040 已在生产 SHA-256 清单上叠加纯内存会话账本，只有成功重放才登记，新文件尚未部署也能得到 same-session/replace-session-risk 证据。下一主线处理快速连续选择的异步竞态：为每个 file input 建立选择代次，让旧检查结果静默失效，不能晚到重放、清空最新文件或提交过期账本。需要品牌域名时再绑定自定义域名，旧公开站继续只作为迁移历史证据。
 
 ## 已知风险
 
@@ -25,7 +25,7 @@
 - Vercel 不可变 deployment URL 可能受保护；自动冒烟必须以 `VERCEL_PRODUCTION_URL` 为公开检查目标，同时用 deployment 元数据核对 SHA；
 - Windows Git 凭据保存在系统凭据管理器；撤销 GitHub OAuth 授权后，Obsidian `--push` 需要重新登录；
 - 内容持续增长后要继续观察 `.next/static`、Serverless 函数体积和构建时间；
-- 附件仍依赖 Git 仓库存储；封面和正文图的引用/展示/Studio 归档与预检已闭环，但 Studio/普通 Git 入口没有自动优化；Studio 已识别生产快照中的同 slug 重复文件名，同一未刷新页面中新选且尚未部署的目标仍主要依赖 Decap 兜底；
+- 附件仍依赖 Git 仓库存储；封面和正文图的引用/展示/Studio 归档与预检已闭环，但 Studio/普通 Git 入口没有自动优化；Studio 已识别生产快照和顺序会话中的同 slug 重复文件名，快速连续选择的异步先后仍需显式代次保护；
 - Studio 的 slug 在首次保存后已由自定义控件只读保护，真正迁移仍须使用 Git 同步修改内容、引用和附件；控件依赖固定 Decap 3.14.1 bundle 的 `entry/newRecord` 契约，升级必须重审；
 - root `public/uploads` 已有确定性库存和 warning，但有意不自动删除；未跟踪附件只存在于作者工作区，GitHub Actions 无法看到，仍需本地运行报告后人工确认；
 - slug 迁移已有构建验证的精确单跳 redirect 注册表，但仍是需要作者审阅的 Git 操作；不支持通配参数或自动推断，迁移必须同步处理内容、附件和引用；
@@ -33,7 +33,7 @@
 - Current record 已有每周 60/30 天 Actions 提醒和过期门；若未来需要邮件/聊天通知，必须由所有者选择渠道后再接入；
 - 内部链接支持内容页和严格标题锚点，行内/引用式/自引用共享实际渲染 slug 规则，详情页与公开知识地图共享 outgoing/backlinks；明确不支持 Obsidian 块引用，标题改名必须同步深链，当前双列 SVG 为小型内容库优化，内容规模增长后需要过滤/分组；
 - 正文普通 HTTPS 与结构化 repository/demo/canonical 已有统一确定性库存和受控实时报告；实时 DNS/网络结果有意不进 Actions，timeout/限流不能冒充内容错误；
-- Studio 已对生产快照中的同 slug 同名媒体显示目标路径和摘要差异；页面会话内尚未部署的新选择还没有项目自有的目标/摘要账本；
+- Studio 已对生产快照和页面会话中的同 slug 同名媒体显示目标路径和摘要差异；同一 input 快速连续 change 时，旧异步结果仍缺少 stale token 边界；
 - 自定义域名、公开邮箱、统计和评论尚未选择，但不阻塞生产上线。
 
 ## 平台历史
