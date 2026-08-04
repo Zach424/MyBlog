@@ -73,7 +73,11 @@ schema 层先验证日期格式和字段关系。仓库层获得与运行时完�
 - 真实 Obsidian `content:publish --check-only` 演练通过，current/reviewedAt 与标题链接共同进入发布契约；临时草稿已删除；
 - 真实浏览器桌面：内容标题列 759px、事实栏 288px，无碰撞、无横向溢出；Live demo 指向 Vercel；
 - 375px 内容视口：标题和事实栏都折叠为 343px 单列，无横向溢出；Historical snapshot、Reviewed 与正文历史提示正确显示；
-- 最终 `npm run release:check` 通过：38/38 单元测试、TypeScript、Next.js 16.3.0 build（33 个静态生成任务）、15/15 生产 HTTP/质量测试，`npm audit --omit=dev --audit-level=high` 为 0；提交、GitHub Actions、Vercel Production 和线上冒烟在交付阶段补入本文件。
+- 最终 `npm run release:check` 通过：38/38 单元测试、TypeScript、Next.js 16.3.0 build（33 个静态生成任务）、15/15 生产 HTTP/质量测试，`npm audit --omit=dev --audit-level=high` 为 0；
+- 实现与初始归档提交 `4177647` 已推送 `main`；GitHub Quality Gate run `30888792915` 为 completed/success；
+- Vercel Production deployment `5739866714` 的 SHA 为 `4177647051b07f5d35da29b6d357604a97dda3e0`，与实现提交精确一致，状态 success，不可变 URL 为 `https://blog-9thaxr4lu-czq1.vercel.app`；
+- GitHub 自动生产冒烟 run `30888826725` 为 completed/success；独立稳定域名冒烟返回 `23 routes, OAuth 302`；
+- 独立线上内容断言：MyBlog 项目页与历史文章均返回 200，分别包含 Current record + 当前 Vercel Demo、Historical snapshot + 2026-08-04 Reviewed；网络命令仅使用当前进程本机代理，未写入永久配置。
 
 ## 8. 经验与教训
 
