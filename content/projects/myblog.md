@@ -2,9 +2,9 @@
 title: "MyBlog — 把学习记录做成工程资产"
 description: "从内容契约、工程轨迹设计到 Vercel 自动发布，构建一个可维护、可检索、可复盘的个人技术博客。"
 publishedAt: 2026-07-18
-updatedAt: 2026-08-04
+updatedAt: 2026-08-05
 freshness: current
-reviewedAt: 2026-08-04
+reviewedAt: 2026-08-05
 status: maintained
 stack: ["TypeScript", "React", "Next.js", "Vercel", "GitHub"]
 tags: ["TypeScript", "Next.js", "Vercel", "Personal Knowledge", "Design Systems"]
@@ -16,7 +16,7 @@ repository: "https://github.com/Zach424/MyBlog"
 demo: "https://blog-iota-five-59.vercel.app"
 ---
 
-## 当前状态（2026-08-04）
+## 当前状态（2026-08-05）
 
 MyBlog 当前运行在 Vercel，稳定公开地址是 [blog-iota-five-59.vercel.app](https://blog-iota-five-59.vercel.app)。仓库使用原生 Next.js 16.3、React 19 和 TypeScript；GitHub `main` 自动触发 Production，质量门和独立线上冒烟共同验证交付。网页 Studio 与 Obsidian 都可以由作者独立发布，Obsidian 图片和笔记链接会在进入正式内容前转换，详情页从真实正文派生反向引用。
 
@@ -58,6 +58,8 @@ Cloudflare、Sites、Vinext、Vite Worker 和 Wrangler 仅属于 2026-07-18 至 
 
 详情页封面是仓库内的正式内容资产：`cover` 与 `coverAlt` 成对校验，服务端读取真实宽高，文章与项目共享 `next/image` 响应式组件；同一图片同时进入 Open Graph、Twitter 和结构化数据。Obsidian 会把 frontmatter 封面与正文附件放入同一压缩、归档和回滚事务，没有封面的内容保持原布局。
 
+Markdown 正文图片复用同一个媒体描述器：服务端按 AST 中的 `/uploads/...` 引用读取真实宽高，本地图片由 `next/image` 按 48rem 阅读栏和移动端留白生成响应式候选，并保留作者填写的 alt。完整 HTTPS 外图保持明确降级，不进入开放远程优化白名单，只使用 lazy 原生图片、异步解码和 `no-referrer`；正文图片缺少 alt 会在构建前失败。正文图沿用 Evidence Rail 的直角描边与锈红信号边，不对技术截图施加深色滤镜。
+
 ## 问题与解决
 
 2026-07-19 根据维护目标把托管从 Cloudflare/Sites 迁移到 Vercel。迁移删除 Vinext、Vite、Worker、Wrangler 与 Sites 托管标记，恢复原生 `next dev/build/start`；原先 Worker 中的 Studio 静态资源、OAuth 与安全响应头分别迁入 App Router Route Handlers 和 Next.js headers。内容仍以 Git 为唯一事实来源，Obsidian 与网页后台产生的提交都会触发 Vercel 自动部署，因此迁移没有数据库或媒体数据搬运。
@@ -84,7 +86,7 @@ Sites 首次生产发布后，首页与集合页返回 200，但没有任何内�
 
 ### Vercel 阶段（当前）
 
-当前站点使用原生 Next.js、GitHub 自动 Production 和稳定域名冒烟；Studio GitHub OAuth、Obsidian 模板/附件/封面/链接发布、构建期内容关系、文章与项目反向引用、Vercel 回滚与恢复均已验收。Iteration 0027 的实现质量门通过 60 项单元测试、15 项生产 HTTP/质量测试和 33 个静态生成任务，生产依赖审计为 0；稳定域名冒烟覆盖 23 条路由并确认 OAuth 302，MyBlog 项目页的响应式封面和分享元数据已在线。项目保持 `maintained`，当前生产站面向公众访问且不依赖 Cloudflare。
+当前站点使用原生 Next.js、GitHub 自动 Production 和稳定域名冒烟；Studio GitHub OAuth、Obsidian 模板/附件/封面/链接发布、构建期内容关系、文章与项目反向引用、Vercel 回滚与恢复均已验收。Iteration 0028 的实现质量门通过 62 项单元测试、15 项生产 HTTP/质量测试和 33 个页面生成任务，生产依赖审计为 0；稳定域名冒烟覆盖 23 条路由并确认 OAuth 302，文章正文的本地响应式图片与外图降级边界已在线。项目保持 `maintained`，当前生产站面向公众访问且不依赖 Cloudflare。
 
 ## 复盘
 
@@ -92,4 +94,4 @@ Sites 首次生产发布后，首页与集合页返回 200，但没有任何内�
 
 ## 下一步
 
-按维护手册持续发布真实学习记录，观察内容增长后的构建体积和真实维护成本。自定义域名、公开邮箱、评论与统计保持可选；只有在提供域名或出现明确使用需求后再引入，并继续补做 Safari、Firefox 与真实移动设备回归。
+下一轮优先收紧网页 Studio 的媒体归档：正式正文与封面不应长期引用 `public/uploads` 根暂存文件，而应像 Obsidian 一样进入当前内容 slug 的归档命名空间。之后继续按维护手册发布真实记录并观察构建体积；自定义域名、公开邮箱、评论与统计保持可选。

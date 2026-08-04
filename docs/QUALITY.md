@@ -6,7 +6,7 @@
 npm run check
 ```
 
-顺序为 ESLint → 58 项内容/维护/关系/搜索/OAuth/Studio/Obsidian/媒体/交付单元测试 → Next 路由类型生成与 TypeScript → 原生 Next.js 生产构建 → 15 项真实生产 HTTP 与质量审计。任何一步失败都阻止合并和生产部署。
+顺序为 ESLint → 62 项内容/维护/关系/搜索/OAuth/Studio/Obsidian/媒体/交付单元测试 → Next 路由类型生成与 TypeScript → 原生 Next.js 生产构建 → 15 项真实生产 HTTP 与质量审计。任何一步失败都阻止合并和生产部署。
 
 发布候选额外执行：
 
@@ -58,6 +58,7 @@ npm run production:smoke -- https://example.vercel.app --expect-oauth
 - 文本设计 Token 达到 WCAG AA；
 - 320px 不允许根布局强制最小宽度或横向溢出；
 - 焦点可见、Reduced Motion 和系统深色偏好保留。
+- 本地 Markdown 正文图必须服务端输出 alt、真实宽高、正文栏 `sizes` 和 `srcSet`；Markdown 组件不能把 AST `node` 泄漏成 HTML 属性。
 
 ## 体积预算
 
@@ -80,9 +81,9 @@ npm run production:smoke -- https://example.vercel.app --expect-oauth
 | 单帧像素 | `≤ 8,000,000` |
 | 动图总像素 | `≤ 80,000,000` |
 
-Obsidian 检查、正式发布和 Next 配置加载复用 `lib/media-policy.ts`；Studio 的 3 MiB 选择器上限由测试与共享公开预算对齐。Obsidian 静态 PNG/JPEG/WebP 可先进入 25 MiB、8192 px、4000 万像素的原图安全包络，再自动校正方向、缩放并以固定参数生成 WebP；产物必须重新通过上表。GIF、AVIF、动画 WebP 与已经更高效的 WebP 保持原字节。构建递归检查 `public/uploads`，符号链接、普通非图片、损坏文件和伪装扩展名均失败。测试还覆盖确定性字节、格式碰撞、真实 CLI 预览/发布和多附件逐字节回滚；响应式派生不属于当前门禁。
+Obsidian 检查、正式发布和 Next 配置加载复用 `lib/media-policy.ts`；Studio 的 3 MiB 选择器上限由测试与共享公开预算对齐。Obsidian 静态 PNG/JPEG/WebP 可先进入 25 MiB、8192 px、4000 万像素的原图安全包络，再自动校正方向、缩放并以固定参数生成 WebP；产物必须重新通过上表。GIF、AVIF、动画 WebP 与已经更高效的 WebP 保持原字节。构建递归检查 `public/uploads`，符号链接、普通非图片、损坏文件和伪装扩展名均失败。测试还覆盖确定性字节、格式碰撞、真实 CLI 预览/发布和多附件逐字节回滚；响应式候选由 Next.js 在请求时派生，不作为新的 Git 资产保存。
 
-`lib/content/media-references.ts` 使用标准 Markdown AST 抽取行内/引用式图片并忽略代码，`build/validate-media-references.ts` 在每次 Next 配置加载时交叉检查正式 posts/projects 与精确媒体文件清单。测试覆盖安全 URL、缺失/大小写错误、跨 slug 所有权、代码伪引用、归档孤儿、cover、draft/future 所有权和根目录 inbox/Studio 暂存豁免。外部 HTTPS 图片不占用本地所有权；其他协议或相对图片路径失败。
+`lib/content/media-references.ts` 使用标准 Markdown AST 抽取行内/引用式图片并忽略代码，`build/validate-media-references.ts` 在每次 Next 配置加载时交叉检查正式 posts/projects 与精确媒体文件清单。测试覆盖安全 URL、缺失/大小写错误、跨 slug 所有权、代码伪引用、归档孤儿、cover、draft/future 所有权和根目录 inbox/Studio 暂存豁免。正文图片 alt 为空时在对应行失败；本地 URL 去重后读取固有尺寸，生产 HTML 证明 `sizes`/`srcSet`/宽高同时存在。外部 HTTPS 图片不占用本地所有权，使用受 CSP 允许但不经 Next 优化器的明确降级；其他协议或相对图片路径失败。
 
 ## 安全基线
 

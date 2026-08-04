@@ -115,7 +115,7 @@ test("renders Markdown articles with metadata, anchors, code and navigation", as
   assert.match(html, /href="\/tags\/typescript"/);
   assert.match(html, /Historical snapshot/);
   assert.match(html, /<dt>Reviewed<\/dt>/);
-  assert.match(html, /2026-08-04/);
+  assert.match(html, /2026-08-05/);
   assert.doesNotMatch(html, /class="content-cover"/);
   assert.match(
     html,

@@ -119,6 +119,7 @@ Slug 只能使用小写英文字母、数字和连字符，并必须与文件名
 正式 `content/posts` 与 `content/projects` 还必须满足引用完整性：
 
 - `cover` 和 Markdown 图片的本地 URL 必须使用 `/uploads/...`；相对路径、`public/uploads/...`、HTTP、协议相对 URL、查询参数和锚点均会失败；Markdown 正文可以使用完整 HTTPS 外图，但 cover 必须本地化；
+- Markdown 图片的 `![替代文本]` 不能为空，行内与引用式写法使用同一规则；本地图在渲染前读取真实宽高并按正文栏生成响应式候选；
 - `coverAlt` 为 1–200 字符的可访问描述，与 cover 成对存在；详情页从真实文件读取宽高，用同一 alt 输出响应式图片、OG/Twitter 和 JSON-LD；
 - 路径解码后不能包含目录穿越、编码的 `/`/`\\`、空路径段或非法字符，末尾扩展名必须是受支持图片格式；
 - 引用按仓库原始大小写精确匹配真实文件，避免 Windows 通过但 Vercel/Linux 404；
@@ -126,7 +127,7 @@ Slug 只能使用小写英文字母、数字和连字符，并必须与文件名
 - 行内 Markdown 图片和引用式图片都参与关系，行内代码、围栏代码和普通链接不参与；
 - 正式目录里的 draft/future 记录仍可拥有归档附件；`content/inbox` 不参与，`public/uploads` 根目录文件继续作为发布前暂存/Studio 兼容区。
 
-外部 HTTPS 正文图片不进入附件移动流程。网页后台继续写入同一公开目录和内容事实源。Obsidian frontmatter cover 会与正文附件一起归档、优化和回滚；Studio cover 只允许上传本地文件，并要求作者同时填写替代文本。
+外部 HTTPS 正文图片不进入附件移动流程，也不进入 `next/image` 远程优化白名单；页面以 lazy、异步解码、`no-referrer` 的原生图片明确降级，CSP 仅允许 HTTPS 图片源。网页后台继续写入同一公开目录和内容事实源。Obsidian frontmatter cover 会与正文附件一起归档、优化和回滚；Studio cover 只允许上传本地文件，并要求作者同时填写替代文本。
 
 ## 站内链接与引用关系
 

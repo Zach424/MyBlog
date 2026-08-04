@@ -31,6 +31,8 @@
 0024-bidirectional-reference-ledger.md
 0025-obsidian-webp-optimization.md
 0026-content-media-reference-integrity.md
+0027-responsive-content-covers.md
+0028-responsive-markdown-images.md
 ```
 
 ## 必填结构

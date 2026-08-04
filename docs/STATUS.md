@@ -1,6 +1,6 @@
 # 当前项目状态
 
-> 更新时间：2026-08-04 · 每轮迭代更新 · 本文件位于仓库根 Obsidian Vault 中
+> 更新时间：2026-08-05 · 每轮迭代更新 · 本文件位于仓库根 Obsidian Vault 中
 
 ## 产品目标
 
@@ -12,7 +12,7 @@ MyBlog 是 Zach424 的个人技术知识库与公开工程日志。它把学习�
 | --- | --- | --- |
 | 内容契约 | done | YAML + Zod 校验文章、TIL、项目、标签、专题、日期、URL、内容语境、复核日期与本地封面替代文本 |
 | 公开阅读 | done | 首页、文章、项目、专题、标签、搜索、关于、响应式、深色模式与详情页封面 |
-| Markdown | done | GFM、代码高亮、H2/H3 目录、阅读时间、相邻文章 |
+| Markdown | done | GFM、代码高亮、H2/H3 目录、阅读时间、相邻文章与响应式正文图片 |
 | 内容发现 | done | SEO、内容级 OG/Twitter 封面、JSON-LD、RSS、Sitemap、robots、本地全文搜索 |
 | 网页写作 | done | `/studio`、GitHub OAuth、Decap editorial workflow、PR |
 | Obsidian 写作 | done | Vault、模板、桌面发布插件、`--check-only`、`--push` |
@@ -24,7 +24,7 @@ MyBlog 是 Zach424 的个人技术知识库与公开工程日志。它把学习�
 | 内容维护报告 | done | 本地文本/JSON、60/30 天分级、Actions 摘要与每周自动复核 |
 | 媒体门禁 | done | 真实格式解码、3 MiB/2560 px/像素预算、Obsidian 诊断、Studio 限额与构建扫描 |
 | 媒体引用完整性 | done | Markdown AST 图片抽取、精确路径存在性、slug 所有权与已归档孤儿附件门禁 |
-| 媒体展示 | partial | 封面已读取固有尺寸并由 `next/image` 响应式输出；Markdown 正文图片仍待同等处理 |
+| 媒体展示 | done | 封面与本地 Markdown 正文图共享固有尺寸/`next/image` 链路；HTTPS 外图有明确降级边界 |
 
 ## 设计与技术
 
@@ -42,23 +42,23 @@ MyBlog 是 Zach424 的个人技术知识库与公开工程日志。它把学习�
 
 - 仓库：<https://github.com/Zach424/MyBlog>，生产分支 `main`；
 - 生产站：<https://blog-iota-five-59.vercel.app>；
-- 本轮实现提交：`13164f7`（封面契约、固有尺寸、详情组件、分享元数据、Obsidian 归档与测试）；
-- 自动交付：Quality Gate `30923477705`、Production smoke `30923525707` 均成功；Vercel Production `dpl_CFPV5qHnEQJsWEy798eU6xqsYKe4` 为 Ready，精确克隆 `13164f7`，不可变 URL 为 `https://blog-o7yo3phzh-czq1.vercel.app`；
-- 最新完成迭代：0027 响应式详情页封面；
+- 本轮实现提交：`8756f54`（共享媒体描述器、本地响应式正文图、外图降级、alt 门禁、真实样本与测试）；
+- 自动交付：Quality Gate `30927311495`、Production smoke `30927356444` 均成功；Vercel Production `dpl_99QL6UJgbC6qUcA1brDhY9jZx4fy` 为 Ready，精确克隆 `8756f54`，不可变 URL 为 `https://blog-okim9ftzh-czq1.vercel.app`；
+- 最新完成迭代：0028 响应式 Markdown 正文图片；
 - Obsidian 状态：仓库根目录就是 Vault，`docs/STATUS.md` 与 `docs/iterations/*.md` 可直接阅读和维护；
 - 手动外部接入：自定义域名、统计、评论、公开邮箱均暂缓，不阻塞当前开发。
 
 ## 本轮新增能力
 
-文章与项目现在共享服务端 `ContentCover`：`lib/content/cover.ts` 只从 `public/uploads` 读取已验证文件的真实宽高，`next/image` 据此输出有固有比例的响应式 `srcset`，没有 cover 的内容不增加任何占位。`cover` 收紧为仓库内 `/uploads/...`，设置时必须同时提供 `coverAlt`；Studio 与三份 Obsidian 模板都暴露该字段。Obsidian 发布器会把 frontmatter 封面和正文附件放入同一个压缩、同 slug 归档、失败回滚事务。内容级封面同时进入 Open Graph、Twitter 和 JSON-LD。MyBlog 项目使用 1672×941、129054 字节的 WebP 工程档案封面作为首个真实样本。
+`lib/content/media.ts` 现在统一为 cover 与 Markdown 正文图读取已验证文件的固有尺寸。`MarkdownContent` 在服务端按 AST 引用建立描述器表：本地 `/uploads/...` 图片由 `next/image` 输出真实宽高、阅读栏 `sizes` 和响应式候选；完整 HTTPS 图片保持 lazy 原生 `<img>`，异步解码、禁止 referrer，不加入开放远程优化白名单。公开 CSP 只为正文外图增加 `https:` 图片源。正文 alt 进入构建硬门，行内/引用式多图、代码示例忽略、重复引用去重和外链边界都有测试。文章新增 1672×941、60990 字节的内容交付流程 WebP 作为真实样本；桌面与 320px 浏览器均无溢出和控制台错误。
 
 ## 风险与下一步
 
-1. 封面已经形成从发布到渲染/分享的闭环，但 Markdown 正文图片仍由默认 `<img>` 渲染，没有构建期固有尺寸、`next/image` 候选或统一外图边界；
+1. 封面与正文图片的展示链路已闭环；剩余媒体主风险是 Studio 正式内容仍可引用 `public/uploads` 根暂存文件，没有像 Obsidian 一样强制落入当前 slug 子目录；
 2. Current record 已有每周分级报告，但提醒只存在于本地输出和 GitHub Actions 摘要/注解，不发送外部消息；这是当前有意的无服务边界；
 3. Obsidian 块引用是专有语法，当前明确拒绝；双向关系只在详情页按正文链接展示，尚无全站图谱；
 4. Studio OAuth origin、GitHub 凭据和 Vercel Hobby 回滚范围仍需按运行手册维护；
 5. 统计、评论和自定义域名需要所有者最终选择，现阶段不主动接入；
 6. `decap-cms` 的开发依赖树仍有上游无修复的高危审计项；它不进入公开服务端生产依赖，但其浏览器编辑器包仅对已授权作者开放，后续应单独评估升级或替代方案。
 
-下一轮唯一主任务：把已验证的本地 Markdown 正文图片接入与封面相同的尺寸/响应式链路。渲染前按正文 URL 找到仓库图片，输出带固有宽高、正确 `sizes` 和现有 alt 的 `next/image`，保持外部 HTTPS 图片的明确降级边界，并补齐多图、引用式图片、320px 与生产 HTML 测试。
+下一轮唯一主任务：收紧网页 Studio 的正式媒体归档所有权。正文和 cover 在 Studio 创建/编辑后应进入 `public/uploads/<slug>/...`，正式 posts/projects 不再长期引用根暂存文件；保留 Obsidian inbox 暂存能力，并覆盖新建、改 slug 前草稿、重复文件名、正文与 cover 共用、失败提示和现有内容兼容。

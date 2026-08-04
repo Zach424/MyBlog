@@ -3,9 +3,9 @@ title: "从零搭建可维护的个人技术博客"
 description: "记录这个博客如何先冻结目标、内容契约和部署边界，再用可验证的小步迭代完成正式首页。"
 type: article
 publishedAt: 2026-07-18
-updatedAt: 2026-08-04
+updatedAt: 2026-08-05
 freshness: historical
-reviewedAt: 2026-08-04
+reviewedAt: 2026-08-05
 tags: ["Next.js", "TypeScript", "Cloudflare", "Design Systems"]
 draft: false
 featured: true
