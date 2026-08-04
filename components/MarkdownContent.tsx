@@ -3,6 +3,9 @@ import rehypeHighlight from "rehype-highlight";
 import rehypeSlug from "rehype-slug";
 import ReactMarkdown, { type Components } from "react-markdown";
 import remarkGfm from "remark-gfm";
+import { Children, isValidElement } from "react";
+import { CodeBlock } from "@/components/CodeBlock";
+import { getCodeLanguageLabel } from "@/lib/code-block";
 import {
   getMarkdownContentImages,
   type ContentImageDescriptor,
@@ -59,6 +62,16 @@ function createMarkdownComponents(
           src={src}
           title={title}
         />
+      );
+    },
+    pre({ children }) {
+      const codeElement = Children.toArray(children).find(isValidElement);
+      const className = isValidElement<{ className?: string }>(codeElement)
+        ? codeElement.props.className
+        : undefined;
+
+      return (
+        <CodeBlock language={getCodeLanguageLabel(className)}>{children}</CodeBlock>
       );
     },
     table({ children }) {

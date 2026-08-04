@@ -1386,8 +1386,86 @@ input:focus-visible {
   tab-size: 2;
 }
 
+.code-block {
+  margin: 1.75rem 0;
+  border: 0.0625rem solid #34505d;
+  background: #102d3c;
+}
+
+.code-block-rail {
+  display: flex;
+  min-height: 2.5rem;
+  align-items: stretch;
+  justify-content: space-between;
+  border-bottom: 0.0625rem solid #34505d;
+  color: #b8cdd2;
+  background: #0b2430;
+  font-family: var(--mono);
+  font-size: 0.6875rem;
+  font-weight: 700;
+  letter-spacing: 0.11em;
+  line-height: 1;
+}
+
+.code-block-language {
+  display: flex;
+  align-items: center;
+  padding: 0.75rem 0.875rem;
+}
+
+.code-copy-button {
+  display: inline-flex;
+  min-width: 5.75rem;
+  align-items: center;
+  justify-content: center;
+  padding: 0.625rem 0.875rem;
+  border: 0;
+  border-left: 0.0625rem solid #34505d;
+  border-radius: 0;
+  color: #edf4f5;
+  background: transparent;
+  font: inherit;
+  letter-spacing: inherit;
+  cursor: pointer;
+}
+
+.code-copy-button[hidden] {
+  display: none;
+}
+
+.code-copy-button:hover {
+  color: #ffffff;
+  background: #173c4c;
+}
+
+.code-block[data-copy-state="copied"] .code-copy-button {
+  color: #102d3c;
+  background: #9fd8c8;
+}
+
+.code-block[data-copy-state="failed"] .code-copy-button {
+  color: #102d3c;
+  background: #ffb39d;
+}
+
+.markdown-content .code-block pre {
+  margin: 0;
+  border: 0;
+}
+
 .markdown-content pre code {
   font-family: inherit;
+}
+
+.visually-hidden {
+  position: absolute;
+  width: 0.0625rem;
+  height: 0.0625rem;
+  padding: 0;
+  overflow: hidden;
+  clip: rect(0 0 0 0);
+  white-space: nowrap;
+  border: 0;
 }
 
 .hljs-comment,
@@ -2901,6 +2979,15 @@ input:focus-visible {
     margin-inline: calc(var(--page-x) * -1);
     padding-inline: var(--page-x);
     border-inline: 0;
+  }
+
+  .markdown-content .code-block {
+    margin-inline: calc(var(--page-x) * -1);
+    border-inline: 0;
+  }
+
+  .markdown-content .code-block pre {
+    margin-inline: 0;
   }
 
   .content-neighbors {

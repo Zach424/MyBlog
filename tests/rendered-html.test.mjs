@@ -147,6 +147,21 @@ test("renders Markdown articles with metadata, anchors, code and navigation", as
   assert.match(html, /<nav aria-label="本文目录">/);
   assert.match(html, /id="先冻结内容契约"/);
   assert.match(html, /class="[^"]*hljs[^"]*"/);
+  assert.match(
+    html,
+    /<figure class="code-block" data-copy-state="idle"><figcaption class="code-block-rail">/,
+  );
+  assert.match(
+    html,
+    /<span class="code-block-language">CODE \/ (?:<!-- -->)?TEXT<\/span>/,
+  );
+  assert.match(
+    html,
+    /<button(?=[^>]*aria-label="复制 TEXT 代码")(?=[^>]*class="code-copy-button")(?=[^>]*hidden="")[^>]*>COPY<\/button>/,
+  );
+  assert.match(html, /<pre><code class="hljs language-text">/);
+  assert.match(html, /<span aria-live="polite" class="visually-hidden"/);
+  assert.equal((html.match(/class="code-block"/g) ?? []).length, 1);
   assert.match(html, /href="\/series\/build-my-blog"/);
   assert.match(html, /href="\/tags\/typescript"/);
   assert.match(html, /Historical snapshot/);
@@ -182,6 +197,16 @@ test("renders Markdown articles with metadata, anchors, code and navigation", as
   const isolatedResponse = await render("/posts/project-charter-before-homepage");
   assert.equal(isolatedResponse.status, 200);
   assert.doesNotMatch(await isolatedResponse.text(), /class="content-relations"/);
+
+  const mixedCodeResponse = await render("/posts/cross-platform-npm-scripts");
+  assert.equal(mixedCodeResponse.status, 200);
+  const mixedCodeHtml = await mixedCodeResponse.text();
+  assert.match(mixedCodeHtml, /<code>cmd\.exe<\/code>/);
+  assert.match(
+    mixedCodeHtml,
+    /<span class="code-block-language">CODE \/ (?:<!-- -->)?JSON<\/span>/,
+  );
+  assert.equal((mixedCodeHtml.match(/class="code-block"/g) ?? []).length, 1);
 });
 
 test("renders project Markdown and returns a real 404 for unknown content", async () => {
