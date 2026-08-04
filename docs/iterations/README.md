@@ -37,6 +37,7 @@
 0030-studio-media-preflight.md
 0031-studio-stable-slug-lifecycle.md
 0032-staging-media-inventory.md
+0033-permanent-redirect-registry.md
 ```
 
 ## 必填结构

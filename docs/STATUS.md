@@ -20,6 +20,7 @@ MyBlog 是 Zach424 的个人技术知识库与公开工程日志。它把学习�
 | 自动交付 | done | GitHub `main` → Vercel Production → 稳定域名冒烟 |
 | 恢复能力 | done | Vercel 显式目标回滚、当前版本恢复、再次冒烟 |
 | 内容知识网络 | done | Obsidian/Markdown 站内链接转换、构建期完整性校验、文章与项目双向引用账本 |
+| 永久链接迁移 | done | Git 版本化 redirect 注册表、当前路由/静态文件冲突门、公开目标校验、单跳 308 与生产冒烟 |
 | 内容新鲜度 | done | Current/Historical 可见语境、复核日期、当前记录 180 天构建门、现行 Demo |
 | 内容维护报告 | done | 本地文本/JSON、60/30 天分级、Actions 摘要与每周自动复核 |
 | 根暂存媒体审计 | done | inbox 引用账本、Git/文件系统年龄证据、共享/未引用/陈旧/缺失报告与 Actions warning，零自动删除 |
@@ -36,6 +37,7 @@ MyBlog 是 Zach424 的个人技术知识库与公开工程日志。它把学习�
 - 发布：Decap CMS 3.14.1、GitHub OAuth、stable slug 自定义控件、Obsidian 自有插件与 Node 发布脚本；
 - 媒体：Sharp 0.35.3、浏览器 magic/帧结构解析与 `createImageBitmap`、mdast-util-from-markdown 2.0.3、`next/image`、固有尺寸、WebP 优化、引用所有权与 Git 附件跟踪；
 - 维护：内容新鲜度与根暂存媒体的确定日期报告 CLI、GitHub Actions 注解与每周一自动复核；
+- 路由：严格 YAML + Zod 永久重定向注册表、Next `redirects()` 308、构建期现行路由与静态文件交叉校验；
 - 托管：Vercel 原生 Next.js，当前链路不依赖 Cloudflare；
 - 质量：ESLint、Node test、TypeScript、Next build、真实生产服务器 HTTP 测试、npm audit、线上冒烟。
 
@@ -43,20 +45,20 @@ MyBlog 是 Zach424 的个人技术知识库与公开工程日志。它把学习�
 
 - 仓库：<https://github.com/Zach424/MyBlog>，生产分支 `main`；
 - 生产站：<https://blog-iota-five-59.vercel.app>；
-- 本轮实现提交：`09bb441`（根暂存媒体库存、inbox 引用账本、Git/文件系统年龄证据、CLI/Actions 与零删除测试）；
-- 自动交付：Quality Gate `30937066839`、Production verification `30937105665` 均成功；GitHub Production deployment `5749029489` 精确对应实现 SHA `09bb44187af247a095d4f6fc8f80256283d6c3f8` 且状态为 success，稳定生产域名保持公开；
-- 最新完成迭代：0032 根暂存媒体库存；
+- 本轮实现提交：`628fc9f`（版本化永久重定向注册表、构建冲突/目标/单跳门禁、真实 HTTP 与生产冒烟）；
+- 自动交付：Quality Gate `30938734018`、Production verification `30938771248` 均成功；GitHub Production deployment `5749330934` 精确对应实现 SHA `628fc9f94f7a035c74a3cc693e1cd3be5b0fc75e` 且状态为 success，稳定生产域名保持公开；
+- 最新完成迭代：0033 永久重定向注册表；
 - Obsidian 状态：仓库根目录就是 Vault，`docs/STATUS.md` 与 `docs/iterations/*.md` 可直接阅读和维护；
 - 手动外部接入：自定义域名、统计、评论、公开邮箱均暂缓，不阻塞当前开发。
 
 ## 本轮新增能力
 
-`npm run media:staging` 现在会确定性审计 `public/uploads` 根暂存区：复用 Obsidian 发布器的 Wiki/Markdown/cover 解析，区分单草稿引用、多草稿共享、未引用、缺失引用和无法审计的草稿；干净已跟踪文件使用 Git 最后提交日，本地修改或未跟踪文件使用明确标注的 filesystem 日期，默认 30 天进入陈旧复核。文本/JSON 可本地使用，`release:check` 与 Quality Gate 输出同一 Markdown 摘要和 warning。审计会保留含坏引用草稿里的其他有效占用证据，真实发布仍严格失败；所有报告只给建议、不删除也不因发现项阻断。当前真实库存为 0 个、0 B、0 需关注，稳定域名 23 路由冒烟通过。
+`content/redirects.yml` 现在是 URL 迁移的版本化事实源。构建会把公开内容、集合、专题、标签、运维路由和 `public` 文件交叉成路径清单，拒绝来源遮蔽、目标缺失、草稿/未来目标、保留命名空间、重复、自跳转、链与环路；每条规则还必须有不晚于构建日的 `addedAt` 和明确 `reason`。通过的规则由 Next 原生输出永久 308，查询参数保持透传。首条 `/blog -> /posts` 已在本地真实进程与 Vercel 稳定生产域名验证为同源单跳；完整门禁为 90/90 单元测试、35 个构建页面和 16/16 HTTP 测试，当前生产冒烟仍为 23 routes、OAuth 302。
 
 ## 风险与下一步
 
 1. Studio 已在浏览器内完成真实格式/预算预检，但有意不自动缩放或转 WebP；同 slug 下重复文件名仍由 Decap 的确认界面与作者处理，选择前必须区分名称；
-2. 首次保存后的 slug 已在 Studio 控件层锁定；真正迁移仍只能通过 Git 同步修改内容文件、正文引用和附件目录。文档要求迁移提供永久重定向，但仓库尚无 redirect 注册表；该控件依赖固定 Decap 3.14.1 bundle 的 `entry/newRecord` 契约，升级时必须重审；
+2. 首次保存后的 slug 已在 Studio 控件层锁定；真正迁移仍只能通过 Git 同步修改内容文件、正文引用、附件目录和 `content/redirects.yml`。注册表不自动推断迁移且有意只支持精确单跳路径；该控件依赖固定 Decap 3.14.1 bundle 的 `entry/newRecord` 契约，升级时必须重审；
 3. 根暂存区已有本地/Actions 库存但有意不自动清理；未跟踪的本地附件不会出现在 GitHub Actions，作者需要在 Obsidian 工作区运行 `npm run media:staging` 后人工确认；
 4. Current record 已有每周分级报告，但提醒只存在于本地输出和 GitHub Actions 摘要/注解，不发送外部消息；这是当前有意的无服务边界；
 5. Obsidian 块引用是专有语法，当前明确拒绝；双向关系只在详情页按正文链接展示，尚无全站图谱；
@@ -64,4 +66,4 @@ MyBlog 是 Zach424 的个人技术知识库与公开工程日志。它把学习�
 7. 统计、评论和自定义域名需要所有者最终选择，现阶段不主动接入；
 8. `decap-cms` 的开发依赖树仍有上游无修复的高危审计项；它不进入公开服务端生产依赖，但其浏览器编辑器包仅对已授权作者开放，后续应单独评估升级或替代方案。
 
-下一轮唯一主任务：建立仓库内永久重定向注册表，闭合真正 slug/URL 迁移。用版本化数据文件声明旧站内路径到现行公开路径，构建时拒绝源路径与当前路由冲突、目标不存在、链式/循环重定向、查询/锚点和不安全路径；Next/Vercel 输出永久 308，并由真实 HTTP 测试证明旧 URL 到最终 URL 的单跳行为。不得自动生成迁移或依赖云端控制台。
+下一轮唯一主任务：建立 Obsidian inbox 发布就绪报告。用只读 CLI 一次扫描全部 `content/inbox/*.md`，逐篇给出内容类型、目标路径、草稿/日期状态、附件派生结果、目标冲突与可发布/阻塞原因；复用真实发布器契约但不得移动附件、改写 Markdown、提交或推送。先服务本地作者工作区，不引入云端 API，也不把未跟踪草稿错误承诺为 CI 可见。
