@@ -71,7 +71,9 @@ Reference ledger 延续 Commit Trace / Evidence Rail 的工程档案语言，不
 - 最终 `npm run release:check` 通过：37/37 单元测试、TypeScript、Next.js 16.3.0 build（33 个静态生成任务）、15/15 生产 HTTP/质量测试，`npm audit --omit=dev --audit-level=high` 为 0；
 - 真实浏览器桌面检查确认 Reference ledger 为 `240px + 832px` 双列、区域高度 252px；375px 内容视口下变为单列、内容行两列、无横向溢出；
 - 浏览器真实点击引用条目后到达 `/projects/myblog`，项目页标题正确；开发模式仅出现公共 CSP 阻止 React 调试 `eval` 的提示，生产模式不使用该调试路径且生产 HTTP 测试无错误；
-- 推送、GitHub Quality Gate、Vercel Production 和线上冒烟证据在交付验证后补入本文件。
+- 实现与初始归档提交 `4205024` 已推送 `main`；GitHub Quality Gate run `30886734705` 为 completed/success；
+- Vercel Production deployment `5739506292` 的 SHA 为 `4205024748fe306df7cfaa8e4ebf52d9236b650f`，与实现提交精确一致，状态 success，不可变 URL 为 `https://blog-dmh30rdtm-czq1.vercel.app`；
+- GitHub 自动生产冒烟 run `30886770131` 为 completed/success；独立运行 `npm run production:smoke -- https://blog-iota-five-59.vercel.app --expect-oauth` 返回 `23 routes, OAuth 302`；网络访问仅对当前命令使用本机 `127.0.0.1:7897` 代理，没有写入 Git、npm 或系统永久配置。
 
 ## 8. 经验与教训
 
