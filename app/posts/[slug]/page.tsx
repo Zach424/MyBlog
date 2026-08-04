@@ -20,7 +20,7 @@ import {
   getTagSlug,
 } from "@/lib/content";
 import { extractTableOfContents } from "@/lib/content/markdown";
-import { getContentCover } from "@/lib/content/cover";
+import { getContentCover } from "@/lib/content/media";
 import { absoluteSiteUrl, resolveSiteUrl } from "@/lib/site";
 
 type PostPageProps = {
@@ -146,7 +146,7 @@ export default async function PostPage({ params }: PostPageProps) {
       ) : null}
       <div className="reading-layout">
         <article className="reading-article">
-          <MarkdownContent source={post.body} />
+          <MarkdownContent source={post.body} sourcePath={post.sourcePath} />
         </article>
         <TableOfContents items={toc} />
       </div>

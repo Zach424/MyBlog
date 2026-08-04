@@ -11,7 +11,7 @@ const CONTENT_SECURITY_POLICY = [
   "font-src 'self'",
   "form-action 'self'",
   "frame-ancestors 'none'",
-  "img-src 'self' data:",
+  "img-src 'self' data: https:",
   "manifest-src 'self'",
   "object-src 'none'",
   "script-src 'self' 'unsafe-inline'",

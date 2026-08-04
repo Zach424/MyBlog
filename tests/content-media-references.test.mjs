@@ -10,6 +10,7 @@ import {
   extractMarkdownImageReferences,
   resolveContentMediaPath,
 } from "../lib/content/media-references.ts";
+import { getMarkdownContentImages } from "../lib/content/media.ts";
 
 const mediaFixture = sharp({
   create: {
@@ -83,11 +84,11 @@ test("extracts inline and reference-style Markdown images but ignores code examp
 `);
 
   assert.deepEqual(
-    references.map((reference) => reference.url),
+    references.map(({ alt, url }) => ({ alt, url })),
     [
-      "/uploads/media-owner/inline.webp",
-      "/uploads/media-owner/reference.avif",
-      "https://images.example.test/evidence.webp",
+      { alt: "inline", url: "/uploads/media-owner/inline.webp" },
+      { alt: "reference", url: "/uploads/media-owner/reference.avif" },
+      { alt: "external", url: "https://images.example.test/evidence.webp" },
     ],
   );
 });
@@ -98,7 +99,7 @@ test("accepts exact formal references and leaves root staging media unowned", as
     await writePost(
       root,
       "media-owner",
-      "![正文](/uploads/media-owner/evidence.webp)\n\n![共享暂存](/uploads/shared.webp)",
+      "![正文](/uploads/media-owner/evidence.webp)\n\n![共享暂存][shared]\n\n[shared]: /uploads/shared.webp",
       "/uploads/media-owner/cover.webp",
     );
     await writePost(
@@ -187,6 +188,51 @@ test("rejects orphaned archived media even when it only appears in code", async 
   } finally {
     await rm(root, { recursive: true, force: true });
   }
+});
+
+test("rejects empty alt text for local and external body images", async () => {
+  const root = await createFixture();
+  try {
+    await writePost(
+      root,
+      "media-owner",
+      "![](/uploads/media-owner/evidence.webp)",
+    );
+    await assert.rejects(
+      validateContentMediaReferences(root),
+      /正文第 1 行图片替代文本不能为空/u,
+    );
+
+    await writePost(
+      root,
+      "media-owner",
+      "![](https://images.example.test/evidence.webp)",
+    );
+    await assert.rejects(
+      validateContentMediaReferences(root),
+      /正文第 1 行图片替代文本不能为空/u,
+    );
+  } finally {
+    await rm(root, { recursive: true, force: true });
+  }
+});
+
+test("reads intrinsic dimensions once per unique local body image", async () => {
+  const sourcePath = "content/posts/building-a-maintainable-blog.md";
+  const localUrl =
+    "/uploads/building-a-maintainable-blog/content-delivery-pipeline.webp";
+  const images = await getMarkdownContentImages(
+    `![主图](${localUrl})\n\n![重复引用](${localUrl})\n\n![外图](https://images.example.test/evidence.webp)`,
+    sourcePath,
+  );
+
+  assert.deepEqual(images, {
+    [localUrl]: {
+      height: 941,
+      src: localUrl,
+      width: 1672,
+    },
+  });
 });
 
 test("normalizes only safe upload URLs and permits valid HTTPS images", () => {

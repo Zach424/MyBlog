@@ -1,5 +1,5 @@
 import Image from "next/image";
-import type { ContentCoverDescriptor } from "@/lib/content/cover";
+import type { ContentCoverDescriptor } from "@/lib/content/media";
 
 export function ContentCover({
   cover,

@@ -91,6 +91,7 @@ test("applies the production security and cache baseline", async () => {
     assert.match(policy, /default-src 'self'/, pathname);
     assert.match(policy, /frame-ancestors 'none'/, pathname);
     assert.match(policy, /object-src 'none'/, pathname);
+    assert.match(policy, /img-src 'self' data: https:/, pathname);
     assert.equal(response.headers.get("x-powered-by"), null, pathname);
   }
 

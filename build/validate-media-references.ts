@@ -10,6 +10,7 @@ import {
 } from "../lib/content/contract.ts";
 
 type RecordMediaReference = {
+  alt?: string;
   label: string;
   url: string;
 };
@@ -17,6 +18,7 @@ type RecordMediaReference = {
 function recordMediaReferences(record: ContentRecord): RecordMediaReference[] {
   const bodyReferences = extractMarkdownImageReferences(record.body).map(
     (reference) => ({
+      alt: reference.alt,
       label: reference.line ? `正文第 ${reference.line} 行` : "正文",
       url: reference.url,
     }),
@@ -52,6 +54,12 @@ export async function validateContentMediaReferences(projectRoot: string) {
 
   for (const record of [...posts, ...projects]) {
     for (const reference of recordMediaReferences(record)) {
+      if (reference.alt !== undefined && !reference.alt.trim()) {
+        throw new ContentValidationError(
+          record.sourcePath,
+          `${reference.label}图片替代文本不能为空；请在 Markdown 的 ![替代文本](图片地址) 中描述图片内容`,
+        );
+      }
       const targetPath = resolveContentMediaPath(reference.url, record.sourcePath);
       if (!targetPath) continue;
       references += 1;

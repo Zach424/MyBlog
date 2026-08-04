@@ -1461,9 +1461,15 @@ input:focus-visible {
   background: var(--rule);
 }
 
-.markdown-content img {
+.markdown-content .markdown-image {
+  display: block;
+  width: 100%;
   max-width: 100%;
   height: auto;
+  margin-block: 2rem;
+  border: 0.0625rem solid var(--trace-dark);
+  border-left: 0.1875rem solid var(--signal);
+  background: var(--paper);
 }
 
 .content-toc {

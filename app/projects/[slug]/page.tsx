@@ -18,7 +18,7 @@ import {
   getTagSlug,
 } from "@/lib/content";
 import { extractTableOfContents } from "@/lib/content/markdown";
-import { getContentCover } from "@/lib/content/cover";
+import { getContentCover } from "@/lib/content/media";
 import { absoluteSiteUrl, resolveSiteUrl } from "@/lib/site";
 
 type ProjectPageProps = {
@@ -140,7 +140,7 @@ export default async function ProjectPage({ params }: ProjectPageProps) {
       {cover ? <ContentCover cover={cover} kind="Project" /> : null}
       <div className="reading-layout">
         <article className="reading-article">
-          <MarkdownContent source={project.body} />
+          <MarkdownContent source={project.body} sourcePath={project.sourcePath} />
         </article>
         <TableOfContents items={toc} />
       </div>

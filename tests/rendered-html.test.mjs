@@ -117,6 +117,11 @@ test("renders Markdown articles with metadata, anchors, code and navigation", as
   assert.match(html, /<dt>Reviewed<\/dt>/);
   assert.match(html, /2026-08-04/);
   assert.doesNotMatch(html, /class="content-cover"/);
+  assert.match(
+    html,
+    /<img(?=[^>]*alt="Markdown 文档经过提交分支、自动质量检查后生成公开网页的内容交付链路")(?=[^>]*class="markdown-image markdown-image-local")(?=[^>]*width="1672")(?=[^>]*height="941")(?=[^>]*sizes="\(max-width: 42rem\) calc\(100vw - 2rem\), \(max-width: 55rem\) 90vw, 48rem")(?=[^>]*srcSet=)[^>]*>/,
+  );
+  assert.doesNotMatch(html, /node="\[object Object\]"/);
   assert.match(html, /<section class="content-relations" aria-labelledby="reference-ledger-title">/);
   assert.equal(
     [

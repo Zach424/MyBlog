@@ -4,6 +4,7 @@ import { isSupportedImageExtension } from "../media-policy.ts";
 import { ContentValidationError } from "./contract.ts";
 
 type MarkdownNode = {
+  alt?: string;
   children?: MarkdownNode[];
   identifier?: string;
   position?: {
@@ -16,6 +17,7 @@ type MarkdownNode = {
 };
 
 export interface MarkdownImageReference {
+  alt: string;
   line?: number;
   url: string;
 }
@@ -44,6 +46,7 @@ export function extractMarkdownImageReferences(markdown: string) {
         : undefined;
     if (!url) return;
     references.push({
+      alt: node.alt ?? "",
       line: node.position?.start?.line,
       url,
     });
