@@ -377,6 +377,7 @@ export function createStudioMediaConflictChecker({
   documentRef = globalThis.document,
   fetchImpl = globalThis.fetch,
 } = {}) {
+  const approvedTargets = new Map();
   let manifestPromise;
   const getManifest = () => {
     if (!manifestPromise) {
@@ -398,15 +399,59 @@ export function createStudioMediaConflictChecker({
     return manifestPromise;
   };
 
+  const withSessionCommit = (result, inspection) => {
+    const approved = Object.freeze({
+      bytes: inspection.bytes,
+      sha256: inspection.sha256,
+    });
+    return {
+      ...result,
+      commit() {
+        approvedTargets.set(result.targetPath, approved);
+      },
+    };
+  };
+
   return async function checkStudioMediaConflict(inspection) {
     const slug = readStudioEntrySlug(documentRef);
     if (!slug) return { state: "unscoped" };
     const fileName = normalizeStudioMediaTargetFileName(inspection.fileName);
     const targetPath = `public/uploads/${slug}/${fileName}`;
+    const sessionExisting = approvedTargets.get(targetPath);
+    if (sessionExisting) {
+      if (
+        sessionExisting.bytes === inspection.bytes &&
+        sessionExisting.sha256 === inspection.sha256
+      ) {
+        return withSessionCommit({
+          existing: sessionExisting,
+          state: "same-session",
+          targetPath,
+        }, inspection);
+      }
+
+      const confirmed = await confirmReplace?.([
+        `附件 ${targetPath} 已在本次页面会话中通过预检，而且内容不同。`,
+        `本次会话：${formatMegabytes(sessionExisting.bytes)} · ${sessionExisting.sha256.slice(0, 12)}`,
+        `新文件：${formatMegabytes(inspection.bytes)} · ${inspection.sha256.slice(0, 12)}`,
+        "继续会更新本次会话中同一路径的预检基线。确认继续吗？",
+      ].join("\n"));
+      if (!confirmed) {
+        throw fileError(inspection.fileName, `已取消本次会话中的同路径替换 ${targetPath}`);
+      }
+      return withSessionCommit({
+        existing: sessionExisting,
+        state: "replace-session-confirmed",
+        targetPath,
+      }, inspection);
+    }
+
     const existing = (await getManifest()).get(targetPath);
-    if (!existing) return { state: "new", targetPath };
+    if (!existing) {
+      return withSessionCommit({ state: "new", targetPath }, inspection);
+    }
     if (existing.bytes === inspection.bytes && existing.sha256 === inspection.sha256) {
-      return { existing, state: "same", targetPath };
+      return withSessionCommit({ existing, state: "same", targetPath }, inspection);
     }
 
     const confirmed = await confirmReplace?.([
@@ -418,7 +463,7 @@ export function createStudioMediaConflictChecker({
     if (!confirmed) {
       throw fileError(inspection.fileName, `已取消替换 ${targetPath}`);
     }
-    return { existing, state: "replace-confirmed", targetPath };
+    return withSessionCommit({ existing, state: "replace-confirmed", targetPath }, inspection);
   };
 }
 
@@ -471,7 +516,9 @@ export function createStudioMediaPreflightHandler({
       const title = {
         new: "新增图片预检通过",
         "replace-confirmed": "已确认替换现有图片",
+        "replace-session-confirmed": "已确认替换本次会话图片",
         same: "图片与已发布文件相同",
+        "same-session": "图片与本次会话文件相同",
         unscoped: "图片预检通过",
       }[conflict.state] ?? "图片预检通过";
       report({
@@ -480,7 +527,12 @@ export function createStudioMediaPreflightHandler({
         title,
       });
       approvedFiles.add(file);
-      input.dispatchEvent(new EventConstructor("change", { bubbles: true }));
+      try {
+        input.dispatchEvent(new EventConstructor("change", { bubbles: true }));
+        conflict.commit?.();
+      } finally {
+        approvedFiles.delete(file);
+      }
       return true;
     } catch (error) {
       input.value = "";

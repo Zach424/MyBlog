@@ -140,10 +140,14 @@ test("classifies entry media as new, identical, or explicit replacement", async 
     },
   });
 
-  assert.deepEqual(
-    await checker({ bytes: 3, fileName: "diagram.png", sha256: "b".repeat(64) }),
-    { state: "new", targetPath: "public/uploads/stable-entry/diagram.png" },
-  );
+  const addition = await checker({
+    bytes: 3,
+    fileName: "diagram.png",
+    sha256: "b".repeat(64),
+  });
+  assert.equal(addition.state, "new");
+  assert.equal(addition.targetPath, "public/uploads/stable-entry/diagram.png");
+  assert.equal(typeof addition.commit, "function");
   assert.equal(
     (await checker({ bytes: 7, fileName: "Cover.WEBP", sha256: sameDigest })).state,
     "same",
@@ -167,6 +171,64 @@ test("classifies entry media as new, identical, or explicit replacement", async 
     declined({ bytes: 9, fileName: "cover.webp", sha256: "d".repeat(64) }),
     /已取消替换 public\/uploads\/stable-entry\/cover\.webp/u,
   );
+});
+
+test("tracks only committed approvals in the current Studio page session", async () => {
+  let allowReplacement = false;
+  let fetches = 0;
+  const confirmations = [];
+  const checker = createStudioMediaConflictChecker({
+    confirmReplace(message) {
+      confirmations.push(message);
+      return allowReplacement;
+    },
+    documentRef: { querySelectorAll: () => [{ value: "session-entry" }] },
+    fetchImpl: async () => {
+      fetches += 1;
+      return {
+        json: async () => ({ entries: [], root: "public/uploads", version: 1 }),
+        ok: true,
+        status: 200,
+      };
+    },
+  });
+  const original = {
+    bytes: 7,
+    fileName: "Evidence Final.WEBP",
+    sha256: "a".repeat(64),
+  };
+  const replacement = {
+    ...original,
+    bytes: 9,
+    sha256: "b".repeat(64),
+  };
+
+  const pending = await checker(original);
+  assert.equal(pending.state, "new");
+  assert.equal((await checker(original)).state, "new", "a check alone must not mutate the ledger");
+  pending.commit();
+  const repeated = await checker(original);
+  assert.equal(repeated.state, "same-session");
+  assert.equal(repeated.targetPath, "public/uploads/session-entry/evidence-final.webp");
+
+  await assert.rejects(
+    checker(replacement),
+    /已取消本次会话中的同路径替换/u,
+  );
+  assert.equal(
+    (await checker(original)).state,
+    "same-session",
+    "a declined replacement must preserve the previous ledger baseline",
+  );
+
+  allowReplacement = true;
+  const approvedReplacement = await checker(replacement);
+  assert.equal(approvedReplacement.state, "replace-session-confirmed");
+  assert.match(confirmations.at(-1), /本次页面会话中通过预检/u);
+  assert.match(confirmations.at(-1), /本次会话：0\.00 MiB · a{12}/u);
+  approvedReplacement.commit();
+  assert.equal((await checker(replacement)).state, "same-session");
+  assert.equal(fetches, 1, "session checks must reuse the build snapshot and in-memory ledger");
 });
 
 test("fails closed when an entry target or published manifest cannot be trusted", async () => {
@@ -311,11 +373,13 @@ test("blocks the original change event and replays only approved files", async (
   let prevented = 0;
   let stopped = 0;
   let conflictCalls = 0;
+  let commitCalls = 0;
   handler = createStudioMediaPreflightHandler({
     checkConflict: async (inspection) => {
       conflictCalls += 1;
       assert.equal(inspection.fileName, "evidence.webp");
       return {
+        commit() { commitCalls += 1; },
         state: "same",
         targetPath: "public/uploads/stable-entry/evidence.webp",
       };
@@ -345,6 +409,7 @@ test("blocks the original change event and replays only approved files", async (
   assert.equal(stopped, 1);
   assert.equal(inspectCalls, 1);
   assert.equal(conflictCalls, 1);
+  assert.equal(commitCalls, 1);
   assert.equal(input.accept, STUDIO_IMAGE_ACCEPT);
   assert.deepEqual(reports.map((report) => report.state), ["checking", "success"]);
   assert.equal(reports[1].title, "图片与已发布文件相同");
@@ -370,6 +435,36 @@ test("blocks the original change event and replays only approved files", async (
   assert.equal(rejectedDispatches, 0);
   assert.equal(rejectedInput.value, "");
   assert.deepEqual(rejectedReports.map((report) => report.state), ["checking", "error"]);
+
+  let failedReplayCommits = 0;
+  const replayFailureInput = {
+    ...input,
+    dispatchEvent() { throw new Error("synthetic replay failed"); },
+    value: "selected",
+  };
+  const replayFailureHandler = createStudioMediaPreflightHandler({
+    checkConflict: async () => ({
+      commit() { failedReplayCommits += 1; },
+      state: "new",
+      targetPath: "public/uploads/stable-entry/evidence.webp",
+    }),
+    inspect: async () => ({
+      bytes: 1,
+      extension: ".webp",
+      fileName: "evidence.webp",
+      format: "webp",
+      height: 18,
+      pages: 1,
+      width: 32,
+    }),
+  });
+  assert.equal(await replayFailureHandler({
+    preventDefault() {},
+    stopImmediatePropagation() {},
+    target: replayFailureInput,
+  }), false);
+  assert.equal(failedReplayCommits, 0);
+  assert.equal(replayFailureInput.value, "");
 });
 
 test("installs one observable capture boundary and removes it cleanly", () => {
