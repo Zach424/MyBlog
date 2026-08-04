@@ -8,11 +8,11 @@
 | 4. 作者自助写作 | done | `/studio` OAuth + editorial workflow PR、Obsidian Vault/模板/附件/真实 `--push` |
 | 5. Vercel 原生迁移 | production live | 原生 Next.js、无 Cloudflare 依赖、23 路由生产冒烟通过 |
 | 6. 所有者生产上线 | done | Git 自动 Production、稳定域名自动冒烟、双端发布、回滚与恢复均已验收 |
-| 7. 持续内容与作者体验 | in progress | Iteration 0029 完成 Studio per-slug 媒体归档、根暂存引用拒绝和线上交付验证 |
+| 7. 持续内容与作者体验 | in progress | Iteration 0030 完成 Studio 上传前真实媒体预检、Evidence Rail 与线上交付验证 |
 
 ## 当前唯一主线
 
-进入持续内容与作者体验阶段。Iteration 0029 已让 Studio 的文章/项目集合在填写稳定 slug 后把 cover 与正文图直接归档到 `public/uploads/<slug>/`；构建门同步禁止正式内容引用根暂存图，Obsidian inbox 暂存和现有归档内容不受影响。下一主线是缩小 Studio 与 Obsidian 的媒体质量体验差距：在浏览器选择阶段提供真实格式、尺寸、体积诊断，并评估复用确定性 WebP 优化的安全边界。需要品牌域名时再绑定自定义域名，旧公开站继续只作为迁移历史证据。
+进入持续内容与作者体验阶段。Iteration 0030 已让 Studio 在 Decap 接收图片前检查真实格式、浏览器可解码宽高、体积、单帧像素与 GIF/WebP/APNG 动图预算，并用非模态 Evidence Rail 给出修复信息；通过后透传原始文件，Obsidian 的确定性 WebP 优化职责不变。下一主线是收紧 slug 生命周期：在不依赖脆弱 DOM 选择器的前提下，让首次保存后的 slug 不再能与内容文件名、公开 URL 和媒体 owner 静默分叉。需要品牌域名时再绑定自定义域名，旧公开站继续只作为迁移历史证据。
 
 ## 已知风险
 
@@ -25,7 +25,7 @@
 - Vercel 不可变 deployment URL 可能受保护；自动冒烟必须以 `VERCEL_PRODUCTION_URL` 为公开检查目标，同时用 deployment 元数据核对 SHA；
 - Windows Git 凭据保存在系统凭据管理器；撤销 GitHub OAuth 授权后，Obsidian `--push` 需要重新登录；
 - 内容持续增长后要继续观察 `.next/static`、Serverless 函数体积和构建时间；
-- 附件仍依赖 Git 仓库存储；封面和正文图的引用/展示/Studio 归档已闭环，但 Studio/普通 Git 入口没有自动优化，同 slug 重复文件名仍需作者在选择前规避；
+- 附件仍依赖 Git 仓库存储；封面和正文图的引用/展示/Studio 归档与预检已闭环，但 Studio/普通 Git 入口没有自动优化，同 slug 重复文件名仍需作者在选择前规避；
 - Studio 的动态目录要求先填写 slug，首次保存后改 slug 不受编辑器条件只读保护，只能由作者提示与构建所有权门共同阻止错误发布；
 - Current record 已有每周 60/30 天 Actions 提醒和过期门；若未来需要邮件/聊天通知，必须由所有者选择渠道后再接入；
 - 内部链接支持内容页和标题锚点，详情页同时展示 outgoing/backlinks；明确不支持 Obsidian 块引用，尚未提供全站关系图；
