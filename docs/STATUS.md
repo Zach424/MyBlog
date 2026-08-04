@@ -23,7 +23,7 @@ MyBlog 是 Zach424 的个人技术知识库与公开工程日志。它把学习�
 | 内容新鲜度 | done | Current/Historical 可见语境、复核日期、当前记录 180 天构建门、现行 Demo |
 | 内容维护报告 | done | 本地文本/JSON、60/30 天分级、Actions 摘要与每周自动复核 |
 | 媒体门禁 | done | 真实格式解码、3 MiB/2560 px/像素预算、Obsidian 诊断、Studio 限额与构建扫描 |
-| 媒体派生 | pending | 自动压缩和响应式图片派生尚未实现 |
+| 媒体派生 | partial | Obsidian 静态 PNG/JPEG/WebP 已自动生成预算内 WebP；响应式多尺寸派生尚未实现 |
 
 ## 设计与技术
 
@@ -32,7 +32,7 @@ MyBlog 是 Zach424 的个人技术知识库与公开工程日志。它把学习�
 - 内容：仓库内 Markdown、YAML、Zod，GitHub 是唯一事实源；
 - 阅读：react-markdown、remark-gfm、rehype-slug、rehype-highlight；
 - 发布：Decap CMS 3.14.1、GitHub OAuth、Obsidian 自有插件与 Node 发布脚本；
-- 媒体：Sharp 0.35.3、本地格式/体积/尺寸/动图预算，图片仍由 Git 跟踪；
+- 媒体：Sharp 0.35.3、原图安全包络、确定性 WebP 优化、公开预算与 Git 附件跟踪；
 - 维护：确定日期报告 CLI、GitHub Actions 注解与每周一自动状态复核；
 - 托管：Vercel 原生 Next.js，当前链路不依赖 Cloudflare；
 - 质量：ESLint、Node test、TypeScript、Next build、真实生产服务器 HTTP 测试、npm audit、线上冒烟。
@@ -41,23 +41,23 @@ MyBlog 是 Zach424 的个人技术知识库与公开工程日志。它把学习�
 
 - 仓库：<https://github.com/Zach424/MyBlog>，生产分支 `main`；
 - 生产站：<https://blog-iota-five-59.vercel.app>；
-- 本轮实现提交：`c3f3e51`（关系查询、文章/项目双向账本、响应式设计、测试与归档）；
-- 自动交付：Quality Gate `30895600719`、Production smoke `30895637164` 均成功；Vercel Production `dpl_Hq7Gg6yqZZ2bfTkvN4dFo2AKdTvD` 精确构建 `c3f3e51354938f7d5cf258a94997cf9cac2fbb6b`，不可变 URL 为 `https://blog-jn3dykeg6-czq1.vercel.app`；
-- 最新完成迭代：0024 站内双向引用账本；
+- 本轮候选：Obsidian 附件确定性 WebP 优化与事务回滚，交付证据将在推送后补入；
+- 上一轮自动交付：Quality Gate `30895980908`、Production smoke `30896015839` 均成功；Vercel Production `dpl_9guSoJzC4dh6DAtPtBWYyZU1Dco3` 精确构建 `be65b507933dfd1560c564f398fd4df6f7fd79a4`，不可变 URL 为 `https://blog-1zbse2mlv-czq1.vercel.app`；
+- 最新完成迭代：0025 Obsidian 自动 WebP 优化（本地候选）；
 - Obsidian 状态：仓库根目录就是 Vault，`docs/STATUS.md` 与 `docs/iterations/*.md` 可直接阅读和维护；
 - 手动外部接入：自定义域名、统计、评论、公开邮箱均暂缓，不阻塞当前开发。
 
 ## 本轮新增能力
 
-文章与项目详情页现在同时消费关系层的 `outgoingByUrl` 与 `backlinksByUrl`。统一的 Reference ledger 用 `→ 这条记录引用` 表示正文指向的公开内容，用 `← 引用这条记录` 表示后续来源；每个方向按既有内容排序输出标题、摘要、类型、日期与阅读/项目状态。只有一侧有内容时只显示该侧，两侧都为空时整个账本不渲染。它保持为 React Server Component，不增加客户端状态、关系数据库或图形库；320px 实机视口无横向溢出。
+Obsidian 发布器现在先在仓库同盘的忽略目录中处理全部附件，再开始修改草稿和公开目录。静态 PNG/JPEG/WebP 自动校正 EXIF 方向、按 2560×2560 边界等比缩放并以固定 Sharp 参数生成 `.webp`；已经更小且满足预算的 WebP 保持原字节，GIF/AVIF 与动画 WebP 在通过公开预算后保持原字节。`--check-only` 会展示源文件到产物的格式、尺寸、体积变化但不修改工作区；正式发布通过 rename 安装结果，完整质量门失败则逆序删除产物并逐字节恢复草稿和所有原附件。25 MiB、8192 px、4000 万像素的原图安全包络限制解码成本，公开产物仍必须满足既有 3 MiB/2560 px/像素预算。
 
 ## 风险与下一步
 
-1. 图片仍以原始文件进入 Git；当前会拒绝超预算文件并建议 AVIF/WebP，但尚未自动压缩或生成响应式派生；
+1. Obsidian 静态附件已自动 WebP 优化，但 Studio/普通 Git 入口仍只执行公开预算门禁，尚未生成响应式多尺寸派生；
 2. Current record 已有每周分级报告，但提醒只存在于本地输出和 GitHub Actions 摘要/注解，不发送外部消息；这是当前有意的无服务边界；
 3. Obsidian 块引用是专有语法，当前明确拒绝；双向关系只在详情页按正文链接展示，尚无全站图谱；
 4. Studio OAuth origin、GitHub 凭据和 Vercel Hobby 回滚范围仍需按运行手册维护；
 5. 统计、评论和自定义域名需要所有者最终选择，现阶段不主动接入；
 6. `decap-cms` 的开发依赖树仍有上游无修复的高危审计项；它不进入公开服务端生产依赖，但其浏览器编辑器包仅对已授权作者开放，后续应单独评估升级或替代方案。
 
-下一轮唯一主任务：为 Obsidian 附件发布增加确定性的自动 WebP 优化。先在临时 staging 中压缩静态 PNG/JPEG/WebP，验证实际格式、尺寸和预算后再原子归档并改写正文；失败必须恢复草稿与附件，GIF/AVIF 先保持现状，不接入外部图片服务。
+下一轮唯一主任务：建立正式 Markdown 与 `public/uploads` 的双向引用完整性门禁。构建时拒绝不存在的本地图片、越界路径和无人引用的已归档附件，为后续响应式多尺寸派生先建立可靠的源资产关系；外部 HTTPS 图片和草稿附件保持现有边界。

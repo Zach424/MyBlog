@@ -29,6 +29,7 @@
 0022-local-media-budget.md
 0023-content-maintenance-report.md
 0024-bidirectional-reference-ledger.md
+0025-obsidian-webp-optimization.md
 ```
 
 ## 必填结构

@@ -1,6 +1,7 @@
 import { spawnSync } from "node:child_process";
 import {
   existsSync,
+  mkdtempSync,
   mkdirSync,
   readFileSync,
   readdirSync,
@@ -8,14 +9,14 @@ import {
   rmSync,
   writeFileSync,
 } from "node:fs";
-import { dirname, resolve } from "node:path";
+import { basename, dirname, join, resolve } from "node:path";
 import {
   gitPathsForPublishedNote,
   prepareObsidianNote,
 } from "../lib/obsidian-publishing.ts";
 import {
-  formatMediaInspection,
-  inspectMediaFile,
+  formatMediaPreparation,
+  prepareMediaForPublishing,
 } from "../lib/media-policy.ts";
 
 function fail(message) {
@@ -82,7 +83,6 @@ try {
   fail(error instanceof Error ? error.message : String(error));
 }
 
-const attachmentInspections = new Map();
 for (const attachment of prepared.attachments) {
   const absoluteAttachmentSource = resolve(process.cwd(), attachment.sourcePath);
   const absoluteAttachmentTarget = resolve(process.cwd(), attachment.targetPath);
@@ -104,64 +104,129 @@ for (const attachment of prepared.attachments) {
   ) {
     fail(`附件已被其他内容跟踪，拒绝移动：${attachment.sourcePath}`);
   }
-  try {
-    attachmentInspections.set(
-      attachment.sourcePath,
-      await inspectMediaFile(absoluteAttachmentSource, attachment.sourcePath),
-    );
-  } catch (error) {
-    fail(error instanceof Error ? error.message : String(error));
-  }
 }
 
-if (checkOnly) {
-  console.log(`[publish] 草稿有效：${prepared.targetPath}`);
-  console.log(`[publish] 引用附件：${prepared.attachments.length} 个`);
-  for (const attachment of prepared.attachments) {
-    console.log(`[publish] 附件归档：${attachment.sourcePath} -> ${attachment.targetPath}`);
-    const inspection = attachmentInspections.get(attachment.sourcePath);
-    if (inspection) {
-      console.log(`[publish] 媒体预算：${formatMediaInspection(inspection)}`);
-    }
-  }
-  process.exit(0);
+if (!checkOnly && existsSync(resolve(process.cwd(), prepared.targetPath))) {
+  fail(`目标已存在：${prepared.targetPath}`);
 }
-
-if (existsSync(resolve(process.cwd(), prepared.targetPath))) fail(`目标已存在：${prepared.targetPath}`);
-const sourceWasTracked = push
+const sourceWasTracked = !checkOnly && push
   ? run("git", ["ls-files", "--error-unmatch", "--", prepared.sourcePath], {
       capture: true,
       allowFailure: true,
     }).status === 0
   : false;
-if (push) {
+if (!checkOnly && push) {
   const staged = run("git", ["diff", "--cached", "--name-only"], { capture: true });
   if (staged.stdout.trim()) fail("暂存区已有其他更改；请先提交或取消暂存后再使用 --push");
 }
 
-writeFileSync(resolve(process.cwd(), prepared.targetPath), prepared.content, { flag: "wx" });
-rmSync(absoluteSource);
-
-const movedAttachments = [];
+const stagingParent = resolve(process.cwd(), "node_modules", ".cache");
+mkdirSync(stagingParent, { recursive: true });
+const stagingDirectory = mkdtempSync(join(stagingParent, "myblog-publish-"));
+const attachmentPreparations = [];
 try {
-  for (const attachment of prepared.attachments) {
-    if (attachment.sourcePath === attachment.targetPath) continue;
+  for (const [index, attachment] of prepared.attachments.entries()) {
+    const stagedPath = join(
+      stagingDirectory,
+      "outputs",
+      String(index),
+      basename(attachment.targetPath),
+    );
+    const backupPath = join(
+      stagingDirectory,
+      "backups",
+      String(index),
+      basename(attachment.sourcePath),
+    );
+    mkdirSync(dirname(stagedPath), { recursive: true });
+    const media = await prepareMediaForPublishing(
+      resolve(process.cwd(), attachment.sourcePath),
+      stagedPath,
+      attachment.sourcePath,
+      attachment.targetPath,
+    );
+    attachmentPreparations.push({ attachment, backupPath, media, stagedPath });
+  }
+} catch (error) {
+  rmSync(stagingDirectory, { force: true, recursive: true });
+  fail(error instanceof Error ? error.message : String(error));
+}
+
+if (checkOnly) {
+  console.log(`[publish] 草稿有效：${prepared.targetPath}`);
+  console.log(`[publish] 引用附件：${prepared.attachments.length} 个`);
+  for (const { attachment, media } of attachmentPreparations) {
+    console.log(`[publish] 附件归档：${attachment.sourcePath} -> ${attachment.targetPath}`);
+    console.log(`[publish] 媒体处理：${formatMediaPreparation(media)}`);
+  }
+  rmSync(stagingDirectory, { force: true, recursive: true });
+  process.exit(0);
+}
+
+let noteWritten = false;
+let sourceRemoved = false;
+const installedAttachments = [];
+try {
+  writeFileSync(resolve(process.cwd(), prepared.targetPath), prepared.content, { flag: "wx" });
+  noteWritten = true;
+  rmSync(absoluteSource);
+  sourceRemoved = true;
+
+  for (const preparation of attachmentPreparations) {
+    const { attachment, backupPath, stagedPath } = preparation;
+    const transaction = {
+      attachment,
+      backupMoved: false,
+      backupPath,
+      targetInstalled: false,
+    };
+    installedAttachments.push(transaction);
+    mkdirSync(dirname(backupPath), { recursive: true });
+    renameSync(resolve(process.cwd(), attachment.sourcePath), backupPath);
+    transaction.backupMoved = true;
     const absoluteAttachmentTarget = resolve(process.cwd(), attachment.targetPath);
     mkdirSync(dirname(absoluteAttachmentTarget), { recursive: true });
-    renameSync(resolve(process.cwd(), attachment.sourcePath), absoluteAttachmentTarget);
-    movedAttachments.push(attachment);
+    renameSync(stagedPath, absoluteAttachmentTarget);
+    transaction.targetInstalled = true;
   }
   runNpm(["run", "check"]);
 } catch (error) {
-  writeFileSync(absoluteSource, sourceContent);
-  rmSync(resolve(process.cwd(), prepared.targetPath));
-  for (const attachment of movedAttachments.reverse()) {
-    const absoluteAttachmentSource = resolve(process.cwd(), attachment.sourcePath);
-    mkdirSync(dirname(absoluteAttachmentSource), { recursive: true });
-    renameSync(resolve(process.cwd(), attachment.targetPath), absoluteAttachmentSource);
+  const rollbackErrors = [];
+  for (const transaction of installedAttachments.reverse()) {
+    try {
+      if (transaction.targetInstalled) {
+        rmSync(resolve(process.cwd(), transaction.attachment.targetPath), { force: true });
+      }
+      if (transaction.backupMoved) {
+        const absoluteAttachmentSource = resolve(
+          process.cwd(),
+          transaction.attachment.sourcePath,
+        );
+        mkdirSync(dirname(absoluteAttachmentSource), { recursive: true });
+        renameSync(transaction.backupPath, absoluteAttachmentSource);
+      }
+    } catch (rollbackError) {
+      rollbackErrors.push(
+        rollbackError instanceof Error ? rollbackError.message : String(rollbackError),
+      );
+    }
   }
-  fail(`全量检查失败，草稿已恢复到收件箱。${error instanceof Error ? ` ${error.message}` : ""}`);
+  try {
+    if (noteWritten) rmSync(resolve(process.cwd(), prepared.targetPath), { force: true });
+    if (sourceRemoved) writeFileSync(absoluteSource, sourceContent, { flag: "wx" });
+  } catch (rollbackError) {
+    rollbackErrors.push(
+      rollbackError instanceof Error ? rollbackError.message : String(rollbackError),
+    );
+  }
+  rmSync(stagingDirectory, { force: true, recursive: true });
+  const rollbackMessage = rollbackErrors.length === 0
+    ? "草稿与附件已恢复到原位置。"
+    : `自动恢复未完整：${rollbackErrors.join("；")}`;
+  fail(`全量检查失败，${rollbackMessage}${error instanceof Error ? ` ${error.message}` : ""}`);
 }
+
+rmSync(stagingDirectory, { force: true, recursive: true });
 
 console.log(`[publish] 已准备：${prepared.targetPath}`);
 if (!push) {

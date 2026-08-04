@@ -8,11 +8,11 @@
 | 4. 作者自助写作 | done | `/studio` OAuth + editorial workflow PR、Obsidian Vault/模板/附件/真实 `--push` |
 | 5. Vercel 原生迁移 | production live | 原生 Next.js、无 Cloudflare 依赖、23 路由生产冒烟通过 |
 | 6. 所有者生产上线 | done | Git 自动 Production、稳定域名自动冒烟、双端发布、回滚与恢复均已验收 |
-| 7. 持续内容与作者体验 | in progress | Iteration 0024 完成文章/项目 outgoing 与 backlinks 双向引用账本，服务端渲染并通过 320px 复核 |
+| 7. 持续内容与作者体验 | in progress | Iteration 0025 完成 Obsidian 静态附件自动 WebP、同盘 staging 与逐字节事务回滚 |
 
 ## 当前唯一主线
 
-进入持续内容与作者体验阶段。Iteration 0024 已让正文关系在详情页形成读者侧闭环：同一服务端索引同时输出 outgoing 与 backlinks，空关系不制造界面噪声，也不依赖图数据库。下一主线转向作者附件体验：在现有 Sharp 媒体门禁前增加可回滚的本地 WebP 优化，减少手工压缩和 Git 媒体体积。需要品牌域名时再绑定自定义域名，旧公开站继续只作为迁移历史证据。
+进入持续内容与作者体验阶段。Iteration 0025 已把 Obsidian 静态 PNG/JPEG/WebP 变成可预览、可回滚、确定性的 WebP 发布事务，超预算原图不再要求作者先手工压缩。下一主线是内容与附件的引用完整性：在生成多尺寸资产之前，先证明每个正式本地图片引用都存在、每个已归档附件都有公开内容所有者。需要品牌域名时再绑定自定义域名，旧公开站继续只作为迁移历史证据。
 
 ## 已知风险
 
@@ -25,7 +25,7 @@
 - Vercel 不可变 deployment URL 可能受保护；自动冒烟必须以 `VERCEL_PRODUCTION_URL` 为公开检查目标，同时用 deployment 元数据核对 SHA；
 - Windows Git 凭据保存在系统凭据管理器；撤销 GitHub OAuth 授权后，Obsidian `--push` 需要重新登录；
 - 内容持续增长后要继续观察 `.next/static`、Serverless 函数体积和构建时间；
-- 附件仍依赖 Git 仓库存储；格式/体积/尺寸预算已建立，但尚未自动压缩或生成响应式派生；
+- 附件仍依赖 Git 仓库存储；Obsidian 静态图已自动 WebP，但 Studio/普通 Git 入口没有自动优化，响应式派生与内容—附件引用完整性仍待完成；
 - Current record 已有每周 60/30 天 Actions 提醒和过期门；若未来需要邮件/聊天通知，必须由所有者选择渠道后再接入；
 - 内部链接支持内容页和标题锚点，详情页同时展示 outgoing/backlinks；明确不支持 Obsidian 块引用，尚未提供全站关系图；
 - 自定义域名、公开邮箱、统计和评论尚未选择，但不阻塞生产上线。

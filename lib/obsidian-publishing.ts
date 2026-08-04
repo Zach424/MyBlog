@@ -103,10 +103,13 @@ function stableAttachmentName(sourcePath: string) {
   const alreadyStable =
     normalizedBase === originalBase &&
     extension === extensionMatch[1];
-  if (alreadyStable && normalizedBase) return `${normalizedBase}.${extension}`;
+  const publishedExtension = /^(?:jpe?g|png|webp)$/u.test(extension)
+    ? "webp"
+    : extension;
+  if (alreadyStable && normalizedBase) return `${normalizedBase}.${publishedExtension}`;
 
   const digest = createHash("sha256").update(sourcePath).digest("hex").slice(0, 8);
-  return `${normalizedBase || "asset"}-${digest}.${extension}`;
+  return `${normalizedBase || "asset"}-${digest}.${publishedExtension}`;
 }
 
 function normalizeAttachmentLinks(markdown: string, slug: string) {

@@ -1,6 +1,19 @@
 import assert from "node:assert/strict";
-import { readFile } from "node:fs/promises";
+import { spawnSync } from "node:child_process";
+import {
+  access,
+  mkdtemp,
+  mkdir,
+  readFile,
+  readdir,
+  rm,
+  writeFile,
+} from "node:fs/promises";
+import { tmpdir } from "node:os";
+import { join } from "node:path";
+import { fileURLToPath } from "node:url";
 import test from "node:test";
+import sharp from "sharp";
 import {
   gitPathsForPublishedNote,
   prepareObsidianNote,
@@ -46,6 +59,73 @@ const linkTargets = [
   { kind: "project", slug: "myblog" },
 ];
 
+const publisherScriptPath = fileURLToPath(
+  new URL("../scripts/publish-note.mjs", import.meta.url),
+);
+
+async function createPublisherFixture(checkExitCode, includeSecondAttachment = false) {
+  const root = await mkdtemp(join(tmpdir(), "myblog-publisher-"));
+  await Promise.all([
+    mkdir(join(root, "content", "inbox"), { recursive: true }),
+    mkdir(join(root, "content", "posts"), { recursive: true }),
+    mkdir(join(root, "content", "projects"), { recursive: true }),
+    mkdir(join(root, "public", "uploads"), { recursive: true }),
+  ]);
+  await writeFile(
+    join(root, "package.json"),
+    JSON.stringify({ scripts: { check: `node -e "process.exit(${checkExitCode})"` } }),
+  );
+  const draftContent = includeSecondAttachment
+    ? article.replace(
+        "正文图片 ![evidence](/uploads/obsidian-evidence.png)。",
+        "正文图片 ![evidence](/uploads/obsidian-evidence.png)。\n\n第二张 ![detail](/uploads/detail.jpg)。",
+      )
+    : article;
+  await writeFile(
+    join(root, "content", "inbox", "obsidian-publishing.md"),
+    draftContent,
+  );
+  const sourceImage = await sharp({
+    create: {
+      width: 1200,
+      height: 630,
+      channels: 3,
+      background: "#486f78",
+    },
+  }).png({ compressionLevel: 0 }).toBuffer();
+  await writeFile(
+    join(root, "public", "uploads", "obsidian-evidence.png"),
+    sourceImage,
+  );
+  const secondImage = includeSecondAttachment
+    ? await sharp({
+        create: {
+          width: 800,
+          height: 450,
+          channels: 3,
+          background: "#b9431f",
+        },
+      }).jpeg({ quality: 90 }).toBuffer()
+    : undefined;
+  if (secondImage) {
+    await writeFile(join(root, "public", "uploads", "detail.jpg"), secondImage);
+  }
+  return { draftContent, root, secondImage, sourceImage };
+}
+
+function runPublisher(root, ...args) {
+  return spawnSync(
+    process.execPath,
+    [
+      "--experimental-strip-types",
+      publisherScriptPath,
+      "content/inbox/obsidian-publishing.md",
+      ...args,
+    ],
+    { cwd: root, encoding: "utf8" },
+  );
+}
+
 test("prepares an Obsidian article for the existing content contract", () => {
   const result = prepareObsidianNote("content/inbox/obsidian-publishing.md", article);
   assert.equal(result.kind, "post");
@@ -55,13 +135,13 @@ test("prepares an Obsidian article for the existing content contract", () => {
   assert.deepEqual(result.attachments, [
     {
       sourcePath: "public/uploads/obsidian-evidence.png",
-      targetPath: "public/uploads/obsidian-publishing/obsidian-evidence.png",
-      publicUrl: "/uploads/obsidian-publishing/obsidian-evidence.png",
+      targetPath: "public/uploads/obsidian-publishing/obsidian-evidence.webp",
+      publicUrl: "/uploads/obsidian-publishing/obsidian-evidence.webp",
     },
   ]);
   assert.match(
     result.content,
-    /!\[evidence\]\(\/uploads\/obsidian-publishing\/obsidian-evidence\.png\)/u,
+    /!\[evidence\]\(\/uploads\/obsidian-publishing\/obsidian-evidence\.webp\)/u,
   );
 });
 
@@ -83,14 +163,14 @@ test("normalizes Obsidian attachment links into public blog URLs", () => {
   );
   assert.match(
     result.content,
-    /!\[运行证据\]\(\/uploads\/obsidian-publishing\/obsidian-evidence\.png\)/u,
+    /!\[运行证据\]\(\/uploads\/obsidian-publishing\/obsidian-evidence\.webp\)/u,
   );
   assert.match(result.content, /!\[\]\(\/uploads\/obsidian-publishing\/second-image\.webp\)/u);
   assert.deepEqual(result.attachments, [
     {
       sourcePath: "public/uploads/obsidian-evidence.png",
-      targetPath: "public/uploads/obsidian-publishing/obsidian-evidence.png",
-      publicUrl: "/uploads/obsidian-publishing/obsidian-evidence.png",
+      targetPath: "public/uploads/obsidian-publishing/obsidian-evidence.webp",
+      publicUrl: "/uploads/obsidian-publishing/obsidian-evidence.webp",
     },
     {
       sourcePath: "public/uploads/second-image.webp",
@@ -112,11 +192,11 @@ test("scopes and stabilizes Obsidian pasted-image filenames", () => {
 
   assert.match(
     result.content,
-    /!\[构建结果\]\(\/uploads\/obsidian-publishing\/pasted-image-20260804-120000-[a-f0-9]{8}\.png\)/u,
+    /!\[构建结果\]\(\/uploads\/obsidian-publishing\/pasted-image-20260804-120000-[a-f0-9]{8}\.webp\)/u,
   );
   assert.match(
     result.content,
-    /!\[架构截图\.png\]\(\/uploads\/obsidian-publishing\/asset-[a-f0-9]{8}\.png\)/u,
+    /!\[架构截图\.png\]\(\/uploads\/obsidian-publishing\/asset-[a-f0-9]{8}\.webp\)/u,
   );
   assert.deepEqual(
     result.attachments.map((attachment) => attachment.sourcePath),
@@ -143,7 +223,7 @@ test("leaves attachment examples inside fenced code untouched", () => {
   assert.match(result.content, /!\[example\]\(\/uploads\/example-only\.png\)/u);
   assert.match(
     result.content,
-    /!\[真实图片\]\(\/uploads\/obsidian-publishing\/real-image\.png\)/u,
+    /!\[真实图片\]\(\/uploads\/obsidian-publishing\/real-image\.webp\)/u,
   );
   assert.deepEqual(result.attachments.map((attachment) => attachment.sourcePath), [
     "public/uploads/real-image.png",
@@ -235,12 +315,12 @@ test("stages an inbox deletion only when the source was already tracked", () => 
   const untrackedPaths = gitPathsForPublishedNote(
     "content/inbox/obsidian-publishing.md",
     "content/posts/obsidian-publishing.md",
-    ["public/uploads/obsidian-evidence.png"],
+    ["public/uploads/obsidian-evidence.webp"],
     false,
   );
   assert.deepEqual(untrackedPaths, [
     "content/posts/obsidian-publishing.md",
-    "public/uploads/obsidian-evidence.png",
+    "public/uploads/obsidian-evidence.webp",
   ]);
 
   const trackedPaths = gitPathsForPublishedNote(
@@ -253,6 +333,20 @@ test("stages an inbox deletion only when the source was already tracked", () => 
     "content/inbox/obsidian-publishing.md",
     "content/posts/obsidian-publishing.md",
   ]);
+});
+
+test("rejects attachments whose source formats collapse to the same WebP target", () => {
+  const withCollision = article.replace(
+    "正文图片 ![evidence](/uploads/obsidian-evidence.png)。",
+    "![[diagram.png|PNG]]\n\n![[diagram.jpg|JPEG]]",
+  );
+  assert.throws(
+    () => prepareObsidianNote(
+      "content/inbox/obsidian-publishing.md",
+      withCollision,
+    ),
+    /多个附件会生成同一目标文件/u,
+  );
 });
 
 test("rejects unsafe locations, unstable slugs, and mismatched metadata", () => {
@@ -282,6 +376,113 @@ test("rejects unsafe locations, unstable slugs, and mismatched metadata", () => 
   );
 });
 
+test("previews and publishes an optimized attachment through the real CLI transaction", async () => {
+  const { root } = await createPublisherFixture(0);
+  try {
+    const preview = runPublisher(root, "--check-only");
+    assert.equal(preview.status, 0, `${preview.stdout}\n${preview.stderr}`);
+    assert.match(preview.stdout, /附件归档：.*\.png -> .*\.webp/u);
+    assert.match(preview.stdout, /媒体处理：PNG .* → WEBP .* · 减少/u);
+    await access(join(root, "content", "inbox", "obsidian-publishing.md"));
+    await access(join(root, "public", "uploads", "obsidian-evidence.png"));
+    await assert.rejects(
+      access(join(root, "content", "posts", "obsidian-publishing.md")),
+    );
+
+    const publish = runPublisher(root);
+    assert.equal(publish.status, 0, `${publish.stdout}\n${publish.stderr}`);
+    assert.match(publish.stdout, /检查通过/u);
+    const published = await readFile(
+      join(root, "content", "posts", "obsidian-publishing.md"),
+      "utf8",
+    );
+    assert.match(
+      published,
+      /\/uploads\/obsidian-publishing\/obsidian-evidence\.webp/u,
+    );
+    const outputPath = join(
+      root,
+      "public",
+      "uploads",
+      "obsidian-publishing",
+      "obsidian-evidence.webp",
+    );
+    const output = await readFile(outputPath);
+    assert.equal(output.subarray(0, 4).toString("ascii"), "RIFF");
+    assert.equal(output.subarray(8, 12).toString("ascii"), "WEBP");
+    await assert.rejects(
+      access(join(root, "content", "inbox", "obsidian-publishing.md")),
+    );
+    await assert.rejects(
+      access(join(root, "public", "uploads", "obsidian-evidence.png")),
+    );
+    assert.deepEqual(
+      await readdir(join(root, "node_modules", ".cache")),
+      [],
+    );
+  } finally {
+    await rm(root, { recursive: true, force: true });
+  }
+});
+
+test("restores the draft and every original attachment when the real quality gate fails", async () => {
+  const { draftContent, root, secondImage, sourceImage } = await createPublisherFixture(7, true);
+  try {
+    const publish = runPublisher(root);
+    assert.equal(publish.status, 1, `${publish.stdout}\n${publish.stderr}`);
+    assert.match(
+      `${publish.stdout}\n${publish.stderr}`,
+      /草稿与附件已恢复到原位置/u,
+    );
+    assert.equal(
+      await readFile(
+        join(root, "content", "inbox", "obsidian-publishing.md"),
+        "utf8",
+      ),
+      draftContent,
+    );
+    assert.deepEqual(
+      await readFile(join(root, "public", "uploads", "obsidian-evidence.png")),
+      sourceImage,
+    );
+    assert.deepEqual(
+      await readFile(join(root, "public", "uploads", "detail.jpg")),
+      secondImage,
+    );
+    await assert.rejects(
+      access(join(root, "content", "posts", "obsidian-publishing.md")),
+    );
+    await assert.rejects(
+      access(
+        join(
+          root,
+          "public",
+          "uploads",
+          "obsidian-publishing",
+          "obsidian-evidence.webp",
+        ),
+      ),
+    );
+    await assert.rejects(
+      access(
+        join(
+          root,
+          "public",
+          "uploads",
+          "obsidian-publishing",
+          "detail.webp",
+        ),
+      ),
+    );
+    assert.deepEqual(
+      await readdir(join(root, "node_modules", ".cache")),
+      [],
+    );
+  } finally {
+    await rm(root, { recursive: true, force: true });
+  }
+});
+
 test("ships a desktop Obsidian command without hidden shell interpolation", async () => {
   const [manifest, plugin] = await Promise.all([
     readFile(new URL("../.obsidian/plugins/myblog-publisher/manifest.json", import.meta.url), "utf8"),
@@ -302,6 +503,8 @@ test("ships a desktop Obsidian command without hidden shell interpolation", asyn
   assert.match(script, /function contentLinkTargets/);
   assert.match(script, /content\/posts/);
   assert.match(script, /content\/projects/);
-  assert.match(script, /inspectMediaFile/);
-  assert.match(script, /formatMediaInspection/);
+  assert.match(script, /prepareMediaForPublishing/);
+  assert.match(script, /formatMediaPreparation/);
+  assert.match(script, /node_modules", "\.cache/);
+  assert.match(script, /草稿与附件已恢复到原位置/);
 });

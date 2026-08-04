@@ -6,7 +6,7 @@
 npm run check
 ```
 
-顺序为 ESLint → 46 项内容/维护/搜索/OAuth/Studio/Obsidian/媒体/交付单元测试 → Next 路由类型生成与 TypeScript → 原生 Next.js 生产构建 → 15 项真实生产 HTTP 与质量审计。任何一步失败都阻止合并和生产部署。
+顺序为 ESLint → 53 项内容/维护/搜索/OAuth/Studio/Obsidian/媒体/交付单元测试 → Next 路由类型生成与 TypeScript → 原生 Next.js 生产构建 → 15 项真实生产 HTTP 与质量审计。任何一步失败都阻止合并和生产部署。
 
 发布候选额外执行：
 
@@ -80,7 +80,7 @@ npm run production:smoke -- https://example.vercel.app --expect-oauth
 | 单帧像素 | `≤ 8,000,000` |
 | 动图总像素 | `≤ 80,000,000` |
 
-Obsidian 检查、正式发布和 Next 配置加载复用 `lib/media-policy.ts`；Studio 的 3 MiB 选择器上限由测试与共享预算对齐。构建递归检查 `public/uploads`，符号链接、普通非图片、损坏文件和伪装扩展名均失败。自动压缩和响应式派生不属于当前门禁，需在后续迭代独立设计。
+Obsidian 检查、正式发布和 Next 配置加载复用 `lib/media-policy.ts`；Studio 的 3 MiB 选择器上限由测试与共享公开预算对齐。Obsidian 静态 PNG/JPEG/WebP 可先进入 25 MiB、8192 px、4000 万像素的原图安全包络，再自动校正方向、缩放并以固定参数生成 WebP；产物必须重新通过上表。GIF、AVIF、动画 WebP 与已经更高效的 WebP 保持原字节。构建递归检查 `public/uploads`，符号链接、普通非图片、损坏文件和伪装扩展名均失败。测试还覆盖确定性字节、格式碰撞、真实 CLI 预览/发布和多附件逐字节回滚；响应式派生不属于当前门禁。
 
 ## 安全基线
 
