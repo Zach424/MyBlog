@@ -76,6 +76,10 @@ test("pins the CMS asset and provides a useful loading failure", async () => {
   );
   assert.equal(packageJson.devDependencies["decap-cms"], "3.14.1");
   assert.match(html, /src="\/studio\/editor-runtime-3\.14\.1\.js"/);
+  assert.match(html, /from "\/studio\/media-preflight\.mjs"/);
+  assert.match(html, /installStudioMediaPreflight\(\)/);
+  assert.match(html, /#studio-media-preflight/);
+  assert.match(html, /data-state="error"/);
   assert.doesNotMatch(html, /unpkg\.com/);
   assert.match(html, /integrity="sha384-[^"]+"/);
   assert.match(html, /编辑器资源加载失败/);

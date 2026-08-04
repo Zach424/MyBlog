@@ -1,11 +1,16 @@
 import { readFile } from "node:fs/promises";
 import path from "node:path";
 
-type StudioAssetName = "index.html" | "config.mjs" | "preview.css";
+type StudioAssetName =
+  | "index.html"
+  | "config.mjs"
+  | "media-preflight.mjs"
+  | "preview.css";
 
 const contentTypes: Record<StudioAssetName, string> = {
   "index.html": "text/html; charset=utf-8",
   "config.mjs": "text/javascript; charset=utf-8",
+  "media-preflight.mjs": "text/javascript; charset=utf-8",
   "preview.css": "text/css; charset=utf-8",
 };
 

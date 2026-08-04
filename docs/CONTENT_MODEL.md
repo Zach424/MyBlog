@@ -116,6 +116,8 @@ Slug 只能使用小写英文字母、数字和连字符，并必须与文件名
 - `--check-only` 在忽略的同盘 staging 中生成并验证产物，只输出处理计划，不修改草稿或附件；
 - 发布质量门失败时，草稿和本轮所有附件都会按原路径、原文本和原字节恢复。
 
+Studio 的浏览器选择器只接受上述扩展名，并在文件进入 Decap Git 草稿前校验真实 magic 格式、扩展名一致性、可解码宽高、3 MiB/2560 px/800 万像素预算以及 GIF/WebP/APNG 帧数和 8000 万总像素预算。通过后仍保存作者选择的原始文件；JPEG/PNG 不在浏览器内自动转 WebP，Evidence Rail 会提示需要自动优化时改用 Obsidian 发布器。动画 AVIF 因浏览器端无法可靠获得序列帧数而拒绝，静态 AVIF 正常支持。最终构建会用 Sharp 再次执行权威校验，因此浏览器差异不能绕过内容契约。
+
 正式 `content/posts` 与 `content/projects` 还必须满足引用完整性：
 
 - `cover` 和 Markdown 图片的本地 URL 必须使用 `/uploads/...`；相对路径、`public/uploads/...`、HTTP、协议相对 URL、查询参数和锚点均会失败；Markdown 正文可以使用完整 HTTPS 外图，但 cover 必须本地化；

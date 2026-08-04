@@ -9,7 +9,7 @@
 1. 打开生产站 `/studio`；
 2. 点击 GitHub 登录，仅在 GitHub 官方页面授权；
 3. 选择“文章与 TIL”或“项目复盘”，创建条目；
-4. 先填写稳定 slug，再上传封面或在正文插图；Studio 会把图片直接保存到 `public/uploads/<slug>/`，正文写入 `/uploads/<slug>/...`。同一条目内的图片使用不同文件名，避免替换已有附件；然后填写标题、摘要、内容语境、复核日期、标签和正文，历史记录选择 Historical，持续维护说明选择 Current；需要封面时同时填写不重复标题的“封面替代文本”；
+4. 先填写稳定 slug，再上传封面或在正文插图；Studio 会在本地先检查真实格式、体积、宽高与动图总像素，通过后才把原文件交给 Git 草稿，并显示格式/尺寸/帧数/体积 Evidence Rail。图片直接保存到 `public/uploads/<slug>/`，正文写入 `/uploads/<slug>/...`。同一条目内的图片使用不同文件名，避免替换已有附件；然后填写标题、摘要、内容语境、复核日期、标签和正文，历史记录选择 Historical，持续维护说明选择 Current；需要封面时同时填写不重复标题的“封面替代文本”；
 5. 草稿阶段保持 `draft: true`，通过 editorial workflow 保存；
 6. 预览并把状态推进到 Ready；
 7. 发布后确认 GitHub 提交/PR、Quality Gate、Vercel Production 和在线文章全部成功。
@@ -47,7 +47,7 @@ npm run content:publish -- content/inbox/learning-vercel-deployments.md --push
 | 单帧像素 | `≤ 8,000,000` |
 | 动图总像素 | `宽 × 高 × 帧数 ≤ 80,000,000` |
 
-Obsidian 的静态 PNG/JPEG/WebP 原图可以在发布前暂时超过公开预算，但不得超过 25 MiB、8192×8192 px 或 4000 万像素的安全包络；发布器会自动校正方向、等比缩放并生成 WebP，产物仍必须通过上表。GIF、AVIF 和动画 WebP 不自动重编码，输入本身必须符合上表。网页 Studio 会先拒绝超过 3 MiB 的选择；`next dev`、`next build` 和 GitHub Quality Gate 会重新递归校验 `public/uploads` 及正式内容引用，所以普通 Git 编辑器也不能绕过格式、损坏文件、尺寸、缺失路径或孤儿附件门。不要只改扩展名。
+Obsidian 的静态 PNG/JPEG/WebP 原图可以在发布前暂时超过公开预算，但不得超过 25 MiB、8192×8192 px 或 4000 万像素的安全包络；发布器会自动校正方向、等比缩放并生成 WebP，产物仍必须通过上表。GIF、AVIF 和动画 WebP 不自动重编码，输入本身必须符合上表。网页 Studio 会在本地拒绝不支持或伪装格式、损坏文件、超体积/尺寸/像素预算的图片，并计算 GIF、WebP 与 APNG 帧预算；动画 AVIF 需要先转换为静态 AVIF/WebP 或改用 Obsidian。Studio 保留原始字节，JPEG/PNG 若需要自动缩放转 WebP，请改用 Obsidian 发布器。`next dev`、`next build` 和 GitHub Quality Gate 会重新递归校验 `public/uploads` 及正式内容引用，所以普通 Git 编辑器也不能绕过门禁。不要只改扩展名。
 
 ## 内容维护报告
 
@@ -93,6 +93,7 @@ npm run content:status -- --format json
 - Actions 显示“进入复核窗口/即将到期”：运行 `npm run content:status` 查看剩余天数和清单；warning 是提前安排复核，不是构建失败。
 - Obsidian 拒绝发布：根据错误修正 slug、标签、日期、附件路径、站内链接或字段；目标不存在/未公开时先发布目标，歧义时写明 `posts/` 或 `projects/`，不要绕过校验。
 - 图片提示格式不一致或无法解码：重新从原工具导出为受支持格式，不要重命名后缀；静态原图超过 25 MiB/8192 px/4000 万像素时先裁切，GIF/AVIF/动画 WebP 超过公开预算时先在原工具优化。
+- Studio 显示“图片未进入草稿”：按 Evidence Rail 的格式、尺寸、帧数或体积说明修复后重新选择；PNG/JPEG 想自动生成 WebP 时改用 Obsidian，不能关闭浏览器预检后强行上传。
 - 构建提示图片不存在或大小写不一致：核对 Markdown/cover 的 `/uploads/...` 与仓库文件名；不要依赖 Windows 的大小写不敏感行为。
 - 构建提示图片仍在根暂存区：Studio 中先确认 slug 正确，再删除该字段中的旧引用并重新选择图片；Obsidian 草稿则运行发布器完成归档。不要手工让正式内容长期引用 `/uploads/<文件名>`。
 - 修改 slug 后图片目录不一致：恢复首次保存时的 slug；若内容尚未发布且确实必须改名，先移除旧图片和引用，再用新 slug 重新上传，避免留下孤儿附件。

@@ -86,8 +86,9 @@ export async function runProductionSmoke(originInput, { expectOAuth = false } = 
   invariant(studioPolicy.includes("https://api.github.com"), "Studio CSP 缺少 GitHub API");
   invariant(studioPolicy.includes("frame-ancestors 'none'"), "Studio CSP 未禁止嵌入");
 
-  const [studioConfig, studioPreview, studioRuntime, unknownStudioAsset] = await Promise.all([
+  const [studioConfig, studioPreflight, studioPreview, studioRuntime, unknownStudioAsset] = await Promise.all([
     request(origin, "/studio/config.mjs", { accept: "text/javascript" }),
+    request(origin, "/studio/media-preflight.mjs", { accept: "text/javascript" }),
     request(origin, "/studio/preview.css", { accept: "text/css" }),
     request(origin, "/studio/editor-runtime-3.14.1.js", { accept: "text/javascript" }),
     request(origin, "/studio/definitely-missing", { redirect: "manual" }),
@@ -101,6 +102,16 @@ export async function runProductionSmoke(originInput, { expectOAuth = false } = 
     "Studio 配置模块类型不正确",
   );
   invariant(
+    studioPreflight.response.status === 200 &&
+      studioPreflight.body.includes("inspectStudioMediaFile") &&
+      studioPreflight.body.includes("createImageBitmap"),
+    "Studio 媒体预检模块不可用",
+  );
+  invariant(
+    studioPreflight.response.headers.get("content-type")?.startsWith("text/javascript"),
+    "Studio 媒体预检模块类型不正确",
+  );
+  invariant(
     studioPreview.response.status === 200 && studioPreview.body.includes("--canvas:"),
     "Studio 预览样式不可用",
   );
@@ -108,7 +119,7 @@ export async function runProductionSmoke(originInput, { expectOAuth = false } = 
     studioPreview.response.headers.get("content-type")?.startsWith("text/css"),
     "Studio 预览样式类型不正确",
   );
-  for (const asset of [studioConfig, studioPreview]) {
+  for (const asset of [studioConfig, studioPreflight, studioPreview]) {
     invariant(asset.response.headers.get("cache-control") === "no-store", "Studio 子资源必须 no-store");
   }
   invariant(

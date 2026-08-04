@@ -52,10 +52,50 @@
         color: #566d77;
         line-height: 1.8;
       }
+      #studio-media-preflight {
+        position: fixed;
+        z-index: 2147483647;
+        right: 1rem;
+        bottom: 1rem;
+        width: min(32rem, calc(100vw - 2rem));
+        padding: 1rem 1.125rem;
+        border: 1px solid #486f78;
+        border-left: 3px solid #486f78;
+        color: #18263d;
+        background: #f2f6f7;
+      }
+      #studio-media-preflight[data-state="success"] { border-left-color: #2f756f; }
+      #studio-media-preflight[data-state="error"] { border-left-color: #b9431f; }
+      #studio-media-preflight [data-preflight-label] {
+        margin: 0 0 0.35rem;
+        color: #566d77;
+        font: 0.68rem/1.4 "Cascadia Code", Consolas, monospace;
+        letter-spacing: 0.08em;
+        text-transform: uppercase;
+      }
+      #studio-media-preflight strong,
+      #studio-media-preflight [data-preflight-detail] { display: block; }
+      #studio-media-preflight strong {
+        margin-bottom: 0.25rem;
+        font-size: 0.95rem;
+      }
+      #studio-media-preflight [data-preflight-detail] {
+        color: #435c67;
+        font-size: 0.82rem;
+        line-height: 1.55;
+        overflow-wrap: anywhere;
+      }
       @media (prefers-color-scheme: dark) {
         body { color: #edf4f5; background: #101820; }
         .loading-shell p, .loading-shell span { color: #a8b9be; }
         .loading-shell div { border-color: #5f8f99; }
+        #studio-media-preflight {
+          color: #edf4f5;
+          background: #101820;
+          border-color: #5f8f99;
+        }
+        #studio-media-preflight [data-preflight-label],
+        #studio-media-preflight [data-preflight-detail] { color: #a8b9be; }
       }
     </style>
     <script>window.CMS_MANUAL_INIT = true;</script>
@@ -67,6 +107,9 @@
     ></script>
     <script type="module">
       import { createStudioConfig } from "/studio/config.mjs";
+      import { installStudioMediaPreflight } from "/studio/media-preflight.mjs";
+
+      installStudioMediaPreflight();
 
       window.addEventListener("load", () => {
         if (!window.CMS) {
