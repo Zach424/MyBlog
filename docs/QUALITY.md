@@ -6,7 +6,7 @@
 npm run check
 ```
 
-顺序为 ESLint → 110 项内容/维护/inbox/暂存媒体/关系/标题锚点/知识图/外链库存与检查/搜索/OAuth/Studio/Obsidian/媒体/重定向/交付单元测试 → Next 路由类型生成与 TypeScript → 原生 Next.js 生产构建（36 个页面）→ 17 项真实生产 HTTP 与质量审计。任何一步失败都阻止合并和生产部署。
+顺序为 ESLint → 111 项内容/维护/inbox/暂存媒体/关系/标题锚点/知识图/外链库存与检查/搜索/OAuth/Studio/Obsidian/媒体/重定向/交付单元测试 → Next 路由类型生成与 TypeScript → 原生 Next.js 生产构建（36 个页面）→ 17 项真实生产 HTTP 与质量审计。任何一步失败都阻止合并和生产部署。
 
 发布候选额外执行：
 
@@ -56,7 +56,7 @@ npm run links:external -- --format json
 npm run links:external -- --check --timeout-ms 5000 --concurrency 4 --retries 1
 ```
 
-默认命令只从公开正文的 GFM AST 生成确定性库存，不访问网络；它进入本地 `release:check` 但发现 issue 仍只报告。显式 `--check` 才发送 HEAD，支持 `--fail-on-broken` 作者硬判定。测试覆盖行内/引用式/GFM 裸链接、重复与确定排序、图片/代码/站内忽略、HTTP/协议相对/无效/凭据隐藏、IPv4/IPv6 私网和保留地址、混合 DNS fail-closed、HTTPS/443/凭据边界、重定向/降级/跳数、401/403/404/405/5xx、超时、网络错误、重试、资源参数和真实零写入 CLI。
+默认命令从公开正文 GFM AST 与 canonical/repository/demo 生成统一确定性库存，不访问网络；每个 occurrence 标明 body 或具体 frontmatter 字段，相同规范 URL 跨来源聚合。它进入本地 `release:check` 但发现 issue 仍只报告。显式 `--check` 才按唯一 URL 发送 HEAD，支持 `--fail-on-broken` 作者硬判定。测试覆盖结构化字段、`demo: null`、跨正文聚合、行内/引用式/GFM 裸链接、重复与确定排序、图片/代码/站内忽略、HTTP/协议相对/无效/凭据隐藏、IPv4/IPv6 私网和保留地址、混合 DNS fail-closed、HTTPS/443/凭据边界、重定向/降级/跳数、401/403/404/405/5xx、超时、网络错误、重试、资源参数和真实零写入 CLI。
 
 检查器在每个 URL 和重定向目标请求前解析全部 DNS；任一非公网结果即拒绝，并把实际 TLS 连接固定到已验证地址。响应头到达后立即关闭，不读取或保存第三方正文。`restricted`、`method-unsupported`、5xx、timeout 和 network-error 是暂不可确认，不冒充链接失效；broken 只包含确定缺失/客户端错误、不安全或坏重定向。本轮不把实时检查接入 Actions：CI 网络、限流和 DNS 路径不是内容正确性的稳定事实，后续只有积累足够误报数据后再评估定期软报告。
 

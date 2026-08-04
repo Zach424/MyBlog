@@ -101,7 +101,7 @@ Quality Gate 每次提交和每周维护都会把同一库存写入 Actions summ
 
 ## 外部链接库存与健康检查
 
-发布前可运行 `npm run links:external` 查看所有公开正文普通 HTTPS 链接、出现次数、内容源、正文相对行和链接标签。默认模式完全离线，只读 Markdown，不会请求第三方或改写内容；`release:check` 会输出同一库存。HTTP、协议相对、无法解析和含凭据地址会作为本地 issue 列出，凭据本身不会出现在报告。
+发布前可运行 `npm run links:external` 查看公开正文普通 HTTPS 链接以及 `canonical`、`repository`、`demo` 结构化端点。正文 occurrence 显示相对行和链接标签，字段 occurrence 显示 `frontmatter.<field>`；相同规范 URL 会合并但不会丢失出现次数。默认模式完全离线，只读 Markdown，不会请求第三方或改写内容；`release:check` 会输出同一库存。HTTP、协议相对、无法解析和含凭据正文地址会作为本地 issue 列出，凭据本身不会出现在报告。
 
 需要当前网络证据时显式运行 `npm run links:external -- --check`。检查器只发送 HEAD 并立即关闭响应，逐跳限制 HTTPS/443、公网 DNS、重定向、并发、超时与重试；它不会用 GET 下载正文，也不会自动替换链接。404/410 等确定问题可人工修正；403/429、目标不支持 HEAD、5xx、超时或网络错误只表示当前自动检查不足，应在普通浏览器和另一网络路径复核。只有作者明确增加 `--fail-on-broken` 才让确定 broken/本地 issue 返回非零，实时检查不进入 GitHub Actions。
 
@@ -117,7 +117,7 @@ Quality Gate 每次提交和每周维护都会把同一库存写入 Actions summ
 - `updatedAt` 不早于 `publishedAt`；
 - `reviewedAt` 不早于 `updatedAt`/`publishedAt`，也不写未来日期；
 - Historical snapshot 明确说明记录时间和当前去向；Current record 已逐项复核地址、版本、状态和操作说明；
-- 外链使用 HTTPS，不含用户名/密码或协议相对地址；运行 `npm run links:external` 核对来源，需要时再显式 `--check`；
+- 正文外链与 canonical/repository/demo 使用 HTTPS，不含用户名/密码或协议相对地址；运行 `npm run links:external` 核对正文行和字段来源，需要时再显式 `--check`；
 - 裸 Wiki 链接的 slug 在文章与项目间唯一；同名时显式写 `posts/slug` 或 `projects/slug`；
 - 标题链接使用目标页面真实标题；标题改名或重复标题顺序变化时同步更新所有 fragment，门禁不会做模糊匹配；
 - 不使用 Obsidian `#^block-id` 块引用；公开知识链接使用笔记或标题链接，发布后会自动更新详情页引用账本与 `/knowledge` 全站地图；

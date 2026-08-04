@@ -25,7 +25,7 @@ MyBlog 是 Zach424 的个人技术知识库与公开工程日志。它把学习�
 | 永久链接迁移 | done | Git 版本化 redirect 注册表、当前路由/静态文件冲突门、公开目标校验、单跳 308 与生产冒烟 |
 | 内容新鲜度 | done | Current/Historical 可见语境、复核日期、当前记录 180 天构建门、现行 Demo |
 | 内容维护报告 | done | 本地文本/JSON、60/30 天分级、Actions 摘要与每周自动复核 |
-| 外部链接库存 | done | 公开正文 GFM HTTPS 来源/次数/issue 离线报告，显式公网 HEAD 检查与非硬门状态分类 |
+| 外部链接库存 | done | 公开正文与 canonical/repository/demo 的统一 HTTPS 来源/次数离线报告，显式公网 HEAD 检查与非硬门状态分类 |
 | 根暂存媒体审计 | done | inbox 引用账本、Git/文件系统年龄证据、共享/未引用/陈旧/缺失报告与 Actions warning，零自动删除 |
 | 媒体门禁 | done | 真实格式解码、3 MiB/2560 px/像素与动图预算、Studio 上传前诊断、Obsidian 优化与构建扫描 |
 | 媒体引用完整性 | done | Markdown AST 图片抽取、精确路径存在性、根暂存拒绝、slug 所有权与已归档孤儿附件门禁 |
@@ -39,7 +39,7 @@ MyBlog 是 Zach424 的个人技术知识库与公开工程日志。它把学习�
 - 阅读：react-markdown、remark-gfm、rehype-slug、rehype-highlight；GFM mdast 与 GitHubSlugger 复现同一标题和链接语义；
 - 发布：Decap CMS 3.14.1、GitHub OAuth、stable slug 自定义控件、Obsidian 自有插件 1.1.0、inbox readiness CLI 与 Node 发布脚本；
 - 媒体：Sharp 0.35.3、浏览器 magic/帧结构解析与 `createImageBitmap`、mdast-util-from-markdown 2.0.3、`next/image`、固有尺寸、WebP 优化、引用所有权与 Git 附件跟踪；
-- 维护：内容新鲜度、根暂存媒体与正文外链的 CLI；确定性库存进入本地发布候选，时间/DNS 敏感的外链 HEAD 只显式运行；
+- 维护：内容新鲜度、根暂存媒体与正文/结构化端点外链的 CLI；确定性库存进入本地发布候选，时间/DNS 敏感的外链 HEAD 只显式运行；
 - 路由：严格 YAML + Zod 永久重定向注册表、Next `redirects()` 308、构建期现行路由与静态文件交叉校验；
 - 知识图：纯函数派生有向节点/边、语义 SVG + HTML 账本、零客户端布局依赖与 320px 明确降级；
 - 托管：Vercel 原生 Next.js，当前链路不依赖 Cloudflare；
@@ -49,15 +49,15 @@ MyBlog 是 Zach424 的个人技术知识库与公开工程日志。它把学习�
 
 - 仓库：<https://github.com/Zach424/MyBlog>，生产分支 `main`；
 - 生产站：<https://blog-iota-five-59.vercel.app>；
-- 本轮实现提交：`001ba54`（与 `rehype-slug` 一致的 heading inventory、GFM 站内链接抽取、fragment 构建/Obsidian 发布门）；
-- 自动交付：Quality Gate `30947662958`、Production verification `30947708431` 均成功；GitHub Production deployment `5750975153` 精确对应实现 SHA 且状态为 success，稳定生产域名保持公开；
-- 最新完成迭代：0037 站内标题锚点完整性门禁；
+- 本轮实现提交：`0a72809`（canonical/repository/demo 结构化端点来源、跨正文聚合与统一健康检查）；
+- 自动交付：Quality Gate `30949072827`、Production verification `30949112446` 均成功；GitHub Production deployment `5751240598` 精确对应实现 SHA 且状态为 success，稳定生产域名保持公开；
+- 最新完成迭代：0038 结构化外部端点统一库存；
 - Obsidian 状态：仓库根目录就是 Vault，`docs/STATUS.md` 与 `docs/iterations/*.md` 可直接阅读和维护；
 - 手动外部接入：自定义域名、统计、评论、公开邮箱均暂缓，不阻塞当前开发。
 
 ## 本轮新增能力
 
-站内关系现在由与阅读页一致的 GFM AST 抽取行内、引用式与纯 fragment 自引用；标题库存覆盖 H1–H6、Setext、格式化文本和全局重复序号，并与真实 ReactMarkdown + `rehype-slug` 输出逐项对照。URL 编码只做严格解码，不做大小写修正、模糊匹配或客户端兜底。坏页面或坏锚点会在 Next 构建、Obsidian `--check-only`、inbox readiness 和正式发布前失败；关系账本仍按内容 URL 去重。当前完整门禁为 110/110 单元测试、36 个构建页面和 17/17 HTTP 测试，稳定域名 24 路由、OAuth 302。
+外链库存现在把 GFM 正文与 `canonical`、`repository`、`demo` 放进同一 URL 聚合表。每次出现标记 `sourceField`：正文保留相对行和可见标签，结构化来源显示 `frontmatter.<field>`；相同规范 URL 跨正文/字段合并，健康模式只检查一次。当前真实库存为 4 条公开记录、1 条含外链记录、2 个唯一 HTTPS URL、3 次出现、0 个本地问题；显式检查得到 repository HEAD 200、demo timeout（attention，非 broken）。完整门禁为 111/111 单元测试、36 个构建页面和 17/17 HTTP 测试，稳定域名 24 路由、OAuth 302。
 
 ## 风险与下一步
 
@@ -66,10 +66,10 @@ MyBlog 是 Zach424 的个人技术知识库与公开工程日志。它把学习�
 3. inbox readiness 已覆盖全部本地草稿，但有意不进入 Actions：未跟踪草稿和附件天然不在 CI 检出中；当前真实 inbox 为空，正向/阻塞路径由临时 Git/媒体夹具验证，首次实际多草稿使用时仍应按 Modal 逐项复核；
 4. Current record 已有每周分级报告，但提醒只存在于本地输出和 GitHub Actions 摘要/注解，不发送外部消息；这是当前有意的无服务边界；
 5. Obsidian 块引用是专有语法，当前明确拒绝；知识地图已公开，但当前 SVG 双列布局为小型内容库优化，内容增长后需要在不牺牲 HTML 语义的前提下增加过滤或分组；
-6. 正文 HTTPS 外链已有离线库存和显式健康检查，但 DNS/限流/网络是观察证据而非稳定事实；本机直连 Vercel 域名已出现 timeout 假阴性，因此实时检查不进 Actions，结构化 repository/demo/canonical 仍按原 schema/维护清单复核；
+6. 正文与结构化 HTTPS 端点已有统一离线库存和显式健康检查，但 DNS/限流/网络仍只是观察证据；本机直连 Vercel 域名继续出现 timeout 假阴性，因此实时检查不进 Actions；
 7. 标题锚点采用严格的实际渲染 id；改名或调整重复标题顺序时必须同步正文深链，Obsidian 块引用和模糊匹配仍明确不支持；
 8. Studio OAuth origin、GitHub 凭据、Vercel deployment URL 保护和 Hobby 回滚范围仍需按运行手册维护；
 9. 统计、评论和自定义域名需要所有者最终选择，现阶段不主动接入；
 10. `decap-cms` 的开发依赖树仍有上游无修复的高危审计项；它不进入公开服务端生产依赖，但其浏览器编辑器包仅对已授权作者开放，后续应单独评估升级或替代方案。
 
-下一轮唯一主任务：把 `repository`、`demo` 与 `canonical` 等 frontmatter 结构化 HTTPS 端点纳入现有外链库存。报告必须区分正文字段与结构化字段、保留来源字段名、与相同 URL 的正文出现确定性合并，并复用现有受控 HEAD/SSRF 边界；不得放宽 schema、重复实现网络检查、把实时结果写回内容或接入硬 CI。
+下一轮唯一主任务：为 Studio 增加同 slug 媒体目标冲突预检。选择文件后、交给 Decap 草稿前，使用仓库现有媒体清单判断 `/public/uploads/<slug>/<filename>` 是否已存在，并向作者明确区分“新文件”“同字节重选”和“会替换不同字节的现有文件”；危险替换必须显式确认或阻止，不能只依赖 Decap 的通用对话框。复用现有 stable slug 与 media preflight，不上传文件、不接外部 API、不改变 Obsidian 事务或构建权威门。

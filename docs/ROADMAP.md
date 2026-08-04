@@ -8,11 +8,11 @@
 | 4. 作者自助写作 | done | `/studio` OAuth + editorial workflow PR、Obsidian Vault/模板/附件/真实 `--push` |
 | 5. Vercel 原生迁移 | production live | 原生 Next.js、无 Cloudflare 依赖、24 路由生产冒烟通过 |
 | 6. 所有者生产上线 | done | Git 自动 Production、稳定域名自动冒烟、双端发布、回滚与恢复均已验收 |
-| 7. 持续内容与作者体验 | in progress | Iteration 0037 完成渲染一致的 heading inventory、GFM 深链抽取与构建/Obsidian 标题锚点门禁 |
+| 7. 持续内容与作者体验 | in progress | Iteration 0038 完成正文与 canonical/repository/demo 的统一 HTTPS 库存、来源证据与复用健康检查 |
 
 ## 当前唯一主线
 
-进入持续内容与作者体验阶段。Iteration 0037 已让行内、引用式和自引用深链在构建及 Obsidian 预检前证明目标 heading id 真实存在，并让目录与门禁复用实际 `rehype-slug` 的 H1–H6 全局序号。下一主线补齐外部维护库存的结构化字段盲区：把 repository/demo/canonical 与正文 HTTPS 放进同一确定性报告和同一受控实时检查。需要品牌域名时再绑定自定义域名，旧公开站继续只作为迁移历史证据。
+进入持续内容与作者体验阶段。Iteration 0038 已把 repository/demo/canonical 与正文 HTTPS 放进同一确定性报告和同一受控实时检查，跨字段重复 URL 只检查一次。下一主线回到 Studio 作者体验：在文件进入 Decap 草稿前提供目标路径与现有媒体字节冲突证据，避免同 slug 同名文件依赖模糊的通用替换确认。需要品牌域名时再绑定自定义域名，旧公开站继续只作为迁移历史证据。
 
 ## 已知风险
 
@@ -32,8 +32,8 @@
 - Obsidian 已有全 inbox readiness 总览，但该报告有意只代表本地单篇写入事务，不替代正式发布的完整仓库门禁，也不进入看不到未跟踪草稿的 Actions；
 - Current record 已有每周 60/30 天 Actions 提醒和过期门；若未来需要邮件/聊天通知，必须由所有者选择渠道后再接入；
 - 内部链接支持内容页和严格标题锚点，行内/引用式/自引用共享实际渲染 slug 规则，详情页与公开知识地图共享 outgoing/backlinks；明确不支持 Obsidian 块引用，标题改名必须同步深链，当前双列 SVG 为小型内容库优化，内容规模增长后需要过滤/分组；
-- 正文普通 HTTPS 链接已有确定性库存与受控实时报告；结构化 repository/demo/canonical 不属于正文 AST，仍按 schema/维护清单复核，实时 DNS/网络结果有意不进 Actions；
-- `repository`、`demo` 与 `canonical` 已受 HTTPS schema 约束，但尚未进入普通正文外链库存的统一来源/健康视图；
+- 正文普通 HTTPS 与结构化 repository/demo/canonical 已有统一确定性库存和受控实时报告；实时 DNS/网络结果有意不进 Actions，timeout/限流不能冒充内容错误；
+- Studio 同 slug 下的同名媒体仍主要依赖 Decap 通用替换确认，选择阶段缺少目标路径、现有文件和新文件字节差异证据；
 - 自定义域名、公开邮箱、统计和评论尚未选择，但不阻塞生产上线。
 
 ## 平台历史

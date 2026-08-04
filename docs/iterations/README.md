@@ -42,6 +42,7 @@
 0035-accessible-knowledge-map.md
 0036-external-link-inventory.md
 0037-internal-heading-anchor-integrity.md
+0038-structured-external-endpoints.md
 ```
 
 ## 必填结构
