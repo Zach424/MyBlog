@@ -31,7 +31,7 @@ content/
   inbox/                            Obsidian 待发布区
 public/uploads/<slug>/              按内容隔离的公开图片附件
 lib/
-  content/                          内容契约、文件读取与派生索引
+  content/                          内容契约、文件读取、派生索引与引用关系
   cms-oauth.ts                      签名 OAuth state 与 token 交换
   obsidian-publishing.ts            Obsidian 校验、附件与目标路径转换
   studio-assets.ts                  构建期 Studio 资源响应
@@ -69,6 +69,10 @@ Studio HTML、配置和预览样式保留在仓库根 `studio`；完整 `decap-c
 
 Obsidian 草稿中的 Wiki 图片嵌入和指向 `public/uploads` 的 Markdown 图片会在发布前转换。文件进入 `public/uploads/<内容 slug>/<稳定文件名>`，正文改写为对应 `/uploads/...` URL；文件名不稳定时使用可读 ASCII 名加路径哈希消除冲突。发布器拒绝越界、受跟踪的共享源附件和非白名单格式，完整质量门失败时同时恢复草稿与已经移动的附件。
 
+同一发布阶段还会读取 `content/posts` 与 `content/projects` 的稳定文件名，把 Obsidian Wiki/Markdown 笔记链接转换为站点 URL。裸 slug 只有在文章和项目之间唯一时才可使用；显式 `posts/<slug>`、`projects/<slug>`、别名和标题链接均受支持，块引用被明确拒绝。转换跳过行内代码和围栏代码，避免把教程中的语法示例当成真实关系。
+
+`lib/content/markdown.ts` 从公开正文抽取 `/posts/*` 与 `/projects/*` 链接，`lib/content/relations.ts` 校验目标并派生 outgoing/backlink 索引。详情页按目标 URL 查询来源并渲染 Reference ledger。关系不存入 frontmatter 或数据库，正文链接就是唯一事实源；草稿或未来目标不在公开集合中，因此公开内容不能引用尚未公开的目标。
+
 ## 6. 安全与缓存
 
 `next.config.ts` 为所有响应声明 CSP、HSTS、`nosniff`、`DENY`、权限策略、来源策略和 COOP，并关闭 `X-Powered-By`。公开 HTML 使用浏览器复核、CDN 一小时缓存与一天 stale-while-revalidate；Studio HTML、配置、预览 CSS、OAuth 和未知 Studio 路径必须包含 `no-store`。版本化且带 SRI 的 CMS 运行时使用一年不可变缓存。
@@ -86,6 +90,7 @@ Vercel GitHub Integration 负责每个分支的 Preview 和 `main` 的 Productio
 - GitHub 仓库是内容、附件、版本和回滚的唯一事实源。
 - 稳定 URL 来自文件名/slug，不随日期和平台变化。
 - 草稿、未来内容不能进入页面、搜索、RSS 或 Sitemap。
+- 公开站内链接必须指向同一构建中的公开文章或项目；反向引用只能从正文链接派生。
 - `/studio` 与 OAuth 永远不缓存、不索引，并维持同源 state 验证；只有版本化 CMS 运行时可不可变缓存。
 - 发布平台不能成为写作前置条件；Obsidian 和 Git 提交在本地仍可完成。
 - 每轮结构、设计、技术、功能、方法、验证、经验和风险必须与代码一起归档。

@@ -36,6 +36,8 @@ demo: "https://zach424-engineering-notes.zhiqingchen792.chatgpt.site"
 
 内容契约把文件名定义为稳定 slug，日期变化不会改变 URL。标签通过单一注册表规范化，专题从文章字段派生，并校验顺序必须从 1 连续递增。
 
+从章程、内容契约到首页结构的早期取舍记录在 [从零搭建可维护的个人技术博客](/posts/building-a-maintainable-blog)，项目页保留验证结果，文章保留当时的判断过程。
+
 正文使用 `react-markdown` 生成语义化 HTML，GFM 扩展负责表格与任务列表，rehype 统一生成标题锚点和代码高亮。文章、项目、专题和标签都从同一内容仓库查询，详情页不存在时返回真正的 404。
 
 站内搜索在构建时把公开正文转换成轻量索引，在浏览器本地按标题、标签、摘要和正文加权匹配，不上传查询词。RSS、Sitemap 和 robots 与页面共用同一个公开内容索引，并根据请求主机生成绝对 URL。
@@ -49,6 +51,8 @@ demo: "https://zach424-engineering-notes.zhiqingchen792.chatgpt.site"
 2026-07-19 根据维护目标把托管从 Cloudflare/Sites 迁移到 Vercel。迁移删除 Vinext、Vite、Worker、Wrangler 与 Sites 托管标记，恢复原生 `next dev/build/start`；原先 Worker 中的 Studio 静态资源、OAuth 与安全响应头分别迁入 App Router Route Handlers 和 Next.js headers。内容仍以 Git 为唯一事实来源，Obsidian 与网页后台产生的提交都会触发 Vercel 自动部署，因此迁移没有数据库或媒体数据搬运。
 
 初始模板的 npm scripts 隐含了特定 shell，导致 Windows 开发失败。命令被收敛为跨平台的 Vinext 入口，并用实际构建验证。
+
+这个故障后来沉淀为独立的 [Windows 下的跨平台 npm scripts](/posts/cross-platform-npm-scripts)，用于复用“脚本必须在真实目标 shell 中验证”的判断。
 
 社交元数据需要部署域名对应的绝对 URL，但本地与 Cloudflare 主机不同。根布局优先读取显式站点地址，否则从代理请求头推导，并保留本地开发回退。
 

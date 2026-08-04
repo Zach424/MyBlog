@@ -167,7 +167,18 @@ test("keeps key HTML routes structurally valid and uniquely identified", async (
 });
 
 test("keeps every visible internal navigation target healthy", async () => {
-  const sourcePaths = ["/", "/posts", "/projects", "/series", "/tags", "/search", "/about"];
+  const sourcePaths = [
+    "/",
+    "/posts",
+    "/posts/building-a-maintainable-blog",
+    "/posts/cross-platform-npm-scripts",
+    "/projects",
+    "/projects/myblog",
+    "/series",
+    "/tags",
+    "/search",
+    "/about",
+  ];
   const targetPaths = new Set();
 
   for (const sourcePath of sourcePaths) {

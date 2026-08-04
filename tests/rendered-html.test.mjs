@@ -113,6 +113,9 @@ test("renders Markdown articles with metadata, anchors, code and navigation", as
   assert.match(html, /class="[^"]*hljs[^"]*"/);
   assert.match(html, /href="\/series\/build-my-blog"/);
   assert.match(html, /href="\/tags\/typescript"/);
+  assert.match(html, /<section class="content-backlinks" aria-labelledby="backlinks-title">/);
+  assert.match(html, /引用这条记录/);
+  assert.match(html, /href="\/projects\/myblog"/);
   assert.match(html, /"@type":"BlogPosting"/);
   assert.match(html, /"mainEntityOfPage":"https:\/\/blog\.example\.test\/posts\/building-a-maintainable-blog"/);
   assert.match(
@@ -128,6 +131,9 @@ test("renders project Markdown and returns a real 404 for unknown content", asyn
   assert.match(projectHtml, /MyBlog/);
   assert.match(projectHtml, /GitHub repository/);
   assert.match(projectHtml, /https:\/\/github\.com\/Zach424\/MyBlog/);
+  assert.match(projectHtml, /<section class="content-backlinks" aria-labelledby="backlinks-title">/);
+  assert.match(projectHtml, /href="\/posts\/building-a-maintainable-blog"/);
+  assert.match(projectHtml, /href="\/posts\/cross-platform-npm-scripts"/);
   assert.match(projectHtml, /"@type":"SoftwareSourceCode"/);
 
   const missingResponse = await render("/posts/does-not-exist");

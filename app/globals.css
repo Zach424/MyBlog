@@ -1491,6 +1491,43 @@ input:focus-visible {
   background: var(--paper);
 }
 
+.content-backlinks {
+  display: grid;
+  grid-template-columns: minmax(12rem, 15rem) minmax(0, 1fr);
+  gap: clamp(2rem, 5vw, 5rem);
+  padding-block: 2.5rem 3rem;
+  border-top: 0.125rem solid var(--ink);
+}
+
+.content-backlinks-intro {
+  align-self: start;
+  padding-left: 1rem;
+  border-left: 0.1875rem solid var(--signal);
+}
+
+.content-backlinks-intro h2 {
+  margin: 0.625rem 0 0;
+  font-family: var(--display);
+  font-size: clamp(1.75rem, 3vw, 2.5rem);
+  line-height: 1.05;
+  letter-spacing: -0.035em;
+}
+
+.content-backlinks-intro > p:last-child {
+  margin: 1rem 0 0;
+  color: var(--muted);
+  font-size: 0.75rem;
+  line-height: 1.7;
+}
+
+.content-backlinks .content-index-list {
+  border-top-color: var(--trace-dark);
+}
+
+.content-backlinks .content-index-row {
+  grid-template-columns: 2.5rem 7rem minmax(0, 1fr) 8rem;
+}
+
 .about-grid {
   display: grid;
   grid-template-columns: repeat(2, minmax(0, 1fr));
@@ -1992,6 +2029,19 @@ input:focus-visible {
     column-gap: 2rem;
   }
 
+  .content-backlinks {
+    grid-template-columns: 1fr;
+    gap: 1.5rem;
+  }
+
+  .content-backlinks-intro {
+    max-width: 32rem;
+  }
+
+  .content-backlinks .content-index-row {
+    grid-template-columns: 2.5rem minmax(0, 1fr) auto;
+  }
+
   .content-index-row {
     grid-template-columns: 2.5rem minmax(0, 1fr) auto;
     gap: 0.75rem 1rem;
@@ -2193,6 +2243,14 @@ input:focus-visible {
   }
 
   .content-index-row {
+    grid-template-columns: 2rem minmax(0, 1fr);
+  }
+
+  .content-backlinks {
+    padding-block: 2rem 2.5rem;
+  }
+
+  .content-backlinks .content-index-row {
     grid-template-columns: 2rem minmax(0, 1fr);
   }
 

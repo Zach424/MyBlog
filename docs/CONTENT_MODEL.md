@@ -84,3 +84,25 @@ Slug 只能使用小写英文字母、数字和连字符，并必须与文件名
 - 发布质量门失败时，草稿和本轮移动的附件都会恢复到原位置。
 
 外部 HTTPS 图片不进入附件移动流程。网页后台继续写入同一公开目录和内容事实源。
+
+## 站内链接与引用关系
+
+正式 Markdown 使用稳定站点 URL：
+
+```markdown
+[文章](/posts/building-a-maintainable-blog)
+[项目章节](/projects/myblog#验证与质量门)
+```
+
+Obsidian 草稿可以使用更自然的输入，发布器会在进入正式内容目录前完成转换：
+
+```markdown
+[[building-a-maintainable-blog|文章]]
+[[projects/myblog#验证与质量门|项目章节]]
+[项目](../projects/myblog.md)
+[[#本文章节]]
+```
+
+裸 slug 必须在文章与项目间唯一；同名时写明 `posts/` 或 `projects/`。不存在的目标、歧义目标和 `#^block-id` 块引用会被拒绝。外部链接不转换，行内代码与围栏代码中的示例不参与转换。
+
+构建只从公开正文中的 `/posts/<slug>` 与 `/projects/<slug>` 提取关系，去重后生成反向引用。目标缺失或未公开会让构建失败；自引用不会进入反向引用列表。关系不另存一份 frontmatter，避免链接与人工索引漂移。

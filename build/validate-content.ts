@@ -5,6 +5,7 @@ import {
   parsePostFile,
   parseProjectFile,
 } from "../lib/content/contract";
+import { deriveContentRelations } from "../lib/content/relations";
 
 async function readMarkdownDirectory(directory: string) {
   const entries = await readdir(directory, { withFileTypes: true });
@@ -45,6 +46,7 @@ export async function validateContentRepository(projectRoot: string) {
   );
 
   deriveContentIndexes(posts, projects);
+  deriveContentRelations([...posts, ...projects]);
 
   return { posts: posts.length, projects: projects.length };
 }

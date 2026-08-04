@@ -3,6 +3,7 @@ import {
   existsSync,
   mkdirSync,
   readFileSync,
+  readdirSync,
   renameSync,
   rmSync,
   writeFileSync,
@@ -39,6 +40,17 @@ function runNpm(args) {
   return run("npm", args);
 }
 
+function contentLinkTargets() {
+  return [
+    ["post", "content/posts"],
+    ["project", "content/projects"],
+  ].flatMap(([kind, directory]) =>
+    readdirSync(resolve(process.cwd(), directory), { withFileTypes: true })
+      .filter((entry) => entry.isFile() && entry.name.endsWith(".md"))
+      .map((entry) => ({ kind, slug: entry.name.slice(0, -3) })),
+  );
+}
+
 const args = process.argv.slice(2);
 const sourceArgument = args.find((argument) => !argument.startsWith("--"));
 const checkOnly = args.includes("--check-only");
@@ -60,6 +72,7 @@ try {
     sourcePath,
     sourceContent,
     requestedKind,
+    contentLinkTargets(),
   );
 } catch (error) {
   fail(error instanceof Error ? error.message : String(error));

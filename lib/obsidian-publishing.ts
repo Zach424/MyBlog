@@ -1,6 +1,10 @@
 import { createHash } from "node:crypto";
 
 import { parsePostFile, parseProjectFile } from "./content/contract.ts";
+import {
+  markdownHeadingAnchor,
+  transformMarkdownProse,
+} from "./content/markdown.ts";
 
 export type ObsidianContentKind = "post" | "project";
 
@@ -12,6 +16,11 @@ export interface PreparedAttachment {
   sourcePath: string;
   targetPath: string;
   publicUrl: string;
+}
+
+export interface ObsidianLinkTarget {
+  kind: ObsidianContentKind;
+  slug: string;
 }
 
 function normalizePath(value: string) {
@@ -100,49 +109,6 @@ function stableAttachmentName(sourcePath: string) {
   return `${normalizedBase || "asset"}-${digest}.${extension}`;
 }
 
-function transformOutsideCodeFences(
-  markdown: string,
-  transform: (segment: string) => string,
-) {
-  let output = "";
-  let prose = "";
-  let fenceCharacter = "";
-  let fenceLength = 0;
-
-  for (const line of markdown.match(/.*(?:\r?\n|$)/gu) ?? []) {
-    if (!line) continue;
-    const fence = /^\s*(`{3,}|~{3,})/u.exec(line);
-
-    if (!fenceCharacter && fence) {
-      output += transform(prose) + line;
-      prose = "";
-      fenceCharacter = fence[1][0];
-      fenceLength = fence[1].length;
-      continue;
-    }
-
-    if (fenceCharacter) {
-      output += line;
-      if (
-        fence &&
-        fence[1][0] === fenceCharacter &&
-        fence[1].length >= fenceLength &&
-        new RegExp(`^\\s*${fenceCharacter}{${fenceLength},}\\s*$`, "u").test(
-          line.trimEnd(),
-        )
-      ) {
-        fenceCharacter = "";
-        fenceLength = 0;
-      }
-      continue;
-    }
-
-    prose += line;
-  }
-
-  return output + transform(prose);
-}
-
 function normalizeAttachmentLinks(markdown: string, slug: string) {
   const attachments = new Map<string, PreparedAttachment>();
   const targetSources = new Map<string, string>();
@@ -165,7 +131,7 @@ function normalizeAttachmentLinks(markdown: string, slug: string) {
     return attachments.get(sourcePath);
   }
 
-  const content = transformOutsideCodeFences(markdown, (segment) => {
+  const content = transformMarkdownProse(markdown, (segment) => {
     const withMarkdownEmbeds = segment.replace(
       /!\[([^\]]*)\]\(([^\s)]+)(?:\s+["'][^"']*["'])?\)/gu,
       (match, altText: string, reference: string) => {
@@ -196,10 +162,110 @@ function normalizeAttachmentLinks(markdown: string, slug: string) {
   };
 }
 
+function normalizeObsidianContentLinks(
+  markdown: string,
+  targets: ObsidianLinkTarget[],
+) {
+  const targetsByPath = new Map<string, ObsidianLinkTarget>();
+  const targetsBySlug = new Map<string, ObsidianLinkTarget[]>();
+
+  for (const target of targets) {
+    const collection = target.kind === "post" ? "posts" : "projects";
+    targetsByPath.set(`${collection}/${target.slug}`, target);
+    const sameSlug = targetsBySlug.get(target.slug) ?? [];
+    sameSlug.push(target);
+    targetsBySlug.set(target.slug, sameSlug);
+  }
+
+  function fragmentHref(rawFragment?: string) {
+    if (!rawFragment) return "";
+    const heading = rawFragment.split("#").at(-1)?.trim() ?? "";
+    if (!heading || heading.startsWith("^")) {
+      throw new Error("暂不支持 Obsidian 块引用，请改为标题链接");
+    }
+    const anchor = markdownHeadingAnchor(heading);
+    if (!anchor) throw new Error(`无法生成标题锚点：${rawFragment}`);
+    return `#${anchor}`;
+  }
+
+  function resolveReference(reference: string, strict: boolean) {
+    let decoded: string;
+    try {
+      decoded = decodeURIComponent(reference).replaceAll("\\", "/").trim();
+    } catch {
+      throw new Error(`站内链接路径无法解码：${reference}`);
+    }
+
+    if (!decoded || decoded.includes("\0")) throw new Error("站内链接不能为空");
+    if (/^[a-z][a-z0-9+.-]*:/iu.test(decoded) || decoded.startsWith("//")) {
+      return undefined;
+    }
+
+    const [rawPath, ...fragmentParts] = decoded.split("#");
+    const fragment = fragmentHref(fragmentParts.length > 0 ? fragmentParts.join("#") : undefined);
+    if (!rawPath) {
+      return {
+        href: fragment,
+        fallbackLabel: fragmentParts.at(-1)?.trim() || "当前章节",
+      };
+    }
+
+    const hadMarkdownExtension = /\.md$/iu.test(rawPath);
+    const normalizedPath = rawPath
+      .replace(/^(?:\.\.\/|\.\/)+/u, "")
+      .replace(/^\//u, "")
+      .replace(/^content\//u, "")
+      .replace(/\.md$/iu, "");
+
+    let target = targetsByPath.get(normalizedPath);
+    if (!target && !normalizedPath.includes("/") && SLUG_PATTERN.test(normalizedPath)) {
+      const matches = targetsBySlug.get(normalizedPath) ?? [];
+      if (matches.length > 1) {
+        throw new Error(`站内链接目标不明确，请写明 posts 或 projects：${reference}`);
+      }
+      target = matches[0];
+    }
+
+    const looksLikeContentPath = /^(?:posts|projects)\//u.test(normalizedPath);
+    if (!target) {
+      if (strict || hadMarkdownExtension || looksLikeContentPath) {
+        throw new Error(`找不到站内内容链接目标：${reference}`);
+      }
+      return undefined;
+    }
+
+    const collection = target.kind === "post" ? "posts" : "projects";
+    return {
+      href: `/${collection}/${target.slug}${fragment}`,
+      fallbackLabel: fragmentParts.at(-1)?.trim() || target.slug,
+    };
+  }
+
+  return transformMarkdownProse(markdown, (segment) => {
+    const withMarkdownLinks = segment.replace(
+      /(?<!!)\[([^\]]+)\]\(([^\s)]+)(?:\s+["'][^"']*["'])?\)/gu,
+      (match, label: string, reference: string) => {
+        const resolved = resolveReference(reference, false);
+        return resolved ? `[${label}](${resolved.href})` : match;
+      },
+    );
+
+    return withMarkdownLinks.replace(
+      /(?<!!)\[\[([^|\]]+?)(?:\|([^\]]+))?\]\]/gu,
+      (_match, reference: string, display?: string) => {
+        const resolved = resolveReference(reference, true);
+        if (!resolved) throw new Error(`找不到站内内容链接目标：${reference}`);
+        return `[${display?.trim() || resolved.fallbackLabel}](${resolved.href})`;
+      },
+    );
+  });
+}
+
 export function prepareObsidianNote(
   sourcePath: string,
   raw: string,
   requestedKind?: ObsidianContentKind,
+  linkTargets: ObsidianLinkTarget[] = [],
 ) {
   const normalizedSource = normalizePath(sourcePath);
   if (!normalizedSource.startsWith(INBOX_PREFIX) || !normalizedSource.endsWith(".md")) {
@@ -213,9 +279,13 @@ export function prepareObsidianNote(
   }
 
   const normalizedAttachments = normalizeAttachmentLinks(raw, slug);
-  const kind = requestedKind ?? inferKind(normalizedAttachments.content);
+  const normalizedLinks = normalizeObsidianContentLinks(
+    normalizedAttachments.content,
+    linkTargets,
+  );
+  const kind = requestedKind ?? inferKind(normalizedLinks);
   const targetPath = `content/${kind === "post" ? "posts" : "projects"}/${slug}.md`;
-  const prepared = normalizedAttachments.content.replace(
+  const prepared = normalizedLinks.replace(
     /(^|\r?\n)draft:\s*true\s*(?=\r?\n)/u,
     "$1draft: false",
   );

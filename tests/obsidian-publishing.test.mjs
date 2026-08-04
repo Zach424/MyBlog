@@ -37,6 +37,11 @@ featured: false
 
 项目正文。`;
 
+const linkTargets = [
+  { kind: "post", slug: "building-a-maintainable-blog" },
+  { kind: "project", slug: "myblog" },
+];
+
 test("prepares an Obsidian article for the existing content contract", () => {
   const result = prepareObsidianNote("content/inbox/obsidian-publishing.md", article);
   assert.equal(result.kind, "post");
@@ -141,6 +146,87 @@ test("leaves attachment examples inside fenced code untouched", () => {
   ]);
 });
 
+test("normalizes Obsidian note and heading links into stable blog URLs", () => {
+  const withContentLinks = article.replace(
+    "正文图片 ![evidence](/uploads/obsidian-evidence.png)。",
+    "参见 [[building-a-maintainable-blog#设计也要表达真实结构|设计文章]]、[项目](../projects/myblog.md) 与 [[#方法|本文方法]]。",
+  );
+  const result = prepareObsidianNote(
+    "content/inbox/obsidian-publishing.md",
+    withContentLinks,
+    undefined,
+    linkTargets,
+  );
+
+  assert.match(
+    result.content,
+    /\[设计文章\]\(\/posts\/building-a-maintainable-blog#设计也要表达真实结构\)/u,
+  );
+  assert.match(result.content, /\[项目\]\(\/projects\/myblog\)/u);
+  assert.match(result.content, /\[本文方法\]\(#方法\)/u);
+  assert.deepEqual(result.attachments, []);
+});
+
+test("keeps external and code-example links out of Obsidian link conversion", () => {
+  const withExamples = article.replace(
+    "正文图片 ![evidence](/uploads/obsidian-evidence.png)。",
+    `外部 [Obsidian](https://obsidian.md/help/links)。
+
+\`[[building-a-maintainable-blog]]\`
+
+\`\`\`md
+[[myblog|项目]]
+\`\`\``,
+  );
+  const result = prepareObsidianNote(
+    "content/inbox/obsidian-publishing.md",
+    withExamples,
+    undefined,
+    linkTargets,
+  );
+
+  assert.match(result.content, /\[Obsidian\]\(https:\/\/obsidian\.md\/help\/links\)/u);
+  assert.match(result.content, /`\[\[building-a-maintainable-blog\]\]`/u);
+  assert.match(result.content, /\[\[myblog\|项目\]\]/u);
+});
+
+test("rejects missing, ambiguous, and block-level Obsidian links", () => {
+  const withLink = (link) =>
+    article.replace("正文图片 ![evidence](/uploads/obsidian-evidence.png)。", link);
+
+  assert.throws(
+    () => prepareObsidianNote(
+      "content/inbox/obsidian-publishing.md",
+      withLink("[[missing-note]]"),
+      undefined,
+      linkTargets,
+    ),
+    /找不到站内内容链接目标/,
+  );
+  assert.throws(
+    () => prepareObsidianNote(
+      "content/inbox/obsidian-publishing.md",
+      withLink("[[shared-slug]]"),
+      undefined,
+      [
+        ...linkTargets,
+        { kind: "post", slug: "shared-slug" },
+        { kind: "project", slug: "shared-slug" },
+      ],
+    ),
+    /站内链接目标不明确/,
+  );
+  assert.throws(
+    () => prepareObsidianNote(
+      "content/inbox/obsidian-publishing.md",
+      withLink("[[building-a-maintainable-blog#^block-id]]"),
+      undefined,
+      linkTargets,
+    ),
+    /暂不支持 Obsidian 块引用/,
+  );
+});
+
 test("stages an inbox deletion only when the source was already tracked", () => {
   const untrackedPaths = gitPathsForPublishedNote(
     "content/inbox/obsidian-publishing.md",
@@ -204,4 +290,12 @@ test("ships a desktop Obsidian command without hidden shell interpolation", asyn
   assert.match(plugin, /--push/);
   assert.match(plugin, /\^content\\\/inbox/);
   assert.doesNotMatch(plugin, /exec\s*\(/u);
+
+  const script = await readFile(
+    new URL("../scripts/publish-note.mjs", import.meta.url),
+    "utf8",
+  );
+  assert.match(script, /function contentLinkTargets/);
+  assert.match(script, /content\/posts/);
+  assert.match(script, /content\/projects/);
 });

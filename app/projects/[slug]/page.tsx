@@ -2,11 +2,16 @@ import type { Metadata } from "next";
 import Link from "next/link";
 import { headers } from "next/headers";
 import { notFound } from "next/navigation";
-import { ContentHeader, TableOfContents } from "@/components/ContentViews";
+import {
+  ContentBacklinks,
+  ContentHeader,
+  TableOfContents,
+} from "@/components/ContentViews";
 import { MarkdownContent } from "@/components/MarkdownContent";
 import { StructuredData } from "@/components/StructuredData";
 import {
   getAllProjects,
+  getBacklinksFor,
   getProjectBySlug,
   getTagSlug,
 } from "@/lib/content";
@@ -51,6 +56,7 @@ export default async function ProjectPage({ params }: ProjectPageProps) {
   if (!project) notFound();
 
   const toc = extractTableOfContents(project.body);
+  const backlinks = getBacklinksFor(project);
   const siteUrl = resolveSiteUrl(await headers());
   const projectUrl = absoluteSiteUrl(siteUrl, project.url);
   const tags = project.tags.map((name) => ({
@@ -117,6 +123,7 @@ export default async function ProjectPage({ params }: ProjectPageProps) {
         </article>
         <TableOfContents items={toc} />
       </div>
+      <ContentBacklinks items={backlinks} />
     </main>
   );
 }

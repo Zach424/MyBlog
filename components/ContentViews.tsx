@@ -184,3 +184,18 @@ export function ContentNeighbors({
     </nav>
   );
 }
+
+export function ContentBacklinks({ items }: { items: ContentRecord[] }) {
+  if (items.length === 0) return null;
+
+  return (
+    <section className="content-backlinks" aria-labelledby="backlinks-title">
+      <header className="content-backlinks-intro">
+        <p className="section-label">Reference ledger</p>
+        <h2 id="backlinks-title">引用这条记录</h2>
+        <p>{items.length} 条公开内容把这里的判断用于后续学习或项目实践。</p>
+      </header>
+      <ContentIndexList items={items} />
+    </section>
+  );
+}

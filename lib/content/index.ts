@@ -2,6 +2,7 @@ import { readFileSync, readdirSync } from "node:fs";
 import path from "node:path";
 
 import {
+  type ContentRecord,
   deriveContentIndexes,
   isPublished,
   parsePostFile,
@@ -9,6 +10,7 @@ import {
   sortPosts,
   sortProjects,
 } from "./contract";
+import { deriveContentRelations } from "./relations";
 
 function readMarkdownDirectory(kind: "posts" | "projects") {
   const directory = path.join(process.cwd(), "content", kind);
@@ -45,6 +47,7 @@ const publishedProjects = sortProjects(
   allProjects.filter((project) => isPublished(project, contentBuildDate)),
 );
 const indexes = deriveContentIndexes(publishedPosts, publishedProjects);
+const relations = deriveContentRelations([...publishedPosts, ...publishedProjects]);
 
 export function getAllPosts() {
   return publishedPosts;
@@ -92,6 +95,10 @@ export function getTagBySlug(slug: string) {
 
 export function getTagSlug(name: string) {
   return indexes.tags.find((tag) => tag.name === name)?.slug;
+}
+
+export function getBacklinksFor(record: ContentRecord) {
+  return relations.backlinksByUrl.get(record.url) ?? [];
 }
 
 export type {
