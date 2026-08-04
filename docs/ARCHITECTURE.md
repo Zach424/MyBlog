@@ -115,9 +115,9 @@ Obsidian 草稿中的 Wiki 图片嵌入、指向 `public/uploads` 的 Markdown �
 
 正式内容的本地图片 URL 必须是 `/uploads/...`，且不能包含查询、锚点、编码路径分隔符、空/`.`/`..` 段或 Windows 非法字符；Markdown 图片必须填写非空 alt。正文的非本地图只允许完整 HTTPS URL：它不加入 `next/image` 的开放远程白名单，而是明确降级为 `loading=lazy`、异步解码、`no-referrer` 的原生图片；公开 CSP 的 `img-src` 只额外允许 `https:`。cover 必须本地化以保证构建期宽高和社交元数据可确定。文件清单保留仓库中的原始大小写，因此 Windows 开发机也能在部署前发现会在 Linux/Vercel 失效的大小写漂移。`public/uploads/<slug>/...` 被视为已归档命名空间，只能由同 slug 的 post/project 正文或 cover 引用；根目录文件只保留给 Obsidian inbox 与媒体库暂存，不能被正式 posts/projects 引用，也不会被自动删除，而是进入独立库存报告供作者复核。正式目录的 draft/future 内容参与所有权，避免编辑分支在公开前被门禁阻断；`content/inbox` 只参与根暂存报告，不参与正式所有权关系。
 
-同一发布阶段还会读取 `content/posts` 与 `content/projects` 的稳定文件名，把 Obsidian Wiki/Markdown 笔记链接转换为站点 URL。裸 slug 只有在文章和项目之间唯一时才可使用；显式 `posts/<slug>`、`projects/<slug>`、别名和标题链接均受支持，块引用被明确拒绝。转换跳过行内代码和围栏代码，避免把教程中的语法示例当成真实关系。
+同一发布阶段还会读取 `content/posts` 与 `content/projects` 的稳定文件名和正文，把 Obsidian Wiki/Markdown 笔记链接转换为站点 URL。裸 slug 只有在文章和项目之间唯一时才可使用；显式 `posts/<slug>`、`projects/<slug>`、别名和标题链接均受支持，块引用被明确拒绝。转换后用目标正文的实际 heading inventory 校验 fragment，所以 `--check-only` 与 inbox readiness 无需先写正式文件即可发现标题漂移。转换跳过行内代码和围栏代码，避免把教程中的语法示例当成真实关系。
 
-`lib/content/markdown.ts` 从公开正文抽取 `/posts/*` 与 `/projects/*` 链接，`lib/content/relations.ts` 校验目标并一次派生 `outgoingByUrl`/`backlinksByUrl`。`lib/content/index.ts` 只暴露两个只读查询，文章与项目详情页在服务端把它们交给同一 Reference ledger：`→` 追溯当前正文引用的依据，`←` 继续阅读引用当前记录的后续实践；空方向省略，两侧都空时不产生账本。关系不存入 frontmatter、客户端状态或数据库，正文链接就是唯一事实源；草稿或未来目标不在公开集合中，因此公开内容不能引用尚未公开的目标。
+`lib/content/markdown.ts` 以与渲染相同的 GFM AST 抽取行内、引用式和自引用链接，并按 H1–H6 全局顺序生成与 `rehype-slug` 一致的 heading id；`lib/content/relations.ts` 校验目标页面、URL 编码和 fragment 后，一次派生 `outgoingByUrl`/`backlinksByUrl`。关系按内容 URL 去重，自引用和 fragment 不制造额外图边。`lib/content/index.ts` 只暴露两个只读查询，文章与项目详情页在服务端把它们交给同一 Reference ledger：`→` 追溯当前正文引用的依据，`←` 继续阅读引用当前记录的后续实践；空方向省略，两侧都空时不产生账本。关系不存入 frontmatter、客户端状态或数据库，正文链接就是唯一事实源；草稿或未来目标不在公开集合中，因此公开内容不能引用尚未公开的目标。
 
 ## 6. 安全与缓存
 

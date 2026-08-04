@@ -12,15 +12,15 @@ MyBlog 是 Zach424 的个人技术知识库与公开工程日志。它把学习�
 | --- | --- | --- |
 | 内容契约 | done | YAML + Zod 校验文章、TIL、项目、标签、专题、日期、URL、内容语境、复核日期与本地封面替代文本 |
 | 公开阅读 | done | 首页、文章、项目、专题、标签、搜索、关于、响应式、深色模式与详情页封面 |
-| Markdown | done | GFM、代码高亮、H2/H3 目录、阅读时间、相邻文章与响应式正文图片 |
+| Markdown | done | GFM、代码高亮、与实际渲染一致的 H1–H6 heading id、H2/H3 目录、阅读时间、相邻文章与响应式正文图片 |
 | 内容发现 | done | SEO、内容级 OG/Twitter 封面、JSON-LD、RSS、Sitemap、robots、本地全文搜索 |
 | 网页写作 | done | `/studio`、GitHub OAuth、Decap editorial workflow、PR、按内容 slug 归档媒体、首次保存后稳定 slug 锁定 |
-| Obsidian 写作 | done | Vault、模板、桌面发布插件、`--check-only`、`--push` |
+| Obsidian 写作 | done | Vault、模板、桌面发布插件、带目标标题校验的 `--check-only`、`--push` |
 | Inbox 发布就绪 | done | 全草稿 ready/scheduled/blocked、真实媒体候选、目标/共享附件诊断、CLI 与 Obsidian 只读弹窗 |
 | 附件发布 | done | Wiki/Markdown 图片转换、按内容隔离、稳定命名、越界保护、失败回滚 |
 | 自动交付 | done | GitHub `main` → Vercel Production → 稳定域名冒烟 |
 | 恢复能力 | done | Vercel 显式目标回滚、当前版本恢复、再次冒烟 |
-| 内容知识网络 | done | Obsidian/Markdown 站内链接转换、构建期完整性校验、文章与项目双向引用账本 |
+| 内容知识网络 | done | GFM 行内/引用式/自引用链接、页面与标题锚点构建门、文章与项目双向引用账本 |
 | 公开知识地图 | done | `/knowledge` 服务端 SVG 信号场、HTML 关系账本、孤立记录、主导航与 Sitemap，Markdown 链接为唯一事实源 |
 | 永久链接迁移 | done | Git 版本化 redirect 注册表、当前路由/静态文件冲突门、公开目标校验、单跳 308 与生产冒烟 |
 | 内容新鲜度 | done | Current/Historical 可见语境、复核日期、当前记录 180 天构建门、现行 Demo |
@@ -36,7 +36,7 @@ MyBlog 是 Zach424 的个人技术知识库与公开工程日志。它把学习�
 - 视觉方向：Commit Trace / Evidence Rail，中文优先、工程档案感、浅深色响应式；
 - 运行时：Next.js 16.3.0、React 19.2.6、TypeScript 5、Node.js 22+；
 - 内容：仓库内 Markdown、YAML、Zod，GitHub 是唯一事实源；
-- 阅读：react-markdown、remark-gfm、rehype-slug、rehype-highlight；
+- 阅读：react-markdown、remark-gfm、rehype-slug、rehype-highlight；GFM mdast 与 GitHubSlugger 复现同一标题和链接语义；
 - 发布：Decap CMS 3.14.1、GitHub OAuth、stable slug 自定义控件、Obsidian 自有插件 1.1.0、inbox readiness CLI 与 Node 发布脚本；
 - 媒体：Sharp 0.35.3、浏览器 magic/帧结构解析与 `createImageBitmap`、mdast-util-from-markdown 2.0.3、`next/image`、固有尺寸、WebP 优化、引用所有权与 Git 附件跟踪；
 - 维护：内容新鲜度、根暂存媒体与正文外链的 CLI；确定性库存进入本地发布候选，时间/DNS 敏感的外链 HEAD 只显式运行；
@@ -49,15 +49,15 @@ MyBlog 是 Zach424 的个人技术知识库与公开工程日志。它把学习�
 
 - 仓库：<https://github.com/Zach424/MyBlog>，生产分支 `main`；
 - 生产站：<https://blog-iota-five-59.vercel.app>；
-- 本轮实现提交：`681f191`（GFM 外链库存、隐私 issue、公网固定地址 HEAD、受控重定向/超时/重试与本地发布候选连接）；
-- 自动交付：Quality Gate `30945915192`、Production verification `30945961879` 均成功；GitHub Production deployment `5750663393` 精确对应实现 SHA 且状态为 success，稳定生产域名保持公开；
-- 最新完成迭代：0036 外部 HTTPS 链接库存与受控健康检查；
+- 本轮实现提交：`001ba54`（与 `rehype-slug` 一致的 heading inventory、GFM 站内链接抽取、fragment 构建/Obsidian 发布门）；
+- 自动交付：Quality Gate `30947662958`、Production verification `30947708431` 均成功；GitHub Production deployment `5750975153` 精确对应实现 SHA 且状态为 success，稳定生产域名保持公开；
+- 最新完成迭代：0037 站内标题锚点完整性门禁；
 - Obsidian 状态：仓库根目录就是 Vault，`docs/STATUS.md` 与 `docs/iterations/*.md` 可直接阅读和维护；
 - 手动外部接入：自定义域名、统计、评论、公开邮箱均暂缓，不阻塞当前开发。
 
 ## 本轮新增能力
 
-`npm run links:external` 现在用与阅读页一致的 GFM AST 离线列出公开正文普通 HTTPS 链接、来源、正文相对行、标签和次数；当前真实库存是 4 条公开记录、1 个 URL、1 次出现、0 个本地问题。HTTP/协议相对/无效/含凭据 URL 形成不泄露凭据的 issue。显式 `--check` 才发送固定公网地址的 HEAD，并限制 HTTPS/443、全部 DNS、私网、重定向、并发、超时与重试；不下载正文、不改写链接。timeout/network/5xx/受限只标暂不可确认，确定 4xx/unsafe/坏重定向才是 broken；实时检查不进 Actions。当前完整门禁为 108/108 单元测试、36 个构建页面和 17/17 HTTP 测试，稳定域名 24 路由、OAuth 302。
+站内关系现在由与阅读页一致的 GFM AST 抽取行内、引用式与纯 fragment 自引用；标题库存覆盖 H1–H6、Setext、格式化文本和全局重复序号，并与真实 ReactMarkdown + `rehype-slug` 输出逐项对照。URL 编码只做严格解码，不做大小写修正、模糊匹配或客户端兜底。坏页面或坏锚点会在 Next 构建、Obsidian `--check-only`、inbox readiness 和正式发布前失败；关系账本仍按内容 URL 去重。当前完整门禁为 110/110 单元测试、36 个构建页面和 17/17 HTTP 测试，稳定域名 24 路由、OAuth 302。
 
 ## 风险与下一步
 
@@ -67,9 +67,9 @@ MyBlog 是 Zach424 的个人技术知识库与公开工程日志。它把学习�
 4. Current record 已有每周分级报告，但提醒只存在于本地输出和 GitHub Actions 摘要/注解，不发送外部消息；这是当前有意的无服务边界；
 5. Obsidian 块引用是专有语法，当前明确拒绝；知识地图已公开，但当前 SVG 双列布局为小型内容库优化，内容增长后需要在不牺牲 HTML 语义的前提下增加过滤或分组；
 6. 正文 HTTPS 外链已有离线库存和显式健康检查，但 DNS/限流/网络是观察证据而非稳定事实；本机直连 Vercel 域名已出现 timeout 假阴性，因此实时检查不进 Actions，结构化 repository/demo/canonical 仍按原 schema/维护清单复核；
-7. 站内链接已验证目标内容是否公开，但带 `#fragment` 的深链尚未证明目标 heading id 存在；
+7. 标题锚点采用严格的实际渲染 id；改名或调整重复标题顺序时必须同步正文深链，Obsidian 块引用和模糊匹配仍明确不支持；
 8. Studio OAuth origin、GitHub 凭据、Vercel deployment URL 保护和 Hobby 回滚范围仍需按运行手册维护；
 9. 统计、评论和自定义域名需要所有者最终选择，现阶段不主动接入；
 10. `decap-cms` 的开发依赖树仍有上游无修复的高危审计项；它不进入公开服务端生产依赖，但其浏览器编辑器包仅对已授权作者开放，后续应单独评估升级或替代方案。
 
-下一轮唯一主任务：建立站内标题锚点完整性门禁。所有 `/posts|projects/<slug>#fragment` 与 Obsidian 标题链接必须命中目标正文实际渲染的 heading id；覆盖 URL 编码、重复标题、H2–H6、自引用、引用式/行内链接和代码忽略。坏锚点必须在构建/发布前以来源路径和 fragment 失败，不做模糊匹配、客户端修复或独立索引。
+下一轮唯一主任务：把 `repository`、`demo` 与 `canonical` 等 frontmatter 结构化 HTTPS 端点纳入现有外链库存。报告必须区分正文字段与结构化字段、保留来源字段名、与相同 URL 的正文出现确定性合并，并复用现有受控 HEAD/SSRF 边界；不得放宽 schema、重复实现网络检查、把实时结果写回内容或接入硬 CI。
