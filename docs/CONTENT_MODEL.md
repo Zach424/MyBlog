@@ -118,6 +118,16 @@ redirects:
 
 选择 `yaml` 而不是允许可执行 frontmatter 的解析器，避免把动态执行带进生产包，并让字段约束可审计。
 
+## Obsidian inbox 就绪状态
+
+`content/inbox/*.md`（不含说明 README）是作者本地待发布集合。运行 `npm run content:inbox` 或 Obsidian 命令“查看全部草稿发布就绪状态”，每篇会得到以下状态：
+
+- `ready`：内容契约、目标和附件候选均通过，且 `publishedAt` 不晚于报告日期；
+- `scheduled`：同样通过，但 `publishedAt` 晚于报告日期，提交后在该日期才进入公开集合；
+- `blocked`：至少存在一个可执行诊断，例如无效 frontmatter/slug/站内链接、正式目标已存在、附件缺失/无效/目标冲突/已被 Git 跟踪，或同一根附件被多个草稿共享。
+
+报告会把静态 PNG/JPEG/WebP 真正派生为候选 WebP，并对 GIF/AVIF/动画 WebP 执行与正式发布相同的保留与预算检查；候选只存在于系统临时目录，最终一定删除。JSON 输出保留内容类型、draft 状态、公开日、源/目标路径、媒体源/产物指标和结构化 issue code。`ready` 只表示单篇写入事务已就绪，正式发布仍会运行完整仓库质量门；报告不会写入作者文件，也不会因为 blocked 自动发布或清理。
+
 ## 附件
 
 公开附件位于 `public/uploads/<slug>/`。Obsidian 的默认附件目录是 `public/uploads`；作者可以直接粘贴图片，发布器会把当前笔记引用的 Wiki/Markdown 图片移动到文章或项目的专属子目录，并把正文改写为 `/uploads/<slug>/<稳定文件名>`。Studio 的 posts/projects 集合使用相同 slug 模板，作者先填写 slug 后上传时直接落入专属子目录。

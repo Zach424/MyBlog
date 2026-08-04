@@ -1,0 +1,271 @@
+import assert from "node:assert/strict";
+import { spawnSync } from "node:child_process";
+import {
+  access,
+  mkdtemp,
+  mkdir,
+  readFile,
+  readdir,
+  rm,
+  writeFile,
+} from "node:fs/promises";
+import { tmpdir } from "node:os";
+import { join } from "node:path";
+import { fileURLToPath } from "node:url";
+import test from "node:test";
+import sharp from "sharp";
+
+import {
+  formatInboxReadinessText,
+  inspectInboxReadiness,
+} from "../lib/content/inbox-readiness.ts";
+
+const reporterPath = fileURLToPath(
+  new URL("../scripts/report-inbox-readiness.mjs", import.meta.url),
+);
+
+function article(slug, publishedAt, body = "正文。") {
+  return `---
+title: "${slug} 发布测试"
+slug: ${slug}
+description: "验证 Obsidian 收件箱草稿的发布就绪状态。"
+type: article
+publishedAt: ${publishedAt}
+freshness: historical
+reviewedAt: ${publishedAt}
+tags: ["Personal Knowledge", "Git"]
+draft: true
+featured: false
+---
+
+## 方法
+
+${body}
+`;
+}
+
+function project(slug, publishedAt) {
+  return `---
+title: "${slug} 项目测试"
+slug: ${slug}
+description: "验证未来项目草稿保持计划发布状态。"
+publishedAt: ${publishedAt}
+freshness: current
+reviewedAt: ${publishedAt}
+status: planning
+stack: ["TypeScript"]
+tags: ["Project Management"]
+draft: true
+featured: false
+---
+
+## 背景与目标
+
+项目正文。
+`;
+}
+
+function runGit(root, args) {
+  const result = spawnSync("git", args, {
+    cwd: root,
+    encoding: "utf8",
+    shell: false,
+  });
+  assert.equal(result.status, 0, `${result.stdout}\n${result.stderr}`);
+}
+
+async function createFixture() {
+  const root = await mkdtemp(join(tmpdir(), "myblog-inbox-readiness-test-"));
+  await Promise.all([
+    mkdir(join(root, "content", "inbox"), { recursive: true }),
+    mkdir(join(root, "content", "posts"), { recursive: true }),
+    mkdir(join(root, "content", "projects"), { recursive: true }),
+    mkdir(join(root, "public", "uploads"), { recursive: true }),
+  ]);
+  await writeFile(join(root, "content", "inbox", "README.md"), "说明，不参与报告。\n");
+  runGit(root, ["init", "-b", "main"]);
+  return root;
+}
+
+test("reports ready and scheduled drafts with real media derivation", async () => {
+  const root = await createFixture();
+  try {
+    const image = await sharp({
+      create: {
+        width: 1200,
+        height: 630,
+        channels: 3,
+        background: "#486f78",
+      },
+    }).png({ compressionLevel: 0 }).toBuffer();
+    await Promise.all([
+      writeFile(
+        join(root, "content", "inbox", "ready-note.md"),
+        article("ready-note", "2026-08-05", "证据 ![[evidence.png|示例图]]。"),
+      ),
+      writeFile(
+        join(root, "content", "inbox", "scheduled-project.md"),
+        project("scheduled-project", "2026-08-10"),
+      ),
+      writeFile(join(root, "public", "uploads", "evidence.png"), image),
+    ]);
+
+    const sourceBefore = await readFile(join(root, "public", "uploads", "evidence.png"));
+    const stagingParent = join(root, "readiness-staging");
+    const report = await inspectInboxReadiness(root, "2026-08-05", { stagingParent });
+    const byPath = Object.fromEntries(report.entries.map((entry) => [entry.sourcePath, entry]));
+
+    assert.deepEqual(report.counts, {
+      attachments: 1,
+      blocked: 0,
+      drafts: 2,
+      issues: 0,
+      ready: 1,
+      scheduled: 1,
+    });
+    assert.equal(byPath["content/inbox/ready-note.md"].state, "ready");
+    assert.equal(byPath["content/inbox/ready-note.md"].kind, "post");
+    assert.equal(byPath["content/inbox/ready-note.md"].draftState, "draft");
+    assert.equal(
+      byPath["content/inbox/ready-note.md"].attachments[0].preparation.output.format,
+      "webp",
+    );
+    assert.equal(byPath["content/inbox/scheduled-project.md"].state, "scheduled");
+    assert.equal(byPath["content/inbox/scheduled-project.md"].kind, "project");
+    assert.deepEqual(
+      await readFile(join(root, "public", "uploads", "evidence.png")),
+      sourceBefore,
+    );
+    await assert.rejects(access(join(root, "public", "uploads", "ready-note")));
+    assert.deepEqual(await readdir(stagingParent), []);
+  } finally {
+    await rm(root, { recursive: true, force: true });
+  }
+});
+
+test("isolates invalid drafts and reports target, media, and shared-source blockers", async () => {
+  const root = await createFixture();
+  try {
+    const image = await sharp({
+      create: {
+        width: 320,
+        height: 180,
+        channels: 3,
+        background: "#b9431f",
+      },
+    }).png().toBuffer();
+    await Promise.all([
+      writeFile(
+        join(root, "content", "inbox", "first-note.md"),
+        article("first-note", "2026-08-05", "共享 ![[shared.png]]。"),
+      ),
+      writeFile(
+        join(root, "content", "inbox", "second-note.md"),
+        article("second-note", "2026-08-05", "共享 ![[shared.png]]。"),
+      ),
+      writeFile(
+        join(root, "content", "inbox", "missing-note.md"),
+        article("missing-note", "2026-08-05", "缺失 ![[missing.png]]。"),
+      ),
+      writeFile(join(root, "content", "inbox", "Bad Name.md"), "---\ndraft: true\n---\n"),
+      writeFile(
+        join(root, "content", "posts", "first-note.md"),
+        article("first-note", "2026-08-01").replace("draft: true", "draft: false"),
+      ),
+      writeFile(join(root, "public", "uploads", "shared.png"), image),
+    ]);
+    runGit(root, ["add", "public/uploads/shared.png"]);
+
+    const report = await inspectInboxReadiness(root, "2026-08-05");
+    const byPath = Object.fromEntries(report.entries.map((entry) => [entry.sourcePath, entry]));
+
+    assert.equal(report.counts.blocked, 4);
+    assert.match(
+      byPath["content/inbox/Bad Name.md"].issues[0].message,
+      /小写 ASCII/u,
+    );
+    assert.ok(
+      byPath["content/inbox/first-note.md"].issues.some(
+        (issue) => issue.code === "target-exists",
+      ),
+    );
+    for (const draftPath of [
+      "content/inbox/first-note.md",
+      "content/inbox/second-note.md",
+    ]) {
+      assert.ok(
+        byPath[draftPath].issues.some((issue) => issue.code === "attachment-shared"),
+      );
+      assert.ok(
+        byPath[draftPath].issues.some((issue) => issue.code === "attachment-tracked"),
+      );
+    }
+    assert.ok(
+      byPath["content/inbox/missing-note.md"].issues.some(
+        (issue) => issue.code === "attachment-missing",
+      ),
+    );
+  } finally {
+    await rm(root, { recursive: true, force: true });
+  }
+});
+
+test("formats an actionable text report without treating blocked findings as a scan failure", async () => {
+  const root = await createFixture();
+  try {
+    await writeFile(
+      join(root, "content", "inbox", "blocked-note.md"),
+      article("blocked-note", "2026-08-05", "缺失 ![[missing.png]]。"),
+    );
+    const report = await inspectInboxReadiness(root, "2026-08-05");
+    const output = formatInboxReadinessText(report);
+    assert.match(output, /草稿 1 · ready 0 · scheduled 0 · blocked 1/u);
+    assert.match(output, /BLOCKED.*blocked-note\.md/u);
+    assert.match(output, /\[attachment-missing\]/u);
+    assert.match(output, /不会移动、改写、提交或推送/u);
+  } finally {
+    await rm(root, { recursive: true, force: true });
+  }
+});
+
+test("runs the real JSON CLI and leaves the repository byte-for-byte untouched", async () => {
+  const root = await createFixture();
+  try {
+    const draftPath = join(root, "content", "inbox", "cli-note.md");
+    const draft = article("cli-note", "2026-08-05");
+    await writeFile(draftPath, draft);
+    const before = await readFile(draftPath);
+    const result = spawnSync(
+      process.execPath,
+      [
+        "--experimental-strip-types",
+        reporterPath,
+        "--date",
+        "2026-08-05",
+        "--format",
+        "json",
+      ],
+      { cwd: root, encoding: "utf8" },
+    );
+    assert.equal(result.status, 0, `${result.stdout}\n${result.stderr}`);
+    const report = JSON.parse(result.stdout);
+    assert.equal(report.counts.ready, 1);
+    assert.deepEqual(await readFile(draftPath), before);
+    assert.deepEqual(await readdir(join(root, "content", "posts")), []);
+    assert.deepEqual(await readdir(join(root, "public", "uploads")), []);
+  } finally {
+    await rm(root, { recursive: true, force: true });
+  }
+});
+
+test("reports an empty inbox and rejects invalid report dates", async () => {
+  const root = await createFixture();
+  try {
+    const report = await inspectInboxReadiness(root, "2026-08-05");
+    assert.equal(report.counts.drafts, 0);
+    assert.match(formatInboxReadinessText(report), /没有可检查/u);
+    await assert.rejects(inspectInboxReadiness(root, "2026-02-30"), /有效的 YYYY-MM-DD/u);
+  } finally {
+    await rm(root, { recursive: true, force: true });
+  }
+});

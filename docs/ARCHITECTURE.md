@@ -36,6 +36,7 @@ content/
 public/uploads/<slug>/              按内容隔离的公开图片附件
 lib/
   content/                          内容契约、维护报告、文件读取、派生索引与引用关系
+    inbox-readiness.ts              全部 Obsidian 草稿的只读发布就绪聚合
     media.ts                        封面与正文图共享的固有尺寸描述器
     media-references.ts             Markdown 图片 AST 抽取与安全 `/uploads` 路径解析
     staging-media.ts                根暂存库存、inbox 引用、年龄证据与报告格式
@@ -46,7 +47,7 @@ lib/
   studio-assets.ts                  构建期 Studio 资源响应
 studio/                             Decap CMS、浏览器媒体预检与稳定 slug 控件源文件（不放入 public）
 templates/obsidian/                 文章、TIL、项目模板
-scripts/                            发布、内容/暂存媒体维护报告、冒烟、迁移和生产测试器
+scripts/                            发布、inbox/内容/暂存媒体报告、冒烟、迁移和生产测试器
 build/validate-media.ts             构建前递归扫描全部公开上传图片
 build/validate-media-references.ts  正式内容图片存在性、slug 所有权和孤儿附件门禁
 build/validate-redirects.ts         当前公开路由、静态文件与重定向关系门禁
@@ -72,6 +73,8 @@ vercel.json                         Vercel Next.js 框架声明
 
 `lib/content/staging-media.ts` 只扫描 `public/uploads` 根文件，并复用 Obsidian 发布器自己的 Wiki/Markdown/cover 附件解析语义，交叉建立 inbox 草稿引用账本。现存文件分为单草稿引用、多草稿共享和未引用；报告还列出缺失引用与无法审计的草稿。干净且已跟踪的文件以 Git 最后提交日计算年龄，本地修改或未跟踪文件以明确标注的 filesystem mtime 作为观察证据；默认 30 天进入陈旧复核，但任何发现都只产生建议和 Actions warning，不删除文件、不改变构建结果。`scripts/report-staging-media.mjs` 提供文本/JSON、固定日期/阈值与 GitHub 摘要，Quality Gate 每次运行和每周复核都会生成库存。
 
+`lib/content/inbox-readiness.ts` 在作者工作区逐篇隔离检查直接位于 `content/inbox` 的 Markdown：复用真实发布器完成类型/slug/frontmatter/站内链接与附件目标派生，再把每张附件交给同一媒体发布策略，在系统临时目录生成并校验实际候选产物。报告额外交叉检查正式目标、附件目标、Git 跟踪附件和多草稿共享源；一个坏草稿不会阻止其他草稿产生证据。状态分为现在可发布的 `ready`、可以提交但尚未到公开日的 `scheduled` 和需要处理诊断的 `blocked`。临时目录在成功和失败路径都删除，作者 Markdown 与附件不写入；`scripts/report-inbox-readiness.mjs` 提供文本/JSON，Obsidian 桌面插件 1.1.0 用只读 Modal 显示同一文本。它不接入 Actions，因为未跟踪本地草稿对 CI 天然不可见。
+
 `lib/content/media.ts` 是封面与正文图共享的服务端尺寸层。文件系统根静态收窄到 `public/uploads`，避免 Turbopack 把整个仓库追踪进 Serverless 产物；同一仓库路径的检查通过 React cache 复用。封面描述器附带 `coverAlt`，交给共享 `ContentCover` 和 OG/Twitter/JSON-LD；没有封面的记录不渲染 figure。`MarkdownContent` 则先从正文 AST 收集并去重 URL，只为本地 `/uploads/...` 建立描述器，再把真实宽高、作者 alt 和对应 48rem 阅读栏的 `sizes` 交给 `next/image`。两条详情路由必须传入内容 `sourcePath`，因此页面渲染与构建媒体契约使用同一安全路径边界。
 
 内容目录通过 Next.js output tracing 显式包含在部署中，既支持 Vercel Serverless，也不会依赖开发机器路径。
@@ -94,6 +97,8 @@ Studio 的全局 `media_folder`/`public_folder` 保留为根暂存与媒体库�
 posts/projects 的顶层 slug 使用项目自有 `stable-slug` custom widget，专题内的普通 slug 仍使用内建 string。实际提供给浏览器的 Decap 3.14.1 bundle 把当前 Immutable `entry` 传给 control；其 reducer 用 `newRecord=true` 标记新建/复制，用 `false` 标记已加载的正式或 editorial workflow 条目。控件因此只在 `newRecord=false` 时使用原生 `readOnly`，保存值仍参与序列化且可复制；新建、复制和未保存本地备份保持可编辑。已有条目若字段值与 entry 顶层 slug/path 身份不一致，`isValid` 在保存前返回可执行错误。控件使用官方全局 `createClass`/`h` 注册，在 CMS init 前安装，并以 DOM data 属性提供无内容写入的浏览器可观测性；当前内部 `entry/newRecord` 传递由所发布 bundle 的 source map 回归测试锁定，升级 Decap 时必须重审。
 
 Obsidian 草稿中的 Wiki 图片嵌入、指向 `public/uploads` 的 Markdown 图片和 frontmatter `cover` 会在发布前转换。文件进入 `public/uploads/<内容 slug>/<稳定文件名>`，正文或 cover 改写为对应 `/uploads/...` URL；文件名不稳定时使用可读 ASCII 名加路径哈希消除冲突。静态 PNG/JPEG/WebP 的公开文件名统一使用 `.webp`，相同 stem 的多种源格式因而会在修改工作区前被拒绝为目标冲突；GIF 和 AVIF 保持扩展名。cover 与正文附件登记到同一映射，所以共享源不会重复移动，且都受同一 staging、安装与回滚事务保护。
+
+发布前，作者可以从 Obsidian 命令面板运行“查看全部草稿发布就绪状态”。插件以参数数组和 `shell: false` 启动本地 `content:inbox`，把输出作为纯文本写入 Modal，避免诊断内容被解释为 HTML；blocked 是只读发现，不会触发发布动作。单篇“检查当前草稿”与“发布当前草稿并同步 GitHub”保持原语义，完整 `npm run check` 仍是最终权威门禁。
 
 发布器先在仓库内 `node_modules/.cache/myblog-publish-*` 创建同盘 staging。每个静态 PNG/JPEG/WebP 都先自动校正 EXIF 方向，以固定 quality 82、alpha quality 100、effort 6 的 Sharp 参数生成 WebP，并在 staging 中重新执行公开预算检查；满足预算且重编码不会更小的已有 WebP 保持原字节。GIF、AVIF 和动画 WebP 不改变字节，但必须先满足公开预算。`--check-only` 完成同样的派生并报告源/产物差异，然后删除 staging，不修改工作区。
 
@@ -132,6 +137,7 @@ Vercel GitHub Integration 负责每个分支的 Preview 和 `main` 的 Productio
 - 正式 Markdown/cover 的每个本地图片必须精确存在；已归档附件必须由同 slug 内容引用，代码示例不能形成媒体所有权。
 - 正式 Markdown/cover 不能引用根暂存图片；Studio 必须先填写稳定 slug，再把媒体直接写入同 slug 归档目录。
 - 根暂存媒体必须可由确定性报告区分引用、共享、未引用、陈旧与缺失；报告不得自动删除作者文件或把提醒升级为构建失败。
+- inbox 就绪报告必须逐篇隔离错误、真实派生媒体候选并识别目标/共享源冲突；无论 ready、scheduled 或 blocked 都不能移动、改写、提交或推送作者文件。
 - Studio 新建/复制条目的顶层 slug 在首次保存前可编辑；已有条目必须以 readOnly 控件锁定并继续序列化，身份漂移必须在保存前失败。
 - Studio 本地图片进入 Decap 草稿前必须通过与公开媒体策略一致的真实格式、尺寸、体积和动图总像素预检；预检通过后必须透传原始 `File`，不能悄悄改变附件字节。
 - Markdown 图片 alt 不能为空；本地图使用共享固有尺寸与响应式候选，HTTPS 外图不能进入开放优化主机列表。

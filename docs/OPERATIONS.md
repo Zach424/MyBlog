@@ -25,10 +25,11 @@ Secret 只保存在 Vercel/GitHub 的加密设置中，不进入 `.env.example`�
 1. 在 `/studio` 或 Obsidian 新建内容；
 2. 保持稳定 ASCII slug，填写摘要、日期、`freshness`、`reviewedAt`、标签和正文；
 3. 草稿阶段保持 `draft: true`；需要定时发布时再设置未来 `publishedAt`；
-4. 本地先运行 `npm run content:publish -- <note> --check-only`；逐张确认实际格式、宽高、帧数和体积后，使用 Obsidian 的“发布当前草稿并同步 GitHub”或命令行 `--push`。`--push` 会把 `draft` 改为 `false` 后运行完整质量门、提交并推送；网页方式使用 editorial workflow；
-5. 让质量门通过，再把提交合并到 `main`；
-6. Vercel 自动创建生产部署，deployment status 工作流检查稳定公开生产域名；
-7. 打开文章、RSS 和 Sitemap，确认新内容可见且绝对 URL 指向当前生产域名。
+4. Obsidian 中先运行“查看全部草稿发布就绪状态”（命令行为 `npm run content:inbox`），处理 blocked 并确认 scheduled 日期；再运行 `npm run content:publish -- <note> --check-only`；
+5. 逐张确认实际格式、宽高、帧数和体积后，使用 Obsidian 的“发布当前草稿并同步 GitHub”或命令行 `--push`。`--push` 会把 `draft` 改为 `false` 后运行完整质量门、提交并推送；网页方式使用 editorial workflow；
+6. 让质量门通过，再把提交合并到 `main`；
+7. Vercel 自动创建生产部署，deployment status 工作流检查稳定公开生产域名；
+8. 打开文章、RSS 和 Sitemap，确认新内容可见且绝对 URL 指向当前生产域名。
 
 ## URL 迁移
 
@@ -48,7 +49,7 @@ Current record 至少每 180 天逐项复核一次架构、版本、状态、外
 npm run release:check
 ```
 
-该命令先输出内容维护队列，并覆盖内容契约、Studio 配置、Obsidian 发布器、TypeScript、原生 Next.js 构建、生产 HTTP、安全头、全站内部链接、体积预算和生产依赖审计。
+该命令先输出内容维护队列、当前作者工作区的 inbox 发布就绪状态和根暂存媒体库存，并覆盖内容契约、Studio 配置、Obsidian 发布器、TypeScript、原生 Next.js 构建、生产 HTTP、安全头、全站内部链接、体积预算和生产依赖审计。inbox blocked 不阻断未涉及它的既有生产版本，但发布对应草稿前必须处理；报告不会执行任何发布动作。
 
 ## 发布后检查
 
