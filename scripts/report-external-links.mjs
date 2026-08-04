@@ -24,7 +24,7 @@ function help() {
   --fail-on-broken        显式检查后发现异常/本地问题时返回非零
   --help                  显示帮助
 
-默认模式只读取公开 Markdown 并生成确定性库存，不访问网络。
+默认模式只读取公开 Markdown 正文与结构化端点字段并生成确定性库存，不访问网络。
 --check 只发送 HEAD、固定公网 DNS 地址并逐跳验证 HTTPS；不下载正文，不自动改写链接。`;
 }
 

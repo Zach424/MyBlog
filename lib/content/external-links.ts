@@ -36,9 +36,16 @@ export type ExternalLinkIssueCode =
   | "invalid-https"
   | "protocol-relative";
 
+export type ExternalLinkSourceField =
+  | "body"
+  | "canonical"
+  | "demo"
+  | "repository";
+
 export type ExternalLinkOccurrence = {
   bodyLine?: number;
   label: string;
+  sourceField: ExternalLinkSourceField;
   sourcePath: string;
   sourceTitle: string;
   sourceUrl: ContentRecord["url"];
@@ -216,10 +223,16 @@ function normalizeExternalUrl(value: string) {
   return { url: url.href };
 }
 
-function occurrenceFor(record: ContentRecord, node: MarkdownNode): ExternalLinkOccurrence {
+function occurrenceFor(
+  record: ContentRecord,
+  sourceField: ExternalLinkSourceField,
+  label: string,
+  bodyLine?: number,
+): ExternalLinkOccurrence {
   return {
-    ...(node.position?.start?.line ? { bodyLine: node.position.start.line } : {}),
-    label: compactText(markdownText(node)) || "未命名链接",
+    ...(bodyLine ? { bodyLine } : {}),
+    label,
+    sourceField,
     sourcePath: record.sourcePath,
     sourceTitle: record.title,
     sourceUrl: record.url,
@@ -249,20 +262,53 @@ function extractRecordExternalLinks(record: ContentRecord) {
     if (!value) return;
     const normalized = normalizeExternalUrl(value);
     if (!normalized) return;
-    const occurrence = occurrenceFor(record, node);
+    const occurrence = occurrenceFor(
+      record,
+      "body",
+      compactText(markdownText(node)) || "未命名链接",
+      node.position?.start?.line,
+    );
     if (normalized.issue) {
       issues.push({ ...occurrence, code: normalized.issue, url: normalized.url });
       return;
     }
     links.push({ occurrence, url: normalized.url });
   });
+
+  const structuredFields: Array<
+    [Exclude<ExternalLinkSourceField, "body">, string | null | undefined]
+  > = record.kind === "post"
+    ? [["canonical", record.canonical]]
+    : [
+        ["repository", record.repository],
+        ["demo", record.demo],
+      ];
+  for (const [sourceField, value] of structuredFields) {
+    if (!value) continue;
+    const normalized = normalizeExternalUrl(value);
+    if (!normalized) continue;
+    const occurrence = occurrenceFor(record, sourceField, sourceField);
+    if (normalized.issue) {
+      issues.push({ ...occurrence, code: normalized.issue, url: normalized.url });
+      continue;
+    }
+    links.push({ occurrence, url: normalized.url });
+  }
   return { issues, links };
 }
+
+const SOURCE_FIELD_ORDER: Record<ExternalLinkSourceField, number> = {
+  body: 0,
+  canonical: 1,
+  repository: 2,
+  demo: 3,
+};
 
 function sortOccurrences(occurrences: ExternalLinkOccurrence[]) {
   return [...occurrences].sort(
     (left, right) =>
       left.sourcePath.localeCompare(right.sourcePath, "en") ||
+      SOURCE_FIELD_ORDER[left.sourceField] - SOURCE_FIELD_ORDER[right.sourceField] ||
       (left.bodyLine ?? Number.MAX_SAFE_INTEGER) -
         (right.bodyLine ?? Number.MAX_SAFE_INTEGER) ||
       left.label.localeCompare(right.label, "zh-CN"),
@@ -296,6 +342,7 @@ export function createExternalLinkInventory(records: ContentRecord[]): ExternalL
   issues.sort(
     (left, right) =>
       left.sourcePath.localeCompare(right.sourcePath, "en") ||
+      SOURCE_FIELD_ORDER[left.sourceField] - SOURCE_FIELD_ORDER[right.sourceField] ||
       (left.bodyLine ?? Number.MAX_SAFE_INTEGER) -
         (right.bodyLine ?? Number.MAX_SAFE_INTEGER) ||
       left.url.localeCompare(right.url, "en"),
@@ -678,7 +725,7 @@ export function formatExternalLinkReportText(report: ExternalLinkReport) {
       `[links] 已检查 ${report.counts.checked} · 健康 ${report.counts.healthy} · 暂不可确认 ${report.counts.attention} · 已确认异常 ${report.counts.broken}`,
     );
   }
-  if (report.links.length === 0) lines.push("[links] 当前公开正文没有 HTTPS 外链。");
+  if (report.links.length === 0) lines.push("[links] 当前公开内容没有可盘点的 HTTPS 外链。");
   for (const link of report.links) {
     const status = link.health ? HEALTH_LABELS[link.health.status] : "INVENTORY";
     const result = link.health
@@ -691,14 +738,20 @@ export function formatExternalLinkReportText(report: ExternalLinkReport) {
       lines.push(`[links]   final ${link.health.finalUrl}`);
     }
     for (const occurrence of link.occurrences) {
+      const location = occurrence.sourceField === "body"
+        ? `正文${occurrence.bodyLine ? `第 ${occurrence.bodyLine} 行` : ""} · ${occurrence.label}`
+        : `frontmatter.${occurrence.sourceField}`;
       lines.push(
-        `[links]   ${occurrence.sourcePath}${occurrence.bodyLine ? ` · 正文第 ${occurrence.bodyLine} 行` : ""} · ${occurrence.label}`,
+        `[links]   ${occurrence.sourcePath} · ${location}`,
       );
     }
   }
   for (const issue of report.issues) {
+    const location = issue.sourceField === "body"
+      ? `正文${issue.bodyLine ? `第 ${issue.bodyLine} 行` : ""}`
+      : `frontmatter.${issue.sourceField}`;
     lines.push(
-      `[links] ISSUE ${issue.code} · ${issue.sourcePath}${issue.bodyLine ? ` · 正文第 ${issue.bodyLine} 行` : ""} · ${issue.url} · ${ISSUE_LABELS[issue.code]}`,
+      `[links] ISSUE ${issue.code} · ${issue.sourcePath} · ${location} · ${issue.url} · ${ISSUE_LABELS[issue.code]}`,
     );
   }
   lines.push(

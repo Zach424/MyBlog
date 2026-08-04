@@ -3,7 +3,7 @@ import { readFile } from "node:fs/promises";
 import { spawnSync } from "node:child_process";
 import test from "node:test";
 
-import { parsePostFile } from "../lib/content/contract.ts";
+import { parsePostFile, parseProjectFile } from "../lib/content/contract.ts";
 import {
   checkExternalLinks,
   createExternalLinkInventory,
@@ -13,7 +13,7 @@ import {
   isPublicNetworkAddress,
 } from "../lib/content/external-links.ts";
 
-function post(slug, body, title = `Post ${slug}`) {
+function post(slug, body, title = `Post ${slug}`, canonical) {
   return parsePostFile(
     `content/posts/${slug}.md`,
     `---
@@ -26,6 +26,35 @@ reviewedAt: 2026-08-05
 tags: ["Personal Knowledge"]
 draft: false
 featured: false
+${canonical ? `canonical: "${canonical}"` : ""}
+---
+
+${body}`,
+  );
+}
+
+function project(slug, body, options = {}) {
+  const { demo, repository } = options;
+  const demoField = Object.hasOwn(options, "demo")
+    ? demo === null
+      ? "demo: null"
+      : `demo: "${demo}"`
+    : "";
+  return parseProjectFile(
+    `content/projects/${slug}.md`,
+    `---
+title: "Project ${slug}"
+description: "用于验证项目结构化 HTTPS 端点进入统一库存。"
+publishedAt: 2026-08-05
+freshness: current
+reviewedAt: 2026-08-05
+status: maintained
+stack: ["TypeScript"]
+tags: ["Personal Knowledge"]
+draft: false
+featured: false
+${repository ? `repository: "${repository}"` : ""}
+${demoField}
 ---
 
 ${body}`,
@@ -82,7 +111,66 @@ test("extracts GFM HTTPS links with occurrences while ignoring images, code and 
   );
   assert.equal(report.links[1].occurrences[0].sourcePath, "content/posts/source.md");
   assert.equal(report.links[1].occurrences[0].bodyLine, 1);
+  assert.equal(report.links[1].occurrences[0].sourceField, "body");
   assert.doesNotMatch(JSON.stringify(report), /images\.example|code\.example/u);
+});
+
+test("merges canonical, repository, and demo fields with matching body URLs", () => {
+  const report = createExternalLinkInventory([
+    post(
+      "canonical-source",
+      "[原始版本](https://alpha.example/reference)",
+      "Canonical source",
+      "https://alpha.example/reference",
+    ),
+    project(
+      "project-source",
+      "[在线演示](https://beta.example/demo)",
+      {
+        demo: "https://beta.example/demo",
+        repository: "https://gamma.example/repository",
+      },
+    ),
+    project("no-demo", "没有公开演示地址。", { demo: null }),
+  ]);
+
+  assert.deepEqual(report.counts, {
+    attention: 0,
+    broken: 0,
+    checked: 0,
+    healthy: 0,
+    issues: 0,
+    occurrences: 5,
+    records: 3,
+    sourceRecords: 2,
+    uniqueUrls: 3,
+  });
+  assert.deepEqual(
+    report.links.map((entry) => ({
+      sourceFields: entry.occurrences.map((occurrence) => occurrence.sourceField),
+      url: entry.url,
+    })),
+    [
+      {
+        sourceFields: ["body", "canonical"],
+        url: "https://alpha.example/reference",
+      },
+      {
+        sourceFields: ["body", "demo"],
+        url: "https://beta.example/demo",
+      },
+      {
+        sourceFields: ["repository"],
+        url: "https://gamma.example/repository",
+      },
+    ],
+  );
+  assert.equal(report.links[0].sourceCount, 1);
+  assert.equal(report.links[0].occurrences[1].bodyLine, undefined);
+  const text = formatExternalLinkReportText(report);
+  assert.match(text, /content\/posts\/canonical-source\.md · frontmatter\.canonical/u);
+  assert.match(text, /content\/projects\/project-source\.md · frontmatter\.repository/u);
+  assert.match(text, /content\/projects\/project-source\.md · frontmatter\.demo/u);
 });
 
 test("reports unsafe authored URL forms without leaking embedded credentials", () => {
@@ -336,8 +424,18 @@ test("runs the real inventory CLI without changing repository state", async () =
   const report = JSON.parse(result.stdout);
   assert.equal(report.checked, false);
   assert.equal(report.counts.records, 4);
-  assert.equal(report.counts.uniqueUrls, 1);
+  assert.equal(report.counts.uniqueUrls, 2);
+  assert.equal(report.counts.occurrences, 3);
   assert.equal(report.links[0].url, "https://blog-iota-five-59.vercel.app/");
+  assert.deepEqual(
+    report.links[0].occurrences.map((occurrence) => occurrence.sourceField),
+    ["body", "demo"],
+  );
+  assert.equal(report.links[1].url, "https://github.com/Zach424/MyBlog");
+  assert.deepEqual(
+    report.links[1].occurrences.map((occurrence) => occurrence.sourceField),
+    ["repository"],
+  );
   assert.equal(before, after);
 
   const source = await readFile(
