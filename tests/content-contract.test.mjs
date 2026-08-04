@@ -2,10 +2,12 @@ import assert from "node:assert/strict";
 import test from "node:test";
 import {
   ContentValidationError,
+  CURRENT_CONTENT_MAX_AGE_DAYS,
   deriveContentIndexes,
   isPublished,
   parsePostFile,
   parseProjectFile,
+  validateContentFreshness,
 } from "../lib/content/contract.ts";
 import { extractTableOfContents } from "../lib/content/markdown.ts";
 import { resolveContentBuildDate } from "../build/content-build-date.ts";
@@ -13,18 +15,24 @@ import { resolveContentBuildDate } from "../build/content-build-date.ts";
 function postSource({
   publishedAt = "2026-07-18",
   updatedAt,
+  freshness = "historical",
+  reviewedAt,
   tags = '["TypeScript", "Cloudflare"]',
   draft = false,
   featured = false,
   series,
   canonical,
 } = {}) {
+  const effectiveReviewedAt = reviewedAt ?? updatedAt ?? publishedAt;
+
   return `---
 title: "内容契约测试"
 description: "用于验证 Markdown frontmatter 解析、规范化与跨内容约束。"
 type: article
 publishedAt: ${publishedAt}
-${updatedAt ? `updatedAt: ${updatedAt}\n` : ""}tags: ${tags}
+${updatedAt ? `updatedAt: ${updatedAt}\n` : ""}freshness: ${freshness}
+reviewedAt: ${effectiveReviewedAt}
+tags: ${tags}
 draft: ${draft}
 featured: ${featured}
 ${series ? `series:\n  slug: ${series.slug}\n  title: ${series.title}\n  order: ${series.order}\n` : ""}${canonical ? `canonical: "${canonical}"\n` : ""}---
@@ -43,6 +51,8 @@ function projectSource({
 title: "MyBlog"
 description: "用于验证项目内容契约。"
 publishedAt: 2026-07-18
+freshness: current
+reviewedAt: 2026-07-18
 status: building
 stack: ["TypeScript", "React"]
 tags: ${tags}
@@ -66,6 +76,8 @@ test("parses and normalizes a valid post", () => {
   assert.equal(post.slug, "content-contract");
   assert.equal(post.url, "/posts/content-contract");
   assert.equal(post.publishedAt, "2026-07-18");
+  assert.equal(post.freshness, "historical");
+  assert.equal(post.reviewedAt, "2026-07-18");
   assert.deepEqual(post.tags, ["TypeScript", "Cloudflare"]);
   assert.ok(post.wordCount > 0);
   assert.equal(post.readingMinutes, 1);
@@ -132,6 +144,19 @@ test("enforces date and HTTPS URL invariants", () => {
         postSource({ publishedAt: "2026-07-18", updatedAt: "2026-07-17" }),
       ),
     /updatedAt.*不能早于/,
+  );
+
+  assert.throws(
+    () =>
+      parsePostFile(
+        "content/posts/stale-review.md",
+        postSource({
+          publishedAt: "2026-07-18",
+          updatedAt: "2026-07-20",
+          reviewedAt: "2026-07-19",
+        }),
+      ),
+    /reviewedAt.*不能早于 updatedAt/,
   );
 
   assert.throws(
@@ -209,6 +234,38 @@ test("filters drafts and future content deterministically", () => {
   assert.equal(isPublished(current, now), true);
   assert.equal(isPublished(future, now), false);
   assert.equal(isPublished(draft, now), false);
+});
+
+test("expires current records without invalidating historical snapshots", () => {
+  const current = parsePostFile(
+    "content/posts/current-record.md",
+    postSource({ freshness: "current", reviewedAt: "2026-07-18" }),
+  );
+  const historical = parsePostFile(
+    "content/posts/historical-snapshot.md",
+    postSource({ freshness: "historical", reviewedAt: "2026-07-18" }),
+  );
+
+  assert.doesNotThrow(() =>
+    validateContentFreshness(
+      [current, historical],
+      "2027-01-14",
+      CURRENT_CONTENT_MAX_AGE_DAYS,
+    ),
+  );
+  assert.throws(
+    () =>
+      validateContentFreshness(
+        [current, historical],
+        "2027-01-15",
+        CURRENT_CONTENT_MAX_AGE_DAYS,
+      ),
+    /当前维护内容已超过 180 天未复核/,
+  );
+  assert.throws(
+    () => validateContentFreshness([historical], "2026-07-17"),
+    /reviewedAt 不能晚于构建日期/,
+  );
 });
 
 test("freezes publication visibility to the author timezone at build time", () => {

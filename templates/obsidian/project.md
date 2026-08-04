@@ -4,6 +4,8 @@ slug: "{{title}}"
 description: ""
 publishedAt: {{date:YYYY-MM-DD}}
 updatedAt: {{date:YYYY-MM-DD}}
+freshness: current
+reviewedAt: {{date:YYYY-MM-DD}}
 status: planning
 stack:
   - TypeScript

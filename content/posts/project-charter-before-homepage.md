@@ -3,7 +3,9 @@ title: "为什么先写项目章程，再写首页"
 description: "在开始设计和开发前，用一页项目章程固定用户、产品承诺、第一版范围与成功标准。"
 type: article
 publishedAt: 2026-07-17
-updatedAt: 2026-07-18
+updatedAt: 2026-08-04
+freshness: historical
+reviewedAt: 2026-08-04
 tags: ["Project Management", "Design Systems", "Git"]
 draft: false
 featured: false

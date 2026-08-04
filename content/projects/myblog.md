@@ -2,15 +2,23 @@
 title: "MyBlog — 把学习记录做成工程资产"
 description: "从内容契约、工程轨迹设计到 Vercel 自动发布，构建一个可维护、可检索、可复盘的个人技术博客。"
 publishedAt: 2026-07-18
-updatedAt: 2026-07-19
+updatedAt: 2026-08-04
+freshness: current
+reviewedAt: 2026-08-04
 status: maintained
 stack: ["TypeScript", "React", "Next.js", "Vercel", "GitHub"]
 tags: ["TypeScript", "Next.js", "Vercel", "Personal Knowledge", "Design Systems"]
 draft: false
 featured: true
 repository: "https://github.com/Zach424/MyBlog"
-demo: "https://zach424-engineering-notes.zhiqingchen792.chatgpt.site"
+demo: "https://blog-iota-five-59.vercel.app"
 ---
+
+## 当前状态（2026-08-04）
+
+MyBlog 当前运行在 Vercel，稳定公开地址是 [blog-iota-five-59.vercel.app](https://blog-iota-five-59.vercel.app)。仓库使用原生 Next.js 16.3、React 19 和 TypeScript；GitHub `main` 自动触发 Production，质量门和独立线上冒烟共同验证交付。网页 Studio 与 Obsidian 都可以由作者独立发布，Obsidian 图片和笔记链接会在进入正式内容前转换，详情页从真实正文派生反向引用。
+
+Cloudflare、Sites、Vinext、Vite Worker 和 Wrangler 仅属于 2026-07-18 至 2026-07-19 的首版与迁移历史，不再是当前运行依赖。旧公开站保留为迁移期回退证据，页面顶部的 Live demo 始终指向当前生产站。
 
 ## 背景与目标
 
@@ -50,23 +58,29 @@ demo: "https://zach424-engineering-notes.zhiqingchen792.chatgpt.site"
 
 2026-07-19 根据维护目标把托管从 Cloudflare/Sites 迁移到 Vercel。迁移删除 Vinext、Vite、Worker、Wrangler 与 Sites 托管标记，恢复原生 `next dev/build/start`；原先 Worker 中的 Studio 静态资源、OAuth 与安全响应头分别迁入 App Router Route Handlers 和 Next.js headers。内容仍以 Git 为唯一事实来源，Obsidian 与网页后台产生的提交都会触发 Vercel 自动部署，因此迁移没有数据库或媒体数据搬运。
 
-初始模板的 npm scripts 隐含了特定 shell，导致 Windows 开发失败。命令被收敛为跨平台的 Vinext 入口，并用实际构建验证。
+Cloudflare 阶段的初始模板 npm scripts 隐含了特定 shell，导致 Windows 开发失败。当时的命令被收敛为跨平台的 Vinext 入口，并用实际构建验证；迁移到原生 Next.js 后，同一约束继续由 `next dev/build/start` 保持。
 
 这个故障后来沉淀为独立的 [Windows 下的跨平台 npm scripts](/posts/cross-platform-npm-scripts)，用于复用“脚本必须在真实目标 shell 中验证”的判断。
 
-社交元数据需要部署域名对应的绝对 URL，但本地与 Cloudflare 主机不同。根布局优先读取显式站点地址，否则从代理请求头推导，并保留本地开发回退。
+首版社交元数据需要部署域名对应的绝对 URL，但本地与 Cloudflare 主机不同。根布局因此优先读取显式站点地址，否则从代理请求头推导，并保留本地开发回退；这套主机推导在迁移 Vercel 后继续复用。
 
-框架默认给 HTML 返回 `no-store`，第一次缓存审计因此失败。Worker 现在对 HTML 显式使用 `max-age=0, s-maxage=3600, stale-while-revalidate=86400`，让浏览器每次复核、Cloudflare 边缘短期复用。Wrangler 干跑目录也曾被 ESLint 扫描并产生大量生成代码噪声，现已把 `.wrangler` 作为部署产物排除。
+Cloudflare 阶段的框架默认给 HTML 返回 `no-store`，第一次缓存审计因此失败。Worker 当时对 HTML 显式使用 `max-age=0, s-maxage=3600, stale-while-revalidate=86400`，让浏览器每次复核、Cloudflare 边缘短期复用。Wrangler 干跑目录也曾被 ESLint 扫描并产生大量生成代码噪声；这些目录现在只作为历史产物保留，不进入当前 Vercel 构建路径。
 
-生产依赖审计发现 Next.js 内部 PostCSS 版本存在中等级别公告；没有执行会降级框架的 `npm audit fix --force`，而是升级 Next.js 补丁版并将内部 PostCSS 最小覆盖到修复版本，再通过完整构建和 Worker 测试验证兼容性。
+生产依赖审计曾发现 Next.js 内部 PostCSS 版本存在中等级别公告；没有执行会降级框架的 `npm audit fix --force`，而是升级 Next.js 补丁版并将内部 PostCSS 最小覆盖到修复版本，再通过当时的完整构建和 Worker 测试验证兼容性。当前依赖已继续升级到 Next.js 16.3.0，并保持生产依赖审计为 0。
 
-Sites 首次生产发布后，首页与集合页返回 200，但没有任何内容，Sitemap 也只剩 7 个基础 URL，因此所有详情统一返回 404。第一次把现象误判为参数化路由兼容问题；第二次发布证明显式路由包装不能修复空内容索引。根因收敛到 Worker 模块初始化时使用运行时时钟过滤发布日期；现在改为在 Vite 构建时按 `Asia/Shanghai` 冻结日期，页面、搜索、RSS 与 Sitemap 共用同一确定内容集合。
+Sites 首次生产发布后，首页与集合页返回 200，但没有任何内容，Sitemap 也只剩 7 个基础 URL，因此所有详情统一返回 404。第一次把现象误判为参数化路由兼容问题；第二次发布证明显式路由包装不能修复空内容索引。根因收敛到 Worker 模块初始化时使用运行时时钟过滤发布日期；Cloudflare 版本随后改为在 Vite 构建时按 `Asia/Shanghai` 冻结日期。迁移 Vercel 后保留了确定构建日期契约，页面、搜索、RSS 与 Sitemap 仍共用同一内容集合。
 
 真实浏览器验收在 320px 宽度下发现文章页有 15px 横向滚动。页面内容本身没有越界，原因是根 `html` 与 `body` 的 `20rem` 最小宽度仍按完整视口计算，而桌面 Chromium 的垂直滚动条把可布局宽度减到 305px。删除根最小宽度后，页面留白继续由 `.page-shell` 控制，首页、文章与搜索页的 `scrollWidth` 都与 `clientWidth` 相等；静态质量审计同时禁止这条规则回归。
 
 ## 结果证据
 
-工程基线、内容契约、正式首页、响应式设计、深色偏好、分享卡与站点图标、结构化数据、内容校验管线、完整核心阅读路径、站内搜索与发布发现端点已经完成。完整质量门通过 13 项单元测试、7 项 Worker 集成测试和 6 项发布审计；所有可见内部链接健康，文本 Token 达到 WCAG AA，生产依赖审计为 0 个已知漏洞。构建日期修复发布后，生产 Sitemap 包含 23 个 URL，逐路由请求全部返回 200；RSS 含 4 条内容，搜索、robots、图标、结构化数据、安全响应头与真实 404 均通过在线验收。真实 Chromium 进一步覆盖桌面、390px、320px、浅色、深色、Reduced Motion、搜索和键盘路径。2026-07-19 经用户明确授权后，Sites 访问策略已切换为公开；无凭证 HTTP 与未登录浏览器再次验证 23/23 路由、320px 首页和搜索路径。项目保持 `maintained`，生产站点现已面向公众访问。
+### Cloudflare / Sites 阶段（历史）
+
+工程基线、内容契约、正式首页、响应式设计、深色偏好、分享卡与站点图标、结构化数据、内容校验管线、核心阅读路径、站内搜索与发布发现端点在首个阶段完成。当时的完整质量门通过 13 项单元测试、7 项 Worker 集成测试和 6 项发布审计；构建日期修复后，生产 Sitemap 包含 23 个 URL。2026-07-19 经用户明确授权后，Sites 访问策略切换为公开，无凭证 HTTP 与未登录浏览器完成 23/23 路由验收。
+
+### Vercel 阶段（当前）
+
+当前站点使用原生 Next.js、GitHub 自动 Production 和稳定域名冒烟；Studio GitHub OAuth、Obsidian 模板/附件/链接发布、构建期内容关系、文章与项目反向引用、Vercel 回滚与恢复均已验收。Iteration 0020 的最终质量门通过 37 项单元测试、15 项生产 HTTP/质量测试和 33 个静态生成任务，生产依赖审计为 0；稳定域名冒烟覆盖 23 条路由并确认 OAuth 302。项目保持 `maintained`，当前生产站面向公众访问且不依赖 Cloudflare。
 
 ## 复盘
 

@@ -54,12 +54,13 @@ const contentCacheHeader = {
 };
 
 export default async function createNextConfig(): Promise<NextConfig> {
-  await validateContentRepository(process.cwd());
+  const contentBuildDate = resolveContentBuildDate();
+  await validateContentRepository(process.cwd(), contentBuildDate);
 
   return {
     poweredByHeader: false,
     env: {
-      CONTENT_BUILD_DATE: resolveContentBuildDate(),
+      CONTENT_BUILD_DATE: contentBuildDate,
     },
     outputFileTracingIncludes: {
       "/*": [

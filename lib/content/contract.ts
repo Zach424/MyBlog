@@ -4,6 +4,10 @@ import { z } from "zod";
 const SLUG_PATTERN = /^[a-z0-9]+(?:-[a-z0-9]+)*$/;
 const ISO_DATE_PATTERN = /^\d{4}-\d{2}-\d{2}$/;
 
+export const CONTENT_FRESHNESS_VALUES = ["current", "historical"] as const;
+export type ContentFreshness = (typeof CONTENT_FRESHNESS_VALUES)[number];
+export const CURRENT_CONTENT_MAX_AGE_DAYS = 180;
+
 export const TAG_REGISTRY = [
   { name: "Next.js", slug: "nextjs", aliases: ["next.js", "nextjs"] },
   { name: "TypeScript", slug: "typescript", aliases: ["typescript", "ts"] },
@@ -71,6 +75,8 @@ const postFrontmatterSchema = z
     type: z.enum(["article", "til"]),
     publishedAt: isoDateSchema,
     updatedAt: isoDateSchema.optional(),
+    freshness: z.enum(CONTENT_FRESHNESS_VALUES),
+    reviewedAt: isoDateSchema,
     tags: rawTagsSchema,
     draft: z.boolean(),
     featured: z.boolean().default(false),
@@ -85,6 +91,14 @@ const postFrontmatterSchema = z
         code: "custom",
         path: ["updatedAt"],
         message: "不能早于 publishedAt",
+      });
+    }
+
+    if (value.reviewedAt < (value.updatedAt ?? value.publishedAt)) {
+      context.addIssue({
+        code: "custom",
+        path: ["reviewedAt"],
+        message: value.updatedAt ? "不能早于 updatedAt" : "不能早于 publishedAt",
       });
     }
 
@@ -104,6 +118,8 @@ const projectFrontmatterSchema = z
     description: z.string().trim().min(1, "摘要不能为空").max(320, "摘要过长"),
     publishedAt: isoDateSchema,
     updatedAt: isoDateSchema.optional(),
+    freshness: z.enum(CONTENT_FRESHNESS_VALUES),
+    reviewedAt: isoDateSchema,
     status: z.enum(["planning", "building", "maintained", "archived"]),
     stack: z.array(z.string().trim().min(1)).min(1).max(12),
     tags: rawTagsSchema,
@@ -120,6 +136,14 @@ const projectFrontmatterSchema = z
         code: "custom",
         path: ["updatedAt"],
         message: "不能早于 publishedAt",
+      });
+    }
+
+    if (value.reviewedAt < (value.updatedAt ?? value.publishedAt)) {
+      context.addIssue({
+        code: "custom",
+        path: ["reviewedAt"],
+        message: value.updatedAt ? "不能早于 updatedAt" : "不能早于 publishedAt",
       });
     }
 
@@ -326,6 +350,33 @@ export function parseProjectFile(sourcePath: string, raw: string): ProjectRecord
 export function isPublished(record: ContentRecord, now = new Date()) {
   const today = now.toISOString().slice(0, 10);
   return !record.draft && record.publishedAt <= today;
+}
+
+export function validateContentFreshness(
+  records: ContentRecord[],
+  buildDate: string,
+  maxAgeDays = CURRENT_CONTENT_MAX_AGE_DAYS,
+) {
+  const buildTime = Date.parse(`${buildDate}T00:00:00Z`);
+
+  for (const record of records) {
+    const reviewedTime = Date.parse(`${record.reviewedAt}T00:00:00Z`);
+    const ageDays = Math.floor((buildTime - reviewedTime) / 86_400_000);
+
+    if (ageDays < 0) {
+      throw new ContentValidationError(
+        record.sourcePath,
+        `reviewedAt 不能晚于构建日期 ${buildDate}`,
+      );
+    }
+
+    if (record.freshness === "current" && ageDays > maxAgeDays) {
+      throw new ContentValidationError(
+        record.sourcePath,
+        `当前维护内容已超过 ${maxAgeDays} 天未复核（reviewedAt: ${record.reviewedAt}）`,
+      );
+    }
+  }
 }
 
 export function sortPosts(posts: PostRecord[]) {

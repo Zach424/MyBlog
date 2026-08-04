@@ -2,8 +2,10 @@ import { readdir, readFile } from "node:fs/promises";
 import path from "node:path";
 import {
   deriveContentIndexes,
+  isPublished,
   parsePostFile,
   parseProjectFile,
+  validateContentFreshness,
 } from "../lib/content/contract";
 import { deriveContentRelations } from "../lib/content/relations";
 
@@ -34,7 +36,10 @@ async function readMarkdownDirectory(directory: string) {
   );
 }
 
-export async function validateContentRepository(projectRoot: string) {
+export async function validateContentRepository(
+  projectRoot: string,
+  contentBuildDate: string,
+) {
   const [postSources, projectSources] = await Promise.all([
     readMarkdownDirectory(path.join(projectRoot, "content", "posts")),
     readMarkdownDirectory(path.join(projectRoot, "content", "projects")),
@@ -47,6 +52,11 @@ export async function validateContentRepository(projectRoot: string) {
 
   deriveContentIndexes(posts, projects);
   deriveContentRelations([...posts, ...projects]);
+  const buildTime = new Date(`${contentBuildDate}T12:00:00Z`);
+  validateContentFreshness(
+    [...posts, ...projects].filter((record) => isPublished(record, buildTime)),
+    contentBuildDate,
+  );
 
   return { posts: posts.length, projects: projects.length };
 }

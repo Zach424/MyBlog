@@ -73,7 +73,7 @@ export default async function ProjectPage({ params }: ProjectPageProps) {
           name: project.title,
           description: project.description,
           dateCreated: project.publishedAt,
-          dateModified: project.updatedAt ?? project.publishedAt,
+          dateModified: project.reviewedAt,
           inLanguage: "zh-CN",
           keywords: project.tags,
           url: projectUrl,
@@ -99,6 +99,8 @@ export default async function ProjectPage({ params }: ProjectPageProps) {
         description={project.description}
         publishedAt={project.publishedAt}
         updatedAt={project.updatedAt}
+        freshness={project.freshness}
+        reviewedAt={project.reviewedAt}
         readingMinutes={project.readingMinutes}
         tags={tags}
         aside={

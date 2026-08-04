@@ -13,6 +13,11 @@ export const TAG_OPTIONS = [
   "Personal Knowledge",
 ];
 
+export const FRESHNESS_OPTIONS = [
+  { label: "当前维护", value: "current" },
+  { label: "历史快照", value: "historical" },
+];
+
 const slugField = {
   label: "稳定网址 Slug",
   name: "slug",
@@ -47,6 +52,15 @@ const sharedFields = [
   { label: "摘要", name: "description", widget: "text", hint: "用一段独立文字说明读者能得到什么。" },
   dateField("发布日期", "publishedAt"),
   dateField("更新日期", "updatedAt", false),
+  {
+    label: "内容语境",
+    name: "freshness",
+    widget: "select",
+    options: FRESHNESS_OPTIONS,
+    default: "historical",
+    hint: "当前维护内容承诺与现状一致；历史快照保留当时判断，并应在正文说明当前去向。",
+  },
+  dateField("复核日期", "reviewedAt"),
   tagsField,
   { label: "草稿", name: "draft", widget: "boolean", default: true, hint: "草稿不会进入公开页面、搜索、RSS 或 Sitemap。" },
   { label: "首页精选", name: "featured", widget: "boolean", default: false, hint: "草稿不能设为精选。" },
@@ -140,10 +154,10 @@ export function createStudioConfig(origin) {
         sortable_fields: ["publishedAt", "updatedAt", "title"],
         fields: [
           ...sharedFields.slice(0, 3),
-          ...sharedFields.slice(3, 5),
+          ...sharedFields.slice(3, 7),
           { label: "状态", name: "status", widget: "select", options: [{ label: "规划中", value: "planning" }, { label: "建设中", value: "building" }, { label: "持续维护", value: "maintained" }, { label: "已归档", value: "archived" }], default: "planning" },
           { label: "技术栈", name: "stack", widget: "list", allow_add: true, min: 1, max: 12 },
-          ...sharedFields.slice(5),
+          ...sharedFields.slice(7),
           { label: "源码地址", name: "repository", widget: "string", required: false, pattern: ["^https://", "必须是完整 HTTPS URL"] },
           { label: "演示地址", name: "demo", widget: "string", required: false, pattern: ["^https://", "必须是完整 HTTPS URL"] },
           { label: "正文", name: "body", widget: "markdown", modes: ["raw", "rich_text"], required: true },

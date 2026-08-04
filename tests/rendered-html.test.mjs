@@ -113,6 +113,9 @@ test("renders Markdown articles with metadata, anchors, code and navigation", as
   assert.match(html, /class="[^"]*hljs[^"]*"/);
   assert.match(html, /href="\/series\/build-my-blog"/);
   assert.match(html, /href="\/tags\/typescript"/);
+  assert.match(html, /Historical snapshot/);
+  assert.match(html, /<dt>Reviewed<\/dt>/);
+  assert.match(html, /2026-08-04/);
   assert.match(html, /<section class="content-backlinks" aria-labelledby="backlinks-title">/);
   assert.match(html, /引用这条记录/);
   assert.match(html, /href="\/projects\/myblog"/);
@@ -131,6 +134,12 @@ test("renders project Markdown and returns a real 404 for unknown content", asyn
   assert.match(projectHtml, /MyBlog/);
   assert.match(projectHtml, /GitHub repository/);
   assert.match(projectHtml, /https:\/\/github\.com\/Zach424\/MyBlog/);
+  assert.match(projectHtml, /Current record/);
+  assert.match(projectHtml, /https:\/\/blog-iota-five-59\.vercel\.app/);
+  assert.doesNotMatch(
+    projectHtml,
+    /href="https:\/\/zach424-engineering-notes\.zhiqingchen792\.chatgpt\.site"/,
+  );
   assert.match(projectHtml, /<section class="content-backlinks" aria-labelledby="backlinks-title">/);
   assert.match(projectHtml, /href="\/posts\/building-a-maintainable-blog"/);
   assert.match(projectHtml, /href="\/posts\/cross-platform-npm-scripts"/);
@@ -235,8 +244,11 @@ test("removes starter artifacts and keeps the Vercel-native design contract expl
   assert.match(packageJson, /"rehype-highlight": "7\.0\.2"/);
   assert.match(packageJson, /"remark-gfm": "4\.0\.1"/);
   assert.match(packageJson, /"typecheck": "next typegen && tsc --noEmit"/);
-  assert.match(nextConfig, /validateContentRepository\(process\.cwd\(\)\)/);
-  assert.match(nextConfig, /CONTENT_BUILD_DATE/);
+  assert.match(
+    nextConfig,
+    /validateContentRepository\(process\.cwd\(\), contentBuildDate\)/,
+  );
+  assert.match(nextConfig, /CONTENT_BUILD_DATE: contentBuildDate/);
   assert.match(nextConfig, /STUDIO_CONTENT_SECURITY_POLICY/);
   assert.match(contentModule, /readMarkdownDirectory/);
   assert.match(vercelConfig, /"framework": "nextjs"/);

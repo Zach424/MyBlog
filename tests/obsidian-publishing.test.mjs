@@ -12,6 +12,8 @@ slug: obsidian-publishing
 description: "验证本地草稿如何进入与网页后台相同的内容管线。"
 type: article
 publishedAt: 2026-07-19
+freshness: historical
+reviewedAt: 2026-07-19
 tags: ["Personal Knowledge", "Git"]
 draft: true
 featured: false
@@ -26,6 +28,8 @@ title: "Obsidian Project"
 slug: obsidian-project
 description: "验证项目草稿的发布路径。"
 publishedAt: 2026-07-19
+freshness: current
+reviewedAt: 2026-07-19
 status: planning
 stack: ["TypeScript"]
 tags: ["Project Management"]

@@ -3,7 +3,9 @@ title: "从零搭建可维护的个人技术博客"
 description: "记录这个博客如何先冻结目标、内容契约和部署边界，再用可验证的小步迭代完成正式首页。"
 type: article
 publishedAt: 2026-07-18
-updatedAt: 2026-07-18
+updatedAt: 2026-08-04
+freshness: historical
+reviewedAt: 2026-08-04
 tags: ["Next.js", "TypeScript", "Cloudflare", "Design Systems"]
 draft: false
 featured: true
@@ -12,6 +14,8 @@ series:
   title: 从零构建个人博客
   order: 2
 ---
+
+> 历史快照：本文记录 2026-07-18 的首版 Cloudflare/Vinext 实现与当时的工程判断。项目后来迁移到原生 Next.js 与 Vercel；当前架构和持续验证结果见 [MyBlog 项目复盘](/projects/myblog)。
 
 ## 为什么不是先挑一个博客模板
 
@@ -29,11 +33,11 @@ content/
   projects/<slug>.md
 ```
 
-每篇内容在构建前校验标题、摘要、日期、标签和草稿状态。专题和标签从文章字段派生，不维护第二份容易漂移的索引。生产页面不读取运行时文件系统，而是由 Vite 把 Markdown 原文打进 Cloudflare Worker 输出。
+每篇内容在构建前校验标题、摘要、日期、标签和草稿状态。专题和标签从文章字段派生，不维护第二份容易漂移的索引。在 2026-07-18 的首版中，生产页面不读取运行时文件系统，而是由 Vite 把 Markdown 原文打进 Cloudflare Worker 输出。
 
 ## 技术边界比框架名称更重要
 
-当前项目采用 React、Next.js 兼容 App Router、Vinext 和 Vite。选择它们的关键不是流行程度，而是同时满足三个边界：本地开发流程熟悉、构建结果可以运行在 Cloudflare、内容仍然属于 Git 仓库。
+当时的项目采用 React、Next.js 兼容 App Router、Vinext 和 Vite。选择它们的关键不是流行程度，而是同时满足三个边界：本地开发流程熟悉、构建结果可以运行在 Cloudflare、内容仍然属于 Git 仓库。
 
 首版没有数据库、后台和登录系统。发布一篇文章只需要新增 Markdown、运行检查并提交。等真实需求出现，再判断是否需要搜索服务、评论或持久化存储。
 
@@ -47,6 +51,6 @@ Evidence Rail 只允许出现三种可解释状态：已经验证、正在构建
 
 ## 如何证明这一轮真的完成
 
-每轮开发都必须同时留下代码、稳定文档、验证证据和独立提交。当前检查覆盖 ESLint、Cloudflare 目标构建、Worker 服务端 HTML、内容契约和文档链接。失败也会记录在轮次归档中，避免以后重复踩坑。
+每轮开发都必须同时留下代码、稳定文档、验证证据和独立提交。该轮检查覆盖 ESLint、Cloudflare 目标构建、Worker 服务端 HTML、内容契约和文档链接。失败也会记录在轮次归档中，避免以后重复踩坑。
 
-现在文章、项目、专题和标签路由已经使用同一份内容数据，Markdown 正文、目录、代码高亮、相邻文章和 404 也完成了。下一步是补齐搜索、RSS、站点地图与部署验收，把“可阅读”推进到“可发现、可订阅、可上线”。
+到该轮结束时，文章、项目、专题和标签路由已经使用同一份内容数据，Markdown 正文、目录、代码高亮、相邻文章和 404 也完成了。当时的下一步是补齐搜索、RSS、站点地图与部署验收，把“可阅读”推进到“可发现、可订阅、可上线”；这些能力和后续迁移结果已汇总到项目复盘。

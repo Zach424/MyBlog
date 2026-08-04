@@ -44,7 +44,7 @@ export async function generateMetadata({ params }: PostPageProps): Promise<Metad
       description: post.description,
       url: post.url,
       publishedTime: post.publishedAt,
-      modifiedTime: post.updatedAt,
+      modifiedTime: post.reviewedAt,
       tags: post.tags,
     },
     twitter: {
@@ -82,7 +82,7 @@ export default async function PostPage({ params }: PostPageProps) {
           headline: post.title,
           description: post.description,
           datePublished: post.publishedAt,
-          dateModified: post.updatedAt ?? post.publishedAt,
+          dateModified: post.reviewedAt,
           inLanguage: "zh-CN",
           keywords: post.tags,
           mainEntityOfPage: canonicalUrl,
@@ -107,6 +107,8 @@ export default async function PostPage({ params }: PostPageProps) {
         description={post.description}
         publishedAt={post.publishedAt}
         updatedAt={post.updatedAt}
+        freshness={post.freshness}
+        reviewedAt={post.reviewedAt}
         readingMinutes={post.readingMinutes}
         tags={tags}
         aside={

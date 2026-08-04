@@ -4,6 +4,9 @@ slug: "{{title}}"
 description: ""
 type: til
 publishedAt: {{date:YYYY-MM-DD}}
+updatedAt: {{date:YYYY-MM-DD}}
+freshness: historical
+reviewedAt: {{date:YYYY-MM-DD}}
 tags:
   - Tooling
 draft: true

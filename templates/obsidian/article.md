@@ -5,6 +5,8 @@ description: ""
 type: article
 publishedAt: {{date:YYYY-MM-DD}}
 updatedAt: {{date:YYYY-MM-DD}}
+freshness: historical
+reviewedAt: {{date:YYYY-MM-DD}}
 tags:
   - TypeScript
 draft: true

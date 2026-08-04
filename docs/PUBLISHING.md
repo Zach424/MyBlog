@@ -9,7 +9,7 @@
 1. 打开生产站 `/studio`；
 2. 点击 GitHub 登录，仅在 GitHub 官方页面授权；
 3. 选择“文章与 TIL”或“项目复盘”，创建条目；
-4. 填写稳定 slug、标题、摘要、日期、标签和正文；
+4. 填写稳定 slug、标题、摘要、内容语境、复核日期、标签和正文；历史记录选择 Historical，持续维护说明选择 Current；
 5. 草稿阶段保持 `draft: true`，通过 editorial workflow 保存；
 6. 预览并把状态推进到 Ready；
 7. 发布后确认 GitHub 提交/PR、Quality Gate、Vercel Production 和在线文章全部成功。
@@ -23,9 +23,10 @@
 3. 将工作文件放入 `content/inbox`，文件名直接使用稳定 slug，例如 `learning-vercel-deployments.md`；
 4. 图片可直接粘贴到 Obsidian；默认先进入 `public/uploads`，发布器会移动到 `public/uploads/<slug>/`、规范化带空格或中文的文件名，并重写 Wiki/Markdown 图片链接；支持 PNG、JPEG、WebP、GIF 和 AVIF；
 5. 链接已有文章或项目时可以写 `[[note]]`、`[[note#标题|别名]]`、`[[projects/slug]]` 或相对 Markdown 链接；发布器会转换为稳定 `/posts/...`、`/projects/...` URL 和标题锚点；
-6. 先运行“检查当前草稿”；确认内容已经可以公开后，运行“发布当前草稿并同步 GitHub”；该命令会把 `draft` 改为 `false`，未来日期内容会保持计划状态；
-7. 阅读预检摘要，确认目标路径、附件、站内链接和 frontmatter；
-8. 发布器运行完整质量门、创建内容提交并 push `main`；Vercel Git 连接完成后会自动上线。若团队改用 PR 流程，则不要运行同步命令，改由普通 Git 客户端创建分支和 PR。
+6. 选择 `freshness`：学习过程和阶段性方案通常用 `historical`，需要持续准确的项目/操作说明用 `current`；`reviewedAt` 填写本次确认事实的日期；
+7. 先运行“检查当前草稿”；确认内容已经可以公开后，运行“发布当前草稿并同步 GitHub”；该命令会把 `draft` 改为 `false`，未来日期内容会保持计划状态；
+8. 阅读预检摘要，确认目标路径、附件、站内链接、内容语境和 frontmatter；
+9. 发布器运行完整质量门、创建内容提交并 push `main`；Vercel Git 连接完成后会自动上线。若团队改用 PR 流程，则不要运行同步命令，改由普通 Git 客户端创建分支和 PR。
 
 命令行等价操作：
 
@@ -38,7 +39,7 @@ npm run content:publish -- content/inbox/learning-vercel-deployments.md --push
 
 ## 内容字段
 
-所有内容共有：`title`、`description`、`publishedAt`、`tags`、`draft`、`featured` 和正文。文章额外有 `type`、可选 `series`/`canonical`；项目额外有 `status`、`stack`、可选 `repository`/`demo`。详细契约见 [CONTENT_MODEL.md](./CONTENT_MODEL.md)。
+所有内容共有：`title`、`description`、`publishedAt`、`freshness`、`reviewedAt`、`tags`、`draft`、`featured` 和正文。文章额外有 `type`、可选 `series`/`canonical`；项目额外有 `status`、`stack`、可选 `repository`/`demo`。详细契约见 [CONTENT_MODEL.md](./CONTENT_MODEL.md)。
 
 ## 发布前自检
 
@@ -46,6 +47,8 @@ npm run content:publish -- content/inbox/learning-vercel-deployments.md --push
 - 标题和摘要能独立说明读者所得；
 - 标签来自 Studio/契约注册表；
 - `updatedAt` 不早于 `publishedAt`；
+- `reviewedAt` 不早于 `updatedAt`/`publishedAt`，也不写未来日期；
+- Historical snapshot 明确说明记录时间和当前去向；Current record 已逐项复核地址、版本、状态和操作说明；
 - 外链使用 HTTPS；
 - 裸 Wiki 链接的 slug 在文章与项目间唯一；同名时显式写 `posts/slug` 或 `projects/slug`；
 - 不使用 Obsidian `#^block-id` 块引用；公开知识链接使用笔记或标题链接；
@@ -59,5 +62,6 @@ npm run content:publish -- content/inbox/learning-vercel-deployments.md --push
 - `/studio` 返回 503：生产 OAuth 环境变量未配置或未重新部署。
 - GitHub 登录回调失败：OAuth App 的 Homepage/Callback 与当前生产 origin 不一致。
 - 内容未上线：确认 PR 已进入 `main`、Vercel Production 成功，并检查 `draft` 和日期。
+- 构建提示“超过 180 天未复核”：逐项复查 Current record 的架构、外链、版本和状态，更新正文/`updatedAt`（如有变化）与 `reviewedAt`；不要只改日期绕过复核。
 - Obsidian 拒绝发布：根据错误修正 slug、标签、日期、附件路径、站内链接或字段；目标不存在/未公开时先发布目标，歧义时写明 `posts/` 或 `projects/`，不要绕过校验。
 - Preview 无法登录 Studio：Preview 默认关闭 OAuth，这是安全设计；在 Production 验收发布。

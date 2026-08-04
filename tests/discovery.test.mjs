@@ -14,6 +14,8 @@ const post = {
   description: "A deterministic route & feed.",
   publishedAt: "2026-07-18",
   updatedAt: "2026-07-19",
+  freshness: "historical",
+  reviewedAt: "2026-08-04",
   tags: ["TypeScript"],
   url: "/posts/build-worker",
 };
@@ -23,6 +25,8 @@ const project = {
   title: "MyBlog",
   description: "Project record",
   publishedAt: "2026-07-17",
+  freshness: "current",
+  reviewedAt: "2026-08-04",
   tags: ["Cloudflare"],
   url: "/projects/myblog",
 };

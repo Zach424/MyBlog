@@ -83,6 +83,8 @@ export function ContentHeader({
   description,
   publishedAt,
   updatedAt,
+  freshness,
+  reviewedAt,
   readingMinutes,
   tags,
   aside,
@@ -92,6 +94,8 @@ export function ContentHeader({
   description: string;
   publishedAt: string;
   updatedAt?: string;
+  freshness: ContentRecord["freshness"];
+  reviewedAt: string;
   readingMinutes: number;
   tags: Array<{ href: string; name: string }>;
   aside?: ReactNode;
@@ -112,6 +116,16 @@ export function ContentHeader({
       </div>
       <aside className="content-facts" aria-label="内容信息">
         <dl>
+          <div>
+            <dt>Context</dt>
+            <dd>{freshness === "current" ? "Current record" : "Historical snapshot"}</dd>
+          </div>
+          <div>
+            <dt>Reviewed</dt>
+            <dd>
+              <time dateTime={reviewedAt}>{reviewedAt}</time>
+            </dd>
+          </div>
           <div>
             <dt>Published</dt>
             <dd>

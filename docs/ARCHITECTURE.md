@@ -48,9 +48,11 @@ vercel.json                         Vercel Next.js 框架声明
 
 ## 4. 内容与构建
 
-`next.config.ts` 在开发和构建开始时调用 `validateContentRepository`，先验证全部 Markdown。`lib/content/index.ts` 在构建/服务端从 `content/posts` 与 `content/projects` 读取文件，解析为统一记录，过滤草稿和未来内容，再派生专题、标签、搜索、RSS 与 Sitemap。
+`next.config.ts` 在开发和构建开始时冻结作者时区日期，并把同一日期传给 `validateContentRepository`。校验器先验证全部 Markdown，再对已公开内容执行关系完整性与新鲜度检查。`lib/content/index.ts` 在构建/服务端从 `content/posts` 与 `content/projects` 读取文件，解析为统一记录，过滤草稿和未来内容，再派生专题、标签、搜索、RSS 与 Sitemap。
 
 公开日期按 `Asia/Shanghai` 在 Next.js 配置加载时冻结为 `CONTENT_BUILD_DATE`。同一个部署内的页面、搜索和 Feed 因而共享确定内容集合，不会因 Serverless 实例启动时间变化。
+
+每条正式内容声明 `freshness` 和 `reviewedAt`。`historical` 是保留当时决策的快照，不随时间失效；`current` 承诺与现行系统一致，公开后最多 180 天必须复核。复核日期不能早于内容更新日期、不能晚于构建日期。详情页服务端渲染 Context 与 Reviewed；结构化数据的 `dateModified` 使用复核日期。
 
 内容目录通过 Next.js output tracing 显式包含在部署中，既支持 Vercel Serverless，也不会依赖开发机器路径。
 
@@ -91,6 +93,7 @@ Vercel GitHub Integration 负责每个分支的 Preview 和 `main` 的 Productio
 - 稳定 URL 来自文件名/slug，不随日期和平台变化。
 - 草稿、未来内容不能进入页面、搜索、RSS 或 Sitemap。
 - 公开站内链接必须指向同一构建中的公开文章或项目；反向引用只能从正文链接派生。
+- 公开内容必须声明语境和复核日期；Current record 超过 180 天未复核不能进入新部署。
 - `/studio` 与 OAuth 永远不缓存、不索引，并维持同源 state 验证；只有版本化 CMS 运行时可不可变缓存。
 - 发布平台不能成为写作前置条件；Obsidian 和 Git 提交在本地仍可完成。
 - 每轮结构、设计、技术、功能、方法、验证、经验和风险必须与代码一起归档。

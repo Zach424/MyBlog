@@ -1,8 +1,15 @@
 import assert from "node:assert/strict";
 import { readFile } from "node:fs/promises";
 import test from "node:test";
-import { TAG_OPTIONS, createStudioConfig } from "../studio/config.mjs";
-import { TAG_REGISTRY } from "../lib/content/contract.ts";
+import {
+  FRESHNESS_OPTIONS,
+  TAG_OPTIONS,
+  createStudioConfig,
+} from "../studio/config.mjs";
+import {
+  CONTENT_FRESHNESS_VALUES,
+  TAG_REGISTRY,
+} from "../lib/content/contract.ts";
 
 test("maps the publishing studio to the single Git content source", () => {
   const config = createStudioConfig("https://blog.example.test/path");
@@ -21,11 +28,15 @@ test("maps the publishing studio to the single Git content source", () => {
 
 test("keeps CMS tags and required content fields aligned with the contract", () => {
   assert.deepEqual(TAG_OPTIONS, TAG_REGISTRY.map((tag) => tag.name));
+  assert.deepEqual(
+    FRESHNESS_OPTIONS.map((option) => option.value),
+    CONTENT_FRESHNESS_VALUES,
+  );
 
   const config = createStudioConfig("https://blog.example.test");
   for (const collection of config.collections) {
     const names = collection.fields.map((field) => field.name);
-    for (const required of ["title", "slug", "description", "publishedAt", "tags", "draft", "featured", "body"]) {
+    for (const required of ["title", "slug", "description", "publishedAt", "freshness", "reviewedAt", "tags", "draft", "featured", "body"]) {
       assert.ok(names.includes(required), `${collection.name}: ${required}`);
     }
   }

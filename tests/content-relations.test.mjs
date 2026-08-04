@@ -13,6 +13,8 @@ title: "Post ${slug}"
 description: "用于验证公开内容引用与反向链接索引。"
 type: article
 publishedAt: 2026-08-04
+freshness: historical
+reviewedAt: 2026-08-04
 tags: ["Personal Knowledge"]
 draft: false
 featured: false
@@ -29,6 +31,8 @@ function project(slug, body) {
 title: "Project ${slug}"
 description: "用于验证文章与项目之间的双向知识关系。"
 publishedAt: 2026-08-03
+freshness: current
+reviewedAt: 2026-08-04
 status: maintained
 stack: ["TypeScript"]
 tags: ["Personal Knowledge"]

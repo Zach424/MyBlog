@@ -19,6 +19,8 @@ description: "独立摘要"
 type: article # article | til
 publishedAt: 2026-07-19
 updatedAt: 2026-07-19
+freshness: historical # historical | current
+reviewedAt: 2026-07-19
 tags: ["Next.js", "TypeScript", "Vercel"]
 draft: true
 featured: false
@@ -43,6 +45,8 @@ title: "项目名称"
 description: "项目摘要"
 publishedAt: 2026-07-19
 updatedAt: 2026-07-19
+freshness: current # historical | current
+reviewedAt: 2026-07-19
 status: maintained # planning | building | maintained | archived
 stack: ["TypeScript", "React", "Next.js", "Vercel"]
 tags: ["TypeScript", "React", "Vercel"]
@@ -63,9 +67,20 @@ Slug 只能使用小写英文字母、数字和连字符，并必须与文件名
 
 可见日期按作者时区 `Asia/Shanghai` 在构建时冻结。`draft: true`、发布日期晚于构建日期的记录不会出现在详情、集合、搜索、RSS 或 Sitemap。
 
+## 内容语境与复核
+
+`freshness` 与 `reviewedAt` 是所有文章、TIL 和项目的必填字段：
+
+- `historical`：按时间点保存问题、方案和证据；可以保留旧框架/平台，但正文应说明这是历史并链接当前记录；
+- `current`：承诺架构、地址、状态和操作说明与当前系统一致；最多 180 天必须重新复核；
+- `reviewedAt`：最近一次逐项确认事实的日期，不能早于 `updatedAt`（或 `publishedAt`），也不能晚于构建日期；
+- 计划/未来内容在公开前不参与 180 天门，Historical snapshot 不因时间推移失效。
+
+详情页事实栏显示 `Context` 与 `Reviewed`。`dateModified` 使用 `reviewedAt`，因此搜索引擎和读者看到同一复核证据。更新正文后必须同步更新 `updatedAt` 和 `reviewedAt`；只做事实复核也需要更新 `reviewedAt`。
+
 ## 构建实现
 
-- `build/validate-content.ts`：Next.js 配置加载时读取全部内容并执行 schema、重复 slug、标签和专题连续性校验；
+- `build/validate-content.ts`：Next.js 配置加载时读取全部内容并执行 schema、重复 slug、标签、专题、关系与 180 天新鲜度校验；
 - `lib/content/index.ts`：使用 Node 文件系统读取 Markdown，并生成公开文章、项目、标签和专题索引；
 - `next.config.ts`：注入构建日期，并通过 `outputFileTracingIncludes` 把 Markdown 纳入 Vercel Serverless 产物；
 - `lib/content/markdown.ts`：生成与正文一致的目录锚点；
