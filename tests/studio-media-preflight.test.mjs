@@ -34,6 +34,29 @@ function browserFile(bytes, name, type = "application/octet-stream") {
   return new File([bytes], name, { type });
 }
 
+function deferred() {
+  let reject;
+  let resolve;
+  const promise = new Promise((resolvePromise, rejectPromise) => {
+    reject = rejectPromise;
+    resolve = resolvePromise;
+  });
+  return { promise, reject, resolve };
+}
+
+function inspectedFile(file, sha256 = "a".repeat(64)) {
+  return {
+    bytes: file.size,
+    extension: ".webp",
+    fileName: file.name,
+    format: "webp",
+    height: 18,
+    pages: 1,
+    sha256,
+    width: 32,
+  };
+}
+
 test("keeps the Studio browser budget aligned with the authoritative media policy", () => {
   assert.deepEqual(STUDIO_MEDIA_BUDGET, MEDIA_BUDGET);
   assert.deepEqual(
@@ -231,6 +254,76 @@ test("tracks only committed approvals in the current Studio page session", async
   assert.equal(fetches, 1, "session checks must reuse the build snapshot and in-memory ledger");
 });
 
+test("stops stale manifest and confirmation continuations before side effects", async () => {
+  const manifestGate = deferred();
+  let current = true;
+  let manifestConfirmations = 0;
+  const manifestChecker = createStudioMediaConflictChecker({
+    confirmReplace: () => { manifestConfirmations += 1; return true; },
+    documentRef: { querySelectorAll: () => [{ value: "stale-entry" }] },
+    fetchImpl: () => manifestGate.promise,
+  });
+  const manifestCheck = manifestChecker({
+    bytes: 9,
+    fileName: "cover.webp",
+    sha256: "b".repeat(64),
+  }, { isCurrent: () => current });
+  current = false;
+  manifestGate.resolve({
+    json: async () => ({
+      entries: [{
+        bytes: 7,
+        path: "public/uploads/stale-entry/cover.webp",
+        sha256: "a".repeat(64),
+      }],
+      root: "public/uploads",
+      version: 1,
+    }),
+    ok: true,
+    status: 200,
+  });
+  assert.deepEqual(await manifestCheck, { state: "stale" });
+  assert.equal(manifestConfirmations, 0, "a stale manifest result must not open confirmation");
+
+  const confirmationGate = deferred();
+  current = true;
+  let confirmationCalls = 0;
+  const sessionChecker = createStudioMediaConflictChecker({
+    confirmReplace: () => {
+      confirmationCalls += 1;
+      return confirmationGate.promise;
+    },
+    documentRef: { querySelectorAll: () => [{ value: "stale-entry" }] },
+    fetchImpl: async () => ({
+      json: async () => ({ entries: [], root: "public/uploads", version: 1 }),
+      ok: true,
+      status: 200,
+    }),
+  });
+  const original = {
+    bytes: 7,
+    fileName: "cover.webp",
+    sha256: "a".repeat(64),
+  };
+  const first = await sessionChecker(original);
+  first.commit();
+  const confirmation = sessionChecker({
+    ...original,
+    bytes: 9,
+    sha256: "b".repeat(64),
+  }, { isCurrent: () => current });
+  current = false;
+  confirmationGate.resolve(true);
+  assert.deepEqual(await confirmation, { state: "stale" });
+  assert.equal(confirmationCalls, 1);
+  current = true;
+  assert.equal(
+    (await sessionChecker(original)).state,
+    "same-session",
+    "a confirmation that became stale must not change the session baseline",
+  );
+});
+
 test("fails closed when an entry target or published manifest cannot be trusted", async () => {
   const inspection = { bytes: 4, fileName: "cover.webp", sha256: "a".repeat(64) };
   const noSlug = createStudioMediaConflictChecker({
@@ -375,9 +468,10 @@ test("blocks the original change event and replays only approved files", async (
   let conflictCalls = 0;
   let commitCalls = 0;
   handler = createStudioMediaPreflightHandler({
-    checkConflict: async (inspection) => {
+    checkConflict: async (inspection, { isCurrent }) => {
       conflictCalls += 1;
       assert.equal(inspection.fileName, "evidence.webp");
+      assert.equal(isCurrent(), true);
       return {
         commit() { commitCalls += 1; },
         state: "same",
@@ -465,6 +559,110 @@ test("blocks the original change event and replays only approved files", async (
   }), false);
   assert.equal(failedReplayCommits, 0);
   assert.equal(replayFailureInput.value, "");
+});
+
+test("lets only the latest rapid selection report, replay, and commit", async () => {
+  const firstFile = browserFile(Buffer.from([1]), "first.webp");
+  const latestFile = browserFile(Buffer.from([2]), "latest.webp");
+  const firstInspection = deferred();
+  const latestInspection = deferred();
+  const reports = [];
+  const replays = [];
+  const commits = [];
+  const conflictChecks = [];
+  const input = {
+    accept: "image/*",
+    files: [firstFile],
+    tagName: "INPUT",
+    type: "file",
+    value: "first",
+    dispatchEvent() {
+      replays.push(input.files[0].name);
+      return true;
+    },
+  };
+  const handler = createStudioMediaPreflightHandler({
+    checkConflict: async (inspection, { isCurrent }) => {
+      conflictChecks.push(inspection.fileName);
+      assert.equal(isCurrent(), true);
+      return {
+        commit() { commits.push(inspection.fileName); },
+        state: "new",
+        targetPath: `public/uploads/rapid/${inspection.fileName}`,
+      };
+    },
+    inspect: (file) => file === firstFile ? firstInspection.promise : latestInspection.promise,
+    report: (report) => reports.push(report),
+  });
+
+  const firstRun = handler({
+    preventDefault() {},
+    stopImmediatePropagation() {},
+    target: input,
+  });
+  input.files = [latestFile];
+  input.value = "latest";
+  const latestRun = handler({
+    preventDefault() {},
+    stopImmediatePropagation() {},
+    target: input,
+  });
+  latestInspection.resolve(inspectedFile(latestFile, "b".repeat(64)));
+  assert.equal(await latestRun, true);
+  firstInspection.resolve(inspectedFile(firstFile));
+  assert.equal(await firstRun, false);
+
+  assert.deepEqual(conflictChecks, ["latest.webp"]);
+  assert.deepEqual(replays, ["latest.webp"]);
+  assert.deepEqual(commits, ["latest.webp"]);
+  assert.deepEqual(reports.map(({ state }) => state), ["checking", "checking", "success"]);
+  assert.equal(reports.at(-1).detail.includes("latest.webp"), true);
+  assert.equal(input.value, "latest");
+});
+
+test("keeps a late stale failure from clearing or reporting over the latest file", async () => {
+  const firstFile = browserFile(Buffer.from([1]), "first.webp");
+  const latestFile = browserFile(Buffer.from([2]), "latest.webp");
+  const firstInspection = deferred();
+  const reports = [];
+  const input = {
+    accept: "image/*",
+    files: [firstFile],
+    tagName: "INPUT",
+    type: "file",
+    value: "first",
+    dispatchEvent() { return true; },
+  };
+  const handler = createStudioMediaPreflightHandler({
+    checkConflict: async (inspection) => ({
+      commit() {},
+      state: "new",
+      targetPath: `public/uploads/rapid/${inspection.fileName}`,
+    }),
+    inspect: (file) => file === firstFile
+      ? firstInspection.promise
+      : Promise.resolve(inspectedFile(latestFile, "b".repeat(64))),
+    report: (report) => reports.push(report),
+  });
+
+  const firstRun = handler({
+    preventDefault() {},
+    stopImmediatePropagation() {},
+    target: input,
+  });
+  input.files = [latestFile];
+  input.value = "latest";
+  assert.equal(await handler({
+    preventDefault() {},
+    stopImmediatePropagation() {},
+    target: input,
+  }), true);
+  firstInspection.reject(new Error("old decode failed"));
+  assert.equal(await firstRun, false);
+
+  assert.equal(input.value, "latest");
+  assert.deepEqual(reports.map(({ state }) => state), ["checking", "checking", "success"]);
+  assert.equal(reports.some(({ state }) => state === "error"), false);
 });
 
 test("installs one observable capture boundary and removes it cleanly", () => {

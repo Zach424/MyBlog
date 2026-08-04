@@ -27,6 +27,7 @@ const FORMAT_BY_EXTENSION = Object.freeze({
 });
 
 const PNG_SIGNATURE = [0x89, 0x50, 0x4e, 0x47, 0x0d, 0x0a, 0x1a, 0x0a];
+const STALE_MEDIA_CONFLICT = Object.freeze({ state: "stale" });
 const textDecoder = new TextDecoder("latin1");
 
 function fileError(fileName, message, cause) {
@@ -412,7 +413,11 @@ export function createStudioMediaConflictChecker({
     };
   };
 
-  return async function checkStudioMediaConflict(inspection) {
+  return async function checkStudioMediaConflict(
+    inspection,
+    { isCurrent = () => true } = {},
+  ) {
+    if (!isCurrent()) return STALE_MEDIA_CONFLICT;
     const slug = readStudioEntrySlug(documentRef);
     if (!slug) return { state: "unscoped" };
     const fileName = normalizeStudioMediaTargetFileName(inspection.fileName);
@@ -430,12 +435,14 @@ export function createStudioMediaConflictChecker({
         }, inspection);
       }
 
+      if (!isCurrent()) return STALE_MEDIA_CONFLICT;
       const confirmed = await confirmReplace?.([
         `附件 ${targetPath} 已在本次页面会话中通过预检，而且内容不同。`,
         `本次会话：${formatMegabytes(sessionExisting.bytes)} · ${sessionExisting.sha256.slice(0, 12)}`,
         `新文件：${formatMegabytes(inspection.bytes)} · ${inspection.sha256.slice(0, 12)}`,
         "继续会更新本次会话中同一路径的预检基线。确认继续吗？",
       ].join("\n"));
+      if (!isCurrent()) return STALE_MEDIA_CONFLICT;
       if (!confirmed) {
         throw fileError(inspection.fileName, `已取消本次会话中的同路径替换 ${targetPath}`);
       }
@@ -446,7 +453,9 @@ export function createStudioMediaConflictChecker({
       }, inspection);
     }
 
-    const existing = (await getManifest()).get(targetPath);
+    const manifest = await getManifest();
+    if (!isCurrent()) return STALE_MEDIA_CONFLICT;
+    const existing = manifest.get(targetPath);
     if (!existing) {
       return withSessionCommit({ state: "new", targetPath }, inspection);
     }
@@ -454,12 +463,14 @@ export function createStudioMediaConflictChecker({
       return withSessionCommit({ existing, state: "same", targetPath }, inspection);
     }
 
+    if (!isCurrent()) return STALE_MEDIA_CONFLICT;
     const confirmed = await confirmReplace?.([
       `附件 ${targetPath} 已经存在，而且内容不同。`,
       `已发布：${formatMegabytes(existing.bytes)} · ${existing.sha256.slice(0, 12)}`,
       `新文件：${formatMegabytes(inspection.bytes)} · ${inspection.sha256.slice(0, 12)}`,
       "继续会替换公开地址下的原图。确认替换吗？",
     ].join("\n"));
+    if (!isCurrent()) return STALE_MEDIA_CONFLICT;
     if (!confirmed) {
       throw fileError(inspection.fileName, `已取消替换 ${targetPath}`);
     }
@@ -488,17 +499,23 @@ export function createStudioMediaPreflightHandler({
   report = () => {},
 } = {}) {
   const approvedFiles = new WeakSet();
+  const selectionGenerations = new WeakMap();
 
   return async function handleStudioMediaSelection(event) {
     const input = event.target;
     if (!isStudioImageInput(input)) return false;
     input.accept = STUDIO_IMAGE_ACCEPT;
     const file = input.files?.[0];
-    if (!file) return false;
-    if (approvedFiles.has(file)) {
+    if (file && approvedFiles.has(file)) {
       approvedFiles.delete(file);
       return false;
     }
+
+    const generation = (selectionGenerations.get(input) ?? 0) + 1;
+    selectionGenerations.set(input, generation);
+    if (!file) return false;
+    const isCurrent = () =>
+      selectionGenerations.get(input) === generation && input.files?.[0] === file;
 
     event.preventDefault?.();
     event.stopImmediatePropagation?.();
@@ -506,7 +523,9 @@ export function createStudioMediaPreflightHandler({
 
     try {
       const inspection = await inspect(file);
-      const conflict = await checkConflict(inspection);
+      if (!isCurrent()) return false;
+      const conflict = await checkConflict(inspection, { isCurrent });
+      if (!isCurrent() || conflict.state === "stale") return false;
       const optimizationNote = ["jpeg", "png"].includes(inspection.format)
         ? "Studio 会保留原格式；需要自动转 WebP 时请使用 Obsidian 发布器。"
         : "文件会按当前格式进入 Git 草稿。";
@@ -529,12 +548,13 @@ export function createStudioMediaPreflightHandler({
       approvedFiles.add(file);
       try {
         input.dispatchEvent(new EventConstructor("change", { bubbles: true }));
-        conflict.commit?.();
+        if (isCurrent()) conflict.commit?.();
       } finally {
         approvedFiles.delete(file);
       }
       return true;
     } catch (error) {
+      if (!isCurrent()) return false;
       input.value = "";
       report({
         detail: `${error instanceof Error ? error.message : String(error)}。请修正后重新选择。`,
