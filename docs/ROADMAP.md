@@ -8,11 +8,11 @@
 | 4. 作者自助写作 | done | `/studio` OAuth + editorial workflow PR、Obsidian Vault/模板/附件/真实 `--push` |
 | 5. Vercel 原生迁移 | production live | 原生 Next.js、无 Cloudflare 依赖、24 路由生产冒烟通过 |
 | 6. 所有者生产上线 | done | Git 自动 Production、稳定域名自动冒烟、双端发布、回滚与恢复均已验收 |
-| 7. 持续内容与作者体验 | in progress | Iteration 0041 完成 Studio per-input generation、stale 静默丢弃与快速重选 latest-wins |
+| 7. 持续内容与作者体验 | in progress | Iteration 0042 完成 fenced code 语言标签、渐进复制、精确文本与可访问成功/失败反馈 |
 
 ## 当前唯一主线
 
-进入持续内容与作者体验阶段。Iteration 0041 已为每个 Studio file input 建立单调选择代次，解码、manifest 和确认的旧结果会静默失效，不能晚到重放、清空新文件或提交过期账本。Studio 媒体闭环后，下一主线回到读者侧技术内容：为 fenced code block 增加无依赖、渐进增强、键盘可用且有 aria-live 反馈的复制控件，并守住服务端代码可读性和客户端体积预算。需要品牌域名时再绑定自定义域名，旧公开站继续只作为迁移历史证据。
+进入持续内容与作者体验阶段。Iteration 0042 已把 fenced code block 做成最小客户端岛：服务端代码完整，无 JavaScript 时按钮隐藏；hydration 后语言、COPY/COPIED/FAILED、精确 textContent 与 polite live region 可用，320px 和生产浏览器均已验收。下一主线继续改善技术文章的可引用性：为 H2/H3 增加直接复用真实 id 的服务端 permalink，不增加客户端 bundle。需要品牌域名时再绑定自定义域名，旧公开站继续只作为迁移历史证据。
 
 ## 已知风险
 
@@ -33,7 +33,7 @@
 - Current record 已有每周 60/30 天 Actions 提醒和过期门；若未来需要邮件/聊天通知，必须由所有者选择渠道后再接入；
 - 内部链接支持内容页和严格标题锚点，行内/引用式/自引用共享实际渲染 slug 规则，详情页与公开知识地图共享 outgoing/backlinks；明确不支持 Obsidian 块引用，标题改名必须同步深链，当前双列 SVG 为小型内容库优化，内容规模增长后需要过滤/分组；
 - 正文普通 HTTPS 与结构化 repository/demo/canonical 已有统一确定性库存和受控实时报告；实时 DNS/网络结果有意不进 Actions，timeout/限流不能冒充内容错误；
-- 技术代码块已有服务端高亮和横向滚动，但没有复制按钮、语言标签与屏幕阅读器状态反馈；
+- 技术代码块已有语言标签、渐进增强复制和屏幕阅读器状态反馈；正文 H2/H3 仍缺少可发现的原生 permalink，分享具体章节依赖目录或手工 fragment；
 - 自定义域名、公开邮箱、统计和评论尚未选择，但不阻塞生产上线。
 
 ## 平台历史

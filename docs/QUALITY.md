@@ -6,7 +6,7 @@
 npm run check
 ```
 
-顺序为 ESLint → 120 项内容/维护/inbox/暂存媒体/关系/标题锚点/知识图/外链库存与检查/搜索/OAuth/Studio/Obsidian/媒体/重定向/交付单元测试 → Next 路由类型生成与 TypeScript → 原生 Next.js 生产构建（37 个页面）→ 17 项真实生产 HTTP 与质量审计。任何一步失败都阻止合并和生产部署。
+顺序为 ESLint → 122 项内容/维护/inbox/暂存媒体/关系/标题锚点/知识图/外链库存与检查/搜索/OAuth/Studio/Obsidian/媒体/重定向/代码复制/交付单元测试 → Next 路由类型生成与 TypeScript → 原生 Next.js 生产构建（37 个页面）→ 17 项真实生产 HTTP 与质量审计。任何一步失败都阻止合并和生产部署。
 
 发布候选额外执行：
 

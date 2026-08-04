@@ -85,6 +85,8 @@ vercel.json                         Vercel Next.js 框架声明
 
 `lib/content/media.ts` 是封面与正文图共享的服务端尺寸层。文件系统根静态收窄到 `public/uploads`，避免 Turbopack 把整个仓库追踪进 Serverless 产物；同一仓库路径的检查通过 React cache 复用。封面描述器附带 `coverAlt`，交给共享 `ContentCover` 和 OG/Twitter/JSON-LD；没有封面的记录不渲染 figure。`MarkdownContent` 则先从正文 AST 收集并去重 URL，只为本地 `/uploads/...` 建立描述器，再把真实宽高、作者 alt 和对应 48rem 阅读栏的 `sizes` 交给 `next/image`。两条详情路由必须传入内容 `sourcePath`，因此页面渲染与构建媒体契约使用同一安全路径边界。
 
+`MarkdownContent` 继续作为 Server Component 执行 GFM、slug、高亮和媒体描述；只有 fenced `pre` 把现有 code child 与从 `language-*` 类规范化的标签传给最小 `CodeBlock` Client Component。该客户端岛的 SSR 输出仍含完整 figure/figcaption/pre/code，COPY button 初始 hidden 并在 mount 后揭示；写入只使用当前 code DOM 的精确 `textContent` 和原生 Clipboard API，状态通过 button、data attribute 与 polite live region 表达。inline code 不进入该边界。CSS 额外锁定 `[hidden]`，移动端由 wrapper full-bleed、pre 独立 overflow，避免操作轨随长代码滚走。
+
 内容目录通过 Next.js output tracing 显式包含在部署中，既支持 Vercel Serverless，也不会依赖开发机器路径。
 
 ## 5. 作者发布链路
@@ -157,6 +159,7 @@ Vercel GitHub Integration 负责每个分支的 Preview 和 `main` 的 Productio
 - Studio 条目媒体必须由稳定 slug 与固定 Decap 文件名规则得到唯一目标；已发布清单不可用时失败关闭，同路径不同 SHA-256 必须明确确认后才能交给 Decap。
 - Studio 会话媒体账本只能在合成 change 成功重放后登记；未提交检查、取消确认和重放错误不能改变同路径摘要基线。
 - 同一 Studio file input 只有最新真实 change 可以报告最终状态、重放文件或提交账本；任何旧异步结果都不能清空或覆盖最新选择。
+- fenced code 的服务端 HTML 必须始终保留完整 pre/code；COPY 只在 hydration 后出现，复制源只能是当前 code textContent，inline code 不得获得控件。
 - Markdown 图片 alt 不能为空；本地图使用共享固有尺寸与响应式候选，HTTPS 外图不能进入开放优化主机列表。
 - cover 必须是仓库内图片并同时声明 `coverAlt`；详情页尺寸只能来自已验证文件，文章/项目共享组件与社交元数据选择不能分叉。
 - `/studio` 与 OAuth 永远不缓存、不索引，并维持同源 state 验证；只有版本化 CMS 运行时可不可变缓存。
