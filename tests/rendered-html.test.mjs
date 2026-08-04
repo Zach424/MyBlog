@@ -57,7 +57,12 @@ test("server-renders the engineering log homepage", async () => {
   assert.match(html, /Guest · 23 routes · Browser QA/);
   assert.match(html, /持续内容发布与维护/);
   assert.match(html, /权限变更也要做未登录验收/);
-  assert.match(visibleHtml, /REV\. 010 · 2026-07-18/);
+  const revisionDate = /REV\. 010 · (\d{4}-\d{2}-\d{2})/u.exec(visibleHtml)?.[1];
+  const newestTraceDate = /class="trace-date" dateTime="(\d{4}-\d{2}-\d{2})"/u.exec(
+    visibleHtml,
+  )?.[1];
+  assert.ok(revisionDate, "首页应显示带日期的版本标识");
+  assert.equal(revisionDate, newestTraceDate, "版本日期应跟随最新公开文章");
   assert.match(visibleHtml, /Design Systems · 3/);
   assert.doesNotMatch(html, developmentPreviewMeta);
   assert.doesNotMatch(html, /Starter Project|react-loading-skeleton|Your site is taking shape/);
@@ -155,7 +160,11 @@ test("publishes RSS, Sitemap and robots from the same public content index", asy
   assert.match(rss, /https:\/\/blog\.example\.test\/rss\.xml/);
   assert.match(rss, /从零搭建可维护的个人技术博客/);
   assert.match(rss, /MyBlog — 把学习记录做成工程资产/);
-  assert.equal((rss.match(/<item>/g) ?? []).length, 4);
+  const rssUrls = [...rss.matchAll(/<guid isPermaLink="true">([^<]+)<\/guid>/gu)].map(
+    (match) => match[1],
+  );
+  assert.ok(rssUrls.length >= 4, "RSS 至少应包含初始公开内容");
+  assert.equal(new Set(rssUrls).size, rssUrls.length, "RSS 内容 URL 不能重复");
 
   assert.equal(sitemapResponse.status, 200);
   assert.match(sitemapResponse.headers.get("content-type") ?? "", /^application\/xml/i);
@@ -163,6 +172,16 @@ test("publishes RSS, Sitemap and robots from the same public content index", asy
   assert.match(sitemap, /https:\/\/blog\.example\.test\/search/);
   assert.match(sitemap, /https:\/\/blog\.example\.test\/tags\/typescript/);
   assert.match(sitemap, /https:\/\/blog\.example\.test\/series\/build-my-blog/);
+  const sitemapContentUrls = [
+    ...sitemap.matchAll(
+      /<loc>(https:\/\/blog\.example\.test\/(?:posts|projects)\/[^<]+)<\/loc>/gu,
+    ),
+  ].map((match) => match[1]);
+  assert.deepEqual(
+    [...sitemapContentUrls].sort(),
+    [...rssUrls].sort(),
+    "RSS 与 Sitemap 必须来自同一份公开内容索引",
+  );
 
   assert.equal(robotsResponse.status, 200);
   const robots = await robotsResponse.text();

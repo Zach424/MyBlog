@@ -29,6 +29,7 @@ components/                         站点框架、内容视图、Markdown、搜
 content/
   posts/ projects/                  唯一公开内容源
   inbox/                            Obsidian 待发布区
+public/uploads/<slug>/              按内容隔离的公开图片附件
 lib/
   content/                          内容契约、文件读取与派生索引
   cms-oauth.ts                      签名 OAuth state 与 token 交换
@@ -65,6 +66,8 @@ Obsidian ─────┘                                      │
 Studio 在浏览器中用当前 origin 生成 `base_url`。`/api/cms/auth` 创建十分钟有效、HMAC 签名且绑定 origin 的 state；`/api/cms/callback` 交换 GitHub token，并且只向发起授权的同源窗口发送结果。未设置 `GITHUB_OAUTH_ID` 或 `GITHUB_OAUTH_SECRET` 时返回 503，发布入口安全关闭。
 
 Studio HTML、配置和预览样式保留在仓库根 `studio`；完整 `decap-cms@3.14.1` 浏览器包作为构建期依赖，由第四个版本化 Route Handler 同源返回。未知子资源返回真实 404。资源不进入 `public`，以便统一应用专用 CSP、`X-Robots-Tag` 与 OAuth 弹窗策略。
+
+Obsidian 草稿中的 Wiki 图片嵌入和指向 `public/uploads` 的 Markdown 图片会在发布前转换。文件进入 `public/uploads/<内容 slug>/<稳定文件名>`，正文改写为对应 `/uploads/...` URL；文件名不稳定时使用可读 ASCII 名加路径哈希消除冲突。发布器拒绝越界、受跟踪的共享源附件和非白名单格式，完整质量门失败时同时恢复草稿与已经移动的附件。
 
 ## 6. 安全与缓存
 

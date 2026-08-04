@@ -43,7 +43,17 @@ test("prepares an Obsidian article for the existing content contract", () => {
   assert.equal(result.targetPath, "content/posts/obsidian-publishing.md");
   assert.match(result.content, /^draft: false$/mu);
   assert.doesNotMatch(result.content, /^draft: true$/mu);
-  assert.deepEqual(result.attachments, ["public/uploads/obsidian-evidence.png"]);
+  assert.deepEqual(result.attachments, [
+    {
+      sourcePath: "public/uploads/obsidian-evidence.png",
+      targetPath: "public/uploads/obsidian-publishing/obsidian-evidence.png",
+      publicUrl: "/uploads/obsidian-publishing/obsidian-evidence.png",
+    },
+  ]);
+  assert.match(
+    result.content,
+    /!\[evidence\]\(\/uploads\/obsidian-publishing\/obsidian-evidence\.png\)/u,
+  );
 });
 
 test("infers and validates project drafts", () => {
@@ -62,11 +72,72 @@ test("normalizes Obsidian attachment links into public blog URLs", () => {
     "content/inbox/obsidian-publishing.md",
     withObsidianLinks,
   );
-  assert.match(result.content, /!\[运行证据\]\(\/uploads\/obsidian-evidence\.png\)/u);
-  assert.match(result.content, /!\[\]\(\/uploads\/second-image\.webp\)/u);
+  assert.match(
+    result.content,
+    /!\[运行证据\]\(\/uploads\/obsidian-publishing\/obsidian-evidence\.png\)/u,
+  );
+  assert.match(result.content, /!\[\]\(\/uploads\/obsidian-publishing\/second-image\.webp\)/u);
   assert.deepEqual(result.attachments, [
-    "public/uploads/obsidian-evidence.png",
-    "public/uploads/second-image.webp",
+    {
+      sourcePath: "public/uploads/obsidian-evidence.png",
+      targetPath: "public/uploads/obsidian-publishing/obsidian-evidence.png",
+      publicUrl: "/uploads/obsidian-publishing/obsidian-evidence.png",
+    },
+    {
+      sourcePath: "public/uploads/second-image.webp",
+      targetPath: "public/uploads/obsidian-publishing/second-image.webp",
+      publicUrl: "/uploads/obsidian-publishing/second-image.webp",
+    },
+  ]);
+});
+
+test("scopes and stabilizes Obsidian pasted-image filenames", () => {
+  const withPastedImages = article.replace(
+    "![evidence](/uploads/obsidian-evidence.png)",
+    "![[Pasted image 20260804 120000.PNG|构建结果]]\n\n![[架构截图.png|960]]",
+  );
+  const result = prepareObsidianNote(
+    "content/inbox/obsidian-publishing.md",
+    withPastedImages,
+  );
+
+  assert.match(
+    result.content,
+    /!\[构建结果\]\(\/uploads\/obsidian-publishing\/pasted-image-20260804-120000-[a-f0-9]{8}\.png\)/u,
+  );
+  assert.match(
+    result.content,
+    /!\[架构截图\.png\]\(\/uploads\/obsidian-publishing\/asset-[a-f0-9]{8}\.png\)/u,
+  );
+  assert.deepEqual(
+    result.attachments.map((attachment) => attachment.sourcePath),
+    ["public/uploads/架构截图.png", "public/uploads/Pasted image 20260804 120000.PNG"],
+  );
+});
+
+test("leaves attachment examples inside fenced code untouched", () => {
+  const withCodeExamples = article.replace(
+    "正文图片 ![evidence](/uploads/obsidian-evidence.png)",
+    `\`\`\`md
+![[example-only.png|示例]]
+![example](/uploads/example-only.png)
+\`\`\`
+
+![[real-image.png|真实图片]]`,
+  );
+  const result = prepareObsidianNote(
+    "content/inbox/obsidian-publishing.md",
+    withCodeExamples,
+  );
+
+  assert.match(result.content, /!\[\[example-only\.png\|示例\]\]/u);
+  assert.match(result.content, /!\[example\]\(\/uploads\/example-only\.png\)/u);
+  assert.match(
+    result.content,
+    /!\[真实图片\]\(\/uploads\/obsidian-publishing\/real-image\.png\)/u,
+  );
+  assert.deepEqual(result.attachments.map((attachment) => attachment.sourcePath), [
+    "public/uploads/real-image.png",
   ]);
 });
 
@@ -103,7 +174,21 @@ test("rejects unsafe locations, unstable slugs, and mismatched metadata", () => 
   );
   assert.throws(
     () => prepareObsidianNote("content/inbox/obsidian-publishing.md", article.replace("obsidian-evidence.png", "../secret.png")),
-    /附件路径不安全/,
+    /附件路径不安全|仅支持常见图片附件/,
+  );
+  assert.throws(
+    () => prepareObsidianNote(
+      "content/inbox/obsidian-publishing.md",
+      article.replace("/uploads/obsidian-evidence.png", "/private/evidence.png"),
+    ),
+    /必须位于 public\/uploads/,
+  );
+  assert.throws(
+    () => prepareObsidianNote(
+      "content/inbox/obsidian-publishing.md",
+      article.replace("obsidian-evidence.png", "diagram.svg"),
+    ),
+    /仅支持常见图片附件/,
   );
 });
 

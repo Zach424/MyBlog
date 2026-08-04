@@ -37,6 +37,7 @@ npm run production:smoke -- https://your-production.example --expect-oauth
 ## 文档索引
 
 - [项目与范围](./docs/PROJECT.md)
+- [当前项目状态](./docs/STATUS.md)
 - [设计说明](./docs/DESIGN.md)
 - [系统架构](./docs/ARCHITECTURE.md)
 - [内容模型](./docs/CONTENT_MODEL.md)

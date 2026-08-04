@@ -1,6 +1,13 @@
 import { spawnSync } from "node:child_process";
-import { existsSync, readFileSync, rmSync, writeFileSync } from "node:fs";
-import { resolve } from "node:path";
+import {
+  existsSync,
+  mkdirSync,
+  readFileSync,
+  renameSync,
+  rmSync,
+  writeFileSync,
+} from "node:fs";
+import { dirname, resolve } from "node:path";
 import {
   gitPathsForPublishedNote,
   prepareObsidianNote,
@@ -59,12 +66,34 @@ try {
 }
 
 for (const attachment of prepared.attachments) {
-  if (!existsSync(resolve(process.cwd(), attachment))) fail(`正文引用的附件不存在：${attachment}`);
+  const absoluteAttachmentSource = resolve(process.cwd(), attachment.sourcePath);
+  const absoluteAttachmentTarget = resolve(process.cwd(), attachment.targetPath);
+  if (!existsSync(absoluteAttachmentSource)) {
+    fail(`正文引用的附件不存在：${attachment.sourcePath}`);
+  }
+  if (
+    attachment.sourcePath !== attachment.targetPath &&
+    existsSync(absoluteAttachmentTarget)
+  ) {
+    fail(`附件目标已存在：${attachment.targetPath}`);
+  }
+  if (
+    attachment.sourcePath !== attachment.targetPath &&
+    run("git", ["ls-files", "--error-unmatch", "--", attachment.sourcePath], {
+      capture: true,
+      allowFailure: true,
+    }).status === 0
+  ) {
+    fail(`附件已被其他内容跟踪，拒绝移动：${attachment.sourcePath}`);
+  }
 }
 
 if (checkOnly) {
   console.log(`[publish] 草稿有效：${prepared.targetPath}`);
   console.log(`[publish] 引用附件：${prepared.attachments.length} 个`);
+  for (const attachment of prepared.attachments) {
+    console.log(`[publish] 附件归档：${attachment.sourcePath} -> ${attachment.targetPath}`);
+  }
   process.exit(0);
 }
 
@@ -83,11 +112,24 @@ if (push) {
 writeFileSync(resolve(process.cwd(), prepared.targetPath), prepared.content, { flag: "wx" });
 rmSync(absoluteSource);
 
+const movedAttachments = [];
 try {
+  for (const attachment of prepared.attachments) {
+    if (attachment.sourcePath === attachment.targetPath) continue;
+    const absoluteAttachmentTarget = resolve(process.cwd(), attachment.targetPath);
+    mkdirSync(dirname(absoluteAttachmentTarget), { recursive: true });
+    renameSync(resolve(process.cwd(), attachment.sourcePath), absoluteAttachmentTarget);
+    movedAttachments.push(attachment);
+  }
   runNpm(["run", "check"]);
 } catch (error) {
   writeFileSync(absoluteSource, sourceContent);
   rmSync(resolve(process.cwd(), prepared.targetPath));
+  for (const attachment of movedAttachments.reverse()) {
+    const absoluteAttachmentSource = resolve(process.cwd(), attachment.sourcePath);
+    mkdirSync(dirname(absoluteAttachmentSource), { recursive: true });
+    renameSync(resolve(process.cwd(), attachment.targetPath), absoluteAttachmentSource);
+  }
   fail(`全量检查失败，草稿已恢复到收件箱。${error instanceof Error ? ` ${error.message}` : ""}`);
 }
 
@@ -101,7 +143,7 @@ try {
   const pathsToStage = gitPathsForPublishedNote(
     prepared.sourcePath,
     prepared.targetPath,
-    prepared.attachments,
+    prepared.attachments.map((attachment) => attachment.targetPath),
     sourceWasTracked,
   );
   run("git", ["add", "-A", "--", ...pathsToStage]);
