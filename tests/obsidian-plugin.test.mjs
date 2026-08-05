@@ -94,6 +94,9 @@ async function createPluginHarness({
   files = ["content/projects/myblog.md"],
   openFailure,
   platform = "win32",
+  processFailure,
+  processMutation,
+  processPostcondition = "exact",
   renameFailure,
   renamePostcondition = "exact",
   throwSpawnAt = [],
@@ -103,6 +106,7 @@ async function createPluginHarness({
   const modals = [];
   const notices = [];
   const openedFiles = [];
+  const processAttempts = [];
   const createdFiles = [];
   const renameAttempts = [];
   const templateReads = [];
@@ -226,6 +230,20 @@ async function createPluginHarness({
         }
         return contentMap.get(file.path);
       },
+      async process(file, callback) {
+        if (!contentMap.has(file.path)) {
+          throw new Error(`Missing fixture content: ${file.path}`);
+        }
+        if (typeof processMutation === "string") {
+          contentMap.set(file.path, processMutation);
+        }
+        const current = contentMap.get(file.path);
+        processAttempts.push({ file, input: current, path: file.path });
+        const next = callback(current);
+        if (processFailure) throw new Error(processFailure);
+        if (processPostcondition === "exact") contentMap.set(file.path, next);
+        return next;
+      },
       async create(path, content) {
         if (createFailure) throw new Error(createFailure);
         if (fileMap.has(path)) throw new Error(`File already exists: ${path}`);
@@ -313,6 +331,7 @@ async function createPluginHarness({
     notices,
     openedFiles,
     plugin,
+    processAttempts,
     renameAttempts,
     spawned,
     templateReads,
@@ -667,7 +686,7 @@ function authorDoctorReport() {
     ["workspace-dependencies", "workspace", "Workspace dependencies", "35/35 pinned packages", "all declared packages installed at pinned versions"],
     ["content-layout", "workspace", "Content layout", "5/5 required paths", "5 required authoring paths"],
     ["obsidian-vault", "vault", "Obsidian Vault", ".obsidian present", ".obsidian directory present"],
-    ["publisher-plugin", "vault", "MyBlog Publisher", "myblog-publisher@1.20.0 · desktop", "myblog-publisher 1.20.0 desktop plugin"],
+    ["publisher-plugin", "vault", "MyBlog Publisher", "myblog-publisher@1.21.0 · desktop", "myblog-publisher 1.21.0 desktop plugin"],
   ];
   const scripts = [
     "content:author:doctor",
@@ -714,7 +733,7 @@ function authorDoctorReport() {
           isDesktopOnly: true,
           mainPresent: true,
           stylesPresent: true,
-          version: "1.20.0",
+          version: "1.21.0",
         },
       },
       workspace: {
@@ -816,6 +835,31 @@ featured: false
 ## 正文
 
 草稿内容保持不变。\n`;
+}
+
+function legacyIdentityDraft({
+  draft = true,
+  lineEnding = "\n",
+  slugLine = "slug: original-draft",
+} = {}) {
+  return [
+    "---",
+    "# 保留这条 frontmatter 注释",
+    'title: "旧草稿身份"',
+    slugLine,
+    `draft: ${draft}`,
+    "featured: false",
+    "---",
+    "",
+    "# 正文",
+    "",
+    "正文、字段顺序与换行必须保持不变。",
+    "",
+  ].join(lineEnding);
+}
+
+async function settleAsyncWork() {
+  await new Promise((resolve) => setImmediate(resolve));
 }
 
 test("creates and opens one inbox draft from the focused native wizard", async () => {
@@ -1032,6 +1076,205 @@ test("keeps atomic create and post-create open failures explicit", async () => {
   );
 });
 
+test("renders native evidence for a filename-owned draft without offering cleanup", async () => {
+  const sourcePath = "content/inbox/original-draft.md";
+  const harness = await createPluginHarness({
+    activeFilePath: sourcePath,
+    fileContents: { [sourcePath]: filenameOwnedDraft() },
+    files: [],
+  });
+  const command = findCommand(harness, "inspect-current-inbox-draft-identity");
+  assert.equal(command.name, "检查当前草稿身份");
+  assert.equal(command.checkCallback(true), true);
+  assert.equal(command.checkCallback(false), true);
+  await settleAsyncWork();
+
+  assert.equal(harness.modals.length, 1);
+  const modal = harness.modals[0];
+  const text = allElements(modal.contentEl).map((element) => element.text).join(" ");
+  assert.equal(modal.contentEl.classes.has("myblog-draft-identity"), true);
+  assert.deepEqual(elementsByTag(modal, "h2").map((element) => element.text), [
+    "检查当前草稿身份",
+  ]);
+  assert.match(text, /DRAFT IDENTITY \/ LOCAL EVIDENCE/u);
+  assert.match(text, /FILE ⇄ FRONTMATTER/u);
+  assert.match(text, /READY \/ FILE OWNED/u);
+  assert.match(text, /DRAFT.*TRUE.*INBOX.*OWNED.*POST.*CLEAR.*PROJECT.*CLEAR/su);
+  assert.deepEqual(elementsByTag(modal, "button").map((button) => button.text), ["关闭"]);
+  assert.deepEqual(harness.processAttempts, []);
+  assert.deepEqual(harness.vaultReads, [sourcePath]);
+  assert.equal(harness.spawned.length, 0);
+});
+
+test("removes one exact legacy slug atomically while preserving every other byte", async () => {
+  const sourcePath = "content/inbox/original-draft.md";
+  const content = legacyIdentityDraft({ lineEnding: "\r\n" });
+  const expected = content.replace("slug: original-draft\r\n", "");
+  const harness = await createPluginHarness({
+    activeFilePath: sourcePath,
+    fileContents: { [sourcePath]: content },
+    files: [],
+  });
+  findCommand(harness, "inspect-current-inbox-draft-identity").checkCallback(false);
+  await settleAsyncWork();
+
+  const modal = harness.modals[0];
+  const text = allElements(modal.contentEl).map((element) => element.text).join(" ");
+  assert.match(text, /LEGACY \/ MATCHED/u);
+  assert.match(text, /original-draft.*original-draft/su);
+  const cleanup = elementsByTag(modal, "button").find(
+    (button) => button.text === "移除冗余 slug",
+  );
+  assert.ok(cleanup);
+  await Promise.all([cleanup.trigger("click"), cleanup.trigger("click")]);
+
+  assert.equal(harness.processAttempts.length, 1);
+  assert.equal(harness.processAttempts[0].path, sourcePath);
+  assert.equal(harness.processAttempts[0].input, content);
+  assert.equal(harness.getContent(sourcePath), expected);
+  assert.match(harness.getContent(sourcePath), /# 保留这条 frontmatter 注释\r\n/u);
+  assert.match(harness.getContent(sourcePath), /# 正文\r\n/u);
+  assert.doesNotMatch(harness.getContent(sourcePath), /^slug[ \t]*:/mu);
+  assert.equal(modal.closed, true);
+  assert.match(harness.notices.at(-1).message, /冗余 slug 已移除.*original-draft\.md/u);
+});
+
+test("holds ambiguous or conflicting draft identities without a cleanup action", async (t) => {
+  const sourcePath = "content/inbox/original-draft.md";
+  const cases = [
+    ["mismatched slug", legacyIdentityDraft({ slugLine: "slug: another-draft" }), [], /不等于文件名/u],
+    ["non-string slug", legacyIdentityDraft({ slugLine: "slug: 42" }), [], /文本/u],
+    ["not a draft", legacyIdentityDraft({ draft: false }), [], /draft: true/u],
+    ["invalid YAML", "---\ntitle: [\nslug: original-draft\ndraft: true\n---\n", [], /YAML/u],
+    ["quoted slug key", legacyIdentityDraft({ slugLine: '"slug": original-draft' }), [], /格式/u],
+    ["anchored slug", legacyIdentityDraft({ slugLine: "slug: &identity original-draft" }), [], /格式/u],
+    ["indented slug", "---\nmeta:\n  slug: original-draft\ndraft: true\n---\n", [], /缩进/u],
+    ["post collision", legacyIdentityDraft(), ["content/posts/original-draft.md"], /正式文章/u],
+    ["project collision", legacyIdentityDraft(), ["content/projects/original-draft.md"], /项目/u],
+  ];
+
+  for (const [name, content, files, reason] of cases) {
+    await t.test(name, async () => {
+      const harness = await createPluginHarness({
+        activeFilePath: sourcePath,
+        fileContents: { [sourcePath]: content },
+        files,
+      });
+      findCommand(harness, "inspect-current-inbox-draft-identity").checkCallback(false);
+      await settleAsyncWork();
+      const modal = harness.modals[0];
+      const text = allElements(modal.contentEl).map((element) => element.text).join(" ");
+      assert.match(text, /HOLD \/ CONFLICT/u);
+      assert.match(text, reason);
+      assert.equal(
+        elementsByTag(modal, "button").some((button) => button.text === "移除冗余 slug"),
+        false,
+      );
+      assert.deepEqual(harness.processAttempts, []);
+    });
+  }
+});
+
+test("offers draft identity inspection only for an exact desktop inbox Markdown path", async () => {
+  const cases = [
+    ["no active file", {}],
+    ["formal content", { activeFilePath: "content/posts/published.md" }],
+    ["unsafe source slug", { activeFilePath: "content/inbox/Unsafe Draft.md" }],
+    ["non-Markdown", { activeFilePath: "content/inbox/draft.txt" }],
+    ["mobile", { activeFilePath: "content/inbox/draft.md", desktop: false }],
+  ];
+  for (const [, options] of cases) {
+    const harness = await createPluginHarness(options);
+    const command = findCommand(harness, "inspect-current-inbox-draft-identity");
+    assert.equal(command.checkCallback(true), false);
+    assert.equal(harness.modals.length, 0);
+    assert.equal(harness.processAttempts.length, 0);
+  }
+});
+
+test("stops on cleanup drift and never retries an uncertain Vault process result", async () => {
+  const sourcePath = "content/inbox/original-draft.md";
+  const content = legacyIdentityDraft();
+  const changed = content.replace('title: "旧草稿身份"', 'title: "检查后已变化"');
+  const drifted = await createPluginHarness({
+    activeFilePath: sourcePath,
+    fileContents: { [sourcePath]: content },
+    files: [],
+    processMutation: changed,
+  });
+  findCommand(drifted, "inspect-current-inbox-draft-identity").checkCallback(false);
+  await settleAsyncWork();
+  const driftModal = drifted.modals[0];
+  const driftCleanup = elementsByTag(driftModal, "button").find(
+    (button) => button.text === "移除冗余 slug",
+  );
+  await driftCleanup.trigger("click");
+  assert.equal(drifted.processAttempts.length, 1);
+  assert.equal(drifted.getContent(sourcePath), changed);
+  assert.equal(driftModal.closed, false);
+  assert.match(
+    allElements(driftModal.contentEl).find(
+      (element) => element.classes.has("myblog-draft-identity__error"),
+    ).text,
+    /检查后已变化.*重新检查/u,
+  );
+
+  for (const options of [
+    { processFailure: "host process rejected" },
+    { processPostcondition: "unproven" },
+  ]) {
+    const harness = await createPluginHarness({
+      activeFilePath: sourcePath,
+      fileContents: { [sourcePath]: content },
+      files: [],
+      ...options,
+    });
+    findCommand(harness, "inspect-current-inbox-draft-identity").checkCallback(false);
+    await settleAsyncWork();
+    const modal = harness.modals[0];
+    const cleanup = elementsByTag(modal, "button").find(
+      (button) => button.text === "移除冗余 slug",
+    );
+    await cleanup.trigger("click");
+    assert.equal(harness.processAttempts.length, 1);
+    assert.equal(modal.closed, true);
+    assert.match(
+      harness.notices.at(-1).message,
+      /清理结果不确定.*original-draft\.md.*不会自动重试/u,
+    );
+  }
+});
+
+test("serializes cleanup modals through one plugin-level lease", async () => {
+  const sourcePath = "content/inbox/original-draft.md";
+  const harness = await createPluginHarness({
+    activeFilePath: sourcePath,
+    fileContents: { [sourcePath]: legacyIdentityDraft() },
+    files: [],
+  });
+  const command = findCommand(harness, "inspect-current-inbox-draft-identity");
+  command.checkCallback(false);
+  command.checkCallback(false);
+  await settleAsyncWork();
+  const [first, second] = harness.modals;
+  const firstCleanup = elementsByTag(first, "button").find(
+    (button) => button.text === "移除冗余 slug",
+  );
+  const secondCleanup = elementsByTag(second, "button").find(
+    (button) => button.text === "移除冗余 slug",
+  );
+  await Promise.all([firstCleanup.trigger("click"), secondCleanup.trigger("click")]);
+  assert.equal(harness.processAttempts.length, 1);
+  assert.equal([first.closed, second.closed].filter(Boolean).length, 1);
+  const waiting = first.closed ? second : first;
+  assert.match(
+    allElements(waiting.contentEl).find(
+      (element) => element.classes.has("myblog-draft-identity__error"),
+    ).text,
+    /另一个草稿身份清理正在进行/u,
+  );
+});
+
 test("renames one filename-owned inbox draft through FileManager", async () => {
   const sourcePath = "content/inbox/original-draft.md";
   const content = filenameOwnedDraft();
@@ -1218,7 +1461,7 @@ test("renders a versioned maintenance ledger and opens an exact Vault note", asy
     createPluginHarness(),
   ]);
   const manifest = JSON.parse(manifestSource);
-  assert.equal(manifest.version, "1.20.0");
+  assert.equal(manifest.version, "1.21.0");
   assert.equal(manifest.minAppVersion, "1.5.7");
   assert.equal(manifest.isDesktopOnly, true);
   assert.match(styles, /^\.myblog-draft-create \{/mu);
@@ -1226,6 +1469,10 @@ test("renders a versioned maintenance ledger and opens an exact Vault note", asy
   assert.match(styles, /^\.myblog-draft-rename \{/mu);
   assert.match(styles, /myblog-draft-rename__transition/u);
   assert.match(styles, /myblog-draft-rename__error:empty/u);
+  assert.match(styles, /^\.myblog-draft-identity \{/mu);
+  assert.match(styles, /myblog-draft-identity__signature/u);
+  assert.match(styles, /myblog-draft-identity__evidence/u);
+  assert.match(styles, /myblog-draft-identity__error:empty/u);
   assert.match(styles, /^\.myblog-maintenance \{/mu);
   assert.match(styles, /\[data-status="overdue"\]/u);
   assert.match(styles, /font-family: var\(--font-interface\)/u);

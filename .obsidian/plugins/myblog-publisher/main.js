@@ -20,7 +20,7 @@ const CONTENT_PUBLISH_DELIVERY_RECEIPT_VERSION = 1;
 const CONTENT_DELIVERY_TRIAGE_REPORT_VERSION = 1;
 const AUTHOR_DOCTOR_REPORT_VERSION = 1;
 const AUTHOR_DOCTOR_NODE_ENGINE = ">=22.13.0";
-const AUTHOR_DOCTOR_PLUGIN_VERSION = "1.20.0";
+const AUTHOR_DOCTOR_PLUGIN_VERSION = "1.21.0";
 const DRAFT_TITLE_MAX_LENGTH = 120;
 const DRAFT_SLUG_MAX_LENGTH = 80;
 const DRAFT_SLUG_PATTERN = /^[a-z0-9]+(?:-[a-z0-9]+)*$/u;
@@ -2380,6 +2380,136 @@ class DraftRenameModal extends Modal {
   }
 }
 
+class DraftIdentityModal extends Modal {
+  constructor(plugin, report) {
+    super(plugin.app);
+    this.plugin = plugin;
+    this.report = report;
+    this.submitting = false;
+  }
+
+  onOpen() {
+    const { contentEl, report } = this;
+    contentEl.empty();
+    contentEl.addClass("myblog-draft-identity");
+    contentEl.createEl("p", {
+      cls: "myblog-draft-identity__eyebrow",
+      text: "DRAFT IDENTITY / LOCAL EVIDENCE",
+    });
+    contentEl.createEl("h2", {
+      cls: "myblog-draft-identity__title",
+      text: "检查当前草稿身份",
+    });
+    contentEl.createEl("p", {
+      cls: "myblog-draft-identity__boundary",
+      text: "只读检查文件名、frontmatter 与内容命名空间；只有完全匹配的旧式 slug 可以被移除。不会发布、提交或联网。",
+    });
+
+    const status = contentEl.createEl("p", {
+      cls: "myblog-draft-identity__status",
+      text: report.statusToken,
+    });
+    status.setAttr("data-state", report.state);
+
+    const source = contentEl.createEl("p", {
+      cls: "myblog-draft-identity__source",
+    });
+    source.createEl("span", { text: "当前文件" });
+    source.createEl("code", { text: report.sourcePath });
+
+    const signature = contentEl.createEl("div", {
+      cls: "myblog-draft-identity__signature",
+    });
+    const fileNode = signature.createEl("div", {
+      cls: "myblog-draft-identity__node",
+    });
+    fileNode.createEl("span", { text: "FILE" });
+    fileNode.createEl("code", { text: report.sourceSlug });
+    signature.createEl("span", {
+      cls: "myblog-draft-identity__link",
+      text: "FILE ⇄ FRONTMATTER",
+    });
+    const frontmatterNode = signature.createEl("div", {
+      cls: "myblog-draft-identity__node myblog-draft-identity__node--frontmatter",
+    });
+    frontmatterNode.createEl("span", { text: "FRONTMATTER" });
+    frontmatterNode.createEl("code", { text: report.frontmatterSlugLabel });
+
+    contentEl.createEl("p", {
+      cls: "myblog-draft-identity__reason",
+      text: report.reason,
+    });
+
+    const evidence = contentEl.createEl("dl", {
+      cls: "myblog-draft-identity__evidence",
+    });
+    for (const item of report.evidence) {
+      const row = evidence.createEl("div", {
+        cls: "myblog-draft-identity__evidence-row",
+      });
+      row.setAttr("data-state", item.state);
+      row.createEl("dt", { text: item.label });
+      row.createEl("dd", { text: item.value });
+    }
+
+    const error = contentEl.createEl("p", {
+      cls: "myblog-draft-identity__error",
+    });
+    error.setAttr("aria-live", "polite");
+    error.setAttr("role", "alert");
+
+    const actions = contentEl.createEl("div", {
+      cls: "modal-button-container myblog-draft-identity__actions",
+    });
+    const close = actions.createEl("button", { text: "关闭" });
+    close.setAttr("type", "button");
+    close.addEventListener("click", () => this.close());
+
+    if (!report.cleanupAllowed) return;
+    const cleanup = actions.createEl("button", {
+      cls: "mod-cta",
+      text: "移除冗余 slug",
+    });
+    cleanup.setAttr("type", "button");
+    cleanup.addEventListener("click", async () => {
+      if (this.submitting) return;
+      this.submitting = true;
+      error.setText("");
+      close.disabled = true;
+      cleanup.disabled = true;
+      let completed = false;
+      try {
+        const result = await this.plugin.cleanupLegacyDraftIdentity({
+          observedContent: report.observedContent,
+          sourcePath: report.sourcePath,
+        });
+        completed = true;
+        this.close();
+        if (result.status === "cleaned") {
+          new Notice(`冗余 slug 已移除：${result.sourcePath}`, 5000);
+        } else {
+          new Notice(
+            `清理结果不确定：请重新检查 ${result.sourcePath}；不会自动重试。`,
+            15000,
+          );
+        }
+      } catch (cleanupError) {
+        error.setText(
+          cleanupError instanceof Error
+            ? cleanupError.message
+            : "草稿身份清理前置检查失败。",
+        );
+      } finally {
+        if (!completed) {
+          this.submitting = false;
+          close.disabled = false;
+          cleanup.disabled = false;
+        }
+      }
+    });
+  }
+}
+
 class ReadOnlyReportModal extends Modal {
   constructor(app, { description, report, title }) {
     super(app);
@@ -3472,6 +3602,7 @@ module.exports = class MyBlogPublisher extends Plugin {
     this.activeRuns = new Map();
     this.authorTransactionLease = null;
     this.draftRenameLease = null;
+    this.draftIdentityCleanupLease = null;
     this.lastAuthorTransactionReceipt = null;
 
     this.addCommand({
@@ -3484,6 +3615,13 @@ module.exports = class MyBlogPublisher extends Plugin {
       id: "rename-current-inbox-draft",
       name: "重命名当前草稿",
       checkCallback: (checking) => this.renameCurrentInboxDraft(checking),
+    });
+
+    this.addCommand({
+      id: "inspect-current-inbox-draft-identity",
+      name: "检查当前草稿身份",
+      checkCallback: (checking) =>
+        this.inspectCurrentInboxDraftIdentity(checking),
     });
 
     this.addCommand({
@@ -3569,6 +3707,7 @@ module.exports = class MyBlogPublisher extends Plugin {
 
   onunload() {
     this.draftRenameLease = null;
+    this.draftIdentityCleanupLease = null;
     const authorLease = this.authorTransactionLease;
     if (authorLease) {
       this.releaseAuthorTransactionLease(authorLease, null, "unloaded");
@@ -3637,6 +3776,285 @@ module.exports = class MyBlogPublisher extends Plugin {
     if (checking) return true;
     new DraftRenameModal(this, identity).open();
     return true;
+  }
+
+  inspectCurrentInboxDraftIdentity(checking) {
+    if (!this.isDesktopVault()) return false;
+    const identity = this.getActiveInboxDraftIdentity();
+    if (!identity) return false;
+    if (checking) return true;
+    void this.openDraftIdentityEvidence(identity).catch((error) => {
+      const message = error instanceof Error
+        ? error.message
+        : "草稿身份检查失败。";
+      new Notice(message, 10000);
+    });
+    return true;
+  }
+
+  async openDraftIdentityEvidence(identity) {
+    const file = this.app.vault.getAbstractFileByPath(identity.sourcePath);
+    if (
+      !(file instanceof TFile) ||
+      file !== identity.file ||
+      file.path !== identity.sourcePath ||
+      file.extension !== "md"
+    ) {
+      throw new Error("当前草稿在检查开始前已变化；请重新运行命令。");
+    }
+    let content;
+    try {
+      content = await this.app.vault.read(file);
+    } catch (error) {
+      throw new Error(`草稿身份读取失败：${identity.sourcePath} · ${error.message}`);
+    }
+    if (this.app.vault.getAbstractFileByPath(identity.sourcePath) !== file) {
+      throw new Error("当前草稿在检查期间已变化；请重新运行命令。");
+    }
+    const report = this.analyzeDraftIdentity(identity, content);
+    new DraftIdentityModal(this, report).open();
+    return report;
+  }
+
+  analyzeDraftIdentity(identity, content) {
+    const postPath = `content/posts/${identity.sourceSlug}.md`;
+    const projectPath = `content/projects/${identity.sourceSlug}.md`;
+    const postCollision = Boolean(this.app.vault.getAbstractFileByPath(postPath));
+    const projectCollision = Boolean(
+      this.app.vault.getAbstractFileByPath(projectPath),
+    );
+    const evidence = (draftValue) => Object.freeze([
+      Object.freeze({
+        label: "DRAFT",
+        state: draftValue === "TRUE" ? "clear" : "hold",
+        value: draftValue,
+      }),
+      Object.freeze({ label: "INBOX", state: "clear", value: "OWNED" }),
+      Object.freeze({
+        label: "POST",
+        state: postCollision ? "hold" : "clear",
+        value: postCollision ? "COLLISION" : "CLEAR",
+      }),
+      Object.freeze({
+        label: "PROJECT",
+        state: projectCollision ? "hold" : "clear",
+        value: projectCollision ? "COLLISION" : "CLEAR",
+      }),
+    ]);
+    const held = (reason, frontmatterSlugLabel = "UNPROVEN", draftValue = "UNPROVEN") =>
+      Object.freeze({
+        cleanupAllowed: false,
+        evidence: evidence(draftValue),
+        frontmatterSlugLabel,
+        observedContent: content,
+        reason,
+        sourcePath: identity.sourcePath,
+        sourceSlug: identity.sourceSlug,
+        state: "held",
+        statusToken: "HOLD / CONFLICT",
+      });
+
+    let info;
+    try {
+      info = getFrontMatterInfo(content);
+    } catch {
+      return held("frontmatter 无法识别；保持只读。", "INVALID");
+    }
+    const boundary = content.match(
+      /^(---\r?\n)([\s\S]*?)(\r?\n---(?:\r?\n|$))/u,
+    );
+    if (!info?.exists || !boundary) {
+      return held("缺少可证明的 frontmatter 边界；保持只读。", "MISSING");
+    }
+    const rawFrontmatter = boundary[2];
+    if (/^[ \t]+slug[ \t]*:/mu.test(rawFrontmatter)) {
+      return held("检测到缩进的 slug 表示；身份含义不明确，保持只读。", "AMBIGUOUS");
+    }
+
+    let frontmatter;
+    try {
+      frontmatter = parseYaml(info.frontmatter);
+    } catch {
+      return held("frontmatter YAML 无法解析；保持只读。", "INVALID");
+    }
+    if (
+      !frontmatter ||
+      typeof frontmatter !== "object" ||
+      Array.isArray(frontmatter)
+    ) {
+      return held("frontmatter 必须是 YAML 映射；保持只读。", "INVALID");
+    }
+    const draftValue = frontmatter.draft === true ? "TRUE" : "NOT TRUE";
+    const hasSlug = Object.prototype.hasOwnProperty.call(frontmatter, "slug");
+    const slugLines = rawFrontmatter.match(
+      /^slug[ \t]*:[^\r\n]*(?:\r?\n|$)/gmu,
+    ) ?? [];
+
+    if (frontmatter.draft !== true) {
+      return held("只检查和清理 draft: true 的未发布草稿。", hasSlug ? String(frontmatter.slug) : "ABSENT", draftValue);
+    }
+    if (hasSlug && typeof frontmatter.slug !== "string") {
+      return held("旧式 frontmatter slug 必须是文本；保持只读。", String(frontmatter.slug), draftValue);
+    }
+    if (hasSlug && slugLines.length !== 1) {
+      return held("旧式 slug 的原始行格式不唯一或不安全；保持只读。", frontmatter.slug, draftValue);
+    }
+    if (!hasSlug && slugLines.length > 0) {
+      return held("slug 的原始行与 YAML 语义不一致；保持只读。", "AMBIGUOUS", draftValue);
+    }
+    if (hasSlug && frontmatter.slug !== identity.sourceSlug) {
+      return held("frontmatter slug 不等于文件名；保持只读。", frontmatter.slug, draftValue);
+    }
+    if (
+      hasSlug &&
+      slugLines[0].replace(/\r?\n$/u, "") !== `slug: ${identity.sourceSlug}`
+    ) {
+      return held("旧式 slug 的原始行格式不安全；保持只读。", frontmatter.slug, draftValue);
+    }
+    if (postCollision) {
+      return held(`正式文章命名空间已存在：${postPath}。`, hasSlug ? frontmatter.slug : "ABSENT", draftValue);
+    }
+    if (projectCollision) {
+      return held(`项目命名空间已存在：${projectPath}。`, hasSlug ? frontmatter.slug : "ABSENT", draftValue);
+    }
+
+    if (!hasSlug) {
+      return Object.freeze({
+        cleanupAllowed: false,
+        evidence: evidence(draftValue),
+        frontmatterSlugLabel: "ABSENT",
+        observedContent: content,
+        reason: "文件名已经是唯一身份；无需清理。",
+        sourcePath: identity.sourcePath,
+        sourceSlug: identity.sourceSlug,
+        state: "filename-owned",
+        statusToken: "READY / FILE OWNED",
+      });
+    }
+
+    const cleanedFrontmatter = rawFrontmatter.replace(slugLines[0], "");
+    const cleanedContent = [
+      boundary[1],
+      cleanedFrontmatter,
+      boundary[3],
+      content.slice(boundary[0].length),
+    ].join("");
+    return Object.freeze({
+      cleanedContent,
+      cleanupAllowed: true,
+      evidence: evidence(draftValue),
+      frontmatterSlugLabel: frontmatter.slug,
+      observedContent: content,
+      reason: "旧式 slug 与文件名完全匹配；可移除这一条冗余身份字段。",
+      sourcePath: identity.sourcePath,
+      sourceSlug: identity.sourceSlug,
+      state: "legacy-cleanable",
+      statusToken: "LEGACY / MATCHED",
+    });
+  }
+
+  async cleanupLegacyDraftIdentity({ observedContent, sourcePath } = {}) {
+    if (!this.isDesktopVault()) {
+      throw new Error("草稿身份清理只支持桌面 Vault。");
+    }
+    const match = typeof sourcePath === "string"
+      ? sourcePath.match(DRAFT_INBOX_PATH_PATTERN)
+      : null;
+    if (!match || typeof observedContent !== "string") {
+      throw new Error("草稿身份清理输入无效；请重新检查。");
+    }
+    if (this.draftIdentityCleanupLease) {
+      throw new Error("另一个草稿身份清理正在进行；完成后重新检查。");
+    }
+    const lease = Object.freeze({ sourcePath });
+    this.draftIdentityCleanupLease = lease;
+    try {
+      const activeIdentity = this.getActiveInboxDraftIdentity();
+      const file = this.app.vault.getAbstractFileByPath(sourcePath);
+      if (
+        !activeIdentity ||
+        !(file instanceof TFile) ||
+        activeIdentity.file !== file ||
+        activeIdentity.sourcePath !== sourcePath ||
+        file.path !== sourcePath ||
+        file.extension !== "md"
+      ) {
+        throw new Error("当前草稿对象已变化；重新检查后再清理。");
+      }
+      const identity = Object.freeze({
+        file,
+        sourcePath,
+        sourceSlug: match[1],
+      });
+      const observedReport = this.analyzeDraftIdentity(identity, observedContent);
+      if (!observedReport.cleanupAllowed) {
+        throw new Error("已检查的草稿不再满足精确旧身份清理条件。");
+      }
+
+      const current = await this.app.vault.read(file);
+      if (current !== observedContent) {
+        throw new Error("草稿在检查后已变化；重新检查后再清理。");
+      }
+      if (
+        this.app.vault.getAbstractFileByPath(sourcePath) !== file ||
+        this.getActiveInboxDraftIdentity()?.file !== file
+      ) {
+        throw new Error("当前草稿对象已变化；重新检查后再清理。");
+      }
+      const beforeProcess = this.analyzeDraftIdentity(identity, current);
+      if (!beforeProcess.cleanupAllowed) {
+        throw new Error("草稿身份或内容命名空间已变化；重新检查后再清理。");
+      }
+
+      let callbackError = null;
+      let expectedContent = null;
+      let processedContent;
+      try {
+        processedContent = await this.app.vault.process(file, (data) => {
+          try {
+            if (data !== observedContent) {
+              throw new Error("草稿在检查后已变化；重新检查后再清理。");
+            }
+            const callbackReport = this.analyzeDraftIdentity(identity, data);
+            if (!callbackReport.cleanupAllowed) {
+              throw new Error("草稿身份或内容命名空间已变化；重新检查后再清理。");
+            }
+            expectedContent = callbackReport.cleanedContent;
+            return expectedContent;
+          } catch (error) {
+            callbackError = error instanceof Error
+              ? error
+              : new Error("草稿身份清理回调失败。");
+            throw callbackError;
+          }
+        });
+      } catch {
+        if (callbackError) throw callbackError;
+        return Object.freeze({ sourcePath, status: "uncertain" });
+      }
+
+      let contentAfter;
+      try {
+        contentAfter = await this.app.vault.read(file);
+      } catch {
+        return Object.freeze({ sourcePath, status: "uncertain" });
+      }
+      const afterReport = this.analyzeDraftIdentity(identity, contentAfter);
+      if (
+        typeof expectedContent === "string" &&
+        processedContent === expectedContent &&
+        contentAfter === expectedContent &&
+        afterReport.state === "filename-owned" &&
+        this.app.vault.getAbstractFileByPath(sourcePath) === file
+      ) {
+        return Object.freeze({ sourcePath, status: "cleaned" });
+      }
+      return Object.freeze({ sourcePath, status: "uncertain" });
+    } finally {
+      if (this.draftIdentityCleanupLease === lease) {
+        this.draftIdentityCleanupLease = null;
+      }
+    }
   }
 
   getDraftCreationToday() {
