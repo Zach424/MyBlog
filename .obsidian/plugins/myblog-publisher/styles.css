@@ -216,6 +216,159 @@
   }
 }
 
+.myblog-review-delivery {
+  --myblog-delivery-ink: var(--text-normal, #1f272a);
+  --myblog-delivery-verified: var(--color-green, #2f756f);
+  --myblog-delivery-trace: var(--background-modifier-border, #486f78);
+  --myblog-delivery-hold: var(--color-orange, #c6683c);
+  --myblog-delivery-paper: var(--background-primary, #f4f3ef);
+  color: var(--myblog-delivery-ink);
+  font-family: var(--font-interface);
+  max-width: 48rem;
+}
+
+.myblog-review-delivery__eyebrow {
+  color: var(--myblog-delivery-trace);
+  font-family: var(--font-monospace);
+  font-size: var(--font-ui-smaller);
+  font-weight: var(--font-semibold);
+  letter-spacing: 0.08em;
+  margin: 0 0 var(--size-2-2);
+}
+
+.myblog-review-delivery[data-status="pending-review"]
+  .myblog-review-delivery__eyebrow {
+  color: var(--myblog-delivery-hold);
+}
+
+.myblog-review-delivery[data-status="synchronized"]
+  .myblog-review-delivery__eyebrow {
+  color: var(--myblog-delivery-verified);
+}
+
+.myblog-review-delivery__title {
+  font-family: var(--font-text);
+  margin: 0 0 var(--size-4-2);
+}
+
+.myblog-review-delivery__boundary {
+  border-inline-start: 0.22rem solid var(--myblog-delivery-trace);
+  color: var(--text-muted);
+  margin: 0 0 var(--size-4-5);
+  padding-inline-start: var(--size-4-3);
+}
+
+.myblog-review-delivery__transition {
+  align-items: end;
+  display: grid;
+  gap: var(--size-4-3);
+  grid-template-columns: minmax(0, 1fr) minmax(3rem, 0.55fr) minmax(0, 1fr);
+}
+
+.myblog-review-delivery__node {
+  border-bottom: 0.24rem solid var(--myblog-delivery-trace);
+  display: flex;
+  flex-direction: column;
+  gap: var(--size-2-1);
+  min-width: 0;
+  padding-bottom: var(--size-4-2);
+}
+
+.myblog-review-delivery__node--local {
+  border-bottom-color: var(--myblog-delivery-hold);
+  text-align: end;
+}
+
+.myblog-review-delivery[data-status="synchronized"]
+  .myblog-review-delivery__node--local {
+  border-bottom-color: var(--myblog-delivery-verified);
+}
+
+.myblog-review-delivery__node span {
+  color: var(--text-muted);
+  font-size: var(--font-ui-smaller);
+}
+
+.myblog-review-delivery__node code {
+  font-variant-numeric: tabular-nums;
+  overflow-wrap: anywhere;
+}
+
+.myblog-review-delivery__track {
+  align-items: center;
+  border-top: 1px solid var(--myblog-delivery-trace);
+  color: var(--myblog-delivery-hold);
+  display: flex;
+  justify-content: center;
+  margin-bottom: calc(var(--size-4-2) + 0.1rem);
+}
+
+.myblog-review-delivery__track span {
+  background: var(--myblog-delivery-paper);
+  font-family: var(--font-monospace);
+  line-height: 1;
+  padding-inline: var(--size-2-2);
+  transform: translateY(-50%);
+}
+
+.myblog-review-delivery__ledger {
+  border-top: 1px solid var(--background-modifier-border);
+  margin: var(--size-4-6) 0 0;
+}
+
+.myblog-review-delivery__row {
+  border-bottom: 1px solid var(--background-modifier-border);
+  display: grid;
+  gap: var(--size-4-3);
+  grid-template-columns: minmax(8rem, 0.7fr) minmax(0, 1.3fr);
+  padding-block: var(--size-4-3);
+}
+
+.myblog-review-delivery__row dt {
+  color: var(--text-muted);
+  font-size: var(--font-ui-smaller);
+}
+
+.myblog-review-delivery__row dd {
+  margin-inline-start: 0;
+  overflow-wrap: anywhere;
+}
+
+.myblog-review-delivery__row[data-state="pending"] dd,
+.myblog-review-delivery__row[data-state="recovery"] dd {
+  color: var(--myblog-delivery-hold);
+  font-weight: var(--font-semibold);
+}
+
+.myblog-review-delivery__row[data-state="synchronized"] dd {
+  color: var(--myblog-delivery-verified);
+  font-weight: var(--font-semibold);
+}
+
+.myblog-review-delivery__note {
+  border-inline-start: 0.22rem solid var(--myblog-delivery-hold);
+  color: var(--text-muted);
+  margin: var(--size-4-5) 0 0;
+  padding-inline-start: var(--size-4-3);
+}
+
+.myblog-review-delivery[data-status="synchronized"]
+  .myblog-review-delivery__note {
+  border-inline-start-color: var(--myblog-delivery-verified);
+}
+
+@media (max-width: 36rem) {
+  .myblog-review-delivery__transition {
+    gap: var(--size-4-2);
+    grid-template-columns: minmax(0, 1fr) minmax(1.5rem, 0.25fr) minmax(0, 1fr);
+  }
+
+  .myblog-review-delivery__row {
+    gap: var(--size-2-2);
+    grid-template-columns: 1fr;
+  }
+}
+
 .myblog-review-proof {
   --myblog-proof-ink: var(--text-normal, #1f272a);
   --myblog-proof-verified: var(--color-green, #2f756f);

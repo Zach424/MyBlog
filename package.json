@@ -17,6 +17,7 @@
     "release:check": "node scripts/check-release-config.mjs && npm run content:status && npm run content:inbox && npm run media:staging && npm run links:external && npm run check && npm audit --omit=dev --audit-level=high",
     "content:publish": "node --experimental-strip-types scripts/publish-note.mjs",
     "content:review": "node --experimental-strip-types scripts/review-note.mjs",
+    "content:review:status": "node --experimental-strip-types scripts/report-content-review-delivery.mjs",
     "content:inbox": "node --experimental-strip-types scripts/report-inbox-readiness.mjs",
     "content:status": "node --experimental-strip-types scripts/report-content-maintenance.mjs",
     "links:external": "node --experimental-strip-types scripts/report-external-links.mjs",

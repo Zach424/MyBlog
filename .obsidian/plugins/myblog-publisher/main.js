@@ -5,6 +5,16 @@ const { spawn } = require("node:child_process");
 const MAX_CAPTURED_OUTPUT = 200_000;
 const MAINTENANCE_REPORT_VERSION = 1;
 const CONTENT_REVIEW_PROOF_VERSION = 3;
+const CONTENT_REVIEW_DELIVERY_REPORT_VERSION = 1;
+const GIT_OBJECT_ID_PATTERN = /^(?:[a-f0-9]{40}|[a-f0-9]{64})$/u;
+const CONTENT_REVIEW_DELIVERY_STATUSES = [
+  "synchronized",
+  "pending-review",
+  "local-ahead",
+  "behind",
+  "diverged",
+  "tracking-missing",
+];
 const MAINTENANCE_STATUSES = [
   "healthy",
   "review-soon",
@@ -548,6 +558,214 @@ function parseContentReviewProof(output, expectedSourcePath) {
   return proof;
 }
 
+function assertGitObjectId(value, label) {
+  if (typeof value !== "string" || !GIT_OBJECT_ID_PATTERN.test(value)) {
+    valueError(label, "必须是 40 或 64 位小写 Git object id");
+  }
+}
+
+function parseContentReviewDeliveryReport(output) {
+  let report;
+  try {
+    report = JSON.parse(output);
+  } catch {
+    throw new Error("正式复核交付证据不是有效 JSON");
+  }
+  assertPlainObject(report, "正式复核交付证据");
+  assertExactKeys(
+    report,
+    ["version", "mode", "observation", "relation", "pendingReview", "recovery"],
+    "正式复核交付证据",
+  );
+  if (report.version !== CONTENT_REVIEW_DELIVERY_REPORT_VERSION) {
+    valueError(
+      "正式复核交付证据 version",
+      `必须是 ${CONTENT_REVIEW_DELIVERY_REPORT_VERSION}`,
+    );
+  }
+  if (report.mode !== "read-only") {
+    valueError("正式复核交付证据 mode", "必须是 read-only");
+  }
+
+  assertPlainObject(report.observation, "正式复核交付证据 observation");
+  assertExactKeys(
+    report.observation,
+    [
+      "currentBranch",
+      "localHead",
+      "localRef",
+      "networkChecked",
+      "trackingHead",
+      "trackingRef",
+    ],
+    "正式复核交付证据 observation",
+  );
+  if (report.observation.currentBranch !== null) {
+    assertNonEmptyString(
+      report.observation.currentBranch,
+      "正式复核交付证据 observation.currentBranch",
+    );
+    if (/[\u0000-\u001f\u007f]/u.test(report.observation.currentBranch)) {
+      valueError(
+        "正式复核交付证据 observation.currentBranch",
+        "不能包含控制字符",
+      );
+    }
+  }
+  assertGitObjectId(
+    report.observation.localHead,
+    "正式复核交付证据 observation.localHead",
+  );
+  if (report.observation.localRef !== "refs/heads/main") {
+    valueError("正式复核交付证据 observation.localRef", "必须是 refs/heads/main");
+  }
+  if (report.observation.networkChecked !== false) {
+    valueError("正式复核交付证据 observation.networkChecked", "必须是 false");
+  }
+  if (report.observation.trackingHead !== null) {
+    assertGitObjectId(
+      report.observation.trackingHead,
+      "正式复核交付证据 observation.trackingHead",
+    );
+  }
+  if (report.observation.trackingRef !== "refs/remotes/origin/main") {
+    valueError(
+      "正式复核交付证据 observation.trackingRef",
+      "必须是 refs/remotes/origin/main",
+    );
+  }
+
+  assertPlainObject(report.relation, "正式复核交付证据 relation");
+  assertExactKeys(
+    report.relation,
+    ["ahead", "behind", "status"],
+    "正式复核交付证据 relation",
+  );
+  if (!CONTENT_REVIEW_DELIVERY_STATUSES.includes(report.relation.status)) {
+    valueError("正式复核交付证据 relation.status", "不是受支持的状态");
+  }
+  const trackingMissing = report.observation.trackingHead === null;
+  if (trackingMissing) {
+    if (
+      report.relation.ahead !== null ||
+      report.relation.behind !== null ||
+      report.relation.status !== "tracking-missing"
+    ) {
+      valueError(
+        "正式复核交付证据 relation",
+        "tracking ref 缺失时必须是 tracking-missing 且计数为 null",
+      );
+    }
+  } else {
+    assertInteger(report.relation.ahead, "正式复核交付证据 relation.ahead", 0);
+    assertInteger(report.relation.behind, "正式复核交付证据 relation.behind", 0);
+    const { ahead, behind } = report.relation;
+    const expectedStatus = ahead > 0 && behind > 0
+      ? "diverged"
+      : behind > 0
+        ? "behind"
+        : ahead > 0
+          ? (report.pendingReview === null ? "local-ahead" : "pending-review")
+          : "synchronized";
+    if (report.relation.status !== expectedStatus) {
+      valueError(
+        "正式复核交付证据 relation.status",
+        "与 ahead/behind/pendingReview 不一致",
+      );
+    }
+    if (
+      (ahead === 0 && behind === 0) !==
+      (report.observation.localHead === report.observation.trackingHead)
+    ) {
+      valueError(
+        "正式复核交付证据 relation",
+        "HEAD 身份与 ahead/behind 不一致",
+      );
+    }
+  }
+
+  if (report.pendingReview !== null) {
+    assertPlainObject(report.pendingReview, "正式复核交付证据 pendingReview");
+    assertExactKeys(
+      report.pendingReview,
+      [
+        "blobOid",
+        "commitOid",
+        "parentOid",
+        "slug",
+        "sourcePath",
+        "subject",
+        "treeOid",
+      ],
+      "正式复核交付证据 pendingReview",
+    );
+    for (const field of ["blobOid", "commitOid", "parentOid", "treeOid"]) {
+      assertGitObjectId(
+        report.pendingReview[field],
+        `正式复核交付证据 pendingReview.${field}`,
+      );
+    }
+    if (
+      report.relation.status !== "pending-review" ||
+      report.relation.ahead !== 1 ||
+      report.relation.behind !== 0 ||
+      report.pendingReview.commitOid !== report.observation.localHead ||
+      report.pendingReview.parentOid !== report.observation.trackingHead
+    ) {
+      valueError(
+        "正式复核交付证据 pendingReview",
+        "必须是直接领先 tracking ref 的唯一 HEAD 提交",
+      );
+    }
+    if (
+      typeof report.pendingReview.slug !== "string" ||
+      !/^[a-z0-9]+(?:-[a-z0-9]+)*$/u.test(report.pendingReview.slug)
+    ) {
+      valueError("正式复核交付证据 pendingReview.slug", "必须是稳定 slug");
+    }
+    const expectedPathPattern = new RegExp(
+      `^content/(?:posts|projects)/${report.pendingReview.slug}\\.md$`,
+      "u",
+    );
+    if (!expectedPathPattern.test(report.pendingReview.sourcePath)) {
+      valueError(
+        "正式复核交付证据 pendingReview.sourcePath",
+        "必须是与 slug 对应的正式内容路径",
+      );
+    }
+    if (report.pendingReview.subject !== `content: review ${report.pendingReview.slug}`) {
+      valueError(
+        "正式复核交付证据 pendingReview.subject",
+        "必须是与 slug 对应的正式复核提交",
+      );
+    }
+  } else if (report.relation.status === "pending-review") {
+    valueError("正式复核交付证据 pendingReview", "pending-review 状态不能缺失");
+  }
+
+  assertPlainObject(report.recovery, "正式复核交付证据 recovery");
+  assertExactKeys(
+    report.recovery,
+    ["action", "autoExecuted", "command"],
+    "正式复核交付证据 recovery",
+  );
+  if (report.recovery.autoExecuted !== false) {
+    valueError("正式复核交付证据 recovery.autoExecuted", "必须是 false");
+  }
+  const expectedRecovery = report.relation.status === "pending-review"
+    ? ["push-origin-main", "git push origin main"]
+    : report.relation.status === "synchronized"
+      ? ["none", null]
+      : ["inspect-git-state", null];
+  if (
+    report.recovery.action !== expectedRecovery[0] ||
+    report.recovery.command !== expectedRecovery[1]
+  ) {
+    valueError("正式复核交付证据 recovery", "与 relation 状态不一致");
+  }
+  return report;
+}
+
 function remainingLabel(remainingDays) {
   return remainingDays >= 0
     ? `剩余 ${remainingDays} 天`
@@ -685,6 +903,140 @@ class ContentReviewProofTextModal extends ReadOnlyReportModal {
         "结构化 Author Proof 不可用，以下为重新执行后的只读文本证据；同步仍需单独运行。",
       report,
       title: "正式内容复核证据 · 纯文本",
+    });
+  }
+}
+
+class ContentReviewDeliveryTextModal extends ReadOnlyReportModal {
+  constructor(app, report) {
+    super(app, {
+      description:
+        "结构化交付证据不可用，以下为重新执行后的本地只读文本；没有 fetch、push 或历史修改。",
+      report,
+      title: "正式内容复核交付状态 · 纯文本",
+    });
+  }
+}
+
+function createDeliveryRow(container, label, value, options = {}) {
+  const row = container.createEl("div", {
+    cls: "myblog-review-delivery__row",
+  });
+  if (options.state) row.setAttr("data-state", options.state);
+  row.createEl("dt", { text: label });
+  const detail = row.createEl("dd");
+  if (options.code) detail.createEl("code", { text: String(value) });
+  else detail.setText(String(value));
+  return row;
+}
+
+function shortGitObjectId(oid) {
+  return oid ? `${oid.slice(0, 12)}…${oid.slice(-8)}` : "MISSING";
+}
+
+class ContentReviewDeliveryModal extends Modal {
+  constructor(app, report) {
+    super(app);
+    this.report = report;
+  }
+
+  onOpen() {
+    const { contentEl, report } = this;
+    const pending = report.pendingReview;
+    const synchronized = report.relation.status === "synchronized";
+    contentEl.empty();
+    contentEl.addClass("myblog-review-delivery");
+    contentEl.setAttr("data-status", report.relation.status);
+    contentEl.createEl("p", {
+      cls: "myblog-review-delivery__eyebrow",
+      text: pending
+        ? "DELIVERY HOLD / LOCAL ONLY"
+        : synchronized
+          ? "DELIVERY EVIDENCE / ALIGNED"
+          : "DELIVERY EVIDENCE / INSPECT",
+    });
+    contentEl.createEl("h2", {
+      cls: "myblog-review-delivery__title",
+      text: "正式内容复核交付状态",
+    });
+    contentEl.createEl("p", {
+      cls: "myblog-review-delivery__boundary",
+      text: "只读取本地 Git 引用；没有 fetch、push 或历史修改。origin/main 仅代表最后一次本地观察，不是实时远端声明。",
+    });
+
+    const transition = contentEl.createEl("section", {
+      cls: "myblog-review-delivery__transition",
+    });
+    transition.setAttr("aria-label", "origin/main 最后本地观察与 local main 的提交关系");
+    const tracking = transition.createEl("div", {
+      cls: "myblog-review-delivery__node",
+    });
+    tracking.createEl("span", { text: "ORIGIN/MAIN · LAST OBSERVED" });
+    tracking.createEl("code", {
+      text: shortGitObjectId(report.observation.trackingHead),
+    });
+    const track = transition.createEl("div", {
+      cls: "myblog-review-delivery__track",
+    });
+    track.createEl("span", {
+      text: report.relation.ahead === null ? "+?" : `+${report.relation.ahead}`,
+    });
+    const local = transition.createEl("div", {
+      cls: "myblog-review-delivery__node myblog-review-delivery__node--local",
+    });
+    local.createEl("span", { text: "LOCAL MAIN" });
+    local.createEl("code", {
+      text: shortGitObjectId(report.observation.localHead),
+    });
+
+    const ledger = contentEl.createEl("dl", {
+      cls: "myblog-review-delivery__ledger",
+    });
+    const statusLabel = pending
+      ? "PENDING / NOT ON TRACKING REF"
+      : synchronized
+        ? "SYNCHRONIZED / NO PENDING REVIEW"
+        : `INSPECT / ${report.relation.status.toUpperCase()}`;
+    createDeliveryRow(ledger, "交付状态", statusLabel, {
+      state: pending ? "pending" : synchronized ? "synchronized" : "inspect",
+    });
+    createDeliveryRow(
+      ledger,
+      "提交关系",
+      `behind ${report.relation.behind ?? "unknown"} · ahead ${report.relation.ahead ?? "unknown"}`,
+      { code: true },
+    );
+    createDeliveryRow(
+      ledger,
+      "当前分支",
+      report.observation.currentBranch ?? "detached HEAD",
+      { code: true },
+    );
+    if (pending) {
+      createDeliveryRow(ledger, "正式内容", pending.sourcePath, { code: true });
+      createDeliveryRow(ledger, "提交声明", pending.subject, { code: true });
+      createDeliveryRow(ledger, "commit", pending.commitOid, { code: true });
+      createDeliveryRow(ledger, "tree", pending.treeOid, { code: true });
+      createDeliveryRow(ledger, "content blob", pending.blobOid, { code: true });
+      createDeliveryRow(ledger, "恢复命令", report.recovery.command, {
+        code: true,
+        state: "recovery",
+      });
+    } else if (!synchronized) {
+      createDeliveryRow(
+        ledger,
+        "下一步",
+        "先在仓库中检查 Git 状态；当前证据不足以自动建议 push。",
+        { state: "inspect" },
+      );
+    }
+    contentEl.createEl("p", {
+      cls: "myblog-review-delivery__note",
+      text: pending
+        ? "该提交已通过本地候选、父级、唯一路径与 tree/blob 验证；联网恢复后执行显示的命令，不要重新创建复核提交。"
+        : synchronized
+          ? "本地 main 与最后观察到的 origin/main 一致；没有待同步正式内容复核。"
+          : "本地引用关系需要人工检查；本视图不会自动同步或改写历史。",
     });
   }
 }
@@ -944,6 +1296,12 @@ module.exports = class MyBlogPublisher extends Plugin {
       name: "查看已发布内容复核台账",
       checkCallback: (checking) => this.inspectPublishedMaintenance(checking),
     });
+
+    this.addCommand({
+      id: "inspect-review-delivery",
+      name: "查看待同步正式内容复核",
+      checkCallback: (checking) => this.inspectReviewDelivery(checking),
+    });
   }
 
   onunload() {
@@ -1099,6 +1457,56 @@ module.exports = class MyBlogPublisher extends Plugin {
         startFailure: "内容复核检查无法启动",
       },
       (output) => this.openStructuredMaintenance(output),
+    );
+  }
+
+  inspectReviewDelivery(checking) {
+    if (!this.isDesktopVault()) return false;
+    if (checking) return true;
+    return this.runRepositoryCommand(
+      [
+        "--silent",
+        "run",
+        "content:review:status",
+        "--",
+        "--format",
+        "json",
+      ],
+      {
+        allowedExitCodes: [0, 1],
+        failure: "正式复核交付状态检查未完成",
+        progress: "正在读取本地正式复核交付证据…",
+        startFailure: "正式复核交付状态命令无法启动",
+      },
+      (output) => this.openStructuredReviewDelivery(output),
+    );
+  }
+
+  openStructuredReviewDelivery(output) {
+    try {
+      const report = parseContentReviewDeliveryReport(output);
+      new ContentReviewDeliveryModal(this.app, report).open();
+      new Notice("正式内容复核交付状态已更新。", 5000);
+    } catch (error) {
+      new Notice(
+        `结构化交付证据不可用：${error.message}。正在重新读取本地纯文本证据…`,
+        10000,
+      );
+      this.inspectReviewDeliveryText();
+    }
+  }
+
+  inspectReviewDeliveryText() {
+    return this.runRepositoryCommand(
+      ["--silent", "run", "content:review:status"],
+      {
+        allowedExitCodes: [0, 1],
+        failure: "纯文本正式复核交付证据未完成",
+        progress: "正在读取本地纯文本交付证据…",
+        startFailure: "纯文本正式复核交付状态命令无法启动",
+        success: "已打开纯文本正式复核交付证据。",
+      },
+      (report) => new ContentReviewDeliveryTextModal(this.app, report).open(),
     );
   }
 

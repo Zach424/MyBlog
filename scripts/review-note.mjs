@@ -10,6 +10,7 @@ import {
   PUBLISHED_NOTE_PATTERN,
 } from "../lib/content/review-note.ts";
 import { classifyContentReviewWorktree } from "../lib/content/review-worktree.ts";
+import { inspectContentReviewDeliveryFromGit } from "./review-delivery-git.mjs";
 
 function fail(message) {
   console.error(`[review] ${message}`);
@@ -60,6 +61,17 @@ function inspectReviewWorktree(sourcePath) {
   if (branch !== "main") {
     throw new Error(
       `正式内容复核只能在 main 分支执行；当前分支：${branch || "detached HEAD"}`,
+    );
+  }
+  const delivery = inspectContentReviewDeliveryFromGit();
+  if (delivery.relation.status === "pending-review") {
+    throw new Error(
+      `已有待同步正式内容复核：${delivery.pendingReview.sourcePath} · ${delivery.pendingReview.commitOid.slice(0, 12)}；先运行 npm run content:review:status，并恢复已有提交的交付`,
+    );
+  }
+  if (delivery.relation.status !== "synchronized") {
+    throw new Error(
+      `本地 main 无法证明与 origin/main tracking ref 同步：${delivery.relation.status} · behind ${delivery.relation.behind ?? "unknown"} · ahead ${delivery.relation.ahead ?? "unknown"}；先运行 npm run content:review:status 检查`,
     );
   }
   if (

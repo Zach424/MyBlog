@@ -531,12 +531,13 @@ test("restores the draft and every original attachment when the real quality gat
 });
 
 test("ships a desktop Obsidian command without hidden shell interpolation", async () => {
-  const [manifest, plugin] = await Promise.all([
+  const [manifest, packageSource, plugin] = await Promise.all([
     readFile(new URL("../.obsidian/plugins/myblog-publisher/manifest.json", import.meta.url), "utf8"),
+    readFile(new URL("../package.json", import.meta.url), "utf8"),
     readFile(new URL("../.obsidian/plugins/myblog-publisher/main.js", import.meta.url), "utf8"),
   ]);
   assert.equal(JSON.parse(manifest).isDesktopOnly, true);
-  assert.equal(JSON.parse(manifest).version, "1.7.0");
+  assert.equal(JSON.parse(manifest).version, "1.8.0");
   assert.match(plugin, /FileSystemAdapter/);
   assert.match(plugin, /InboxReadinessModal/);
   assert.match(plugin, /inspect-inbox-readiness/);
@@ -551,6 +552,12 @@ test("ships a desktop Obsidian command without hidden shell interpolation", asyn
   assert.match(plugin, /content:review/);
   assert.match(plugin, /validate-current-published-note/);
   assert.match(plugin, /review-current-published-note/);
+  assert.match(plugin, /inspect-review-delivery/);
+  assert.match(plugin, /content:review:status/);
+  assert.equal(
+    JSON.parse(packageSource).scripts["content:review:status"],
+    "node --experimental-strip-types scripts/report-content-review-delivery.mjs",
+  );
   assert.match(plugin, /shell:\s*false/);
   assert.match(plugin, /--push/);
   assert.match(plugin, /\^content\\\/inbox/);

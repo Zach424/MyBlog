@@ -326,6 +326,49 @@ function contentReviewProof({
   };
 }
 
+function reviewDeliveryReport({
+  ahead = 1,
+  behind = 0,
+  networkChecked = false,
+  pending = true,
+  status = "pending-review",
+  version = 1,
+} = {}) {
+  const trackingHead = "a".repeat(40);
+  const localHead = pending ? "b".repeat(40) : trackingHead;
+  return {
+    version,
+    mode: "read-only",
+    observation: {
+      currentBranch: "main",
+      localHead,
+      localRef: "refs/heads/main",
+      networkChecked,
+      trackingHead,
+      trackingRef: "refs/remotes/origin/main",
+    },
+    relation: { ahead, behind, status },
+    pendingReview: pending
+      ? {
+          blobOid: "d".repeat(40),
+          commitOid: localHead,
+          parentOid: trackingHead,
+          slug: "myblog",
+          sourcePath: "content/projects/myblog.md",
+          subject: "content: review myblog",
+          treeOid: "c".repeat(40),
+        }
+      : null,
+    recovery: pending
+      ? {
+          action: "push-origin-main",
+          autoExecuted: false,
+          command: "git push origin main",
+        }
+      : { action: "none", autoExecuted: false, command: null },
+  };
+}
+
 function findCommand(harness, id) {
   const command = harness.commands.find((candidate) => candidate.id === id);
   assert.ok(command, `Expected command ${id}`);
@@ -339,7 +382,7 @@ test("renders a versioned maintenance ledger and opens an exact Vault note", asy
     createPluginHarness(),
   ]);
   const manifest = JSON.parse(manifestSource);
-  assert.equal(manifest.version, "1.7.0");
+  assert.equal(manifest.version, "1.8.0");
   assert.equal(manifest.isDesktopOnly, true);
   assert.match(styles, /^\.myblog-maintenance \{/mu);
   assert.match(styles, /\[data-status="overdue"\]/u);
@@ -348,6 +391,7 @@ test("renders a versioned maintenance ledger and opens an exact Vault note", asy
   assert.match(styles, /myblog-review-proof__transition/u);
   assert.match(styles, /myblog-review-proof__deferred/u);
   assert.match(styles, /myblog-review-proof__candidate/u);
+  assert.match(styles, /^\.myblog-review-delivery \{/mu);
   assert.doesNotMatch(styles, /(?:linear-gradient|@keyframes|animation:)/u);
 
   const command = findCommand(harness, "inspect-published-maintenance");
@@ -410,6 +454,77 @@ test("renders a versioned maintenance ledger and opens an exact Vault note", asy
     ["content/projects/myblog.md"],
   );
   assert.equal(harness.modals[0].closed, true);
+});
+
+test("shows a local-only pending review delivery rail without executing recovery", async () => {
+  const harness = await createPluginHarness();
+  const command = findCommand(harness, "inspect-review-delivery");
+  assert.equal(command.checkCallback(true), true);
+  command.checkCallback(false);
+  assert.deepEqual(plain(harness.spawned[0].args), [
+    "/d",
+    "/s",
+    "/c",
+    "npm",
+    "--silent",
+    "run",
+    "content:review:status",
+    "--",
+    "--format",
+    "json",
+  ]);
+  const report = reviewDeliveryReport();
+  harness.spawned[0].child.stdout.emit("data", Buffer.from(JSON.stringify(report)));
+  harness.spawned[0].child.emit("close", 1);
+
+  assert.equal(harness.modals.length, 1);
+  const modal = harness.modals[0];
+  assert.equal(modal.contentEl.classes.has("myblog-review-delivery"), true);
+  assert.equal(elementsByTag(modal, "button").length, 0);
+  const text = allElements(modal.contentEl).map((element) => element.text).join(" ");
+  assert.match(text, /DELIVERY HOLD \/ LOCAL ONLY/u);
+  assert.match(text, /ORIGIN\/MAIN · LAST OBSERVED.*\+1.*LOCAL MAIN/su);
+  assert.match(text, /PENDING \/ NOT ON TRACKING REF/u);
+  assert.match(text, /content\/projects\/myblog\.md/u);
+  assert.match(text, /git push origin main/u);
+  assert.match(text, /没有 fetch、push 或历史修改/u);
+  assert.ok(
+    elementsByTag(modal, "code").some(
+      (element) => element.text === report.pendingReview.treeOid,
+    ),
+  );
+  assert.equal(harness.spawned.length, 1);
+});
+
+test("falls back to local-only text when delivery evidence is inconsistent", () => {
+  const harnessPromise = createPluginHarness();
+  return harnessPromise.then((harness) => {
+    const report = reviewDeliveryReport();
+    report.pendingReview.parentOid = "e".repeat(40);
+    findCommand(harness, "inspect-review-delivery").checkCallback(false);
+    harness.spawned[0].child.stdout.emit("data", Buffer.from(JSON.stringify(report)));
+    harness.spawned[0].child.emit("close", 1);
+    assert.equal(harness.spawned.length, 2);
+    assert.deepEqual(plain(harness.spawned[1].args), [
+      "/d",
+      "/s",
+      "/c",
+      "npm",
+      "--silent",
+      "run",
+      "content:review:status",
+    ]);
+    harness.spawned[1].child.stdout.emit(
+      "data",
+      Buffer.from("[review-delivery] 本地 main 有 1 个待同步复核提交。"),
+    );
+    harness.spawned[1].child.emit("close", 1);
+    assert.equal(harness.modals.length, 1);
+    assert.match(
+      elementsByTag(harness.modals[0], "pre")[0].text,
+      /待同步复核提交/u,
+    );
+  });
 });
 
 test("accepts a valid overdue report even though the CLI exits with code 1", async () => {

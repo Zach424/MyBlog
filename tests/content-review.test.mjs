@@ -18,10 +18,14 @@ import {
   fingerprintContentReviewCandidate,
   inspectContentReview,
 } from "../lib/content/review-note.ts";
+import { analyzeContentReviewDelivery } from "../lib/content/review-delivery.ts";
 import { classifyContentReviewWorktree } from "../lib/content/review-worktree.ts";
 
 const reviewerScriptPath = fileURLToPath(
   new URL("../scripts/review-note.mjs", import.meta.url),
+);
+const deliveryScriptPath = fileURLToPath(
+  new URL("../scripts/report-content-review-delivery.mjs", import.meta.url),
 );
 const sourcePath = "content/posts/reviewed-note.md";
 
@@ -81,6 +85,15 @@ function runReviewer(root, ...args) {
     root,
     process.execPath,
     ["--experimental-strip-types", reviewerScriptPath, sourcePath, ...args],
+    { allowFailure: true },
+  );
+}
+
+function runDeliveryReport(root, ...args) {
+  return run(
+    root,
+    process.execPath,
+    ["--experimental-strip-types", deliveryScriptPath, ...args],
     { allowFailure: true },
   );
 }
@@ -199,6 +212,104 @@ test("fingerprints the exact review candidate bytes with SHA-256", () => {
     fingerprintContentReviewCandidate(Buffer.from("abc\n", "utf8")),
     fingerprintContentReviewCandidate(Buffer.from("abc", "utf8")),
   );
+});
+
+test("derives synchronized and exact pending-review delivery states", () => {
+  const trackingHead = "a".repeat(40);
+  const localHead = "b".repeat(40);
+  const synchronized = analyzeContentReviewDelivery({
+    ahead: 0,
+    behind: 0,
+    currentBranch: "main",
+    localHead: trackingHead,
+    pendingCommit: null,
+    trackingHead,
+  });
+  assert.equal(synchronized.relation.status, "synchronized");
+  assert.equal(synchronized.pendingReview, null);
+  assert.deepEqual(synchronized.recovery, {
+    action: "none",
+    autoExecuted: false,
+    command: null,
+  });
+
+  const pending = analyzeContentReviewDelivery({
+    ahead: 1,
+    behind: 0,
+    currentBranch: "main",
+    localHead,
+    pendingCommit: {
+      blobOid: "d".repeat(40),
+      commitOid: localHead,
+      parentOids: [trackingHead],
+      paths: [sourcePath],
+      subject: "content: review reviewed-note",
+      treeOid: "c".repeat(40),
+    },
+    trackingHead,
+  });
+  assert.equal(pending.relation.status, "pending-review");
+  assert.deepEqual(pending.pendingReview, {
+    blobOid: "d".repeat(40),
+    commitOid: localHead,
+    parentOid: trackingHead,
+    slug: "reviewed-note",
+    sourcePath,
+    subject: "content: review reviewed-note",
+    treeOid: "c".repeat(40),
+  });
+  assert.deepEqual(pending.recovery, {
+    action: "push-origin-main",
+    autoExecuted: false,
+    command: "git push origin main",
+  });
+  assert.equal(pending.observation.networkChecked, false);
+});
+
+test("keeps ambiguous local history out of pending-review recovery", () => {
+  const trackingHead = "a".repeat(40);
+  const localHead = "b".repeat(40);
+  const invalidCommit = {
+    blobOid: "d".repeat(40),
+    commitOid: localHead,
+    parentOids: [trackingHead],
+    paths: ["scripts/not-review.mjs"],
+    subject: "content: review reviewed-note",
+    treeOid: "c".repeat(40),
+  };
+  const ahead = analyzeContentReviewDelivery({
+    ahead: 1,
+    behind: 0,
+    currentBranch: "main",
+    localHead,
+    pendingCommit: invalidCommit,
+    trackingHead,
+  });
+  assert.equal(ahead.relation.status, "local-ahead");
+  assert.equal(ahead.pendingReview, null);
+  assert.equal(ahead.recovery.action, "inspect-git-state");
+
+  const diverged = analyzeContentReviewDelivery({
+    ahead: 2,
+    behind: 1,
+    currentBranch: "work",
+    localHead,
+    pendingCommit: null,
+    trackingHead,
+  });
+  assert.equal(diverged.relation.status, "diverged");
+  assert.equal(diverged.observation.currentBranch, "work");
+
+  const missing = analyzeContentReviewDelivery({
+    ahead: null,
+    behind: null,
+    currentBranch: null,
+    localHead,
+    pendingCommit: null,
+    trackingHead: null,
+  });
+  assert.equal(missing.relation.status, "tracking-missing");
+  assert.equal(missing.observation.trackingHead, null);
 });
 
 test("classifies only isolated author drafts as deferred review work", () => {
@@ -718,6 +829,72 @@ git commit --amend --no-edit --no-verify >/dev/null 2>&1
       await readFile(join(fixture.root, ...sourcePath.split("/")), "utf8"),
       /post-commit drift/u,
     );
+  } finally {
+    await removeFixture(fixture);
+  }
+});
+
+test("reports and blocks a verified review commit whose push is still pending", async () => {
+  const fixture = await createReviewFixture();
+  try {
+    const hookPath = join(fixture.remote, "hooks", "pre-receive");
+    await writeFile(
+      hookPath,
+      "#!/bin/sh\necho 'delivery intentionally rejected' >&2\nexit 1\n",
+    );
+    await chmod(hookPath, 0o755);
+
+    const push = runReviewer(fixture.root, "--push");
+    assert.equal(push.status, 1, `${push.stdout}\n${push.stderr}`);
+    assert.match(
+      `${push.stdout}\n${push.stderr}`,
+      /复核提交已保留在本地.*GitHub 同步失败/su,
+    );
+    const pendingHead = git(fixture.root, "rev-parse", "HEAD");
+    assert.notEqual(pendingHead, fixture.baseHead);
+    assert.equal(
+      git(fixture.remote, "rev-parse", "refs/heads/main"),
+      fixture.baseHead,
+    );
+
+    const stateBeforeReport = {
+      head: git(fixture.root, "rev-parse", "HEAD"),
+      index: git(fixture.root, "write-tree"),
+      worktree: git(fixture.root, "status", "--porcelain=v1"),
+    };
+    const status = runDeliveryReport(fixture.root, "--format", "json");
+    assert.equal(status.status, 1, `${status.stdout}\n${status.stderr}`);
+    const report = JSON.parse(status.stdout);
+    assert.equal(report.relation.status, "pending-review");
+    assert.equal(report.relation.ahead, 1);
+    assert.equal(report.relation.behind, 0);
+    assert.equal(report.pendingReview.commitOid, pendingHead);
+    assert.equal(report.pendingReview.parentOid, fixture.baseHead);
+    assert.equal(report.pendingReview.sourcePath, sourcePath);
+    assert.equal(report.pendingReview.subject, "content: review reviewed-note");
+    assert.equal(report.recovery.command, "git push origin main");
+    assert.equal(report.observation.networkChecked, false);
+    assert.deepEqual(
+      {
+        head: git(fixture.root, "rev-parse", "HEAD"),
+        index: git(fixture.root, "write-tree"),
+        worktree: git(fixture.root, "status", "--porcelain=v1"),
+      },
+      stateBeforeReport,
+    );
+
+    const repeated = runReviewer(fixture.root, "--check-only");
+    assert.equal(repeated.status, 1, `${repeated.stdout}\n${repeated.stderr}`);
+    assert.match(
+      `${repeated.stdout}\n${repeated.stderr}`,
+      /已有待同步正式内容复核.*content\/posts\/reviewed-note\.md.*content:review:status/su,
+    );
+
+    await rm(hookPath, { force: true });
+    git(fixture.root, "push", "origin", "main");
+    const delivered = runDeliveryReport(fixture.root, "--format", "json");
+    assert.equal(delivered.status, 0, `${delivered.stdout}\n${delivered.stderr}`);
+    assert.equal(JSON.parse(delivered.stdout).relation.status, "synchronized");
   } finally {
     await removeFixture(fixture);
   }
