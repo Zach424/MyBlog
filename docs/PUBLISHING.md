@@ -63,11 +63,11 @@ npm run content:inbox -- --date 2026-08-05
 
 它逐篇给出 `ready`、`scheduled` 或 `blocked`，并展示内容类型、draft 状态、公开日、目标路径、真实媒体候选和结构化阻塞原因。一个坏草稿不会中止其他草稿；blocked 只进入报告，不改变命令退出码。总览不移动附件、不改写 Markdown、不提交、不推送；`ready` 也不替代单篇检查和正式发布时的完整质量门。因为本地未跟踪草稿不会出现在 GitHub 检出中，该报告只集成本地 `release:check` 和 Obsidian，不伪装成 Actions 的完整作者工作区视图。
 
-### 在 Obsidian 查看已发布内容复核队列
+### 在 Obsidian 查看已发布内容复核台账
 
-打开命令面板并运行“查看已发布内容复核队列”。MyBlog Publisher 1.2.0 会在仓库根目录隐藏运行 `npm --silent run content:status`，随后用只读 Modal 显示报告日期、Current/Historical 数量、healthy/review-soon/due-soon/overdue、源笔记路径、review-by、剩余天数和复核清单。该命令不读取网络、不修改 `reviewedAt`、不保存文件、不提交也不推送；它和 Studio 队列、每周 Actions 复用同一维护规则。
+打开命令面板并运行“查看已发布内容复核台账”。MyBlog Publisher 1.3.0 会在仓库根目录隐藏运行 `npm --silent run content:status -- --format json`，验证版本化报告后，用原生 deadline ledger 显示报告日期、Current/Historical/未公开数量、healthy/review-soon/due-soon/overdue 四档计数、源笔记路径、review-by、剩余天数和复核清单。每条记录的“打开笔记”只打开 Vault 中精确存在的 `content/posts|projects/<slug>.md`。该命令不读取网络、不修改 `reviewedAt`、不保存文件、不提交也不推送；它和 Studio 队列、每周 Actions 复用同一维护规则。
 
-检查期间的持续 Notice 会在成功、失败或插件卸载时关闭。若命令无法启动或非零退出，Obsidian 只显示最后四行诊断，不打开空报告；仍可在仓库终端运行 `npm run content:status` 取得完整输出。仓库更新了插件版本而 Obsidian 已经打开时，需要重启 Obsidian，或先关闭再启用 MyBlog Publisher，才能加载 1.2.0 代码。
+检查期间的持续 Notice 会在成功、降级、失败或插件卸载时关闭。维护 CLI 用退出码 1 表达“存在逾期内容”时，插件仍会展示通过 schema 的结构化报告；JSON、schema、安全路径或 UI 渲染不可信时，插件自动再读一次纯文本报告，而不是打开半可信交互。命令无法启动时仍只显示诊断；可在仓库终端运行 `npm run content:status` 取得完整输出。仓库更新了插件版本而 Obsidian 已经打开时，需要重启 Obsidian，或先关闭再启用 MyBlog Publisher，才能加载 1.3.0 代码。
 
 ## 迁移已公开 URL
 
