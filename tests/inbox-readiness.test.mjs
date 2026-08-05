@@ -19,6 +19,7 @@ import {
   formatInboxReadinessText,
   inspectInboxReadiness,
 } from "../lib/content/inbox-readiness.ts";
+import { prepareMediaForPublishing } from "../lib/media-policy.ts";
 
 const reporterPath = fileURLToPath(
   new URL("../scripts/report-inbox-readiness.mjs", import.meta.url),
@@ -226,6 +227,103 @@ test("isolates invalid drafts and reports target, media, and shared-source block
   }
 });
 
+test("scopes evidence to one source while deriving only its media and preserving global blockers", async () => {
+  const root = await createFixture();
+  try {
+    const image = await sharp({
+      create: {
+        width: 640,
+        height: 360,
+        channels: 3,
+        background: "#285f66",
+      },
+    }).png().toBuffer();
+    await Promise.all([
+      writeFile(
+        join(root, "content", "inbox", "current-note.md"),
+        article(
+          "current-note",
+          "2026-08-05",
+          "共享 ![[shared.png]]；当前 ![[current-only.png]]。",
+        ),
+      ),
+      writeFile(
+        join(root, "content", "inbox", "peer-note.md"),
+        article(
+          "peer-note",
+          "2026-08-05",
+          "共享 ![[shared.png]]；无关 ![[peer-only.png]]。",
+        ),
+      ),
+      writeFile(join(root, "content", "inbox", "Bad Name.md"), "---\ndraft: true\n---\n"),
+      writeFile(
+        join(root, "content", "posts", "current-note.md"),
+        article("current-note", "2026-08-01").replace("draft: true", "draft: false"),
+      ),
+      writeFile(join(root, "public", "uploads", "shared.png"), image),
+      writeFile(join(root, "public", "uploads", "current-only.png"), image),
+      writeFile(join(root, "public", "uploads", "peer-only.png"), image),
+    ]);
+
+    const scopedDerivations = [];
+    const scoped = await inspectInboxReadiness(root, "2026-08-05", {
+      mediaPreparer: async (...args) => {
+        scopedDerivations.push(args[2]);
+        return prepareMediaForPublishing(...args);
+      },
+      sourcePath: "content/inbox/current-note.md",
+      stagingParent: join(root, "scoped-staging"),
+    });
+    const complete = await inspectInboxReadiness(root, "2026-08-05", {
+      stagingParent: join(root, "complete-staging"),
+    });
+    const completeCurrent = complete.entries.find(
+      (entry) => entry.sourcePath === "content/inbox/current-note.md",
+    );
+
+    assert.equal(scoped.entries.length, 1);
+    assert.deepEqual(scoped.entries[0], completeCurrent);
+    assert.deepEqual(scopedDerivations.sort(), [
+      "public/uploads/current-only.png",
+      "public/uploads/shared.png",
+    ]);
+    assert.deepEqual(scoped.counts, {
+      attachments: 2,
+      blocked: 1,
+      drafts: 1,
+      issues: 2,
+      ready: 0,
+      scheduled: 0,
+    });
+    assert.ok(
+      scoped.entries[0].issues.some((issue) => issue.code === "attachment-shared"),
+    );
+    assert.ok(
+      scoped.entries[0].issues.some((issue) => issue.code === "target-exists"),
+    );
+    assert.ok(
+      scoped.entries[0].attachments.every((attachment) => attachment.preparation),
+    );
+    assert.ok(
+      complete.entries.some((entry) => entry.sourcePath === "content/inbox/Bad Name.md"),
+    );
+    await assert.rejects(
+      inspectInboxReadiness(root, "2026-08-05", {
+        sourcePath: "content/inbox/missing-note.md",
+      }),
+      /目标草稿不存在/u,
+    );
+    await assert.rejects(
+      inspectInboxReadiness(root, "2026-08-05", {
+        sourcePath: "content/inbox/../current-note.md",
+      }),
+      /安全的 content\/inbox/u,
+    );
+  } finally {
+    await rm(root, { recursive: true, force: true });
+  }
+});
+
 test("formats an actionable text report without treating blocked findings as a scan failure", async () => {
   const root = await createFixture();
   try {
@@ -260,6 +358,8 @@ test("runs the real JSON CLI and leaves the repository byte-for-byte untouched",
         "2026-08-05",
         "--format",
         "json",
+        "--source",
+        "content/inbox/cli-note.md",
       ],
       { cwd: root, encoding: "utf8" },
     );
@@ -268,6 +368,8 @@ test("runs the real JSON CLI and leaves the repository byte-for-byte untouched",
     assert.equal(report.version, 1);
     assert.equal(report.mode, "read-only");
     assert.equal(report.counts.ready, 1);
+    assert.equal(report.counts.drafts, 1);
+    assert.equal(report.entries[0].sourcePath, "content/inbox/cli-note.md");
     assert.deepEqual(await readFile(draftPath), before);
     assert.deepEqual(await readdir(join(root, "content", "posts")), []);
     assert.deepEqual(await readdir(join(root, "public", "uploads")), []);

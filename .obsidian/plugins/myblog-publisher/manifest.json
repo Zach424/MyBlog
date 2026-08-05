@@ -1,9 +1,9 @@
 {
   "id": "myblog-publisher",
   "name": "MyBlog Publisher",
-  "version": "1.22.0",
+  "version": "1.23.0",
   "minAppVersion": "1.5.7",
-  "description": "Create filename-owned drafts, inspect local draft identity and author intent, then validate and deliver publishing and review transactions.",
+  "description": "Create filename-owned drafts, inspect source-scoped local identity and author intent, then validate and deliver publishing and review transactions.",
   "author": "Zach424",
   "isDesktopOnly": true
 }

@@ -24,6 +24,7 @@ import {
 import { parsePostFile, parseProjectFile } from "./contract.ts";
 
 const ISO_DATE_PATTERN = /^\d{4}-\d{2}-\d{2}$/u;
+const INBOX_SOURCE_PREFIX = "content/inbox/";
 const SLUG_PATTERN = /^[a-z0-9]+(?:-[a-z0-9]+)*$/u;
 
 export const INBOX_READINESS_REPORT_VERSION = 1 as const;
@@ -86,6 +87,12 @@ export type InboxReadinessReport = {
   };
 };
 
+export type InboxReadinessOptions = {
+  mediaPreparer?: typeof prepareMediaForPublishing;
+  sourcePath?: string;
+  stagingParent?: string;
+};
+
 function isIsoDate(value: string) {
   if (!ISO_DATE_PATTERN.test(value)) return false;
   const date = new Date(`${value}T00:00:00Z`);
@@ -94,6 +101,20 @@ function isIsoDate(value: string) {
 
 function normalizePath(value: string) {
   return value.replaceAll("\\", "/");
+}
+
+function normalizeScopedSourcePath(value: string) {
+  const normalized = normalizePath(value);
+  const fileName = normalized.startsWith(INBOX_SOURCE_PREFIX)
+    ? normalized.slice(INBOX_SOURCE_PREFIX.length)
+    : "";
+  const slug = fileName.endsWith(".md") ? fileName.slice(0, -3) : "";
+  if (!fileName || fileName.includes("/") || !SLUG_PATTERN.test(slug)) {
+    throw new Error(
+      `聚焦来源必须是安全的 content/inbox/<slug>.md 路径，收到：${value}`,
+    );
+  }
+  return normalized;
 }
 
 async function pathExists(value: string) {
@@ -188,6 +209,8 @@ async function inspectDraft(
   stagingDirectory: string,
   draftIndex: number,
   reportDate: string,
+  deriveMedia: boolean,
+  mediaPreparer: typeof prepareMediaForPublishing,
 ) {
   const entry = blockedEntry(sourcePath);
   let raw: string;
@@ -276,6 +299,8 @@ async function inspectDraft(
       );
     }
 
+    if (!deriveMedia) continue;
+
     const stagedPath = join(
       stagingDirectory,
       String(draftIndex),
@@ -286,7 +311,7 @@ async function inspectDraft(
       recursive: true,
     });
     try {
-      attachment.preparation = await prepareMediaForPublishing(
+      attachment.preparation = await mediaPreparer(
         absoluteSource,
         stagedPath,
         attachment.sourcePath,
@@ -372,16 +397,24 @@ function createReport(entries: InboxReadinessEntry[], reportDate: string) {
 export async function inspectInboxReadiness(
   projectRoot: string,
   reportDate: string,
-  options: { stagingParent?: string } = {},
+  options: InboxReadinessOptions = {},
 ): Promise<InboxReadinessReport> {
   if (!isIsoDate(reportDate)) {
     throw new Error(`报告日期必须是有效的 YYYY-MM-DD，收到：${reportDate}`);
   }
+  const scopedSourcePath = options.sourcePath === undefined
+    ? undefined
+    : normalizeScopedSourcePath(options.sourcePath);
   const inboxDirectory = join(projectRoot, "content", "inbox");
   const draftDirents = (await readdir(inboxDirectory, { withFileTypes: true }))
     .filter((entry) => entry.name !== "README.md" && entry.name.endsWith(".md"))
     .sort((left, right) => left.name.localeCompare(right.name, "en"));
-  if (draftDirents.length === 0) return createReport([], reportDate);
+  if (draftDirents.length === 0) {
+    if (scopedSourcePath) {
+      throw new Error(`目标草稿不存在：${scopedSourcePath}`);
+    }
+    return createReport([], reportDate);
+  }
 
   const [linkTargets, trackedUploads] = await Promise.all([
     contentLinkTargets(projectRoot),
@@ -415,10 +448,19 @@ export async function inspectInboxReadiness(
           stagingDirectory,
           index,
           reportDate,
+          scopedSourcePath === undefined || scopedSourcePath === sourcePath,
+          options.mediaPreparer ?? prepareMediaForPublishing,
         ),
       );
     }
     applySharedAttachmentIssues(entries);
+    if (scopedSourcePath) {
+      const scopedEntries = entries.filter((entry) => entry.sourcePath === scopedSourcePath);
+      if (scopedEntries.length !== 1) {
+        throw new Error(`目标草稿不存在：${scopedSourcePath}`);
+      }
+      return createReport(scopedEntries, reportDate);
+    }
     return createReport(entries, reportDate);
   } finally {
     await rm(stagingDirectory, { force: true, recursive: true });

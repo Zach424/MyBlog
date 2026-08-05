@@ -20,6 +20,7 @@ function help() {
 选项：
   --date YYYY-MM-DD    使用固定报告日期（默认：Asia/Shanghai 今天）
   --format text|json   输出人类可读文本或 JSON（默认：text）
+  --source PATH        只返回一个 inbox 草稿；仍扫描全库碰撞与共享附件
   --help               显示帮助
 
 blocked 是需要作者处理的诊断，不改变命令退出码。报告不会移动、改写、提交或推送文件。`;
@@ -31,6 +32,7 @@ async function main() {
       date: { type: "string" },
       format: { type: "string", default: "text" },
       help: { type: "boolean", short: "h", default: false },
+      source: { type: "string" },
     },
     allowPositionals: false,
     strict: true,
@@ -48,7 +50,9 @@ async function main() {
     throw new Error(`--format 只支持 text 或 json，收到：${values.format}`);
   }
 
-  const report = await inspectInboxReadiness(process.cwd(), reportDate);
+  const report = await inspectInboxReadiness(process.cwd(), reportDate, {
+    ...(values.source === undefined ? {} : { sourcePath: values.source }),
+  });
   console.log(
     values.format === "json"
       ? JSON.stringify(report, null, 2)

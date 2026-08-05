@@ -21,7 +21,7 @@ const CONTENT_DELIVERY_TRIAGE_REPORT_VERSION = 1;
 const AUTHOR_DOCTOR_REPORT_VERSION = 1;
 const INBOX_READINESS_REPORT_VERSION = 1;
 const AUTHOR_DOCTOR_NODE_ENGINE = ">=22.13.0";
-const AUTHOR_DOCTOR_PLUGIN_VERSION = "1.22.0";
+const AUTHOR_DOCTOR_PLUGIN_VERSION = "1.23.0";
 const DRAFT_TITLE_MAX_LENGTH = 120;
 const DRAFT_SLUG_MAX_LENGTH = 80;
 const DRAFT_SLUG_PATTERN = /^[a-z0-9]+(?:-[a-z0-9]+)*$/u;
@@ -430,7 +430,7 @@ function parseInboxReadinessReport(output, expectedSourcePath) {
     }
   }
   const matches = report.entries.filter((entry) => entry.sourcePath === expectedSourcePath);
-  if (matches.length !== 1) {
+  if (report.entries.length !== 1 || matches.length !== 1) {
     valueError(`${label} entries`, `必须只包含一个活动草稿证据：${expectedSourcePath}`);
   }
   return Object.freeze({ entry: matches[0], reportDate: report.reportDate });
@@ -4136,7 +4136,16 @@ module.exports = class MyBlogPublisher extends Plugin {
     if (!identity) return false;
     if (checking) return true;
     return this.runRepositoryCommand(
-      ["--silent", "run", "content:inbox", "--", "--format", "json"],
+      [
+        "--silent",
+        "run",
+        "content:inbox",
+        "--",
+        "--format",
+        "json",
+        "--source",
+        identity.sourcePath,
+      ],
       {
         failure: "当前草稿作者意图检查未完成",
         progress: `正在读取 ${identity.sourcePath} 的本地发布意图…`,

@@ -761,7 +761,7 @@ function authorDoctorReport() {
     ["workspace-dependencies", "workspace", "Workspace dependencies", "35/35 pinned packages", "all declared packages installed at pinned versions"],
     ["content-layout", "workspace", "Content layout", "5/5 required paths", "5 required authoring paths"],
     ["obsidian-vault", "vault", "Obsidian Vault", ".obsidian present", ".obsidian directory present"],
-    ["publisher-plugin", "vault", "MyBlog Publisher", "myblog-publisher@1.22.0 · desktop", "myblog-publisher 1.22.0 desktop plugin"],
+    ["publisher-plugin", "vault", "MyBlog Publisher", "myblog-publisher@1.23.0 · desktop", "myblog-publisher 1.23.0 desktop plugin"],
   ];
   const scripts = [
     "content:author:doctor",
@@ -808,7 +808,7 @@ function authorDoctorReport() {
           isDesktopOnly: true,
           mainPresent: true,
           stylesPresent: true,
-          version: "1.22.0",
+          version: "1.23.0",
         },
       },
       workspace: {
@@ -1202,6 +1202,8 @@ test("renders one current draft author-intent summary from versioned local evide
     "--",
     "--format",
     "json",
+    "--source",
+    sourcePath,
   ]);
   harness.spawned[0].child.stdout.emit(
     "data",
@@ -1284,6 +1286,15 @@ test("shows scheduled and blocked date semantics without adding an action", asyn
 
 test("fails closed when current-draft intent evidence is untrusted or the active file drifts", async (t) => {
   const sourcePath = "content/inbox/current-draft.md";
+  const multiEntryReport = inboxReadinessReport();
+  multiEntryReport.entries.push({
+    ...multiEntryReport.entries[0],
+    slug: "other-draft",
+    sourcePath: "content/inbox/other-draft.md",
+    targetPath: "content/posts/other-draft.md",
+  });
+  multiEntryReport.counts.drafts = 2;
+  multiEntryReport.counts.ready = 2;
   const invalidCases = [
     ["invalid JSON", "not-json"],
     ["unsupported version", JSON.stringify(inboxReadinessReport({ version: 2 }))],
@@ -1291,6 +1302,7 @@ test("fails closed when current-draft intent evidence is untrusted or the active
       "unsafe safety claim",
       JSON.stringify(inboxReadinessReport({ safety: { networkChecked: true } })),
     ],
+    ["unscoped multi-entry report", JSON.stringify(multiEntryReport)],
     [
       "mismatched source",
       JSON.stringify(inboxReadinessReport({
@@ -1713,7 +1725,7 @@ test("renders a versioned maintenance ledger and opens an exact Vault note", asy
     createPluginHarness(),
   ]);
   const manifest = JSON.parse(manifestSource);
-  assert.equal(manifest.version, "1.22.0");
+  assert.equal(manifest.version, "1.23.0");
   assert.equal(manifest.minAppVersion, "1.5.7");
   assert.equal(manifest.isDesktopOnly, true);
   assert.match(styles, /^\.myblog-draft-create \{/mu);
