@@ -12,7 +12,7 @@ const CONTENT_PUBLISH_DELIVERY_RECEIPT_VERSION = 1;
 const CONTENT_DELIVERY_TRIAGE_REPORT_VERSION = 1;
 const AUTHOR_DOCTOR_REPORT_VERSION = 1;
 const AUTHOR_DOCTOR_NODE_ENGINE = ">=22.13.0";
-const AUTHOR_DOCTOR_PLUGIN_VERSION = "1.16.0";
+const AUTHOR_DOCTOR_PLUGIN_VERSION = "1.17.0";
 const AUTHOR_TRANSACTION_PHASE_LABELS = Object.freeze({
   preflight: "前置检查 · PREFLIGHT",
   domain: "发布或复核 · DOMAIN",
@@ -3279,20 +3279,49 @@ module.exports = class MyBlogPublisher extends Plugin {
     if (!Object.prototype.hasOwnProperty.call(AUTHOR_TRANSACTION_PHASE_LABELS, phase)) {
       return false;
     }
+    const observedAt = this.getAuthorTransactionNow();
+    const phaseEnteredAt = Number.isFinite(observedAt)
+      ? Math.max(lease.phaseEnteredAt, Math.floor(observedAt))
+      : lease.phaseEnteredAt;
     lease.phase = phase;
+    lease.phaseEnteredAt = phaseEnteredAt;
+    lease.lastOutputAt = null;
+    return true;
+  }
+
+  recordAuthorTransactionOutput(lease, child) {
+    if (
+      !lease ||
+      this.authorTransactionLease !== lease ||
+      lease.child !== child
+    ) return false;
+    const observedAt = this.getAuthorTransactionNow();
+    if (!Number.isFinite(observedAt)) return false;
+    const outputAt = Math.max(lease.phaseEnteredAt, Math.floor(observedAt));
+    lease.lastOutputAt = lease.lastOutputAt === null
+      ? outputAt
+      : Math.max(lease.lastOutputAt, outputAt);
     return true;
   }
 
   getAuthorTransactionSnapshot(lease = this.authorTransactionLease) {
     if (!lease || this.authorTransactionLease !== lease) return null;
     const observedAt = this.getAuthorTransactionNow();
-    const elapsedMs = Number.isFinite(observedAt)
-      ? Math.max(0, Math.floor(observedAt - lease.startedAt))
-      : 0;
+    const snapshotAt = Number.isFinite(observedAt)
+      ? Math.floor(observedAt)
+      : lease.startedAt;
+    const elapsedMs = Math.max(0, snapshotAt - lease.startedAt);
+    const phaseElapsedMs = Math.max(0, snapshotAt - lease.phaseEnteredAt);
+    const silentSince = lease.lastOutputAt ?? lease.phaseEnteredAt;
+    const silentMs = Math.max(0, snapshotAt - silentSince);
     return Object.freeze({
       elapsedMs,
       label: lease.transaction.label,
+      lastOutputAt: lease.lastOutputAt,
       phase: lease.phase,
+      phaseElapsedMs,
+      phaseEnteredAt: lease.phaseEnteredAt,
+      silentMs,
       sourcePath: lease.transaction.sourcePath,
       startedAt: lease.startedAt,
     });
@@ -3318,8 +3347,9 @@ module.exports = class MyBlogPublisher extends Plugin {
       `操作：${snapshot.label}`,
       `来源：${snapshot.sourcePath}`,
       `阶段：${AUTHOR_TRANSACTION_PHASE_LABELS[snapshot.phase]}`,
-      `开始：${new Date(snapshot.startedAt).toISOString()}`,
-      `已运行：${this.formatAuthorTransactionElapsed(snapshot.elapsedMs)}`,
+      `阶段进入：${new Date(snapshot.phaseEnteredAt).toISOString()} · 已 ${this.formatAuthorTransactionElapsed(snapshot.phaseElapsedMs)}`,
+      `最近输出：${snapshot.lastOutputAt === null ? "本阶段尚无输出" : new Date(snapshot.lastOutputAt).toISOString()} · 静默 ${this.formatAuthorTransactionElapsed(snapshot.silentMs)}`,
+      `开始：${new Date(snapshot.startedAt).toISOString()} · 总计 ${this.formatAuthorTransactionElapsed(snapshot.elapsedMs)}`,
       state === "BUSY"
         ? "当前操作完成后再试。"
         : "只读快照；不会取消、重试或排队。",
@@ -3374,12 +3404,14 @@ module.exports = class MyBlogPublisher extends Plugin {
 
     if (authorLease && this.authorTransactionLease === authorLease) {
       authorLease.child = child;
+      authorLease.lastOutputAt = null;
     }
 
     let output = "";
     let outputTruncated = false;
     let settled = false;
     const appendOutput = (chunk) => {
+      this.recordAuthorTransactionOutput(authorLease, child);
       if (output.length >= MAX_CAPTURED_OUTPUT) {
         outputTruncated = true;
         return;
@@ -3601,10 +3633,13 @@ module.exports = class MyBlogPublisher extends Plugin {
       return true;
     }
 
+    const startedAt = this.getAuthorTransactionNow();
     const lease = {
       child: null,
+      lastOutputAt: null,
       phase: "preflight",
-      startedAt: this.getAuthorTransactionNow(),
+      phaseEnteredAt: startedAt,
+      startedAt,
       transaction: Object.freeze({ ...transaction }),
     };
     this.authorTransactionLease = lease;
