@@ -2,6 +2,7 @@
 const {
   FileSystemAdapter,
   getFrontMatterInfo,
+  MarkdownView,
   Modal,
   Notice,
   parseYaml,
@@ -21,7 +22,7 @@ const CONTENT_DELIVERY_TRIAGE_REPORT_VERSION = 1;
 const AUTHOR_DOCTOR_REPORT_VERSION = 1;
 const INBOX_READINESS_REPORT_VERSION = 5;
 const AUTHOR_DOCTOR_NODE_ENGINE = ">=22.13.0";
-const AUTHOR_DOCTOR_PLUGIN_VERSION = "1.28.0";
+const AUTHOR_DOCTOR_PLUGIN_VERSION = "1.29.0";
 const DRAFT_TITLE_MAX_LENGTH = 120;
 const DRAFT_SLUG_MAX_LENGTH = 80;
 const DRAFT_SLUG_PATTERN = /^[a-z0-9]+(?:-[a-z0-9]+)*$/u;
@@ -3033,9 +3034,33 @@ class InboxReadinessModal extends ReadOnlyReportModal {
 }
 
 class DraftIntentModal extends Modal {
-  constructor(app, evidence) {
-    super(app);
+  constructor(plugin, evidence, identity) {
+    super(plugin.app);
     this.evidence = evidence;
+    this.identity = identity;
+    this.jumpButtons = [];
+    this.navigating = false;
+    this.plugin = plugin;
+  }
+
+  async navigateToSourceLine(sourceLine) {
+    if (this.navigating) return;
+    this.navigating = true;
+    for (const button of this.jumpButtons) button.disabled = true;
+    let completed = false;
+    try {
+      completed = await this.plugin.openDraftIntentSourceLine({
+        identity: this.identity,
+        sourceLine,
+        sourcePath: this.evidence.entry.sourcePath,
+      });
+      if (completed) this.close();
+    } finally {
+      if (!completed && !this.closed) {
+        this.navigating = false;
+        for (const button of this.jumpButtons) button.disabled = false;
+      }
+    }
   }
 
   onOpen() {
@@ -3133,9 +3158,23 @@ class DraftIntentModal extends Modal {
           for (const [index, altText] of usage.altTexts.entries()) {
             const altSource = usage.altSources[index];
             const sourceLabel = altSource === "authored" ? "AUTHORED" : "FILENAME FALLBACK";
-            usageRow.createEl("span", {
+            const jump = usageRow.createEl("button", {
+              cls: "myblog-draft-intent__media-jump",
               text: `ALT · L${usage.sourceLines[index]} · ${sourceLabel}`,
             });
+            jump.setAttr("type", "button");
+            jump.setAttr(
+              "aria-label",
+              `定位到当前草稿第 ${usage.sourceLines[index]} 行的替代文本 · ${sourceLabel} · ${altText.trim() || "EMPTY"}`,
+            );
+            jump.setAttr(
+              "title",
+              `打开 ${entry.sourcePath} 并定位到 L${usage.sourceLines[index]}`,
+            );
+            jump.addEventListener("click", () =>
+              this.navigateToSourceLine(usage.sourceLines[index]),
+            );
+            this.jumpButtons.push(jump);
             const altValue = usageRow.createEl("span", {
               text: altText.trim()
                 ? `${altText}${altSource === "filename-fallback" ? " · WILL FAIL" : ""}`
@@ -4503,7 +4542,7 @@ module.exports = class MyBlogPublisher extends Plugin {
     }
     try {
       const evidence = parseInboxReadinessReport(output, identity.sourcePath);
-      new DraftIntentModal(this.app, evidence).open();
+      new DraftIntentModal(this, evidence, identity).open();
       new Notice("当前草稿发布意图已从本地只读证据生成。", 5000);
     } catch (error) {
       new Notice(
@@ -4511,6 +4550,104 @@ module.exports = class MyBlogPublisher extends Plugin {
         12000,
       );
     }
+  }
+
+  async openDraftIntentSourceLine({ identity, sourceLine, sourcePath }) {
+    if (
+      typeof sourcePath !== "string" ||
+      !DRAFT_INBOX_PATH_PATTERN.test(sourcePath) ||
+      sourcePath !== identity.sourcePath ||
+      !Number.isInteger(sourceLine) ||
+      sourceLine < 1
+    ) {
+      new Notice("ALT 来源证据不安全，已拒绝打开；未定位、未修改文件。", 10000);
+      return false;
+    }
+
+    const current = this.getActiveInboxDraftIdentity();
+    if (
+      !current ||
+      current.file !== identity.file ||
+      current.sourcePath !== sourcePath
+    ) {
+      new Notice("活动草稿已变化；ALT 来源未定位，请重新运行作者意图检查。", 10000);
+      return false;
+    }
+
+    const file = this.app.vault.getAbstractFileByPath(sourcePath);
+    if (
+      !(file instanceof TFile) ||
+      file !== identity.file ||
+      file.path !== sourcePath ||
+      file.extension !== "md"
+    ) {
+      new Notice("草稿来源文件已变化；ALT 来源未定位，请重新运行作者意图检查。", 10000);
+      return false;
+    }
+
+    let content;
+    try {
+      content = await this.app.vault.read(file);
+    } catch (error) {
+      new Notice(`草稿行号检查失败：${error.message}；未定位、未修改文件。`, 10000);
+      return false;
+    }
+
+    const currentAfterRead = this.getActiveInboxDraftIdentity();
+    if (
+      !currentAfterRead ||
+      currentAfterRead.file !== file ||
+      currentAfterRead.sourcePath !== sourcePath ||
+      this.app.vault.getAbstractFileByPath(sourcePath) !== file
+    ) {
+      new Notice("草稿来源在行号检查期间发生变化；ALT 来源未定位。", 10000);
+      return false;
+    }
+
+    const sourceLineCount = content.split(/\r\n|\r|\n/u).length;
+    if (sourceLine > sourceLineCount) {
+      new Notice(
+        `ALT 证据 L${sourceLine} 已超出范围；当前文件只有 ${sourceLineCount} 行，未定位。`,
+        10000,
+      );
+      return false;
+    }
+
+    const leaf = this.app.workspace.getLeaf(false);
+    try {
+      await leaf.openFile(file, { active: true });
+    } catch (error) {
+      new Notice(`草稿打开失败：${error.message}；ALT 来源未定位。`, 10000);
+      return false;
+    }
+
+    const view = this.app.workspace.getActiveViewOfType(MarkdownView);
+    if (
+      this.app.workspace.getActiveFile() !== file ||
+      !(view instanceof MarkdownView) ||
+      view.file !== file
+    ) {
+      new Notice("Markdown 编辑器不可用或活动文件漂移；ALT 来源未定位。", 10000);
+      return false;
+    }
+
+    try {
+      const editorLineCount = view.editor.lineCount();
+      if (!Number.isInteger(editorLineCount) || sourceLine > editorLineCount) {
+        new Notice("编辑器中的草稿行数已变化；ALT 来源未定位，请重新检查。", 10000);
+        return false;
+      }
+      const position = { line: sourceLine - 1, ch: 0 };
+      view.editor.setCursor(position);
+      view.editor.scrollIntoView({ from: position, to: position }, true);
+      view.editor.focus();
+    } catch (error) {
+      new Notice(`编辑器定位失败：${error.message}；未修改草稿。`, 10000);
+      return false;
+    }
+
+    new Notice(`已定位到当前草稿 L${sourceLine}；正文未修改。`, 5000);
+    return true;
   }
 
   async openDraftIdentityEvidence(identity) {

@@ -90,13 +90,16 @@ async function createPluginHarness({
   activeFilePath,
   createFailure,
   desktop = true,
+  editorLineCount,
   fileContents = {},
   files = ["content/projects/myblog.md"],
+  markdownViewAvailable = true,
   openFailure,
   platform = "win32",
   processFailure,
   processMutation,
   processPostcondition = "exact",
+  readActiveFilePath,
   renameFailure,
   renamePostcondition = "exact",
   throwSpawnAt = [],
@@ -106,6 +109,10 @@ async function createPluginHarness({
   const modals = [];
   const notices = [];
   const openedFiles = [];
+  const openedStates = [];
+  const cursorPositions = [];
+  const scrollRanges = [];
+  let editorFocusCount = 0;
   const processAttempts = [];
   const createdFiles = [];
   const renameAttempts = [];
@@ -137,6 +144,13 @@ async function createPluginHarness({
       this.basename = this.extension
         ? this.name.slice(0, -(this.extension.length + 1))
         : this.name;
+    }
+  }
+
+  class MarkdownView {
+    constructor(file, editor) {
+      this.editor = editor;
+      this.file = file;
     }
   }
 
@@ -202,6 +216,8 @@ async function createPluginHarness({
 
   const contentMap = new Map(Object.entries(fileContents));
   let activePath = activeFilePath;
+  let activeFileOverride = null;
+  let activeView = null;
   const fileMap = new Map(
     [...new Set([
       ...files,
@@ -213,6 +229,34 @@ async function createPluginHarness({
     ]),
   );
   const adapter = desktop ? new FileSystemAdapter() : {};
+  const editor = {
+    focus() {
+      editorFocusCount += 1;
+    },
+    lineCount() {
+      if (Number.isInteger(editorLineCount)) return editorLineCount;
+      const content = activePath ? contentMap.get(activePath) : undefined;
+      return typeof content === "string" ? content.split(/\r\n|\r|\n/u).length : 0;
+    },
+    scrollIntoView(range, center) {
+      scrollRanges.push({ center, range });
+    },
+    setCursor(position) {
+      cursorPositions.push(position);
+    },
+  };
+  const leaf = {
+    view: null,
+    async openFile(file, openState) {
+      if (openFailure) throw new Error(openFailure);
+      openedFiles.push(file);
+      openedStates.push(openState ?? null);
+      activePath = file.path;
+      activeFileOverride = null;
+      activeView = markdownViewAvailable ? new MarkdownView(file, editor) : {};
+      this.view = activeView;
+    },
+  };
   const app = {
     vault: {
       adapter,
@@ -228,7 +272,13 @@ async function createPluginHarness({
         if (!contentMap.has(file.path)) {
           throw new Error(`Missing fixture content: ${file.path}`);
         }
-        return contentMap.get(file.path);
+        const content = contentMap.get(file.path);
+        if (readActiveFilePath) {
+          activePath = readActiveFilePath;
+          activeFileOverride = null;
+          activeView = null;
+        }
+        return content;
       },
       async process(file, callback) {
         if (!contentMap.has(file.path)) {
@@ -277,13 +327,9 @@ async function createPluginHarness({
       },
     },
     workspace: {
-      getActiveFile: () => activePath ? fileMap.get(activePath) : undefined,
-      getLeaf: () => ({
-        async openFile(file) {
-          if (openFailure) throw new Error(openFailure);
-          openedFiles.push(file);
-        },
-      }),
+      getActiveFile: () => activeFileOverride ?? (activePath ? fileMap.get(activePath) : undefined),
+      getActiveViewOfType: (ViewType) => activeView instanceof ViewType ? activeView : null,
+      getLeaf: () => leaf,
     },
   };
   const context = vm.createContext({
@@ -299,6 +345,7 @@ async function createPluginHarness({
               ? { exists: true, frontmatter: match[1] }
               : { exists: false, frontmatter: "" };
           },
+          MarkdownView,
           Modal,
           Notice,
           parseYaml: parseYamlSource,
@@ -318,6 +365,10 @@ async function createPluginHarness({
   return {
     commands,
     createdFiles,
+    cursorPositions,
+    get editorFocusCount() {
+      return editorFocusCount;
+    },
     getContent(path) {
       return contentMap.get(path);
     },
@@ -326,6 +377,8 @@ async function createPluginHarness({
     },
     setActiveFilePath(path) {
       activePath = path;
+      activeFileOverride = null;
+      activeView = null;
     },
     get reconciliations() {
       return reconciliations;
@@ -333,9 +386,18 @@ async function createPluginHarness({
     modals,
     notices,
     openedFiles,
+    openedStates,
     plugin,
     processAttempts,
     renameAttempts,
+    replaceFile(path, { keepActiveFile = false } = {}) {
+      const current = fileMap.get(path) ?? null;
+      const replacement = new TFile(path);
+      fileMap.set(path, replacement);
+      if (keepActiveFile && activePath === path) activeFileOverride = current;
+      return replacement;
+    },
+    scrollRanges,
     spawned,
     templateReads,
     vaultReads,
@@ -828,7 +890,7 @@ function authorDoctorReport() {
     ["workspace-dependencies", "workspace", "Workspace dependencies", "35/35 pinned packages", "all declared packages installed at pinned versions"],
     ["content-layout", "workspace", "Content layout", "5/5 required paths", "5 required authoring paths"],
     ["obsidian-vault", "vault", "Obsidian Vault", ".obsidian present", ".obsidian directory present"],
-    ["publisher-plugin", "vault", "MyBlog Publisher", "myblog-publisher@1.28.0 · desktop", "myblog-publisher 1.28.0 desktop plugin"],
+    ["publisher-plugin", "vault", "MyBlog Publisher", "myblog-publisher@1.29.0 · desktop", "myblog-publisher 1.29.0 desktop plugin"],
   ];
   const scripts = [
     "content:author:doctor",
@@ -875,7 +937,7 @@ function authorDoctorReport() {
           isDesktopOnly: true,
           mainPresent: true,
           stylesPresent: true,
-          version: "1.28.0",
+          version: "1.29.0",
         },
       },
       workspace: {
@@ -998,6 +1060,10 @@ function legacyIdentityDraft({
     "正文、字段顺序与换行必须保持不变。",
     "",
   ].join(lineEnding);
+}
+
+function markdownWithLineCount(lineCount) {
+  return Array.from({ length: lineCount }, (_, index) => `line ${index + 1}`).join("\n");
 }
 
 async function settleAsyncWork() {
@@ -1248,7 +1314,7 @@ test("renders native evidence for a filename-owned draft without offering cleanu
   assert.equal(harness.spawned.length, 0);
 });
 
-test("renders one current draft author-intent summary from versioned local evidence", async () => {
+test("renders one current draft author-intent summary with accessible ALT navigation", async () => {
   const sourcePath = "content/inbox/current-draft.md";
   const [styles, harness] = await Promise.all([
     readFile(stylesUrl, "utf8"),
@@ -1310,12 +1376,29 @@ test("renders one current draft author-intent summary from versioned local evide
   );
   assert.match(text, /PROJECT.*\/projects\/myblog.*L19/su);
   assert.match(text, /不会修改、发布、提交、推送或联网/u);
-  assert.deepEqual(elementsByTag(modal, "button").map((button) => button.text), ["关闭"]);
+  const jumpButtons = elementsByTag(modal, "button").filter((button) =>
+    button.classes.has("myblog-draft-intent__media-jump"),
+  );
+  assert.deepEqual(jumpButtons.map((button) => button.text), [
+    "ALT · L12 · AUTHORED",
+    "ALT · L20 · AUTHORED",
+    "ALT · L20 · AUTHORED",
+    "ALT · L24 · AUTHORED",
+    "ALT · L28 · AUTHORED",
+  ]);
+  assert.ok(jumpButtons.every((button) => button.attributes.type === "button"));
+  assert.match(
+    jumpButtons[3].attributes["aria-label"],
+    /定位到当前草稿第 24 行的替代文本.*AUTHORED/u,
+  );
+  assert.equal(elementsByTag(modal, "button").at(-1).text, "关闭");
   assert.match(styles, /^\.myblog-draft-intent \{/mu);
   assert.match(styles, /myblog-draft-intent__signature/u);
   assert.match(styles, /myblog-draft-intent__media/u);
   assert.match(styles, /myblog-draft-intent__media-usage/u);
   assert.match(styles, /myblog-draft-intent__media-alt--blocked/u);
+  assert.match(styles, /myblog-draft-intent__media-jump/u);
+  assert.match(styles, /myblog-draft-intent__media-jump:focus-visible/u);
   assert.match(styles, /myblog-draft-intent__links/u);
   assert.deepEqual(harness.processAttempts, []);
   assert.deepEqual(harness.vaultReads, []);
@@ -1323,7 +1406,149 @@ test("renders one current draft author-intent summary from versioned local evide
   assert.equal(harness.spawned.length, 1);
 });
 
-test("shows scheduled and blocked date semantics without adding an action", async (t) => {
+test("navigates one ALT evidence to its exact current draft line without writing", async () => {
+  const sourcePath = "content/inbox/current-draft.md";
+  const source = markdownWithLineCount(32);
+  const harness = await createPluginHarness({
+    activeFilePath: sourcePath,
+    fileContents: { [sourcePath]: source },
+    files: [],
+  });
+  findCommand(harness, "inspect-current-draft-intent").checkCallback(false);
+  harness.spawned[0].child.stdout.emit(
+    "data",
+    Buffer.from(JSON.stringify(inboxReadinessReport({
+      entry: { attachments: [inboxPreparedAttachment()] },
+    }))),
+  );
+  harness.spawned[0].child.emit("close", 0);
+
+  const modal = harness.modals[0];
+  const jump = elementsByTag(modal, "button").find(
+    (button) => button.text === "ALT · L24 · AUTHORED",
+  );
+  assert.ok(jump);
+  await Promise.all([jump.trigger("click"), jump.trigger("click")]);
+
+  assert.deepEqual(harness.openedFiles.map((file) => file.path), [sourcePath]);
+  assert.deepEqual(plain(harness.openedStates), [{ active: true }]);
+  assert.deepEqual(plain(harness.cursorPositions), [{ line: 23, ch: 0 }]);
+  assert.deepEqual(plain(harness.scrollRanges), [{
+    center: true,
+    range: {
+      from: { line: 23, ch: 0 },
+      to: { line: 23, ch: 0 },
+    },
+  }]);
+  assert.equal(harness.editorFocusCount, 1);
+  assert.equal(modal.closed, true);
+  assert.deepEqual(harness.vaultReads, [sourcePath]);
+  assert.equal(harness.getContent(sourcePath), source);
+  assert.deepEqual(harness.processAttempts, []);
+  assert.equal(harness.spawned.length, 1);
+  assert.match(harness.notices.at(-1).message, /已定位到当前草稿 L24/u);
+});
+
+test("fails closed when an ALT source navigation target drifts", async (t) => {
+  const sourcePath = "content/inbox/current-draft.md";
+  const openIntent = async (options = {}) => {
+    const harness = await createPluginHarness({
+      activeFilePath: sourcePath,
+      fileContents: { [sourcePath]: markdownWithLineCount(32) },
+      files: [],
+      ...options,
+    });
+    findCommand(harness, "inspect-current-draft-intent").checkCallback(false);
+    harness.spawned[0].child.stdout.emit(
+      "data",
+      Buffer.from(JSON.stringify(inboxReadinessReport({
+        entry: { attachments: [inboxPreparedAttachment()] },
+      }))),
+    );
+    harness.spawned[0].child.emit("close", 0);
+    const modal = harness.modals[0];
+    const jump = elementsByTag(modal, "button").find(
+      (button) => button.text === "ALT · L24 · AUTHORED",
+    );
+    assert.ok(jump);
+    return { harness, jump, modal };
+  };
+
+  await t.test("active draft path changed", async () => {
+    const { harness, jump, modal } = await openIntent({
+      files: ["content/inbox/other-draft.md"],
+    });
+    harness.setActiveFilePath("content/inbox/other-draft.md");
+    await jump.trigger("click");
+    assert.deepEqual(harness.vaultReads, []);
+    assert.deepEqual(harness.openedFiles, []);
+    assert.equal(modal.closed, false);
+    assert.match(harness.notices.at(-1).message, /活动草稿已变化.*未定位/u);
+  });
+
+  await t.test("frozen Vault file was replaced", async () => {
+    const { harness, jump, modal } = await openIntent();
+    harness.replaceFile(sourcePath, { keepActiveFile: true });
+    await jump.trigger("click");
+    assert.deepEqual(harness.vaultReads, []);
+    assert.deepEqual(harness.openedFiles, []);
+    assert.equal(modal.closed, false);
+    assert.match(harness.notices.at(-1).message, /草稿来源文件已变化.*未定位/u);
+  });
+
+  await t.test("active draft changed during line validation", async () => {
+    const { harness, jump, modal } = await openIntent({
+      files: ["content/inbox/other-draft.md"],
+      readActiveFilePath: "content/inbox/other-draft.md",
+    });
+    await jump.trigger("click");
+    assert.deepEqual(harness.vaultReads, [sourcePath]);
+    assert.deepEqual(harness.openedFiles, []);
+    assert.equal(modal.closed, false);
+    assert.match(harness.notices.at(-1).message, /行号检查期间发生变化.*未定位/u);
+  });
+
+  await t.test("evidence line is outside current source", async () => {
+    const { harness, jump, modal } = await openIntent({
+      fileContents: { [sourcePath]: markdownWithLineCount(10) },
+    });
+    await jump.trigger("click");
+    assert.deepEqual(harness.vaultReads, [sourcePath]);
+    assert.deepEqual(harness.openedFiles, []);
+    assert.equal(modal.closed, false);
+    assert.match(harness.notices.at(-1).message, /L24.*当前文件只有 10 行/u);
+  });
+
+  await t.test("editor line count changed after open", async () => {
+    const { harness, jump, modal } = await openIntent({ editorLineCount: 10 });
+    await jump.trigger("click");
+    assert.deepEqual(harness.openedFiles.map((file) => file.path), [sourcePath]);
+    assert.deepEqual(harness.cursorPositions, []);
+    assert.equal(harness.editorFocusCount, 0);
+    assert.equal(modal.closed, false);
+    assert.match(harness.notices.at(-1).message, /编辑器中的草稿行数已变化.*未定位/u);
+  });
+
+  await t.test("Markdown editor is unavailable", async () => {
+    const { harness, jump, modal } = await openIntent({ markdownViewAvailable: false });
+    await jump.trigger("click");
+    assert.deepEqual(harness.openedFiles.map((file) => file.path), [sourcePath]);
+    assert.deepEqual(harness.cursorPositions, []);
+    assert.equal(modal.closed, false);
+    assert.match(harness.notices.at(-1).message, /Markdown 编辑器不可用.*未定位/u);
+  });
+
+  await t.test("workspace refuses to open the source", async () => {
+    const { harness, jump, modal } = await openIntent({ openFailure: "workspace unavailable" });
+    await jump.trigger("click");
+    assert.deepEqual(harness.openedFiles, []);
+    assert.deepEqual(harness.cursorPositions, []);
+    assert.equal(modal.closed, false);
+    assert.match(harness.notices.at(-1).message, /草稿打开失败.*workspace unavailable/u);
+  });
+});
+
+test("shows scheduled and blocked date semantics without adding publication actions", async (t) => {
   const sourcePath = "content/inbox/current-draft.md";
   const missingAttachment = inboxPreparedAttachment();
   delete missingAttachment.preparation;
@@ -1428,7 +1653,14 @@ test("shows scheduled and blocked date semantics without adding an action", asyn
       const modal = harness.modals[0];
       const text = allElements(modal.contentEl).map((element) => element.text).join(" ");
       assert.match(text, expectation);
-      assert.deepEqual(elementsByTag(modal, "button").map((button) => button.text), ["关闭"]);
+      const buttons = elementsByTag(modal, "button");
+      assert.equal(buttons.at(-1).text, "关闭");
+      assert.equal(
+        buttons.some((button) =>
+          button.text !== "关闭" &&
+          !button.classes.has("myblog-draft-intent__media-jump")),
+        false,
+      );
       assert.equal(harness.spawned.length, 1);
     });
   }
@@ -2137,7 +2369,7 @@ test("renders a versioned maintenance ledger and opens an exact Vault note", asy
     createPluginHarness(),
   ]);
   const manifest = JSON.parse(manifestSource);
-  assert.equal(manifest.version, "1.28.0");
+  assert.equal(manifest.version, "1.29.0");
   assert.equal(manifest.minAppVersion, "1.5.7");
   assert.equal(manifest.isDesktopOnly, true);
   assert.match(styles, /^\.myblog-draft-create \{/mu);

@@ -521,6 +521,40 @@
   overflow-wrap: anywhere;
 }
 
+.myblog-draft-intent__media-jump {
+  appearance: none;
+  background: transparent;
+  border: 0;
+  border-radius: 0;
+  box-shadow: none;
+  color: var(--text-normal);
+  cursor: pointer;
+  font: inherit;
+  letter-spacing: inherit;
+  margin: 0;
+  padding: 0;
+  text-align: start;
+  text-decoration-color: var(--text-faint);
+  text-decoration-line: underline;
+  text-decoration-thickness: 1px;
+  text-underline-offset: 0.2em;
+}
+
+.myblog-draft-intent__media-jump:hover:not(:disabled) {
+  color: var(--text-accent);
+  text-decoration-color: currentColor;
+}
+
+.myblog-draft-intent__media-jump:focus-visible {
+  outline: 2px solid var(--background-modifier-border-focus);
+  outline-offset: 2px;
+}
+
+.myblog-draft-intent__media-jump:disabled {
+  cursor: progress;
+  opacity: 0.65;
+}
+
 .myblog-draft-intent__media-alt--blocked {
   color: var(--text-error) !important;
   font-weight: var(--font-semibold);
