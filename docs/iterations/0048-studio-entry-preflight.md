@@ -63,6 +63,7 @@
 ## 7. 验证证据
 
 - 实现提交 `5e67ef2e6c51c398c679b2aacf2cb320a252ed0b` 已推送 `main`；
+- 实现 Quality Gate `30976979365` 与 Verify Vercel production `30977018054` 均 completed/success；
 - 最终 `npm run release:check` 通过：release 配置完整、Current 1/Historical 3/未公开 0、inbox 0、根暂存 0、外链 2 URL/3 occurrences/0 issue、ESLint 0 warning、144/144 单元、TypeScript、42 条构建页面、19/19 生产应用测试、production audit 0；
 - 单元覆盖文章/项目有效条目、多个问题同时返回、未知标签、HTTP URL、草稿+精选、公式错误、Current 过期、未来复核日、allowlist 不发送 `secretToken`、Date/Immutable 归一与 320 ms 请求；
 - 状态机通过受控 promise 证明第二次快速输入先完成后，第一次旧 422 不能覆盖 ready；随后模拟断网进入 unavailable 并保留正文；
@@ -72,6 +73,8 @@
 - 真实浏览器 320×800 且系统深色：`--canvas=#101820`，shell/ledger 均 272.67 px，document/body 没有正向溢出，facts 为两列 `136.33px + 136.33px`，issue 为单列 `238.27px`，3 个问题完整存在；
 - 真实浏览器 1280×800：ledger 640 px，facts 恢复四列 `160px × 4`，issue 恢复 `129.68px + 463.14px`，根无正向溢出；浏览器 console 0 error；
 - 浏览器使用的临时静态夹具在验证后删除，最终构建和提交不包含测试页面。
+- 归档提交 `ca0acae4d5c2d51d0e34b18c874c0064db9a5286` 已推送；Quality Gate `30977164727` 与 Verify Vercel production `30977194265` 均 completed/success；
+- 稳定生产域名增强烟测通过 24 条 Sitemap 路由、OAuth 302、Studio 静态模块、全字段有效文章 POST、公式 HTML + MathML、媒体清单、安全头与真实 404。生产浏览器追加检查因当前浏览器到 Vercel 页面超时没有形成新证据，因此没有把它写成成功；本轮响应式结论来自同一 production build 的真实本地浏览器，线上可用性由 Vercel deployment_status 和稳定域名 HTTP 烟测交叉验证。
 
 ## 8. 经验与教训
 
