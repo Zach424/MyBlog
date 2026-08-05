@@ -79,6 +79,7 @@ async function createPluginHarness({
   desktop = true,
   files = ["content/projects/myblog.md"],
   platform = "win32",
+  throwSpawnAt = [],
 } = {}) {
   const source = await readFile(pluginUrl, "utf8");
   const commands = [];
@@ -87,6 +88,7 @@ async function createPluginHarness({
   const openedFiles = [];
   let reconciliations = 0;
   const spawned = [];
+  let spawnAttempts = 0;
 
   class FileSystemAdapter {
     getBasePath() {
@@ -140,6 +142,11 @@ async function createPluginHarness({
   }
 
   const spawn = (executable, args, options) => {
+    const attempt = spawnAttempts;
+    spawnAttempts += 1;
+    if (throwSpawnAt.includes(attempt)) {
+      throw new Error("spawn unavailable");
+    }
     const child = createEmitter();
     child.pid = 1000 + spawned.length;
     child.stdout = createEmitter();
@@ -558,7 +565,7 @@ function authorDoctorReport() {
     ["workspace-dependencies", "workspace", "Workspace dependencies", "35/35 pinned packages", "all declared packages installed at pinned versions"],
     ["content-layout", "workspace", "Content layout", "5/5 required paths", "5 required authoring paths"],
     ["obsidian-vault", "vault", "Obsidian Vault", ".obsidian present", ".obsidian directory present"],
-    ["publisher-plugin", "vault", "MyBlog Publisher", "myblog-publisher@1.14.0 · desktop", "myblog-publisher 1.14.0 desktop plugin"],
+    ["publisher-plugin", "vault", "MyBlog Publisher", "myblog-publisher@1.15.0 · desktop", "myblog-publisher 1.15.0 desktop plugin"],
   ];
   const scripts = [
     "content:author:doctor",
@@ -605,7 +612,7 @@ function authorDoctorReport() {
           isDesktopOnly: true,
           mainPresent: true,
           stylesPresent: true,
-          version: "1.14.0",
+          version: "1.15.0",
         },
       },
       workspace: {
@@ -684,7 +691,7 @@ test("renders a versioned maintenance ledger and opens an exact Vault note", asy
     createPluginHarness(),
   ]);
   const manifest = JSON.parse(manifestSource);
-  assert.equal(manifest.version, "1.14.0");
+  assert.equal(manifest.version, "1.15.0");
   assert.equal(manifest.isDesktopOnly, true);
   assert.match(styles, /^\.myblog-maintenance \{/mu);
   assert.match(styles, /\[data-status="overdue"\]/u);
@@ -1200,6 +1207,199 @@ test("does not start an author transaction when its preflight command fails", as
     harness.notices.at(-1).message,
     /检查当前草稿的本机前置检查未完成；原操作未启动.*unable to inspect/su,
   );
+});
+
+test("holds one author transaction lease through preflight and domain settlement", async () => {
+  const sourcePath = "content/inbox/new-note.md";
+  const harness = await createPluginHarness({ activeFilePath: sourcePath });
+  const command = findCommand(harness, "validate-current-note");
+
+  command.checkCallback(false);
+  const lease = harness.plugin.authorTransactionLease;
+  assert.ok(lease);
+  assert.equal(lease.transaction.label, "检查当前草稿");
+  assert.equal(lease.transaction.sourcePath, sourcePath);
+  assert.equal(lease.child, harness.spawned[0].child);
+
+  command.checkCallback(false);
+  assert.equal(harness.spawned.length, 1);
+  assert.match(
+    harness.notices.at(-1).message,
+    /AUTHOR TRANSACTION \/ BUSY.*检查当前草稿.*content\/inbox\/new-note\.md.*完成后再试/su,
+  );
+
+  finishReadyAuthorPreflight(harness, 0);
+  assert.equal(harness.spawned.length, 2);
+  assert.equal(harness.plugin.authorTransactionLease, lease);
+  assert.equal(lease.child, harness.spawned[1].child);
+
+  command.checkCallback(false);
+  assert.equal(harness.spawned.length, 2);
+  harness.spawned[1].child.emit("close", 0);
+  assert.equal(harness.plugin.authorTransactionLease, null);
+
+  command.checkCallback(false);
+  assert.equal(harness.spawned.length, 3);
+  assert.notEqual(harness.plugin.authorTransactionLease, lease);
+});
+
+test("keeps the author lease across diagnostic fallback and releases every terminal preflight", async (t) => {
+  await t.test("attention", async () => {
+    const harness = await createPluginHarness({
+      activeFilePath: "content/inbox/new-note.md",
+    });
+    const command = findCommand(harness, "validate-current-note");
+    command.checkCallback(false);
+    harness.spawned[0].child.stdout.emit(
+      "data",
+      Buffer.from(JSON.stringify(authorDoctorAttentionReport())),
+    );
+    harness.spawned[0].child.emit("close", 1);
+    assert.equal(harness.plugin.authorTransactionLease, null);
+    command.checkCallback(false);
+    assert.equal(harness.spawned.length, 2);
+  });
+
+  await t.test("untrusted structured evidence", async () => {
+    const harness = await createPluginHarness({
+      activeFilePath: "content/inbox/new-note.md",
+    });
+    const command = findCommand(harness, "validate-current-note");
+    command.checkCallback(false);
+    const lease = harness.plugin.authorTransactionLease;
+    harness.spawned[0].child.stdout.emit("data", Buffer.from("not-json"));
+    harness.spawned[0].child.emit("close", 0);
+    assert.equal(harness.spawned.length, 2);
+    assert.equal(harness.plugin.authorTransactionLease, lease);
+    assert.equal(lease.child, harness.spawned[1].child);
+    command.checkCallback(false);
+    assert.equal(harness.spawned.length, 2);
+    harness.spawned[1].child.stdout.emit(
+      "data",
+      Buffer.from("[author-doctor] HOLD · evidence unavailable."),
+    );
+    harness.spawned[1].child.emit("close", 1);
+    assert.equal(harness.plugin.authorTransactionLease, null);
+  });
+
+  await t.test("fatal exit", async () => {
+    const harness = await createPluginHarness({
+      activeFilePath: "content/inbox/new-note.md",
+    });
+    const command = findCommand(harness, "validate-current-note");
+    command.checkCallback(false);
+    harness.spawned[0].child.emit("close", 2);
+    assert.equal(harness.plugin.authorTransactionLease, null);
+    command.checkCallback(false);
+    assert.equal(harness.spawned.length, 2);
+  });
+
+  await t.test("synchronous spawn failure", async () => {
+    const harness = await createPluginHarness({
+      activeFilePath: "content/inbox/new-note.md",
+      throwSpawnAt: [0],
+    });
+    const command = findCommand(harness, "validate-current-note");
+    command.checkCallback(false);
+    assert.equal(harness.spawned.length, 0);
+    assert.equal(harness.plugin.authorTransactionLease, null);
+    command.checkCallback(false);
+    assert.equal(harness.spawned.length, 1);
+  });
+});
+
+test("releases the author lease on domain failure, process error, and plugin unload", async (t) => {
+  for (const event of ["close", "error"]) {
+    await t.test(`domain ${event}`, async () => {
+      const harness = await createPluginHarness({
+        activeFilePath: "content/inbox/new-note.md",
+      });
+      const command = findCommand(harness, "validate-current-note");
+      command.checkCallback(false);
+      finishReadyAuthorPreflight(harness, 0);
+      if (event === "close") {
+        harness.spawned[1].child.emit("close", 1);
+      } else {
+        harness.spawned[1].child.emit("error", new Error("domain unavailable"));
+      }
+      assert.equal(harness.plugin.authorTransactionLease, null);
+      command.checkCallback(false);
+      assert.equal(harness.spawned.length, 3);
+      const nextLease = harness.plugin.authorTransactionLease;
+      harness.spawned[1].child.emit("close", 0);
+      assert.equal(harness.plugin.authorTransactionLease, nextLease);
+    });
+  }
+
+  await t.test("plugin unload", async () => {
+    const harness = await createPluginHarness({
+      activeFilePath: "content/inbox/new-note.md",
+    });
+    findCommand(harness, "validate-current-note").checkCallback(false);
+    assert.ok(harness.plugin.authorTransactionLease);
+    harness.plugin.onunload();
+    assert.equal(harness.plugin.authorTransactionLease, null);
+    assert.equal(harness.plugin.activeRuns.size, 0);
+    const spawnCount = harness.spawned.length;
+    harness.spawned[0].child.stdout.emit(
+      "data",
+      Buffer.from(JSON.stringify(authorDoctorReport())),
+    );
+    harness.spawned[0].child.emit("close", 0);
+    assert.equal(harness.spawned.length, spawnCount);
+  });
+});
+
+test("keeps the author lease through a review proof text fallback", async () => {
+  const sourcePath = "content/projects/myblog.md";
+  const harness = await createPluginHarness({ activeFilePath: sourcePath });
+  const command = findCommand(harness, "validate-current-published-note");
+  command.checkCallback(false);
+  const lease = harness.plugin.authorTransactionLease;
+  finishReadyAuthorPreflight(harness, 0);
+
+  harness.spawned[1].child.stdout.emit("data", Buffer.from("not-json"));
+  harness.spawned[1].child.emit("close", 0);
+  assert.equal(harness.spawned.length, 3);
+  assert.equal(harness.plugin.authorTransactionLease, lease);
+  assert.equal(lease.child, harness.spawned[2].child);
+
+  command.checkCallback(false);
+  assert.equal(harness.spawned.length, 3);
+  harness.spawned[2].child.stdout.emit(
+    "data",
+    Buffer.from("[review] 正式内容复核检查通过；未暂存、未提交、未推送。"),
+  );
+  harness.spawned[2].child.emit("close", 0);
+  assert.equal(harness.plugin.authorTransactionLease, null);
+
+  command.checkCallback(false);
+  assert.equal(harness.spawned.length, 4);
+});
+
+test("keeps diagnosis and delivery recovery outside the author transaction lease", async () => {
+  const harness = await createPluginHarness({
+    activeFilePath: "content/inbox/new-note.md",
+  });
+  findCommand(harness, "validate-current-note").checkCallback(false);
+  const lease = harness.plugin.authorTransactionLease;
+  const bypassCommands = [
+    "inspect-inbox-readiness",
+    "inspect-published-maintenance",
+    "inspect-author-environment",
+    "inspect-delivery-triage",
+    "inspect-review-delivery",
+    "inspect-publish-delivery",
+    "deliver-pending-review",
+    "deliver-pending-publication",
+  ];
+
+  for (const commandId of bypassCommands) {
+    assert.equal(findCommand(harness, commandId).checkCallback(false), true);
+  }
+  assert.equal(harness.spawned.length, 1 + bypassCommands.length);
+  assert.equal(harness.plugin.authorTransactionLease, lease);
+  assert.equal(lease.child, harness.spawned[0].child);
 });
 
 test("falls back without executing a route when triage evidence is inconsistent", async () => {

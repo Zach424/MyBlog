@@ -12,7 +12,7 @@ const CONTENT_PUBLISH_DELIVERY_RECEIPT_VERSION = 1;
 const CONTENT_DELIVERY_TRIAGE_REPORT_VERSION = 1;
 const AUTHOR_DOCTOR_REPORT_VERSION = 1;
 const AUTHOR_DOCTOR_NODE_ENGINE = ">=22.13.0";
-const AUTHOR_DOCTOR_PLUGIN_VERSION = "1.14.0";
+const AUTHOR_DOCTOR_PLUGIN_VERSION = "1.15.0";
 const AUTHOR_DOCTOR_REQUIRED_SCRIPTS = [
   "content:author:doctor",
   "content:delivery:status",
@@ -3143,6 +3143,7 @@ class ContentMaintenanceModal extends Modal {
 module.exports = class MyBlogPublisher extends Plugin {
   onload() {
     this.activeRuns = new Map();
+    this.authorTransactionLease = null;
 
     this.addCommand({
       id: "validate-current-note",
@@ -3220,6 +3221,7 @@ module.exports = class MyBlogPublisher extends Plugin {
   }
 
   onunload() {
+    this.authorTransactionLease = null;
     for (const [child, run] of [...this.activeRuns]) {
       run.cancel();
       this.terminateChild(child);
@@ -3257,7 +3259,14 @@ module.exports = class MyBlogPublisher extends Plugin {
     return this.app.vault.adapter instanceof FileSystemAdapter;
   }
 
-  runRepositoryCommand(npmArgs, messages, onSuccess) {
+  releaseAuthorTransactionLease(lease, child = null) {
+    if (!lease || this.authorTransactionLease !== lease) return false;
+    if (child && lease.child !== child) return false;
+    this.authorTransactionLease = null;
+    return true;
+  }
+
+  runRepositoryCommand(npmArgs, messages, onSuccess, authorLease = null) {
     const root = this.app.vault.adapter.getBasePath();
     const executable = process.platform === "win32"
       ? (process.env.ComSpec || "cmd.exe")
@@ -3276,8 +3285,13 @@ module.exports = class MyBlogPublisher extends Plugin {
       });
     } catch (error) {
       progressNotice.hide();
+      this.releaseAuthorTransactionLease(authorLease);
       new Notice(`${messages.startFailure}: ${error.message}`, 10000);
       return true;
+    }
+
+    if (authorLease && this.authorTransactionLease === authorLease) {
+      authorLease.child = child;
     }
 
     let output = "";
@@ -3311,6 +3325,7 @@ module.exports = class MyBlogPublisher extends Plugin {
     child.stderr.on("data", appendOutput);
     child.on("error", (error) => {
       if (!cancel()) return;
+      this.releaseAuthorTransactionLease(authorLease, child);
       new Notice(`${messages.startFailure}: ${error.message}`, 10000);
     });
     child.on("close", (code) => {
@@ -3324,10 +3339,13 @@ module.exports = class MyBlogPublisher extends Plugin {
           }
         } catch (error) {
           new Notice(`${messages.failure}: ${error.message}`, 15000);
+        } finally {
+          this.releaseAuthorTransactionLease(authorLease, child);
         }
         return;
       }
       const summary = report().split(/\r?\n/u).slice(-4).join("\n");
+      this.releaseAuthorTransactionLease(authorLease, child);
       new Notice(
         `${messages.failure}:\n${summary || `命令退出码 ${code}`}`,
         15000,
@@ -3492,6 +3510,20 @@ module.exports = class MyBlogPublisher extends Plugin {
   }
 
   preflightAuthorTransaction(transaction, onReady) {
+    const activeLease = this.authorTransactionLease;
+    if (activeLease) {
+      new Notice(
+        `AUTHOR TRANSACTION / BUSY\n${activeLease.transaction.label}\n${activeLease.transaction.sourcePath}\n当前操作完成后再试。`,
+        8000,
+      );
+      return true;
+    }
+
+    const lease = {
+      child: null,
+      transaction: Object.freeze({ ...transaction }),
+    };
+    this.authorTransactionLease = lease;
     return this.runRepositoryCommand(
       [
         "--silent",
@@ -3507,11 +3539,17 @@ module.exports = class MyBlogPublisher extends Plugin {
         progress: `正在确认“${transaction.label}”的本机发布前置条件…`,
         startFailure: `${transaction.label}的本机前置检查无法启动；原操作未启动`,
       },
-      (output) => this.continueAuthorTransaction(output, transaction, onReady),
+      (output) => this.continueAuthorTransaction(
+        output,
+        lease.transaction,
+        onReady,
+        lease,
+      ),
+      lease,
     );
   }
 
-  continueAuthorTransaction(output, transaction, onReady) {
+  continueAuthorTransaction(output, transaction, onReady, lease) {
     let report;
     try {
       const root = this.app.vault.adapter.getBasePath();
@@ -3521,7 +3559,7 @@ module.exports = class MyBlogPublisher extends Plugin {
         `结构化作者环境证据不可用：${error.message}。${transaction.label}未启动，正在重新读取本地纯文本证据…`,
         10000,
       );
-      this.inspectAuthorEnvironmentText(transaction);
+      this.inspectAuthorEnvironmentText(transaction, lease);
       return;
     }
 
@@ -3534,7 +3572,7 @@ module.exports = class MyBlogPublisher extends Plugin {
       return;
     }
 
-    onReady();
+    onReady(lease);
   }
 
   openStructuredAuthorEnvironment(output) {
@@ -3557,7 +3595,7 @@ module.exports = class MyBlogPublisher extends Plugin {
     }
   }
 
-  inspectAuthorEnvironmentText(transaction = null) {
+  inspectAuthorEnvironmentText(transaction = null, authorLease = null) {
     return this.runRepositoryCommand(
       ["--silent", "run", "content:author:doctor"],
       {
@@ -3568,6 +3606,7 @@ module.exports = class MyBlogPublisher extends Plugin {
         success: "已打开纯文本本机发布环境自检。",
       },
       (report) => new AuthorDoctorTextModal(this.app, report, transaction).open(),
+      authorLease,
     );
   }
 
@@ -3761,11 +3800,11 @@ module.exports = class MyBlogPublisher extends Plugin {
     };
     return this.preflightAuthorTransaction(
       transaction,
-      () => this.runContentReview(file.path, push),
+      (lease) => this.runContentReview(transaction.sourcePath, push, lease),
     );
   }
 
-  runContentReview(sourcePath, push) {
+  runContentReview(sourcePath, push, authorLease = null) {
     if (!push) {
       return this.runRepositoryCommand(
         [
@@ -3782,7 +3821,12 @@ module.exports = class MyBlogPublisher extends Plugin {
           progress: "正在执行正式内容完整复核检查…",
           startFailure: "正式内容复核命令无法启动",
         },
-        (output) => this.openStructuredContentReview(output, sourcePath),
+        (output) => this.openStructuredContentReview(
+          output,
+          sourcePath,
+          authorLease,
+        ),
+        authorLease,
       );
     }
 
@@ -3796,10 +3840,11 @@ module.exports = class MyBlogPublisher extends Plugin {
         successDuration: 8000,
       },
       () => this.app.vault.adapter.reconcile?.(),
+      authorLease,
     );
   }
 
-  openStructuredContentReview(output, sourcePath) {
+  openStructuredContentReview(output, sourcePath, authorLease = null) {
     try {
       const proof = parseContentReviewProof(output, sourcePath);
       new ContentReviewProofModal(this.app, proof).open();
@@ -3809,11 +3854,11 @@ module.exports = class MyBlogPublisher extends Plugin {
         `结构化 Author Proof 不可用：${error.message}。正在重新读取纯文本证据…`,
         10000,
       );
-      this.inspectContentReviewText(sourcePath);
+      this.inspectContentReviewText(sourcePath, authorLease);
     }
   }
 
-  inspectContentReviewText(sourcePath) {
+  inspectContentReviewText(sourcePath, authorLease = null) {
     return this.runRepositoryCommand(
       ["run", "content:review", "--", sourcePath, "--check-only"],
       {
@@ -3824,6 +3869,7 @@ module.exports = class MyBlogPublisher extends Plugin {
         successDuration: 8000,
       },
       (report) => new ContentReviewProofTextModal(this.app, report).open(),
+      authorLease,
     );
   }
 
@@ -3841,11 +3887,11 @@ module.exports = class MyBlogPublisher extends Plugin {
     };
     return this.preflightAuthorTransaction(
       transaction,
-      () => this.runContentPublish(file.path, push),
+      (lease) => this.runContentPublish(transaction.sourcePath, push, lease),
     );
   }
 
-  runContentPublish(sourcePath, push) {
+  runContentPublish(sourcePath, push, authorLease = null) {
     return this.runRepositoryCommand(
       [
         "run",
@@ -3862,6 +3908,7 @@ module.exports = class MyBlogPublisher extends Plugin {
         successDuration: 8000,
       },
       () => this.app.vault.adapter.reconcile?.(),
+      authorLease,
     );
   }
 };
