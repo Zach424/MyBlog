@@ -1,9 +1,9 @@
 {
   "id": "myblog-publisher",
   "name": "MyBlog Publisher",
-  "version": "1.17.0",
+  "version": "1.18.0",
   "minAppVersion": "1.5.0",
-  "description": "Observe author phase and output activity while serializing publishing and review transactions, triage Git delivery, safely redeliver exact commits, and publish MyBlog notes through guarded workflows.",
+  "description": "Retain one session-local author transaction receipt while observing and serializing publishing and review transactions, triaging Git delivery, and safely publishing MyBlog notes.",
   "author": "Zach424",
   "isDesktopOnly": true
 }

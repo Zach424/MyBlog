@@ -565,7 +565,7 @@ function authorDoctorReport() {
     ["workspace-dependencies", "workspace", "Workspace dependencies", "35/35 pinned packages", "all declared packages installed at pinned versions"],
     ["content-layout", "workspace", "Content layout", "5/5 required paths", "5 required authoring paths"],
     ["obsidian-vault", "vault", "Obsidian Vault", ".obsidian present", ".obsidian directory present"],
-    ["publisher-plugin", "vault", "MyBlog Publisher", "myblog-publisher@1.17.0 · desktop", "myblog-publisher 1.17.0 desktop plugin"],
+    ["publisher-plugin", "vault", "MyBlog Publisher", "myblog-publisher@1.18.0 · desktop", "myblog-publisher 1.18.0 desktop plugin"],
   ];
   const scripts = [
     "content:author:doctor",
@@ -612,7 +612,7 @@ function authorDoctorReport() {
           isDesktopOnly: true,
           mainPresent: true,
           stylesPresent: true,
-          version: "1.17.0",
+          version: "1.18.0",
         },
       },
       workspace: {
@@ -691,7 +691,7 @@ test("renders a versioned maintenance ledger and opens an exact Vault note", asy
     createPluginHarness(),
   ]);
   const manifest = JSON.parse(manifestSource);
-  assert.equal(manifest.version, "1.17.0");
+  assert.equal(manifest.version, "1.18.0");
   assert.equal(manifest.isDesktopOnly, true);
   assert.match(styles, /^\.myblog-maintenance \{/mu);
   assert.match(styles, /\[data-status="overdue"\]/u);
@@ -1217,6 +1217,7 @@ test("reports idle and active author transaction snapshots without spawning", as
   assert.equal(inspect.checkCallback(true), true);
   assert.equal(inspect.checkCallback(false), true);
   assert.equal(harness.spawned.length, 0);
+  assert.equal(harness.plugin.lastAuthorTransactionReceipt, null);
   assert.match(
     harness.notices.at(-1).message,
     /AUTHOR TRANSACTION \/ IDLE.*当前没有运行中的作者事务/su,
@@ -1355,8 +1356,24 @@ test("tracks one owner-checked activity pulse across every author phase", async 
   );
 
   harness.spawned[2].child.emit("close", 0);
+  assert.equal(harness.plugin.authorTransactionLease, null);
+  assert.equal(Object.isFrozen(harness.plugin.lastAuthorTransactionReceipt), true);
+  assert.deepEqual(plain(harness.plugin.lastAuthorTransactionReceipt), {
+    elapsedMs: 25_000,
+    endedAt: startedAt + 25_000,
+    label: "检查当前正式内容复核",
+    outcome: "completed",
+    phase: "diagnostic",
+    sourcePath,
+    startedAt,
+  });
+  const spawnCount = harness.spawned.length;
   inspect.checkCallback(false);
-  assert.match(harness.notices.at(-1).message, /AUTHOR TRANSACTION \/ IDLE/su);
+  assert.equal(harness.spawned.length, spawnCount);
+  assert.match(
+    harness.notices.at(-1).message,
+    /AUTHOR TRANSACTION \/ IDLE · LAST RECEIPT.*结果：已完成 · COMPLETED.*操作：检查当前正式内容复核.*来源：content\/projects\/myblog\.md.*最终阶段：证据降级 · DIAGNOSTIC.*开始：2026-08-06T01:02:03\.000Z.*结束：2026-08-06T01:02:28\.000Z.*总计：25 秒.*重新加载插件后清除.*不会重试、恢复或推送/su,
+  );
 });
 
 test("holds one author transaction lease through preflight and domain settlement", async () => {
@@ -1388,10 +1405,22 @@ test("holds one author transaction lease through preflight and domain settlement
   assert.equal(harness.spawned.length, 2);
   harness.spawned[1].child.emit("close", 0);
   assert.equal(harness.plugin.authorTransactionLease, null);
+  assert.equal(harness.plugin.lastAuthorTransactionReceipt.outcome, "completed");
+  assert.equal(harness.plugin.lastAuthorTransactionReceipt.phase, "domain");
+  const firstReceipt = harness.plugin.lastAuthorTransactionReceipt;
 
   command.checkCallback(false);
   assert.equal(harness.spawned.length, 3);
   assert.notEqual(harness.plugin.authorTransactionLease, lease);
+  assert.equal(harness.plugin.lastAuthorTransactionReceipt, firstReceipt);
+  findCommand(harness, "inspect-author-transaction").checkCallback(false);
+  assert.match(harness.notices.at(-1).message, /AUTHOR TRANSACTION \/ ACTIVE/su);
+  assert.doesNotMatch(harness.notices.at(-1).message, /LAST RECEIPT/su);
+
+  finishReadyAuthorPreflight(harness, 2);
+  harness.spawned[3].child.emit("close", 0);
+  assert.notEqual(harness.plugin.lastAuthorTransactionReceipt, firstReceipt);
+  assert.equal(harness.plugin.lastAuthorTransactionReceipt.outcome, "completed");
 });
 
 test("keeps the author lease across diagnostic fallback and releases every terminal preflight", async (t) => {
@@ -1407,6 +1436,8 @@ test("keeps the author lease across diagnostic fallback and releases every termi
     );
     harness.spawned[0].child.emit("close", 1);
     assert.equal(harness.plugin.authorTransactionLease, null);
+    assert.equal(harness.plugin.lastAuthorTransactionReceipt.outcome, "held");
+    assert.equal(harness.plugin.lastAuthorTransactionReceipt.phase, "preflight");
     command.checkCallback(false);
     assert.equal(harness.spawned.length, 2);
   });
@@ -1432,6 +1463,8 @@ test("keeps the author lease across diagnostic fallback and releases every termi
     );
     harness.spawned[1].child.emit("close", 1);
     assert.equal(harness.plugin.authorTransactionLease, null);
+    assert.equal(harness.plugin.lastAuthorTransactionReceipt.outcome, "held");
+    assert.equal(harness.plugin.lastAuthorTransactionReceipt.phase, "diagnostic");
   });
 
   await t.test("fatal exit", async () => {
@@ -1442,6 +1475,10 @@ test("keeps the author lease across diagnostic fallback and releases every termi
     command.checkCallback(false);
     harness.spawned[0].child.emit("close", 2);
     assert.equal(harness.plugin.authorTransactionLease, null);
+    assert.equal(
+      harness.plugin.lastAuthorTransactionReceipt.outcome,
+      "command-failed",
+    );
     command.checkCallback(false);
     assert.equal(harness.spawned.length, 2);
   });
@@ -1455,8 +1492,30 @@ test("keeps the author lease across diagnostic fallback and releases every termi
     command.checkCallback(false);
     assert.equal(harness.spawned.length, 0);
     assert.equal(harness.plugin.authorTransactionLease, null);
+    assert.equal(
+      harness.plugin.lastAuthorTransactionReceipt.outcome,
+      "start-failed",
+    );
     command.checkCallback(false);
     assert.equal(harness.spawned.length, 1);
+  });
+
+  await t.test("result handler failure", async () => {
+    const harness = await createPluginHarness({
+      activeFilePath: "content/inbox/new-note.md",
+    });
+    harness.plugin.continueAuthorTransaction = () => {
+      throw new Error("result unavailable");
+    };
+    const command = findCommand(harness, "validate-current-note");
+    command.checkCallback(false);
+    harness.spawned[0].child.emit("close", 0);
+    assert.equal(harness.plugin.authorTransactionLease, null);
+    assert.equal(
+      harness.plugin.lastAuthorTransactionReceipt.outcome,
+      "result-failed",
+    );
+    assert.equal(harness.plugin.lastAuthorTransactionReceipt.phase, "preflight");
   });
 });
 
@@ -1476,6 +1535,11 @@ test("releases the author lease on domain failure, process error, and plugin unl
         harness.spawned[1].child.emit("error", new Error("domain unavailable"));
       }
       assert.equal(harness.plugin.authorTransactionLease, null);
+      assert.equal(
+        harness.plugin.lastAuthorTransactionReceipt.outcome,
+        event === "close" ? "command-failed" : "start-failed",
+      );
+      const terminalReceipt = harness.plugin.lastAuthorTransactionReceipt;
       command.checkCallback(false);
       assert.equal(harness.spawned.length, 3);
       const nextLease = harness.plugin.authorTransactionLease;
@@ -1483,9 +1547,14 @@ test("releases the author lease on domain failure, process error, and plugin unl
         harness.plugin.setAuthorTransactionPhase(firstLease, "diagnostic"),
         false,
       );
+      assert.equal(
+        harness.plugin.recordAuthorTransactionReceipt(firstLease, "completed"),
+        null,
+      );
       assert.equal(nextLease.phase, "preflight");
       harness.spawned[1].child.emit("close", 0);
       assert.equal(harness.plugin.authorTransactionLease, nextLease);
+      assert.equal(harness.plugin.lastAuthorTransactionReceipt, terminalReceipt);
     });
   }
 
@@ -1498,6 +1567,8 @@ test("releases the author lease on domain failure, process error, and plugin unl
     harness.plugin.onunload();
     assert.equal(harness.plugin.authorTransactionLease, null);
     assert.equal(harness.plugin.activeRuns.size, 0);
+    assert.equal(harness.plugin.lastAuthorTransactionReceipt.outcome, "unloaded");
+    const unloadReceipt = harness.plugin.lastAuthorTransactionReceipt;
     const spawnCount = harness.spawned.length;
     harness.spawned[0].child.stdout.emit(
       "data",
@@ -1505,6 +1576,7 @@ test("releases the author lease on domain failure, process error, and plugin unl
     );
     harness.spawned[0].child.emit("close", 0);
     assert.equal(harness.spawned.length, spawnCount);
+    assert.equal(harness.plugin.lastAuthorTransactionReceipt, unloadReceipt);
   });
 });
 
@@ -1530,6 +1602,8 @@ test("keeps the author lease through a review proof text fallback", async () => 
   );
   harness.spawned[2].child.emit("close", 0);
   assert.equal(harness.plugin.authorTransactionLease, null);
+  assert.equal(harness.plugin.lastAuthorTransactionReceipt.outcome, "completed");
+  assert.equal(harness.plugin.lastAuthorTransactionReceipt.phase, "diagnostic");
 
   command.checkCallback(false);
   assert.equal(harness.spawned.length, 4);

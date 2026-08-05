@@ -12,11 +12,19 @@ const CONTENT_PUBLISH_DELIVERY_RECEIPT_VERSION = 1;
 const CONTENT_DELIVERY_TRIAGE_REPORT_VERSION = 1;
 const AUTHOR_DOCTOR_REPORT_VERSION = 1;
 const AUTHOR_DOCTOR_NODE_ENGINE = ">=22.13.0";
-const AUTHOR_DOCTOR_PLUGIN_VERSION = "1.17.0";
+const AUTHOR_DOCTOR_PLUGIN_VERSION = "1.18.0";
 const AUTHOR_TRANSACTION_PHASE_LABELS = Object.freeze({
   preflight: "前置检查 · PREFLIGHT",
   domain: "发布或复核 · DOMAIN",
   diagnostic: "证据降级 · DIAGNOSTIC",
+});
+const AUTHOR_TRANSACTION_OUTCOME_LABELS = Object.freeze({
+  completed: "已完成 · COMPLETED",
+  held: "前置拦截 · HELD",
+  "command-failed": "命令未完成 · COMMAND FAILED",
+  "start-failed": "命令无法启动 · START FAILED",
+  "result-failed": "结果处理失败 · RESULT FAILED",
+  unloaded: "插件已卸载 · UNLOADED",
 });
 const AUTHOR_DOCTOR_REQUIRED_SCRIPTS = [
   "content:author:doctor",
@@ -3149,6 +3157,7 @@ module.exports = class MyBlogPublisher extends Plugin {
   onload() {
     this.activeRuns = new Map();
     this.authorTransactionLease = null;
+    this.lastAuthorTransactionReceipt = null;
 
     this.addCommand({
       id: "validate-current-note",
@@ -3232,6 +3241,10 @@ module.exports = class MyBlogPublisher extends Plugin {
   }
 
   onunload() {
+    const authorLease = this.authorTransactionLease;
+    if (authorLease) {
+      this.releaseAuthorTransactionLease(authorLease, null, "unloaded");
+    }
     this.authorTransactionLease = null;
     for (const [child, run] of [...this.activeRuns]) {
       run.cancel();
@@ -3327,6 +3340,33 @@ module.exports = class MyBlogPublisher extends Plugin {
     });
   }
 
+  recordAuthorTransactionReceipt(lease, outcome) {
+    if (!lease || this.authorTransactionLease !== lease) return null;
+    if (!Object.prototype.hasOwnProperty.call(AUTHOR_TRANSACTION_OUTCOME_LABELS, outcome)) {
+      return null;
+    }
+    const evidenceAt = Math.max(
+      lease.startedAt,
+      lease.phaseEnteredAt,
+      lease.lastOutputAt ?? lease.startedAt,
+    );
+    const observedAt = this.getAuthorTransactionNow();
+    const endedAt = Number.isFinite(observedAt)
+      ? Math.max(evidenceAt, Math.floor(observedAt))
+      : evidenceAt;
+    const receipt = Object.freeze({
+      elapsedMs: Math.max(0, endedAt - lease.startedAt),
+      endedAt,
+      label: lease.transaction.label,
+      outcome,
+      phase: lease.phase,
+      sourcePath: lease.transaction.sourcePath,
+      startedAt: lease.startedAt,
+    });
+    this.lastAuthorTransactionReceipt = receipt;
+    return receipt;
+  }
+
   formatAuthorTransactionElapsed(elapsedMs) {
     const totalSeconds = Math.floor(Math.max(0, elapsedMs) / 1000);
     const hours = Math.floor(totalSeconds / 3600);
@@ -3356,11 +3396,32 @@ module.exports = class MyBlogPublisher extends Plugin {
     ].join("\n");
   }
 
+  formatAuthorTransactionReceipt(receipt) {
+    return [
+      "AUTHOR TRANSACTION / IDLE · LAST RECEIPT",
+      `结果：${AUTHOR_TRANSACTION_OUTCOME_LABELS[receipt.outcome]}`,
+      `操作：${receipt.label}`,
+      `来源：${receipt.sourcePath}`,
+      `最终阶段：${AUTHOR_TRANSACTION_PHASE_LABELS[receipt.phase]}`,
+      `开始：${new Date(receipt.startedAt).toISOString()}`,
+      `结束：${new Date(receipt.endedAt).toISOString()}`,
+      `总计：${this.formatAuthorTransactionElapsed(receipt.elapsedMs)}`,
+      "会话内回执；重新加载插件后清除。不会重试、恢复或推送。",
+    ].join("\n");
+  }
+
   inspectAuthorTransaction(checking) {
     if (!this.isDesktopVault()) return false;
     if (checking) return true;
     const snapshot = this.getAuthorTransactionSnapshot();
     if (!snapshot) {
+      if (this.lastAuthorTransactionReceipt) {
+        new Notice(
+          this.formatAuthorTransactionReceipt(this.lastAuthorTransactionReceipt),
+          10000,
+        );
+        return true;
+      }
       new Notice(
         "AUTHOR TRANSACTION / IDLE\n当前没有运行中的作者事务。",
         5000,
@@ -3371,9 +3432,10 @@ module.exports = class MyBlogPublisher extends Plugin {
     return true;
   }
 
-  releaseAuthorTransactionLease(lease, child = null) {
+  releaseAuthorTransactionLease(lease, child, outcome) {
     if (!lease || this.authorTransactionLease !== lease) return false;
     if (child && lease.child !== child) return false;
+    if (!this.recordAuthorTransactionReceipt(lease, outcome)) return false;
     this.authorTransactionLease = null;
     return true;
   }
@@ -3397,7 +3459,7 @@ module.exports = class MyBlogPublisher extends Plugin {
       });
     } catch (error) {
       progressNotice.hide();
-      this.releaseAuthorTransactionLease(authorLease);
+      this.releaseAuthorTransactionLease(authorLease, null, "start-failed");
       new Notice(`${messages.startFailure}: ${error.message}`, 10000);
       return true;
     }
@@ -3439,27 +3501,31 @@ module.exports = class MyBlogPublisher extends Plugin {
     child.stderr.on("data", appendOutput);
     child.on("error", (error) => {
       if (!cancel()) return;
-      this.releaseAuthorTransactionLease(authorLease, child);
+      this.releaseAuthorTransactionLease(authorLease, child, "start-failed");
       new Notice(`${messages.startFailure}: ${error.message}`, 10000);
     });
     child.on("close", (code) => {
       if (!cancel()) return;
       const allowedExitCodes = messages.allowedExitCodes ?? [0];
       if (allowedExitCodes.includes(code)) {
+        let terminalOutcome = "completed";
         try {
-          onSuccess(report(), code);
+          if (onSuccess(report(), code) === "held") {
+            terminalOutcome = "held";
+          }
           if (messages.success) {
             new Notice(messages.success, messages.successDuration ?? 5000);
           }
         } catch (error) {
+          terminalOutcome = "result-failed";
           new Notice(`${messages.failure}: ${error.message}`, 15000);
         } finally {
-          this.releaseAuthorTransactionLease(authorLease, child);
+          this.releaseAuthorTransactionLease(authorLease, child, terminalOutcome);
         }
         return;
       }
       const summary = report().split(/\r?\n/u).slice(-4).join("\n");
-      this.releaseAuthorTransactionLease(authorLease, child);
+      this.releaseAuthorTransactionLease(authorLease, child, "command-failed");
       new Notice(
         `${messages.failure}:\n${summary || `命令退出码 ${code}`}`,
         15000,
@@ -3689,7 +3755,7 @@ module.exports = class MyBlogPublisher extends Plugin {
         `本机发布环境有 ${report.summary.attention} 项需要处理；${transaction.label}未启动。`,
         8000,
       );
-      return;
+      return "held";
     }
 
     if (!this.setAuthorTransactionPhase(lease, "domain")) return;
@@ -3726,7 +3792,10 @@ module.exports = class MyBlogPublisher extends Plugin {
         startFailure: "纯文本本机发布环境自检命令无法启动",
         success: "已打开纯文本本机发布环境自检。",
       },
-      (report) => new AuthorDoctorTextModal(this.app, report, transaction).open(),
+      (report) => {
+        new AuthorDoctorTextModal(this.app, report, transaction).open();
+        return transaction && authorLease ? "held" : undefined;
+      },
       authorLease,
     );
   }
