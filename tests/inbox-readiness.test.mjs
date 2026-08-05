@@ -127,7 +127,7 @@ test("reports ready and scheduled drafts with real media derivation", async () =
     const report = await inspectInboxReadiness(root, "2026-08-05", { stagingParent });
     const byPath = Object.fromEntries(report.entries.map((entry) => [entry.sourcePath, entry]));
 
-    assert.equal(report.version, 4);
+    assert.equal(report.version, 5);
     assert.equal(report.mode, "read-only");
     assert.deepEqual(report.safety, {
       authorFilesChanged: false,
@@ -162,6 +162,7 @@ test("reports ready and scheduled drafts with real media derivation", async () =
     assert.equal(attachment.publicUrl, "/uploads/ready-note/evidence.webp");
     assert.deepEqual(attachment.usages, [
       {
+        altSources: ["authored"],
         altTexts: ["示例图"],
         occurrences: 1,
         role: "body",
@@ -247,10 +248,11 @@ test("blocks empty body alternative text while preserving exact source evidence"
 
     const report = await inspectInboxReadiness(root, "2026-08-05");
     const entry = report.entries[0];
-    assert.equal(report.version, 4);
+    assert.equal(report.version, 5);
     assert.equal(entry.state, "blocked");
     assert.deepEqual(entry.attachments[0].usages, [
       {
+        altSources: ["authored"],
         altTexts: [""],
         occurrences: 1,
         role: "body",
@@ -266,8 +268,64 @@ test("blocks empty body alternative text while preserving exact source evidence"
       },
     ]);
     const output = formatInboxReadinessText(report);
-    assert.match(output, new RegExp(`附件替代文本 \\[body\\] L${imageLine} · EMPTY · WILL FAIL`, "u"));
+    assert.match(output, new RegExp(`附件替代文本 \\[body\\] L${imageLine} · AUTHORED · EMPTY · WILL FAIL`, "u"));
     assert.match(output, /\[attachment-alt-empty\]/u);
+  } finally {
+    await rm(root, { recursive: true, force: true });
+  }
+});
+
+test("blocks filename fallback alternative text while preserving the final text", async () => {
+  const root = await createFixture();
+  try {
+    const draft = article(
+      "fallback-alt",
+      "2026-08-05",
+      "证据 ![[evidence.png|640x360]]。",
+    );
+    const imageLine = draft
+      .split(/\r?\n/u)
+      .findIndex((line) => line.includes("![[evidence.png|640x360]]")) + 1;
+    const image = await sharp({
+      create: {
+        width: 640,
+        height: 360,
+        channels: 3,
+        background: "#486f78",
+      },
+    }).png().toBuffer();
+    await Promise.all([
+      writeFile(join(root, "content", "inbox", "fallback-alt.md"), draft),
+      writeFile(join(root, "public", "uploads", "evidence.png"), image),
+    ]);
+
+    const report = await inspectInboxReadiness(root, "2026-08-05");
+    const entry = report.entries[0];
+    assert.equal(report.version, 5);
+    assert.equal(entry.state, "blocked");
+    assert.deepEqual(entry.attachments[0].usages, [
+      {
+        altSources: ["filename-fallback"],
+        altTexts: ["evidence.png"],
+        occurrences: 1,
+        role: "body",
+        sourceLines: [imageLine],
+      },
+    ]);
+    assert.ok(entry.attachments[0].preparation);
+    assert.deepEqual(entry.issues, [
+      {
+        code: "attachment-alt-filename-fallback",
+        message: `附件替代文本来自文件名回退：BODY L${imageLine}；请在 Markdown alt 或 Wiki display 中填写图片描述`,
+        path: "public/uploads/evidence.png",
+      },
+    ]);
+    const output = formatInboxReadinessText(report);
+    assert.match(
+      output,
+      new RegExp(`附件替代文本 \\[body\\] L${imageLine} · FILENAME FALLBACK · "evidence\\.png" · WILL FAIL`, "u"),
+    );
+    assert.match(output, /\[attachment-alt-filename-fallback\]/u);
   } finally {
     await rm(root, { recursive: true, force: true });
   }
@@ -357,7 +415,7 @@ test("scopes evidence to one source while deriving only its media and preserving
         article(
           "current-note",
           "2026-08-05",
-          "共享 ![[shared.png]]；当前 ![[current-only.png]]。",
+          "共享 ![[shared.png|共享证据]]；当前 ![[current-only.png|当前证据]]。",
         ),
       ),
       writeFile(
@@ -365,7 +423,7 @@ test("scopes evidence to one source while deriving only its media and preserving
         article(
           "peer-note",
           "2026-08-05",
-          "共享 ![[shared.png]]；无关 ![[peer-only.png]]。",
+          "共享 ![[shared.png|共享证据]]；无关 ![[peer-only.png|同伴证据]]。",
         ),
       ),
       writeFile(join(root, "content", "inbox", "Bad Name.md"), "---\ndraft: true\n---\n"),
@@ -479,7 +537,7 @@ test("runs the real JSON CLI and leaves the repository byte-for-byte untouched",
     );
     assert.equal(result.status, 0, `${result.stdout}\n${result.stderr}`);
     const report = JSON.parse(result.stdout);
-    assert.equal(report.version, 4);
+    assert.equal(report.version, 5);
     assert.equal(report.mode, "read-only");
     assert.equal(report.counts.ready, 1);
     assert.equal(report.counts.drafts, 1);

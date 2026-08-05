@@ -521,7 +521,7 @@
   overflow-wrap: anywhere;
 }
 
-.myblog-draft-intent__media-alt--empty {
+.myblog-draft-intent__media-alt--blocked {
   color: var(--text-error) !important;
   font-weight: var(--font-semibold);
 }

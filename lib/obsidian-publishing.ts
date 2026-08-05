@@ -23,11 +23,14 @@ export interface PreparedAttachment {
 }
 
 export interface PreparedAttachmentUsage {
+  altSources: PreparedAttachmentAltSource[];
   altTexts: string[];
   occurrences: number;
   role: "body" | "cover";
   sourceLines: number[];
 }
+
+export type PreparedAttachmentAltSource = "authored" | "filename-fallback";
 
 export interface ObsidianLinkTarget {
   body?: string;
@@ -162,7 +165,11 @@ function normalizeAttachmentLinks(
     role: PreparedAttachmentUsage["role"],
     sourceLine: number,
     altText?: string,
+    altSource?: PreparedAttachmentAltSource,
   ) {
+    if ((altText === undefined) !== (altSource === undefined)) {
+      throw new Error("附件替代文本与来源证据必须同时登记");
+    }
     let sourcePath: string | undefined;
     try {
       sourcePath = sourceAttachmentPath(reference, allowBareName);
@@ -193,11 +200,13 @@ function normalizeAttachmentLinks(
     }
     const usage = attachment.usages.find((candidate) => candidate.role === role);
     if (usage) {
+      if (altSource !== undefined) usage.altSources.push(altSource);
       if (altText !== undefined) usage.altTexts.push(altText);
       usage.occurrences += 1;
       usage.sourceLines.push(sourceLine);
     } else {
       attachment.usages.push({
+        altSources: altSource === undefined ? [] : [altSource],
         altTexts: altText === undefined ? [] : [altText],
         occurrences: 1,
         role,
@@ -244,12 +253,17 @@ function normalizeAttachmentLinks(
           : requestedDisplay && !isDimensions
             ? requestedDisplay
             : fallbackAlt;
+        const altSource: PreparedAttachmentAltSource =
+          markdownReference !== undefined || (requestedDisplay && !isDimensions)
+            ? "authored"
+            : "filename-fallback";
         const attachment = register(
           reference,
           wikiReference !== undefined,
           "body",
           normalizedSourceLine(segmentOffset + matchOffset),
           altText,
+          altSource,
         );
         if (!attachment) return match;
         if (markdownReference !== undefined) {
@@ -476,6 +490,7 @@ export function prepareObsidianNote(
   const attachments = normalizedAttachments.attachments.map((attachment) => ({
     ...attachment,
     usages: attachment.usages.map((usage) => {
+      const altSources = usage.role === "cover" ? ["authored" as const] : usage.altSources;
       const altTexts = usage.role === "cover"
         ? record.coverAlt === undefined
           ? []
@@ -484,7 +499,10 @@ export function prepareObsidianNote(
       if (altTexts.length !== usage.occurrences) {
         throw new Error(`附件替代文本证据不完整：${attachment.sourcePath} [${usage.role}]`);
       }
-      return { ...usage, altTexts };
+      if (altSources.length !== usage.occurrences) {
+        throw new Error(`附件替代文本来源证据不完整：${attachment.sourcePath} [${usage.role}]`);
+      }
+      return { ...usage, altSources, altTexts };
     }),
   }));
 

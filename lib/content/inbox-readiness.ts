@@ -28,7 +28,7 @@ const ISO_DATE_PATTERN = /^\d{4}-\d{2}-\d{2}$/u;
 const INBOX_SOURCE_PREFIX = "content/inbox/";
 const SLUG_PATTERN = /^[a-z0-9]+(?:-[a-z0-9]+)*$/u;
 
-export const INBOX_READINESS_REPORT_VERSION = 4 as const;
+export const INBOX_READINESS_REPORT_VERSION = 5 as const;
 
 export const INBOX_READINESS_STATES = ["blocked", "scheduled", "ready"] as const;
 export type InboxReadinessState = (typeof INBOX_READINESS_STATES)[number];
@@ -36,6 +36,7 @@ export type InboxReadinessState = (typeof INBOX_READINESS_STATES)[number];
 export type InboxReadinessIssueCode =
   | "attachment-invalid"
   | "attachment-alt-empty"
+  | "attachment-alt-filename-fallback"
   | "attachment-missing"
   | "attachment-shared"
   | "attachment-target-exists"
@@ -273,6 +274,21 @@ async function inspectDraft(
         entry,
         "attachment-alt-empty",
         `附件替代文本为空：${emptyAlternativeTextLocations.join("、")}；请描述图片传达的信息`,
+        attachment.sourcePath,
+      );
+    }
+    const filenameFallbackLocations = attachment.usages.flatMap((usage) =>
+      usage.altSources.flatMap((altSource, index) =>
+        altSource === "filename-fallback"
+          ? [`${usage.role.toUpperCase()} L${usage.sourceLines[index]}`]
+          : [],
+      ),
+    );
+    if (filenameFallbackLocations.length > 0) {
+      addIssue(
+        entry,
+        "attachment-alt-filename-fallback",
+        `附件替代文本来自文件名回退：${filenameFallbackLocations.join("、")}；请在 Markdown alt 或 Wiki display 中填写图片描述`,
         attachment.sourcePath,
       );
     }
@@ -533,8 +549,13 @@ export function formatInboxReadinessText(report: InboxReadinessReport) {
           `[inbox]   附件来源 [${usage.role}] ${usage.sourceLines.map((line) => `L${line}`).join(", ")}${usage.occurrences > 1 ? ` · ×${usage.occurrences}` : ""}`,
         );
         for (const [index, altText] of usage.altTexts.entries()) {
+          const altSource = usage.altSources[index];
+          const sourceLabel = altSource === "authored" ? "AUTHORED" : "FILENAME FALLBACK";
+          const value = altText.trim()
+            ? `${JSON.stringify(altText)}${altSource === "filename-fallback" ? " · WILL FAIL" : ""}`
+            : "EMPTY · WILL FAIL";
           lines.push(
-            `[inbox]   附件替代文本 [${usage.role}] L${usage.sourceLines[index]} · ${altText.trim() ? JSON.stringify(altText) : "EMPTY · WILL FAIL"}`,
+            `[inbox]   附件替代文本 [${usage.role}] L${usage.sourceLines[index]} · ${sourceLabel} · ${value}`,
           );
         }
       }

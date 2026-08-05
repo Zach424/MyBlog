@@ -19,9 +19,9 @@ const CONTENT_PUBLISH_DELIVERY_REPORT_VERSION = 1;
 const CONTENT_PUBLISH_DELIVERY_RECEIPT_VERSION = 1;
 const CONTENT_DELIVERY_TRIAGE_REPORT_VERSION = 1;
 const AUTHOR_DOCTOR_REPORT_VERSION = 1;
-const INBOX_READINESS_REPORT_VERSION = 4;
+const INBOX_READINESS_REPORT_VERSION = 5;
 const AUTHOR_DOCTOR_NODE_ENGINE = ">=22.13.0";
-const AUTHOR_DOCTOR_PLUGIN_VERSION = "1.27.0";
+const AUTHOR_DOCTOR_PLUGIN_VERSION = "1.28.0";
 const DRAFT_TITLE_MAX_LENGTH = 120;
 const DRAFT_SLUG_MAX_LENGTH = 80;
 const DRAFT_SLUG_PATTERN = /^[a-z0-9]+(?:-[a-z0-9]+)*$/u;
@@ -255,6 +255,7 @@ function parseInboxReadinessReport(output, expectedSourcePath) {
   const states = ["blocked", "scheduled", "ready"];
   const issueCodes = new Set([
     "attachment-alt-empty",
+    "attachment-alt-filename-fallback",
     "attachment-invalid",
     "attachment-missing",
     "attachment-shared",
@@ -409,6 +410,7 @@ function parseInboxReadinessReport(output, expectedSourcePath) {
     const attachmentTargets = new Set();
     const mediaUsageRoleOrder = new Map([["cover", 0], ["body", 1]]);
     const emptyAltAttachmentSources = new Set();
+    const filenameFallbackAttachmentSources = new Set();
     const unpreparedAttachmentSources = new Set();
     for (const [attachmentIndex, attachment] of entry.attachments.entries()) {
       const attachmentLabel = `${entryLabel}.attachments[${attachmentIndex}]`;
@@ -428,7 +430,7 @@ function parseInboxReadinessReport(output, expectedSourcePath) {
         assertPlainObject(usage, usageLabel);
         assertExactKeys(
           usage,
-          ["altTexts", "occurrences", "role", "sourceLines"],
+          ["altSources", "altTexts", "occurrences", "role", "sourceLines"],
           usageLabel,
         );
         const roleOrder = mediaUsageRoleOrder.get(usage.role);
@@ -449,6 +451,9 @@ function parseInboxReadinessReport(output, expectedSourcePath) {
         if (!Array.isArray(usage.altTexts) || usage.altTexts.length !== usage.occurrences) {
           valueError(`${usageLabel}.altTexts`, "必须逐次记录每个媒体引用的最终替代文本");
         }
+        if (!Array.isArray(usage.altSources) || usage.altSources.length !== usage.occurrences) {
+          valueError(`${usageLabel}.altSources`, "必须逐次记录每个媒体引用的替代文本来源");
+        }
         let previousLine = 0;
         for (const [lineIndex, line] of usage.sourceLines.entries()) {
           assertInteger(line, `${usageLabel}.sourceLines[${lineIndex}]`, 1);
@@ -460,7 +465,17 @@ function parseInboxReadinessReport(output, expectedSourcePath) {
           if (typeof altText !== "string") {
             valueError(`${usageLabel}.altTexts[${lineIndex}]`, "必须是字符串");
           }
+          const altSource = usage.altSources[lineIndex];
+          if (!new Set(["authored", "filename-fallback"]).has(altSource)) {
+            valueError(`${usageLabel}.altSources[${lineIndex}]`, "必须是 authored 或 filename-fallback");
+          }
+          if (usage.role === "cover" && altSource !== "authored") {
+            valueError(`${usageLabel}.altSources[${lineIndex}]`, "cover 必须来自正式 coverAlt");
+          }
           if (!altText.trim()) emptyAltAttachmentSources.add(attachment.sourcePath);
+          if (altSource === "filename-fallback") {
+            filenameFallbackAttachmentSources.add(attachment.sourcePath);
+          }
         }
       }
       for (const field of ["sourcePath", "targetPath"]) {
@@ -599,6 +614,22 @@ function parseInboxReadinessReport(output, expectedSourcePath) {
         !emptyAltAttachmentSources.has(issue.path)
       ) {
         valueError(`${entryLabel}.issues`, `替代文本阻塞问题必须对应空值附件：${issue.path ?? "missing path"}`);
+      }
+    }
+    for (const sourcePath of filenameFallbackAttachmentSources) {
+      const hasMatchingIssue = entry.issues.some((issue) =>
+        issue.code === "attachment-alt-filename-fallback" && issue.path === sourcePath,
+      );
+      if (!hasMatchingIssue) {
+        valueError(`${entryLabel}.attachments`, `文件名回退必须有同源阻塞问题：${sourcePath}`);
+      }
+    }
+    for (const issue of entry.issues) {
+      if (
+        issue.code === "attachment-alt-filename-fallback" &&
+        !filenameFallbackAttachmentSources.has(issue.path)
+      ) {
+        valueError(`${entryLabel}.issues`, `文件名回退阻塞问题必须对应回退附件：${issue.path ?? "missing path"}`);
       }
     }
     if (entry.state === "blocked" && entry.issues.length === 0) {
@@ -3100,12 +3131,18 @@ class DraftIntentModal extends Modal {
             text: `${usage.sourceLines.map((line) => `L${line}`).join(", ")}${usage.occurrences > 1 ? ` · ×${usage.occurrences}` : ""}`,
           });
           for (const [index, altText] of usage.altTexts.entries()) {
-            usageRow.createEl("span", { text: `ALT · L${usage.sourceLines[index]}` });
-            const altValue = usageRow.createEl("span", {
-              text: altText.trim() ? altText : "EMPTY · WILL FAIL",
+            const altSource = usage.altSources[index];
+            const sourceLabel = altSource === "authored" ? "AUTHORED" : "FILENAME FALLBACK";
+            usageRow.createEl("span", {
+              text: `ALT · L${usage.sourceLines[index]} · ${sourceLabel}`,
             });
-            if (!altText.trim()) {
-              altValue.addClass("myblog-draft-intent__media-alt--empty");
+            const altValue = usageRow.createEl("span", {
+              text: altText.trim()
+                ? `${altText}${altSource === "filename-fallback" ? " · WILL FAIL" : ""}`
+                : "EMPTY · WILL FAIL",
+            });
+            if (!altText.trim() || altSource === "filename-fallback") {
+              altValue.addClass("myblog-draft-intent__media-alt--blocked");
             }
           }
         }
