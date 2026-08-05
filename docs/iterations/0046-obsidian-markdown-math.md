@@ -71,7 +71,7 @@
 - 真实 Chromium 320px 深色：根宽 `320=320`，公式 `scrollWidth=387 > clientWidth=288`，键盘方向键使 `scrollLeft 0→2`，公式色 `rgb(237,244,245)`、Paper 背景 `rgb(23,35,45)`；
 - 320px 深色无 JavaScript：HTTP 200、1 display/2 MathML、根宽 `320=320`；生产内容无需 hydration 才可读；
 - print computed style：公式 `overflow-x: visible`、`break-inside: avoid-page`；项目 PDF 为 5 页、1,419,213 B，pypdfium2 以 1.5 倍渲染全部 5 页并逐页目视确认公式完整、未裁切、未跨页，标题/来源/封面/正文/关系账本分页正常；
-- 实现提交 `7c46cf5fdce1c2926bba56b22353a19fcd6f217e` 已推送 `main`；Quality Gate `30966993482` completed/success。归档提交后继续等待并记录最终 Vercel production verification 与稳定域名冒烟。
+- 实现提交 `7c46cf5fdce1c2926bba56b22353a19fcd6f217e` 已推送 `main`，Quality Gate `30966993482` completed/success；归档提交 `ae2189d` 的 Quality Gate `30967389867` 与 Verify Vercel production `30967422945` 均 completed/success。稳定域名冒烟通过 24 条路由与 OAuth 302；生产 Playwright 在 1280px 与 320px 深色/无 JavaScript 条件下均返回 HTTP 200、根宽等于视口、公式含 MathML，移动端公式可横向滚动且控制台 0 error/0 warning。
 
 失败与修复证据：第一轮 production HTML 断言错误地依赖 KaTeX `class`/`aria-hidden` 属性顺序，改用同一元素上的前瞻断言。更重要的是，首次增量 `next build` 虽成功，但真实浏览器显示 320px 根宽被公式撑到 419px；检查发现源码已有 `overflow-x: auto`，生产 CSS 却仍是旧的 62,614 B chunk。将已验证位于仓库内的 `.next` 移出工作区后做干净构建，暴露 `node_modules/sharp` 目录意外为空；重新按锁定版本安装 `sharp@0.35.3` 后，干净构建生成包含新规则的 78,434 B global CSS，移动端根宽恢复 320px。该过程没有删除作者文件，旧缓存被移到系统临时目录。
 

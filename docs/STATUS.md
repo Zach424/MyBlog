@@ -50,7 +50,7 @@ MyBlog 是 Zach424 的个人技术知识库与公开工程日志。它把学习�
 - 仓库：<https://github.com/Zach424/MyBlog>，生产分支 `main`；
 - 生产站：<https://blog-iota-five-59.vercel.app>；
 - 本轮实现提交：`7c46cf5`（Obsidian 数学公式、受限服务端 KaTeX/MathML、共享 AST、搜索索引分层、移动/打印边界与真实项目公式）；
-- 自动交付：实现提交的 Quality Gate `30966993482` 已成功；Vercel Production verification 与稳定域名公式冒烟将在归档提交后复核；
+- 自动交付：实现提交的 Quality Gate `30966993482`、归档提交的 Quality Gate `30967389867` 与 Verify Vercel production `30967422945` 均已成功；稳定域名 24 条路由、OAuth 302 与公式页面冒烟通过；
 - 最新完成迭代：0046 Obsidian 兼容 Markdown 数学公式；
 - Obsidian 状态：仓库根目录就是 Vault，`docs/STATUS.md` 与 `docs/iterations/*.md` 可直接阅读和维护；
 - 手动外部接入：自定义域名、统计、评论、公开邮箱均暂缓，不阻塞当前开发。
