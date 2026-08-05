@@ -1,9 +1,9 @@
 {
   "id": "myblog-publisher",
   "name": "MyBlog Publisher",
-  "version": "1.13.0",
+  "version": "1.14.0",
   "minAppVersion": "1.5.0",
-  "description": "Preflight the local author environment, triage Git delivery from one snapshot, safely redeliver exact commits, and publish MyBlog notes through guarded repository workflows.",
+  "description": "Interlock new publishing and review transactions with a local author preflight, triage Git delivery, safely redeliver exact commits, and publish MyBlog notes through guarded workflows.",
   "author": "Zach424",
   "isDesktopOnly": true
 }

@@ -59,7 +59,7 @@ function healthyObservation() {
         isDesktopOnly: true,
         mainPresent: true,
         stylesPresent: true,
-        version: "1.13.0",
+        version: "1.14.0",
       },
     },
     workspace: {
@@ -128,7 +128,7 @@ test("routes every missing prerequisite to its exact repair evidence", () => {
     }],
     ["content-layout", (value) => { value.workspace.paths[0].present = false; }],
     ["obsidian-vault", (value) => { value.vault.obsidianDirectoryPresent = false; }],
-    ["publisher-plugin", (value) => { value.vault.plugin.version = "1.12.0"; }],
+    ["publisher-plugin", (value) => { value.vault.plugin.version = "1.13.0"; }],
   ];
 
   for (const [id, mutate] of cases) {
@@ -181,7 +181,7 @@ async function createDoctorFixture() {
     ),
     writeFile(
       join(root, ".obsidian", "plugins", "myblog-publisher", "manifest.json"),
-      '{"id":"myblog-publisher","version":"1.13.0","isDesktopOnly":true}\n',
+      '{"id":"myblog-publisher","version":"1.14.0","isDesktopOnly":true}\n',
     ),
     writeFile(
       join(root, ".obsidian", "plugins", "myblog-publisher", "main.js"),

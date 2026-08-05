@@ -430,6 +430,7 @@
 .myblog-author-doctor__circuit-label,
 .myblog-author-doctor__station-label,
 .myblog-author-doctor__endpoint,
+.myblog-author-doctor__interlock-label,
 .myblog-author-doctor__check-state {
   font-family: var(--font-monospace);
   font-size: var(--font-ui-smaller);
@@ -454,6 +455,36 @@
   color: var(--text-muted);
   margin: 0 0 var(--size-4-4);
   padding: var(--size-2-2) var(--size-4-3);
+}
+
+.myblog-author-doctor__interlock {
+  border-block: 1px solid var(--myblog-doctor-caution);
+  display: grid;
+  gap: var(--size-4-3);
+  grid-template-columns: minmax(12rem, 0.7fr) minmax(0, 1.3fr);
+  margin: 0 0 var(--size-4-4);
+  padding-block: var(--size-4-3);
+}
+
+.myblog-author-doctor__interlock-label {
+  color: var(--myblog-doctor-caution);
+  margin: 0;
+}
+
+.myblog-author-doctor__interlock-detail {
+  display: grid;
+  gap: var(--size-2-1);
+  margin: 0;
+  min-width: 0;
+}
+
+.myblog-author-doctor__interlock-detail span {
+  color: var(--myblog-doctor-caution);
+  font-weight: var(--font-semibold);
+}
+
+.myblog-author-doctor__interlock-detail code {
+  overflow-wrap: anywhere;
 }
 
 .myblog-author-doctor__circuit {
@@ -598,6 +629,7 @@
 }
 
 @media (max-width: 36rem) {
+  .myblog-author-doctor__interlock,
   .myblog-author-doctor__stations,
   .myblog-author-doctor__check {
     grid-template-columns: 1fr;

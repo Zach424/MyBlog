@@ -558,7 +558,7 @@ function authorDoctorReport() {
     ["workspace-dependencies", "workspace", "Workspace dependencies", "35/35 pinned packages", "all declared packages installed at pinned versions"],
     ["content-layout", "workspace", "Content layout", "5/5 required paths", "5 required authoring paths"],
     ["obsidian-vault", "vault", "Obsidian Vault", ".obsidian present", ".obsidian directory present"],
-    ["publisher-plugin", "vault", "MyBlog Publisher", "myblog-publisher@1.13.0 · desktop", "myblog-publisher 1.13.0 desktop plugin"],
+    ["publisher-plugin", "vault", "MyBlog Publisher", "myblog-publisher@1.14.0 · desktop", "myblog-publisher 1.14.0 desktop plugin"],
   ];
   const scripts = [
     "content:author:doctor",
@@ -605,7 +605,7 @@ function authorDoctorReport() {
           isDesktopOnly: true,
           mainPresent: true,
           stylesPresent: true,
-          version: "1.13.0",
+          version: "1.14.0",
         },
       },
       workspace: {
@@ -637,6 +637,40 @@ function authorDoctorReport() {
   };
 }
 
+function authorDoctorAttentionReport() {
+  const report = authorDoctorReport();
+  report.status = "needs-attention";
+  report.observation.identity.emailConfigured = false;
+  report.summary = { attention: 1, passed: 12, total: 13 };
+  const identity = report.checks.find((check) => check.id === "author-identity");
+  identity.observed = "name configured · email missing";
+  identity.resolution = "配置 Git user.name 与 user.email 后重新检查";
+  identity.status = "attention";
+  return report;
+}
+
+const authorDoctorCommandArgs = [
+  "/d",
+  "/s",
+  "/c",
+  "npm",
+  "--silent",
+  "run",
+  "content:author:doctor",
+  "--",
+  "--format",
+  "json",
+];
+
+function finishReadyAuthorPreflight(harness, index) {
+  assert.deepEqual(plain(harness.spawned[index].args), authorDoctorCommandArgs);
+  harness.spawned[index].child.stdout.emit(
+    "data",
+    Buffer.from(JSON.stringify(authorDoctorReport())),
+  );
+  harness.spawned[index].child.emit("close", 0);
+}
+
 function findCommand(harness, id) {
   const command = harness.commands.find((candidate) => candidate.id === id);
   assert.ok(command, `Expected command ${id}`);
@@ -650,7 +684,7 @@ test("renders a versioned maintenance ledger and opens an exact Vault note", asy
     createPluginHarness(),
   ]);
   const manifest = JSON.parse(manifestSource);
-  assert.equal(manifest.version, "1.13.0");
+  assert.equal(manifest.version, "1.14.0");
   assert.equal(manifest.isDesktopOnly, true);
   assert.match(styles, /^\.myblog-maintenance \{/mu);
   assert.match(styles, /\[data-status="overdue"\]/u);
@@ -1006,6 +1040,168 @@ test("falls back to pure text when author preflight evidence is inconsistent", a
   assert.match(elementsByTag(harness.modals[0], "pre")[0].text, /HOLD/u);
 });
 
+test("gates every new publish and review transaction with one ready author preflight", async () => {
+  const cases = [
+    {
+      commandId: "validate-current-note",
+      domainArgs: [
+        "run",
+        "content:publish",
+        "--",
+        "content/inbox/new-note.md",
+        "--check-only",
+      ],
+      path: "content/inbox/new-note.md",
+    },
+    {
+      commandId: "publish-current-note",
+      domainArgs: [
+        "run",
+        "content:publish",
+        "--",
+        "content/inbox/new-note.md",
+        "--push",
+      ],
+      path: "content/inbox/new-note.md",
+    },
+    {
+      commandId: "validate-current-published-note",
+      domainArgs: [
+        "run",
+        "content:review",
+        "--",
+        "content/projects/myblog.md",
+        "--check-only",
+        "--format",
+        "json",
+      ],
+      path: "content/projects/myblog.md",
+    },
+    {
+      commandId: "review-current-published-note",
+      domainArgs: [
+        "run",
+        "content:review",
+        "--",
+        "content/projects/myblog.md",
+        "--push",
+      ],
+      path: "content/projects/myblog.md",
+    },
+  ];
+
+  for (const { commandId, domainArgs, path } of cases) {
+    const harness = await createPluginHarness({ activeFilePath: path });
+    findCommand(harness, commandId).checkCallback(false);
+    assert.equal(harness.spawned.length, 1, commandId);
+    finishReadyAuthorPreflight(harness, 0);
+    assert.equal(harness.spawned.length, 2, commandId);
+    assert.deepEqual(plain(harness.spawned[1].args), [
+      "/d",
+      "/s",
+      "/c",
+      "npm",
+      ...domainArgs,
+    ]);
+    assert.equal(harness.modals.length, 0, commandId);
+  }
+});
+
+test("holds every new publish and review transaction on author attention", async () => {
+  const styles = await readFile(stylesUrl, "utf8");
+  assert.match(styles, /\.myblog-author-doctor__interlock/u);
+  const cases = [
+    ["validate-current-note", "content/inbox/new-note.md", "检查当前草稿"],
+    ["publish-current-note", "content/inbox/new-note.md", "发布当前草稿并同步 GitHub"],
+    [
+      "validate-current-published-note",
+      "content/projects/myblog.md",
+      "检查当前正式内容复核",
+    ],
+    [
+      "review-current-published-note",
+      "content/projects/myblog.md",
+      "提交并同步当前正式内容复核",
+    ],
+  ];
+
+  for (const [commandId, path, operation] of cases) {
+    const harness = await createPluginHarness({ activeFilePath: path });
+    findCommand(harness, commandId).checkCallback(false);
+    assert.deepEqual(plain(harness.spawned[0].args), authorDoctorCommandArgs);
+    harness.spawned[0].child.stdout.emit(
+      "data",
+      Buffer.from(JSON.stringify(authorDoctorAttentionReport())),
+    );
+    harness.spawned[0].child.emit("close", 1);
+
+    assert.equal(harness.spawned.length, 1, commandId);
+    assert.equal(harness.modals.length, 1, commandId);
+    const modal = harness.modals[0];
+    const text = allElements(modal.contentEl)
+      .map((element) => element.text)
+      .join(" ");
+    assert.equal(modal.contentEl.classes.has("myblog-author-doctor"), true);
+    assert.equal(elementsByTag(modal, "button").length, 0);
+    assert.match(text, /TRANSACTION INTERLOCK \/ HELD/u);
+    assert.ok(text.includes(operation));
+    assert.ok(text.includes(path));
+    assert.match(text, /AUTHOR HOLD/u);
+  }
+});
+
+test("fails closed to author text evidence when an interlock report is untrusted", async () => {
+  const harness = await createPluginHarness({
+    activeFilePath: "content/inbox/new-note.md",
+  });
+  findCommand(harness, "publish-current-note").checkCallback(false);
+  harness.spawned[0].child.stdout.emit("data", Buffer.from("not-json"));
+  harness.spawned[0].child.emit("close", 0);
+
+  assert.equal(harness.spawned.length, 2);
+  assert.deepEqual(plain(harness.spawned[1].args), [
+    "/d",
+    "/s",
+    "/c",
+    "npm",
+    "--silent",
+    "run",
+    "content:author:doctor",
+  ]);
+  harness.spawned[1].child.stdout.emit(
+    "data",
+    Buffer.from("[author-doctor] HOLD · evidence unavailable."),
+  );
+  harness.spawned[1].child.emit("close", 1);
+  assert.equal(harness.spawned.length, 2);
+  assert.equal(harness.modals.length, 1);
+  assert.match(
+    allElements(harness.modals[0].contentEl)
+      .map((element) => element.text)
+      .join(" "),
+    /发布当前草稿并同步 GitHub.*未启动/su,
+  );
+});
+
+test("does not start an author transaction when its preflight command fails", async () => {
+  const harness = await createPluginHarness({
+    activeFilePath: "content/inbox/new-note.md",
+  });
+  findCommand(harness, "validate-current-note").checkCallback(false);
+  harness.spawned[0].child.stderr.emit(
+    "data",
+    Buffer.from("[author-doctor] unable to inspect local runtime"),
+  );
+  harness.spawned[0].child.emit("close", 2);
+
+  assert.equal(harness.spawned.length, 1);
+  assert.equal(harness.modals.length, 0);
+  assert.match(
+    harness.notices.at(-1).message,
+    /检查当前草稿的本机前置检查未完成；原操作未启动.*unable to inspect/su,
+  );
+});
+
 test("falls back without executing a route when triage evidence is inconsistent", async () => {
   const harness = await createPluginHarness();
   const report = deliveryTriageReport();
@@ -1344,7 +1540,9 @@ test("checks or syncs only the active formal content note", async () => {
   assert.equal(sync.checkCallback(true), true);
 
   check.checkCallback(false);
-  assert.deepEqual(plain(harness.spawned[0].args), [
+  assert.equal(harness.spawned.length, 1);
+  finishReadyAuthorPreflight(harness, 0);
+  assert.deepEqual(plain(harness.spawned[1].args), [
     "/d",
     "/s",
     "/c",
@@ -1364,11 +1562,11 @@ test("checks or syncs only the active formal content note", async () => {
     ],
     untrackedPaths: ["public/uploads/Pasted image 20260805.png"],
   });
-  harness.spawned[0].child.stdout.emit(
+  harness.spawned[1].child.stdout.emit(
     "data",
     Buffer.from(JSON.stringify(proof)),
   );
-  harness.spawned[0].child.emit("close", 0);
+  harness.spawned[1].child.emit("close", 0);
   assert.equal(harness.reconciliations, 0);
   assert.equal(harness.modals.length, 1);
   assert.equal(
@@ -1424,7 +1622,9 @@ test("checks or syncs only the active formal content note", async () => {
   }
 
   sync.checkCallback(false);
-  assert.deepEqual(plain(harness.spawned[1].args), [
+  assert.equal(harness.spawned.length, 3);
+  finishReadyAuthorPreflight(harness, 2);
+  assert.deepEqual(plain(harness.spawned[3].args), [
     "/d",
     "/s",
     "/c",
@@ -1435,7 +1635,7 @@ test("checks or syncs only the active formal content note", async () => {
     activeFilePath,
     "--push",
   ]);
-  harness.spawned[1].child.emit("close", 0);
+  harness.spawned[3].child.emit("close", 0);
   assert.equal(harness.reconciliations, 1);
 
   const inbox = await createPluginHarness({
@@ -1494,10 +1694,11 @@ test("falls back to plain review evidence for invalid or mismatched proof JSON",
     await t.test(name, async () => {
       const harness = await createPluginHarness({ activeFilePath });
       findCommand(harness, "validate-current-published-note").checkCallback(false);
-      harness.spawned[0].child.stdout.emit("data", Buffer.from(output));
-      harness.spawned[0].child.emit("close", 0);
-      assert.equal(harness.spawned.length, 2);
-      assert.deepEqual(plain(harness.spawned[1].args), [
+      finishReadyAuthorPreflight(harness, 0);
+      harness.spawned[1].child.stdout.emit("data", Buffer.from(output));
+      harness.spawned[1].child.emit("close", 0);
+      assert.equal(harness.spawned.length, 3);
+      assert.deepEqual(plain(harness.spawned[2].args), [
         "/d",
         "/s",
         "/c",
@@ -1508,11 +1709,11 @@ test("falls back to plain review evidence for invalid or mismatched proof JSON",
         activeFilePath,
         "--check-only",
       ]);
-      harness.spawned[1].child.stdout.emit(
+      harness.spawned[2].child.stdout.emit(
         "data",
         Buffer.from("[review] 正式内容复核检查通过；未暂存、未提交、未推送。"),
       );
-      harness.spawned[1].child.emit("close", 0);
+      harness.spawned[2].child.emit("close", 0);
       assert.equal(harness.modals.length, 1);
       assert.match(
         elementsByTag(harness.modals[0], "pre")[0].text,

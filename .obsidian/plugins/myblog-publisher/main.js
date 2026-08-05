@@ -12,7 +12,7 @@ const CONTENT_PUBLISH_DELIVERY_RECEIPT_VERSION = 1;
 const CONTENT_DELIVERY_TRIAGE_REPORT_VERSION = 1;
 const AUTHOR_DOCTOR_REPORT_VERSION = 1;
 const AUTHOR_DOCTOR_NODE_ENGINE = ">=22.13.0";
-const AUTHOR_DOCTOR_PLUGIN_VERSION = "1.13.0";
+const AUTHOR_DOCTOR_PLUGIN_VERSION = "1.14.0";
 const AUTHOR_DOCTOR_REQUIRED_SCRIPTS = [
   "content:author:doctor",
   "content:delivery:status",
@@ -2140,12 +2140,15 @@ class ContentDeliveryTriageTextModal extends ReadOnlyReportModal {
 }
 
 class AuthorDoctorTextModal extends ReadOnlyReportModal {
-  constructor(app, report) {
+  constructor(app, report, transaction = null) {
     super(app, {
-      description:
-        "结构化作者环境证据不可用，以下为重新执行后的本地只读文本；不会安装依赖、修改配置、读取凭据或访问网络。",
+      description: transaction
+        ? `结构化作者环境证据不可用；${transaction.label}（${transaction.sourcePath}）未启动。以下为重新执行后的本地只读文本，不会安装依赖、修改配置、读取凭据或访问网络。`
+        : "结构化作者环境证据不可用，以下为重新执行后的本地只读文本；不会安装依赖、修改配置、读取凭据或访问网络。",
       report,
-      title: "本机发布环境自检 · 纯文本",
+      title: transaction
+        ? "发布前置联锁 · 纯文本"
+        : "本机发布环境自检 · 纯文本",
     });
   }
 }
@@ -2177,13 +2180,14 @@ function createAuthorDoctorCheck(container, check) {
 }
 
 class AuthorDoctorModal extends Modal {
-  constructor(app, report) {
+  constructor(app, report, transaction = null) {
     super(app);
     this.report = report;
+    this.transaction = transaction;
   }
 
   onOpen() {
-    const { contentEl, report } = this;
+    const { contentEl, report, transaction } = this;
     const ready = report.status === "ready";
     const groups = [
       ["runtime", "RUNTIME"],
@@ -2194,6 +2198,7 @@ class AuthorDoctorModal extends Modal {
     contentEl.empty();
     contentEl.addClass("myblog-author-doctor");
     contentEl.setAttr("data-status", report.status);
+    contentEl.setAttr("data-interlock", transaction ? "held" : "inspection");
     contentEl.createEl("p", {
       cls: "myblog-author-doctor__eyebrow",
       text: "AUTHOR PREFLIGHT / LOCAL ONLY",
@@ -2206,6 +2211,25 @@ class AuthorDoctorModal extends Modal {
       cls: "myblog-author-doctor__boundary",
       text: "只读取本机运行时、Git、工作区与 Vault 的发布前置条件；不会安装依赖、修改配置、读取凭据或访问网络。",
     });
+
+    if (transaction) {
+      const interlock = contentEl.createEl("section", {
+        cls: "myblog-author-doctor__interlock",
+      });
+      interlock.setAttr(
+        "aria-label",
+        `${transaction.label}已由作者环境联锁停止`,
+      );
+      interlock.createEl("p", {
+        cls: "myblog-author-doctor__interlock-label",
+        text: "TRANSACTION INTERLOCK / HELD",
+      });
+      const detail = interlock.createEl("p", {
+        cls: "myblog-author-doctor__interlock-detail",
+      });
+      detail.createEl("span", { text: `${transaction.label} · 未启动` });
+      detail.createEl("code", { text: transaction.sourcePath });
+    }
 
     const circuit = contentEl.createEl("section", {
       cls: "myblog-author-doctor__circuit",
@@ -3467,6 +3491,52 @@ module.exports = class MyBlogPublisher extends Plugin {
     );
   }
 
+  preflightAuthorTransaction(transaction, onReady) {
+    return this.runRepositoryCommand(
+      [
+        "--silent",
+        "run",
+        "content:author:doctor",
+        "--",
+        "--format",
+        "json",
+      ],
+      {
+        allowedExitCodes: [0, 1],
+        failure: `${transaction.label}的本机前置检查未完成；原操作未启动`,
+        progress: `正在确认“${transaction.label}”的本机发布前置条件…`,
+        startFailure: `${transaction.label}的本机前置检查无法启动；原操作未启动`,
+      },
+      (output) => this.continueAuthorTransaction(output, transaction, onReady),
+    );
+  }
+
+  continueAuthorTransaction(output, transaction, onReady) {
+    let report;
+    try {
+      const root = this.app.vault.adapter.getBasePath();
+      report = parseAuthorDoctorReport(output, root);
+    } catch (error) {
+      new Notice(
+        `结构化作者环境证据不可用：${error.message}。${transaction.label}未启动，正在重新读取本地纯文本证据…`,
+        10000,
+      );
+      this.inspectAuthorEnvironmentText(transaction);
+      return;
+    }
+
+    if (report.status !== "ready") {
+      new AuthorDoctorModal(this.app, report, transaction).open();
+      new Notice(
+        `本机发布环境有 ${report.summary.attention} 项需要处理；${transaction.label}未启动。`,
+        8000,
+      );
+      return;
+    }
+
+    onReady();
+  }
+
   openStructuredAuthorEnvironment(output) {
     try {
       const root = this.app.vault.adapter.getBasePath();
@@ -3487,7 +3557,7 @@ module.exports = class MyBlogPublisher extends Plugin {
     }
   }
 
-  inspectAuthorEnvironmentText() {
+  inspectAuthorEnvironmentText(transaction = null) {
     return this.runRepositoryCommand(
       ["--silent", "run", "content:author:doctor"],
       {
@@ -3497,7 +3567,7 @@ module.exports = class MyBlogPublisher extends Plugin {
         startFailure: "纯文本本机发布环境自检命令无法启动",
         success: "已打开纯文本本机发布环境自检。",
       },
-      (report) => new AuthorDoctorTextModal(this.app, report).open(),
+      (report) => new AuthorDoctorTextModal(this.app, report, transaction).open(),
     );
   }
 
@@ -3683,13 +3753,26 @@ module.exports = class MyBlogPublisher extends Plugin {
     if (!isPublishedNote || !this.isDesktopVault()) return false;
     if (checking) return true;
 
+    const transaction = {
+      label: push
+        ? "提交并同步当前正式内容复核"
+        : "检查当前正式内容复核",
+      sourcePath: file.path,
+    };
+    return this.preflightAuthorTransaction(
+      transaction,
+      () => this.runContentReview(file.path, push),
+    );
+  }
+
+  runContentReview(sourcePath, push) {
     if (!push) {
       return this.runRepositoryCommand(
         [
           "run",
           "content:review",
           "--",
-          file.path,
+          sourcePath,
           "--check-only",
           "--format",
           "json",
@@ -3699,12 +3782,12 @@ module.exports = class MyBlogPublisher extends Plugin {
           progress: "正在执行正式内容完整复核检查…",
           startFailure: "正式内容复核命令无法启动",
         },
-        (output) => this.openStructuredContentReview(output, file.path),
+        (output) => this.openStructuredContentReview(output, sourcePath),
       );
     }
 
     return this.runRepositoryCommand(
-      ["run", "content:review", "--", file.path, "--push"],
+      ["run", "content:review", "--", sourcePath, "--push"],
       {
         failure: "正式内容复核未完成",
         progress: "正在执行完整检查、提交并同步复核…",
@@ -3752,8 +3835,25 @@ module.exports = class MyBlogPublisher extends Plugin {
     if (!isInboxNote || !this.isDesktopVault()) return false;
     if (checking) return true;
 
+    const transaction = {
+      label: push ? "发布当前草稿并同步 GitHub" : "检查当前草稿",
+      sourcePath: file.path,
+    };
+    return this.preflightAuthorTransaction(
+      transaction,
+      () => this.runContentPublish(file.path, push),
+    );
+  }
+
+  runContentPublish(sourcePath, push) {
     return this.runRepositoryCommand(
-      ["run", "content:publish", "--", file.path, push ? "--push" : "--check-only"],
+      [
+        "run",
+        "content:publish",
+        "--",
+        sourcePath,
+        push ? "--push" : "--check-only",
+      ],
       {
         failure: "发布未完成",
         progress: push ? "正在检查、提交并发布…" : "正在检查当前草稿…",
