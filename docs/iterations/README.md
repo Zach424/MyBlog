@@ -55,6 +55,7 @@
 0048-studio-entry-preflight.md
 0049-github-actions-node24-runtime.md
 0050-studio-content-maintenance-queue.md
+0051-obsidian-published-maintenance-report.md
 ```
 
 ## 必填结构

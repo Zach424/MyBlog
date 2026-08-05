@@ -15,7 +15,7 @@ MyBlog 是 Zach424 的个人技术知识库与公开工程日志。它把学习�
 | Markdown | done | GFM、代码高亮、语言标签、渐进增强的一键复制、与实际渲染一致的 H1–H6 heading id、H2/H3 目录与原生永久链接、Obsidian 兼容脚注/尾注与行内/块级数学公式、A4 打印/PDF 版式、阅读时间、相邻文章与响应式正文图片 |
 | 内容发现 | done | SEO、内容级 OG/Twitter 封面、JSON-LD、RSS、Sitemap、robots、本地全文搜索 |
 | 网页写作 | done | `/studio`、GitHub OAuth、Decap workflow、PR、按 slug 归档媒体、稳定 slug 锁定、双层 SHA-256 冲突预检、快速重选 latest-wins、生产规则公式预览与全字段只读发布清单 |
-| Obsidian 写作 | done | Vault、模板、桌面发布插件、带目标标题校验的 `--check-only`、`--push` |
+| Obsidian 写作 | done | Vault、模板、桌面插件 1.2.0、已发布内容复核/收件箱只读 Modal、带目标标题校验的 `--check-only`、`--push` |
 | Inbox 发布就绪 | done | 全草稿 ready/scheduled/blocked、真实媒体候选、目标/共享附件诊断、CLI 与 Obsidian 只读弹窗 |
 | 附件发布 | done | Wiki/Markdown 图片转换、按内容隔离、稳定命名、越界保护、失败回滚 |
 | 自动交付 | done | GitHub `main` → Vercel Production → 稳定域名冒烟；checkout/setup-node v6 Node 24 action runtime，应用 Node 22 与 workflow 语义有结构测试 |
@@ -38,9 +38,9 @@ MyBlog 是 Zach424 的个人技术知识库与公开工程日志。它把学习�
 - 运行时：Next.js 16.3.0、React 19.2.6、TypeScript 5、Node.js 22+；
 - 内容：仓库内 Markdown、YAML、Zod，GitHub 是唯一事实源；
 - 阅读：react-markdown、remark-gfm、remark-math、rehype-slug、rehype-highlight、rehype-katex 与 KaTeX；服务端 Markdown、中文脚注语义与回链、HTML + MathML 数学公式、MarkdownHeading 永久链接与 PrintSource 可信来源，最小 CodeBlock 客户端岛、Clipboard API 与 aria-live；GFM + math 共享 mdast 继续复现标题、链接、媒体和搜索语义，生产阅读与 Studio 共享 remark/rehype/KaTeX/安全 URL 规则，构建期公式使用 `trust: false`/严格资源上限；A4 `@page` 与 scoped print CSS 只重排既有语义 DOM；
-- 发布：Decap CMS 3.14.1、GitHub OAuth、stable slug 自定义控件、同源媒体清单、内存会话账本、per-input generation 与 SHA-256 冲突确认、官方 preview template、同源只读公式/全字段预检端点、public-only 内容维护快照与严格浏览器契约、内容字段 allowlist、Obsidian 自有插件 1.1.0、inbox readiness CLI 与 Node 发布脚本；
+- 发布：Decap CMS 3.14.1、GitHub OAuth、stable slug 自定义控件、同源媒体清单、内存会话账本、per-input generation 与 SHA-256 冲突确认、官方 preview template、同源只读公式/全字段预检端点、public-only 内容维护快照与严格浏览器契约、内容字段 allowlist、Obsidian 自有插件 1.2.0、已发布维护/inbox 只读 Modal、统一子进程生命周期与 Node 发布脚本；
 - 媒体：Sharp 0.35.3、浏览器 magic/帧结构解析、`createImageBitmap` 与 Web Crypto、构建期确定性摘要清单、mdast-util-from-markdown 2.0.3、`next/image`、固有尺寸、WebP 优化、引用所有权与 Git 附件跟踪；
-- 维护：内容新鲜度、根暂存媒体与正文/结构化端点外链的 CLI；Studio 以请求时 `Asia/Shanghai` 报告日显示当前部署的公开 Current 队列，确定性库存进入本地发布候选，时间/DNS 敏感的外链 HEAD 只显式运行；
+- 维护：内容新鲜度、根暂存媒体与正文/结构化端点外链的 CLI；Studio 与 Obsidian 都可显示公开 Current 队列，确定性库存进入本地发布候选，时间/DNS 敏感的外链 HEAD 只显式运行；
 - 路由：严格 YAML + Zod 永久重定向注册表、Next `redirects()` 308、构建期现行路由与静态文件交叉校验；
 - 知识图：纯函数派生有向节点/边、语义 SVG + HTML 账本、零客户端布局依赖与 320px 明确降级；
 - 托管：Vercel 原生 Next.js，当前链路不依赖 Cloudflare；
@@ -50,22 +50,22 @@ MyBlog 是 Zach424 的个人技术知识库与公开工程日志。它把学习�
 
 - 仓库：<https://github.com/Zach424/MyBlog>，生产分支 `main`；
 - 生产站：<https://blog-iota-five-59.vercel.app>；
-- 本轮实现提交：`5dd380a7d7551bff2f6952520092e5ab64678f2b`（Studio 全库只读内容复核队列、动态最小快照、响应式设计、生产 smoke 与作者文档）；
-- 自动交付：实现 Quality Gate `30980923777`（#84）、实现 Vercel Production 验证 `30980962760`（#77）、归档 Quality Gate `30981378943`（#85）与归档 Vercel Production 验证 `30981408665`（#78）均 completed/success；稳定域名本地复测通过 24 条 Sitemap 路由、维护页面/JSON 与 OAuth 302；
-- 最新完成迭代：0050 Studio 全库只读内容复核队列；
+- 本轮实现提交：`b6e3134ec90769dfc09a803d5919b084b7498e19`（Obsidian 已发布维护报告、只读 Modal、统一进程状态与行为测试）；生命周期修正：`13d1f1ea5dc38def9da986fcb60fd434d25daf44`（Windows 命令进程树清理）；
+- 自动交付：实现 Quality Gate `30982692190`（#87）、实现 Vercel Production 验证 `30982724221`（#80）、进程树修正 Quality Gate `30983045512`（#88）与 Vercel Production 验证 `30983074861`（#81）均 completed/success；
+- 最新完成迭代：0051 Obsidian 已发布内容复核队列；
 - Obsidian 状态：仓库根目录就是 Vault，`docs/STATUS.md` 与 `docs/iterations/*.md` 可直接阅读和维护；
 - 手动外部接入：自定义域名、统计、评论、公开邮箱均暂缓，不阻塞当前开发。
 
 ## 本轮新增能力
 
-Studio 现在可从固定 `Content review / 复核队列` 入口打开全库维护页。服务端复用正式 Current/Historical 与 180 天契约，只输出已公开 Current 的最小元数据；内容集合随部署冻结，报告日按请求时的 `Asia/Shanghai` 当天推进。浏览器严格验证版本、计数、日期、状态和同源导航，再显示 180/60/30/0 Review Horizon、四级计数、逐条 review-by/剩余天数与稳定编辑/公开入口；失败时可重试且不会改写内容。最终门为 152/152 单元、45 条构建页面、19/19 生产应用测试与 audit 0；1280px 深色、320px 单栏、焦点可见性、Studio 窄屏入口和零控制台错误均经真实 Chromium 验收。公开静态资源为 1,818,133 B，独立维护资源为 23,138 B。
+MyBlog Publisher 1.2.0 现在可从命令面板打开“已发布内容复核队列”：插件在 Vault 根目录隐藏运行同一 `content:status`，把报告以纯文本写入原生只读 Modal，不访问网络、不修改 reviewedAt 或文件。发布、inbox 与维护命令共享 200,000 字符输出边界、单次结算和活动进程账本；任一终态都会关闭持续 Notice，卸载时 Windows 用固定无 shell `taskkill.exe /T /F` 清理命令进程树并在失败时回退直接 kill，POSIX 直接终止子进程。最终门为 155/155 单元、45 条构建页面、19/19 生产应用测试与 audit 0；插件行为测试覆盖 Windows/POSIX、桌面限制、成功、spawn error、迟到 close 和卸载清理。公开静态资源仍为 1,818,133 B，插件与 manifest 合计 7,509 B。
 
 ## 风险与下一步
 
 1. Studio 已完成真实格式/预算、生产/会话摘要、快速重选竞态、数学公式作者预览和全字段只读 Author Proof，但有意不自动缩放/转 WebP，也不在第一版阻断保存；跨文章 slug/专题连续性、媒体引用和站内关系仍由完整仓库门验证；
 2. 首次保存后的 slug 已在 Studio 控件层锁定；真正迁移仍只能通过 Git 同步修改内容文件、正文引用、附件目录和 `content/redirects.yml`。注册表不自动推断迁移且有意只支持精确单跳路径；该控件依赖固定 Decap 3.14.1 bundle 的 `entry/newRecord` 契约，升级时必须重审；
 3. inbox readiness 已覆盖全部本地草稿，但有意不进入 Actions：未跟踪草稿和附件天然不在 CI 检出中；当前真实 inbox 为空，正向/阻塞路径由临时 Git/媒体夹具验证，首次实际多草稿使用时仍应按 Modal 逐项复核；
-4. Current record 已有 Studio 实时只读队列和每周分级报告，但内容修改必须进入新 Production 才反映，提醒仍不发送外部消息；这是当前有意的无服务边界；
+4. Current record 已有 Studio、Obsidian 与每周 Actions 三个只读视图；Obsidian 1.2.0 仍是不可点击纯文本报告，Studio 内容修改必须进入新 Production 才反映，任何入口都不发送外部消息；
 5. Obsidian 块引用是专有语法，当前明确拒绝；知识地图已公开，但当前 SVG 双列布局为小型内容库优化，内容增长后需要在不牺牲 HTML 语义的前提下增加过滤或分组；
 6. 正文与结构化 HTTPS 端点已有统一离线库存和显式健康检查，但 DNS/限流/网络仍只是观察证据；本机直连 Vercel 域名继续出现 timeout 假阴性，因此实时检查不进 Actions；
 7. 标题锚点采用严格的实际渲染 id；改名或调整重复标题顺序时必须同步正文深链，Obsidian 块引用和模糊匹配仍明确不支持；
@@ -74,4 +74,4 @@ Studio 现在可从固定 `Content review / 复核队列` 入口打开全库维�
 10. `decap-cms` 的开发依赖树仍有上游无修复的高危审计项；它不进入公开服务端生产依赖，但其浏览器编辑器包仅对已授权作者开放，后续应单独评估升级或替代方案。
 11. checkout/setup-node v6 的官方 major tag 会移动；当前策略延续既有 major 更新方式并记录本轮 tag 指针，若以后提高供应链固定强度，应单独设计 immutable SHA 与自动更新流程，而不是在功能轮静默切换。
 
-下一轮唯一主任务：把同一 Current 内容维护报告接入仓库内 Obsidian 发布插件，新增“查看已发布内容复核队列”的只读命令和 Modal；复用现有 CLI 输出或结构化报告，显示状态、review-by、剩余天数与稳定笔记路径，保持零网络、零自动改日期、零外部提醒，并验证空队列、四级边界、进程失败、Windows 隐藏执行和插件卸载清理。
+下一轮唯一主任务：把 Obsidian 的纯文本维护 Modal 升级为结构化复核账本，使用 `content:status --format json`、严格 schema/输出边界和原生元素显示四级计数与逐条记录，并为安全的 `content/posts|projects/<slug>.md` 提供“一键打开笔记”；结构异常时保留纯文本降级，继续保持零网络、零日期自动修改与零外部提醒。
