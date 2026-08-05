@@ -65,6 +65,7 @@ Obsidian 入口服从宿主应用，不复制网页 Studio 的 Review Horizon。
 - 功能提交 `b6e3134ec90769dfc09a803d5919b084b7498e19` 已推送；Quality Gate `30982692190`（#87）与 Vercel Production 验证 `30982724221`（#80）completed/success；
 - 生命周期修正 `13d1f1ea5dc38def9da986fcb60fd434d25daf44` 已推送；Quality Gate `30983045512`（#88）与 Vercel Production 验证 `30983074861`（#81）completed/success；
 - `.obsidian/community-plugins.json` 当前包含 `myblog-publisher`，仓库根目录仍可作为 Vault 打开；没有新增手工云配置、secret、API 或数据库。
+- 归档提交 `b47a679551714f6558ede2111b041522ce9d6ecb` 已推送；Quality Gate `30983397492`（#89）与 Vercel Production 验证 `30983432868`（#82）completed/success，证明项目状态和 Obsidian 知识档案进入 `main` 后仍保持完整交付链路。
 
 ## 8. 经验与教训
 
