@@ -18,6 +18,7 @@ import {
   formatMediaPreparation,
   prepareMediaForPublishing,
 } from "../lib/media-policy.ts";
+import { inspectContentPublishDeliveryFromGit } from "./publish-delivery-git.mjs";
 
 function fail(message) {
   console.error(`[publish] ${message}`);
@@ -69,6 +70,33 @@ const requestedKind = kindFlag >= 0 ? args[kindFlag + 1] : undefined;
 
 if (!sourceArgument) fail("用法：npm run content:publish -- content/inbox/<slug>.md [--check-only|--push]");
 if (requestedKind && !["post", "project"].includes(requestedKind)) fail("--kind 只能是 post 或 project");
+
+let deliveryBaseline = null;
+if (push) {
+  try {
+    deliveryBaseline = inspectContentPublishDeliveryFromGit();
+  } catch (error) {
+    fail(error instanceof Error ? error.message : String(error));
+  }
+  if (deliveryBaseline.observation.currentBranch !== "main") {
+    fail(
+      `新内容发布只能在 main 分支执行；当前分支：${deliveryBaseline.observation.currentBranch ?? "detached HEAD"}`,
+    );
+  }
+  if (
+    deliveryBaseline.relation.status === "pending-publication" &&
+    deliveryBaseline.pendingPublication
+  ) {
+    fail(
+      `已有待同步新内容发布：${deliveryBaseline.pendingPublication.targetPath} · ${deliveryBaseline.pendingPublication.commitOid.slice(0, 12)}；先运行 npm run content:publish:status，不要创建第二个发布提交`,
+    );
+  }
+  if (deliveryBaseline.relation.status !== "synchronized") {
+    fail(
+      `本地 main 无法证明与 origin/main tracking ref 同步：${deliveryBaseline.relation.status} · behind ${deliveryBaseline.relation.behind ?? "unknown"} · ahead ${deliveryBaseline.relation.ahead ?? "unknown"}；先运行 npm run content:publish:status 检查`,
+    );
+  }
+}
 
 const sourcePath = sourceArgument.replaceAll("\\", "/").replace(/^\.\//u, "");
 const absoluteSource = resolve(process.cwd(), sourcePath);
@@ -194,6 +222,21 @@ try {
     transaction.targetInstalled = true;
   }
   runNpm(["run", "check"]);
+  if (push && deliveryBaseline) {
+    const confirmedDelivery = inspectContentPublishDeliveryFromGit();
+    if (
+      confirmedDelivery.observation.currentBranch !== "main" ||
+      confirmedDelivery.relation.status !== "synchronized" ||
+      confirmedDelivery.observation.localHead !==
+        deliveryBaseline.observation.localHead ||
+      confirmedDelivery.observation.trackingHead !==
+        deliveryBaseline.observation.trackingHead
+    ) {
+      throw new Error(
+        "完整质量门期间 main 或 tracking ref 发生变化；未创建发布提交",
+      );
+    }
+  }
 } catch (error) {
   const rollbackErrors = [];
   for (const transaction of installedAttachments.reverse()) {
@@ -247,8 +290,29 @@ try {
   );
   run("git", ["add", "-A", "--", ...pathsToStage]);
   run("git", ["commit", "-m", `content: publish ${prepared.slug}`]);
-  run("git", ["push", "origin", "main"]);
+  const pending = inspectContentPublishDeliveryFromGit();
+  if (
+    pending.relation.status !== "pending-publication" ||
+    pending.pendingPublication?.slug !== prepared.slug ||
+    pending.pendingPublication.parentOid !== deliveryBaseline?.observation.localHead
+  ) {
+    throw new Error(
+      "本地发布提交未通过原子发布包身份验证；未执行 push，请检查 Git 状态",
+    );
+  }
+  const pendingHead = pending.pendingPublication.commitOid;
+  run("git", ["push", "origin", `${pendingHead}:refs/heads/main`]);
+  const delivered = inspectContentPublishDeliveryFromGit();
+  if (
+    delivered.relation.status !== "synchronized" ||
+    delivered.observation.localHead !== pendingHead ||
+    delivered.observation.trackingHead !== pendingHead
+  ) {
+    throw new Error(
+      "push 可能已完成，但无法证明 local main 与 tracking ref 已同步；请运行 npm run content:publish:status",
+    );
+  }
   console.log(`[publish] 已同步 GitHub：${prepared.slug}`);
 } catch (error) {
-  fail(`内容已通过检查并保留在本地，但 Git 同步失败。${error instanceof Error ? ` ${error.message}` : ""}`);
+  fail(`发布提交已保留在本地，但 Git 同步失败；请运行 npm run content:publish:status。${error instanceof Error ? ` ${error.message}` : ""}`);
 }

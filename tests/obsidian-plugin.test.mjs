@@ -408,6 +408,74 @@ function reviewDeliveryReceipt() {
   };
 }
 
+function publishDeliveryReport({
+  ahead = 1,
+  behind = 0,
+  pending = true,
+  status = "pending-publication",
+  version = 1,
+} = {}) {
+  const trackingHead = "1".repeat(40);
+  const localHead = pending ? "2".repeat(40) : trackingHead;
+  const targetBlobOid = "4".repeat(40);
+  return {
+    version,
+    mode: "read-only",
+    observation: {
+      currentBranch: "main",
+      localHead,
+      localRef: "refs/heads/main",
+      networkChecked: false,
+      trackingHead,
+      trackingRef: "refs/remotes/origin/main",
+    },
+    relation: { ahead, behind, status },
+    pendingPublication: pending
+      ? {
+          attachmentCount: 1,
+          changes: [
+            {
+              newBlobOid: null,
+              oldBlobOid: "5".repeat(40),
+              path: "content/inbox/new-delivery.md",
+              status: "deleted",
+            },
+            {
+              newBlobOid: targetBlobOid,
+              oldBlobOid: null,
+              path: "content/posts/new-delivery.md",
+              status: "added",
+            },
+            {
+              newBlobOid: "6".repeat(40),
+              oldBlobOid: null,
+              path: "public/uploads/new-delivery/evidence.webp",
+              status: "added",
+            },
+          ],
+          commitOid: localHead,
+          inboxSourcePath: "content/inbox/new-delivery.md",
+          kind: "post",
+          parentOid: trackingHead,
+          slug: "new-delivery",
+          sourceDeletionTracked: true,
+          subject: "content: publish new-delivery",
+          targetBlobOid,
+          targetPath: "content/posts/new-delivery.md",
+          title: "新内容交付证明",
+          treeOid: "3".repeat(40),
+        }
+      : null,
+    recovery: pending
+      ? {
+          action: "push-pending-publication",
+          autoExecuted: false,
+          command: `git push origin ${localHead}:refs/heads/main`,
+        }
+      : { action: "none", autoExecuted: false, command: null },
+  };
+}
+
 function findCommand(harness, id) {
   const command = harness.commands.find((candidate) => candidate.id === id);
   assert.ok(command, `Expected command ${id}`);
@@ -421,7 +489,7 @@ test("renders a versioned maintenance ledger and opens an exact Vault note", asy
     createPluginHarness(),
   ]);
   const manifest = JSON.parse(manifestSource);
-  assert.equal(manifest.version, "1.9.0");
+  assert.equal(manifest.version, "1.10.0");
   assert.equal(manifest.isDesktopOnly, true);
   assert.match(styles, /^\.myblog-maintenance \{/mu);
   assert.match(styles, /\[data-status="overdue"\]/u);
@@ -565,6 +633,85 @@ test("falls back to local-only text when delivery evidence is inconsistent", () 
       /待同步复核提交/u,
     );
   });
+});
+
+test("renders an exact pending publication as an atomic commit envelope", async () => {
+  const [styles, harness] = await Promise.all([
+    readFile(stylesUrl, "utf8"),
+    createPluginHarness(),
+  ]);
+  const command = findCommand(harness, "inspect-publish-delivery");
+  assert.equal(command.checkCallback(true), true);
+  command.checkCallback(false);
+  assert.deepEqual(plain(harness.spawned[0].args), [
+    "/d",
+    "/s",
+    "/c",
+    "npm",
+    "--silent",
+    "run",
+    "content:publish:status",
+    "--",
+    "--format",
+    "json",
+  ]);
+  const report = publishDeliveryReport();
+  harness.spawned[0].child.stdout.emit("data", Buffer.from(JSON.stringify(report)));
+  harness.spawned[0].child.emit("close", 1);
+
+  assert.equal(harness.modals.length, 1);
+  const modal = harness.modals[0];
+  assert.equal(modal.contentEl.classes.has("myblog-publish-delivery"), true);
+  assert.equal(elementsByTag(modal, "button").length, 0);
+  const text = allElements(modal.contentEl)
+    .map((element) => element.text)
+    .join(" ");
+  assert.match(text, /PUBLICATION HOLD \/ ATOMIC BUNDLE/u);
+  assert.match(text, /ORIGIN\/MAIN · LAST OBSERVED.*\+1.*LOCAL MAIN/su);
+  assert.match(text, /COMMIT ENVELOPE \/ 3 PATHS/u);
+  assert.match(text, /NOTE \/ ADDED.*content\/posts\/new-delivery\.md/su);
+  assert.match(
+    text,
+    /MEDIA 01 \/ ADDED.*public\/uploads\/new-delivery\/evidence\.webp/su,
+  );
+  assert.match(text, /INBOX \/ DELETED.*content\/inbox\/new-delivery\.md/su);
+  assert.match(
+    text,
+    new RegExp(`git push origin ${report.pendingPublication.commitOid}:refs/heads/main`, "u"),
+  );
+  assert.match(text, /没有 fetch、push 或历史修改/u);
+  assert.match(styles, /\.myblog-publish-delivery__manifest/u);
+  assert.match(styles, /\.myblog-publish-delivery__manifest-item/u);
+  assert.equal(harness.spawned.length, 1);
+});
+
+test("falls back to publication delivery text when the bundle is inconsistent", async () => {
+  const harness = await createPluginHarness();
+  const report = publishDeliveryReport();
+  report.pendingPublication.attachmentCount = 2;
+  findCommand(harness, "inspect-publish-delivery").checkCallback(false);
+  harness.spawned[0].child.stdout.emit("data", Buffer.from(JSON.stringify(report)));
+  harness.spawned[0].child.emit("close", 1);
+  assert.equal(harness.spawned.length, 2);
+  assert.deepEqual(plain(harness.spawned[1].args), [
+    "/d",
+    "/s",
+    "/c",
+    "npm",
+    "--silent",
+    "run",
+    "content:publish:status",
+  ]);
+  harness.spawned[1].child.stdout.emit(
+    "data",
+    Buffer.from("[publish-delivery] 本地 main 有 1 个待同步发布包。"),
+  );
+  harness.spawned[1].child.emit("close", 1);
+  assert.equal(harness.modals.length, 1);
+  assert.match(
+    elementsByTag(harness.modals[0], "pre")[0].text,
+    /待同步发布包/u,
+  );
 });
 
 test("delivers an exact pending review and renders a sealed receipt", async () => {

@@ -1,9 +1,9 @@
 {
   "id": "myblog-publisher",
   "name": "MyBlog Publisher",
-  "version": "1.9.0",
+  "version": "1.10.0",
   "minAppVersion": "1.5.0",
-  "description": "Safely redeliver exact pending reviews, inspect local delivery holds, bind proofs to content fingerprints, and publish MyBlog notes through the repository quality gate.",
+  "description": "Inspect exact pending publication bundles, safely redeliver pending reviews, bind proofs to content fingerprints, and publish MyBlog notes through the repository quality gate.",
   "author": "Zach424",
   "isDesktopOnly": true
 }

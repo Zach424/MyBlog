@@ -7,10 +7,19 @@ const MAINTENANCE_REPORT_VERSION = 1;
 const CONTENT_REVIEW_PROOF_VERSION = 3;
 const CONTENT_REVIEW_DELIVERY_REPORT_VERSION = 1;
 const CONTENT_REVIEW_DELIVERY_RECEIPT_VERSION = 1;
+const CONTENT_PUBLISH_DELIVERY_REPORT_VERSION = 1;
 const GIT_OBJECT_ID_PATTERN = /^(?:[a-f0-9]{40}|[a-f0-9]{64})$/u;
 const CONTENT_REVIEW_DELIVERY_STATUSES = [
   "synchronized",
   "pending-review",
+  "local-ahead",
+  "behind",
+  "diverged",
+  "tracking-missing",
+];
+const CONTENT_PUBLISH_DELIVERY_STATUSES = [
+  "synchronized",
+  "pending-publication",
   "local-ahead",
   "behind",
   "diverged",
@@ -767,6 +776,289 @@ function parseContentReviewDeliveryReport(output) {
   return report;
 }
 
+function parseContentPublishDeliveryReport(output) {
+  let report;
+  try {
+    report = JSON.parse(output);
+  } catch {
+    throw new Error("新内容发布交付证据不是有效 JSON");
+  }
+  const label = "新内容发布交付证据";
+  assertPlainObject(report, label);
+  assertExactKeys(
+    report,
+    ["version", "mode", "observation", "relation", "pendingPublication", "recovery"],
+    label,
+  );
+  if (report.version !== CONTENT_PUBLISH_DELIVERY_REPORT_VERSION) {
+    valueError(`${label} version`, `必须是 ${CONTENT_PUBLISH_DELIVERY_REPORT_VERSION}`);
+  }
+  if (report.mode !== "read-only") {
+    valueError(`${label} mode`, "必须是 read-only");
+  }
+
+  assertPlainObject(report.observation, `${label} observation`);
+  assertExactKeys(
+    report.observation,
+    [
+      "currentBranch",
+      "localHead",
+      "localRef",
+      "networkChecked",
+      "trackingHead",
+      "trackingRef",
+    ],
+    `${label} observation`,
+  );
+  if (report.observation.currentBranch !== null) {
+    assertNonEmptyString(
+      report.observation.currentBranch,
+      `${label} observation.currentBranch`,
+    );
+    if (/[ -]/u.test(report.observation.currentBranch)) {
+      valueError(`${label} observation.currentBranch`, "不能包含控制字符");
+    }
+  }
+  assertGitObjectId(report.observation.localHead, `${label} observation.localHead`);
+  if (report.observation.localRef !== "refs/heads/main") {
+    valueError(`${label} observation.localRef`, "必须是 refs/heads/main");
+  }
+  if (report.observation.networkChecked !== false) {
+    valueError(`${label} observation.networkChecked`, "必须是 false");
+  }
+  if (report.observation.trackingHead !== null) {
+    assertGitObjectId(
+      report.observation.trackingHead,
+      `${label} observation.trackingHead`,
+    );
+  }
+  if (report.observation.trackingRef !== "refs/remotes/origin/main") {
+    valueError(
+      `${label} observation.trackingRef`,
+      "必须是 refs/remotes/origin/main",
+    );
+  }
+
+  assertPlainObject(report.relation, `${label} relation`);
+  assertExactKeys(report.relation, ["ahead", "behind", "status"], `${label} relation`);
+  if (!CONTENT_PUBLISH_DELIVERY_STATUSES.includes(report.relation.status)) {
+    valueError(`${label} relation.status`, "不是受支持的状态");
+  }
+  const trackingMissing = report.observation.trackingHead === null;
+  if (trackingMissing) {
+    if (
+      report.relation.ahead !== null ||
+      report.relation.behind !== null ||
+      report.relation.status !== "tracking-missing"
+    ) {
+      valueError(
+        `${label} relation`,
+        "tracking ref 缺失时必须是 tracking-missing 且计数为 null",
+      );
+    }
+  } else {
+    assertInteger(report.relation.ahead, `${label} relation.ahead`, 0);
+    assertInteger(report.relation.behind, `${label} relation.behind`, 0);
+    const { ahead, behind } = report.relation;
+    const expectedStatus = ahead > 0 && behind > 0
+      ? "diverged"
+      : behind > 0
+        ? "behind"
+        : ahead > 0
+          ? (report.pendingPublication === null ? "local-ahead" : "pending-publication")
+          : "synchronized";
+    if (report.relation.status !== expectedStatus) {
+      valueError(
+        `${label} relation.status`,
+        "与 ahead/behind/pendingPublication 不一致",
+      );
+    }
+    if (
+      (ahead === 0 && behind === 0) !==
+      (report.observation.localHead === report.observation.trackingHead)
+    ) {
+      valueError(`${label} relation`, "HEAD 身份与 ahead/behind 不一致");
+    }
+  }
+
+  if (report.pendingPublication !== null) {
+    const pending = report.pendingPublication;
+    const pendingLabel = `${label} pendingPublication`;
+    assertPlainObject(pending, pendingLabel);
+    assertExactKeys(
+      pending,
+      [
+        "attachmentCount",
+        "changes",
+        "commitOid",
+        "inboxSourcePath",
+        "kind",
+        "parentOid",
+        "slug",
+        "sourceDeletionTracked",
+        "subject",
+        "targetBlobOid",
+        "targetPath",
+        "title",
+        "treeOid",
+      ],
+      pendingLabel,
+    );
+    assertInteger(pending.attachmentCount, `${pendingLabel}.attachmentCount`, 0);
+    for (const field of ["commitOid", "parentOid", "targetBlobOid", "treeOid"]) {
+      assertGitObjectId(pending[field], `${pendingLabel}.${field}`);
+    }
+    if (
+      report.relation.status !== "pending-publication" ||
+      report.relation.ahead !== 1 ||
+      report.relation.behind !== 0 ||
+      pending.commitOid !== report.observation.localHead ||
+      pending.parentOid !== report.observation.trackingHead
+    ) {
+      valueError(pendingLabel, "必须是直接领先 tracking ref 的唯一 HEAD 提交");
+    }
+    if (
+      typeof pending.slug !== "string" ||
+      !/^[a-z0-9]+(?:-[a-z0-9]+)*$/u.test(pending.slug)
+    ) {
+      valueError(`${pendingLabel}.slug`, "必须是稳定 slug");
+    }
+    if (pending.kind !== "post" && pending.kind !== "project") {
+      valueError(`${pendingLabel}.kind`, "必须是 post 或 project");
+    }
+    assertNonEmptyString(pending.title, `${pendingLabel}.title`);
+    if (/[ -]/u.test(pending.title)) {
+      valueError(`${pendingLabel}.title`, "不能包含控制字符");
+    }
+    const expectedTargetPath = `content/${pending.kind === "post" ? "posts" : "projects"}/${pending.slug}.md`;
+    const expectedInboxPath = `content/inbox/${pending.slug}.md`;
+    if (pending.targetPath !== expectedTargetPath) {
+      valueError(`${pendingLabel}.targetPath`, "必须与 kind/slug 严格对应");
+    }
+    if (pending.inboxSourcePath !== expectedInboxPath) {
+      valueError(`${pendingLabel}.inboxSourcePath`, "必须与 slug 严格对应");
+    }
+    if (pending.subject !== `content: publish ${pending.slug}`) {
+      valueError(`${pendingLabel}.subject`, "必须与 slug 严格对应");
+    }
+    if (typeof pending.sourceDeletionTracked !== "boolean") {
+      valueError(`${pendingLabel}.sourceDeletionTracked`, "必须是布尔值");
+    }
+    if (!Array.isArray(pending.changes) || pending.changes.length === 0) {
+      valueError(`${pendingLabel}.changes`, "必须是非空数组");
+    }
+
+    const seenPaths = new Set();
+    const attachmentPattern = new RegExp(
+      `^public/uploads/${pending.slug}/[a-z0-9]+(?:-[a-z0-9]+)*(?:-[a-f0-9]{8})?\\.(?:avif|gif|webp)$`,
+      "u",
+    );
+    for (const [index, change] of pending.changes.entries()) {
+      const changeLabel = `${pendingLabel}.changes[${index}]`;
+      assertPlainObject(change, changeLabel);
+      assertExactKeys(
+        change,
+        ["newBlobOid", "oldBlobOid", "path", "status"],
+        changeLabel,
+      );
+      assertNonEmptyString(change.path, `${changeLabel}.path`);
+      if (
+        !/^[a-zA-Z0-9._/-]+$/u.test(change.path) ||
+        change.path.startsWith("/") ||
+        change.path.includes("//") ||
+        change.path.split("/").some((part) => part === "." || part === "..") ||
+        seenPaths.has(change.path)
+      ) {
+        valueError(`${changeLabel}.path`, "必须是唯一安全仓库路径");
+      }
+      seenPaths.add(change.path);
+      if (!['added', 'deleted', 'modified'].includes(change.status)) {
+        valueError(`${changeLabel}.status`, "不是受支持的变更状态");
+      }
+      if (change.oldBlobOid !== null) {
+        assertGitObjectId(change.oldBlobOid, `${changeLabel}.oldBlobOid`);
+      }
+      if (change.newBlobOid !== null) {
+        assertGitObjectId(change.newBlobOid, `${changeLabel}.newBlobOid`);
+      }
+      const shapeValid = change.status === "added"
+        ? change.oldBlobOid === null && change.newBlobOid !== null
+        : change.status === "deleted"
+          ? change.oldBlobOid !== null && change.newBlobOid === null
+          : change.oldBlobOid !== null && change.newBlobOid !== null;
+      if (!shapeValid) {
+        valueError(changeLabel, "blob 身份与变更状态不一致");
+      }
+    }
+    const sortedPaths = pending.changes
+      .map((change) => change.path)
+      .sort((left, right) => left.localeCompare(right, "en"));
+    if (pending.changes.some((change, index) => change.path !== sortedPaths[index])) {
+      valueError(`${pendingLabel}.changes`, "必须按路径确定性排序");
+    }
+    const target = pending.changes.find((change) => change.path === expectedTargetPath);
+    const inbox = pending.changes.find((change) => change.path === expectedInboxPath);
+    const attachments = pending.changes.filter((change) => attachmentPattern.test(change.path));
+    if (
+      target?.status !== "added" ||
+      target.oldBlobOid !== null ||
+      target.newBlobOid !== pending.targetBlobOid
+    ) {
+      valueError(`${pendingLabel}.changes`, "必须包含与 targetBlobOid 一致的新增正式内容");
+    }
+    if (
+      pending.sourceDeletionTracked !== (inbox !== undefined) ||
+      (inbox && inbox.status !== "deleted")
+    ) {
+      valueError(`${pendingLabel}.changes`, "inbox 删除与 sourceDeletionTracked 不一致");
+    }
+    if (
+      attachments.length !== pending.attachmentCount ||
+      attachments.some((change) => change.status !== "added")
+    ) {
+      valueError(`${pendingLabel}.changes`, "媒体清单与 attachmentCount 不一致");
+    }
+    const allowedPaths = new Set([
+      expectedTargetPath,
+      ...(inbox ? [expectedInboxPath] : []),
+      ...attachments.map((change) => change.path),
+    ]);
+    if (
+      allowedPaths.size !== pending.changes.length ||
+      pending.changes.some((change) => !allowedPaths.has(change.path))
+    ) {
+      valueError(`${pendingLabel}.changes`, "包含原子发布包之外的路径");
+    }
+  } else if (report.relation.status === "pending-publication") {
+    valueError(`${label} pendingPublication`, "pending-publication 状态不能缺失");
+  }
+
+  assertPlainObject(report.recovery, `${label} recovery`);
+  assertExactKeys(
+    report.recovery,
+    ["action", "autoExecuted", "command"],
+    `${label} recovery`,
+  );
+  if (report.recovery.autoExecuted !== false) {
+    valueError(`${label} recovery.autoExecuted`, "必须是 false");
+  }
+  const expectedRecovery = report.relation.status === "pending-publication"
+    ? [
+        "push-pending-publication",
+        `git push origin ${report.pendingPublication.commitOid}:refs/heads/main`,
+      ]
+    : report.relation.status === "synchronized"
+      ? ["none", null]
+      : ["inspect-git-state", null];
+  if (
+    report.recovery.action !== expectedRecovery[0] ||
+    report.recovery.command !== expectedRecovery[1]
+  ) {
+    valueError(`${label} recovery`, "与 relation 状态或精确 commit 身份不一致");
+  }
+  return report;
+}
+
 function parseContentReviewDeliveryReceipt(output) {
   let receipt;
   try {
@@ -1064,6 +1356,17 @@ class ContentReviewDeliveryTextModal extends ReadOnlyReportModal {
   }
 }
 
+class ContentPublishDeliveryTextModal extends ReadOnlyReportModal {
+  constructor(app, report) {
+    super(app, {
+      description:
+        "结构化发布交付证据不可用，以下为重新执行后的本地只读文本；没有 fetch、push 或历史修改。",
+      report,
+      title: "新内容发布交付状态 · 纯文本",
+    });
+  }
+}
+
 function createDeliveryRow(container, label, value, options = {}) {
   const row = container.createEl("div", {
     cls: "myblog-review-delivery__row",
@@ -1183,6 +1486,171 @@ class ContentReviewDeliveryModal extends Modal {
         : synchronized
           ? "本地 main 与最后观察到的 origin/main 一致；没有待同步正式内容复核。"
           : "本地引用关系需要人工检查；本视图不会自动同步或改写历史。",
+    });
+  }
+}
+
+function createPublishManifestItem(container, label, change) {
+  const item = container.createEl("div", {
+    cls: "myblog-publish-delivery__manifest-item",
+  });
+  item.createEl("span", {
+    cls: "myblog-publish-delivery__manifest-state",
+    text: label,
+  });
+  item.createEl("code", { text: change.path });
+  item.createEl("span", {
+    cls: "myblog-publish-delivery__manifest-blob",
+    text: shortGitObjectId(change.newBlobOid ?? change.oldBlobOid),
+  });
+}
+
+function createPublishDeliveryRow(container, label, value, options = {}) {
+  const row = container.createEl("div", {
+    cls: "myblog-publish-delivery__row",
+  });
+  if (options.state) row.setAttr("data-state", options.state);
+  row.createEl("dt", { text: label });
+  const detail = row.createEl("dd");
+  if (options.code) detail.createEl("code", { text: String(value) });
+  else detail.setText(String(value));
+  return row;
+}
+
+class ContentPublishDeliveryModal extends Modal {
+  constructor(app, report) {
+    super(app);
+    this.report = report;
+  }
+
+  onOpen() {
+    const { contentEl, report } = this;
+    const pending = report.pendingPublication;
+    const synchronized = report.relation.status === "synchronized";
+    contentEl.empty();
+    contentEl.addClass("myblog-publish-delivery");
+    contentEl.setAttr("data-status", report.relation.status);
+    contentEl.createEl("p", {
+      cls: "myblog-publish-delivery__eyebrow",
+      text: pending
+        ? "PUBLICATION HOLD / ATOMIC BUNDLE"
+        : synchronized
+          ? "PUBLICATION EVIDENCE / ALIGNED"
+          : "PUBLICATION EVIDENCE / INSPECT",
+    });
+    contentEl.createEl("h2", {
+      cls: "myblog-publish-delivery__title",
+      text: "新内容发布交付状态",
+    });
+    contentEl.createEl("p", {
+      cls: "myblog-publish-delivery__boundary",
+      text: "只读取本地 Git 引用与提交对象；没有 fetch、push 或历史修改。origin/main 仅代表最后一次本地观察，不是实时远端声明。",
+    });
+
+    const transition = contentEl.createEl("section", {
+      cls: "myblog-publish-delivery__transition",
+    });
+    transition.setAttr("aria-label", "origin/main 最后本地观察与 local main 的发布提交关系");
+    const tracking = transition.createEl("div", {
+      cls: "myblog-publish-delivery__node",
+    });
+    tracking.createEl("span", { text: "ORIGIN/MAIN · LAST OBSERVED" });
+    tracking.createEl("code", {
+      text: shortGitObjectId(report.observation.trackingHead),
+    });
+    const track = transition.createEl("div", {
+      cls: "myblog-publish-delivery__track",
+    });
+    track.createEl("span", {
+      text: report.relation.ahead === null ? "+?" : `+${report.relation.ahead}`,
+    });
+    const local = transition.createEl("div", {
+      cls: "myblog-publish-delivery__node myblog-publish-delivery__node--local",
+    });
+    local.createEl("span", { text: "LOCAL MAIN" });
+    local.createEl("code", {
+      text: shortGitObjectId(report.observation.localHead),
+    });
+
+    if (pending) {
+      const manifest = contentEl.createEl("section", {
+        cls: "myblog-publish-delivery__manifest",
+      });
+      manifest.setAttr("aria-label", "发布提交原子路径清单");
+      manifest.createEl("p", {
+        cls: "myblog-publish-delivery__manifest-label",
+        text: `COMMIT ENVELOPE / ${pending.changes.length} PATHS`,
+      });
+      const target = pending.changes.find(
+        (change) => change.path === pending.targetPath,
+      );
+      const attachments = pending.changes.filter((change) =>
+        change.path.startsWith(`public/uploads/${pending.slug}/`),
+      );
+      const inbox = pending.changes.find(
+        (change) => change.path === pending.inboxSourcePath,
+      );
+      createPublishManifestItem(manifest, "NOTE / ADDED", target);
+      attachments.forEach((change, index) => {
+        createPublishManifestItem(
+          manifest,
+          `MEDIA ${String(index + 1).padStart(2, "0")} / ADDED`,
+          change,
+        );
+      });
+      if (inbox) createPublishManifestItem(manifest, "INBOX / DELETED", inbox);
+    }
+
+    const ledger = contentEl.createEl("dl", {
+      cls: "myblog-publish-delivery__ledger",
+    });
+    const statusLabel = pending
+      ? "PENDING / NOT ON TRACKING REF"
+      : synchronized
+        ? "SYNCHRONIZED / NO PENDING PUBLICATION"
+        : `INSPECT / ${report.relation.status.toUpperCase()}`;
+    createPublishDeliveryRow(ledger, "交付状态", statusLabel, {
+      state: pending ? "pending" : synchronized ? "synchronized" : "inspect",
+    });
+    createPublishDeliveryRow(
+      ledger,
+      "提交关系",
+      `behind ${report.relation.behind ?? "unknown"} · ahead ${report.relation.ahead ?? "unknown"}`,
+      { code: true },
+    );
+    createPublishDeliveryRow(
+      ledger,
+      "当前分支",
+      report.observation.currentBranch ?? "detached HEAD",
+      { code: true },
+    );
+    if (pending) {
+      createPublishDeliveryRow(ledger, "内容标题", pending.title);
+      createPublishDeliveryRow(ledger, "提交声明", pending.subject, { code: true });
+      createPublishDeliveryRow(ledger, "commit", pending.commitOid, { code: true });
+      createPublishDeliveryRow(ledger, "tree", pending.treeOid, { code: true });
+      createPublishDeliveryRow(ledger, "target blob", pending.targetBlobOid, {
+        code: true,
+      });
+      createPublishDeliveryRow(ledger, "恢复命令", report.recovery.command, {
+        code: true,
+        state: "recovery",
+      });
+    } else if (!synchronized) {
+      createPublishDeliveryRow(
+        ledger,
+        "下一步",
+        "先在仓库中检查 Git 状态；当前证据不足以建议 push。",
+        { state: "inspect" },
+      );
+    }
+    contentEl.createEl("p", {
+      cls: "myblog-publish-delivery__note",
+      text: pending
+        ? "该 commit 已通过父级、主题、正式笔记、可选 inbox 删除与全部归档媒体身份验证；不要再次发布同一草稿。联网恢复后只执行显示的精确 OID 命令。"
+        : synchronized
+          ? "本地 main 与最后观察到的 origin/main 一致；没有待同步的新内容发布包。"
+          : "本地引用关系需要人工检查；本视图不会自动同步、重建发布提交或改写历史。",
     });
   }
 }
@@ -1527,6 +1995,12 @@ module.exports = class MyBlogPublisher extends Plugin {
     });
 
     this.addCommand({
+      id: "inspect-publish-delivery",
+      name: "查看待同步新内容发布",
+      checkCallback: (checking) => this.inspectPublishDelivery(checking),
+    });
+
+    this.addCommand({
       id: "deliver-pending-review",
       name: "重新同步待交付正式内容复核",
       checkCallback: (checking) => this.deliverPendingReview(checking),
@@ -1736,6 +2210,56 @@ module.exports = class MyBlogPublisher extends Plugin {
         success: "已打开纯文本正式复核交付证据。",
       },
       (report) => new ContentReviewDeliveryTextModal(this.app, report).open(),
+    );
+  }
+
+  inspectPublishDelivery(checking) {
+    if (!this.isDesktopVault()) return false;
+    if (checking) return true;
+    return this.runRepositoryCommand(
+      [
+        "--silent",
+        "run",
+        "content:publish:status",
+        "--",
+        "--format",
+        "json",
+      ],
+      {
+        allowedExitCodes: [0, 1],
+        failure: "新内容发布交付状态检查未完成",
+        progress: "正在读取本地新内容发布交付证据…",
+        startFailure: "新内容发布交付状态命令无法启动",
+      },
+      (output) => this.openStructuredPublishDelivery(output),
+    );
+  }
+
+  openStructuredPublishDelivery(output) {
+    try {
+      const report = parseContentPublishDeliveryReport(output);
+      new ContentPublishDeliveryModal(this.app, report).open();
+      new Notice("新内容发布交付状态已更新。", 5000);
+    } catch (error) {
+      new Notice(
+        `结构化发布交付证据不可用：${error.message}。正在重新读取本地纯文本证据…`,
+        10000,
+      );
+      this.inspectPublishDeliveryText();
+    }
+  }
+
+  inspectPublishDeliveryText() {
+    return this.runRepositoryCommand(
+      ["--silent", "run", "content:publish:status"],
+      {
+        allowedExitCodes: [0, 1],
+        failure: "纯文本新内容发布交付证据未完成",
+        progress: "正在读取本地纯文本发布交付证据…",
+        startFailure: "纯文本新内容发布交付状态命令无法启动",
+        success: "已打开纯文本新内容发布交付证据。",
+      },
+      (report) => new ContentPublishDeliveryTextModal(this.app, report).open(),
     );
   }
 
