@@ -8,11 +8,11 @@
 | 4. 作者自助写作 | done | `/studio` OAuth + editorial workflow PR、Obsidian Vault/模板/附件/真实 `--push` |
 | 5. Vercel 原生迁移 | production live | 原生 Next.js、无 Cloudflare 依赖、24 路由生产冒烟通过 |
 | 6. 所有者生产上线 | done | Git 自动 Production、稳定域名自动冒烟、双端发布、回滚与恢复均已验收 |
-| 7. 持续内容与作者体验 | in progress | Iteration 0054 完成版本化 Author Proof、复核日期迁移轨、严格插件校验与纯文本降级 |
+| 7. 持续内容与作者体验 | in progress | Iteration 0055 完成共享 worktree impact classifier、deferred 作者工作与 Proof v2 |
 
 ## 当前唯一主线
 
-进入持续内容与作者体验阶段。Iteration 0054 已把 MyBlog Publisher 升到 1.5.0：`content:review --check-only --format json` 只有在完整门通过后才输出 `version: 1` Proof，250,000 字符测试日志不会污染 stdout；插件 exact-validate 日期、语义、Git 和质量门后，用无按钮的 review transition rail/证据账本展示，异常重跑纯文本检查。同步仍是独立命令且所有 Git 安全边界不变。下一主线改进严格工作区门的多草稿体验：引入共享 impact classifier，只把 `content/inbox` 和根暂存媒体识别为不进入正式复核 commit 的 deferred author work，其他 staged/正式内容/代码改动继续阻断；Proof 必须显式列出 deferred paths。需要品牌域名时再绑定自定义域名，旧公开站继续只作为迁移历史证据。
+进入持续内容与作者体验阶段。Iteration 0055 已把 MyBlog Publisher 升到 1.6.0：共享 impact classifier 只放行已修改/未跟踪的稳定 inbox 与未跟踪根图片，Proof v2 明确列出 deferred；staged、已跟踪根媒体、嵌套媒体、正式内容、代码与未知路径继续阻断。分类在完整门前后复算，push 的 pathspec、`commit --only` 和唯一 tree 不变。下一主线绑定“被检查的确切候选内容”：门前计算 SHA-256，门后、index 与提交 tree 必须保持同一 blob，Proof 显示短指纹，防止长检查期间目标笔记再次编辑造成证据/提交错位。需要品牌域名时再绑定自定义域名，旧公开站继续只作为迁移历史证据。
 
 ## 已知风险
 
@@ -32,7 +32,7 @@
 - slug 迁移已有构建验证的精确单跳 redirect 注册表，但仍是需要作者审阅的 Git 操作；不支持通配参数或自动推断，迁移必须同步处理内容、附件和引用；
 - Obsidian 已有全 inbox readiness 总览，但该报告有意只代表本地单篇写入事务，不替代正式发布的完整仓库门禁，也不进入看不到未跟踪草稿的 Actions；
 - Current record 已有 Studio 实时只读队列、每周 60/30 天 Actions 提醒和过期门；队列数据只随新 Production 接收内容变更，且仍不发送外部消息；若未来需要邮件/聊天通知，必须由所有者选择渠道后再接入；
-- Obsidian 维护/Author Proof 1.5.0 已验证两套版本化 JSON、活动 sourcePath 和纯文本降级；真实主题组合、超长标题和大量记录仍需随实际内容增长观察。正式复核当前一律拒绝任何额外 modified/untracked，因此同时保存多个 inbox 草稿时必须先清理；下一轮应以影响分类而不是简单放宽解决，且插件 schema 与 CLI version 必须同步升级；
+- Obsidian 维护/Author Proof 1.6.0 已验证两套版本化 JSON、活动 sourcePath、deferred 差集和纯文本降级；真实主题组合、超长路径和大量记录仍需随使用观察。当前 inspection 在完整门前解析目标，门后只复查路径状态；若目标本身在长检查期间再次变化，Proof 可能仍描述旧语义，下一轮必须用内容指纹绑定门、index 与提交 tree；
 - 内部链接支持内容页和严格标题锚点，行内/引用式/自引用共享实际渲染 slug 规则，详情页与公开知识地图共享 outgoing/backlinks；明确不支持 Obsidian 块引用，标题改名必须同步深链，当前双列 SVG 为小型内容库优化，内容规模增长后需要过滤/分组；
 - 正文普通 HTTPS 与结构化 repository/demo/canonical 已有统一确定性库存和受控实时报告；实时 DNS/网络结果有意不进 Actions，timeout/限流不能冒充内容错误；
 - 文章与项目已有完整 A4 打印版式，但 PDF 仍由读者通过浏览器打印生成，仓库不把二进制 PDF 当作发布源，也不提供服务端 PDF 缓存；后续版式变化仍需重新做真实 PDF 全页复核；

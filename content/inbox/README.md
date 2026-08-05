@@ -15,6 +15,6 @@
 - `MyBlog Publisher: 检查当前正式内容复核`：执行完整仓库门，然后用只读 Author Proof 显示 HEAD/当前日期、事实变化、质量门和唯一提交范围；不暂存、不提交；
 - `MyBlog Publisher: 提交并同步当前正式内容复核`：门禁通过后只提交当前正式 Markdown 并推送 `main`。
 
-该流程要求暂存区为空、没有未跟踪或其他已修改文件，且同一天不能重复声明复核。命令行等价入口为 `npm run content:review -- content/posts|projects/<slug>.md --check-only|--push`；机器可读证据在 check-only 后增加 `--format json`。结构化证据异常时插件会重新执行纯文本检查，不会显示半可信的可提交状态。
+该流程要求暂存区（包括 intent-to-add）为空，且同一天不能重复声明复核。可以同时保留稳定的 `content/inbox/<slug>.md` 草稿和未跟踪的根 `public/uploads/<图片>`；它们会在 Proof 中标为 deferred，不进入本次提交。已跟踪根附件修改、嵌套归档媒体、其他正式内容、代码或未知路径仍阻断。命令行等价入口为 `npm run content:review -- content/posts|projects/<slug>.md --check-only|--push`；机器可读证据在 check-only 后增加 `--format json`。结构化证据异常时插件会重新执行纯文本检查，不会显示半可信的可提交状态。
 
 此 README 不参与博客构建。详细流程见 `docs/PUBLISHING.md`。
