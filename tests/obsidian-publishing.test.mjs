@@ -537,8 +537,13 @@ test("ships a desktop Obsidian command without hidden shell interpolation", asyn
     readFile(new URL("../.obsidian/plugins/myblog-publisher/main.js", import.meta.url), "utf8"),
   ]);
   assert.equal(JSON.parse(manifest).isDesktopOnly, true);
-  assert.equal(JSON.parse(manifest).version, "1.18.0");
+  assert.equal(JSON.parse(manifest).version, "1.19.0");
   assert.match(plugin, /FileSystemAdapter/);
+  assert.match(plugin, /create-blog-draft/);
+  assert.match(plugin, /DraftCreationModal/);
+  assert.match(plugin, /createDraftFromTemplate/);
+  assert.match(plugin, /vault\.cachedRead/);
+  assert.match(plugin, /vault\.create/);
   assert.match(plugin, /InboxReadinessModal/);
   assert.match(plugin, /inspect-inbox-readiness/);
   assert.match(plugin, /content:inbox/);

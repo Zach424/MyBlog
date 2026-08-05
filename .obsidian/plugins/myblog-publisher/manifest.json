@@ -1,9 +1,9 @@
 {
   "id": "myblog-publisher",
   "name": "MyBlog Publisher",
-  "version": "1.18.0",
+  "version": "1.19.0",
   "minAppVersion": "1.5.0",
-  "description": "Retain one session-local author transaction receipt while observing and serializing publishing and review transactions, triaging Git delivery, and safely publishing MyBlog notes.",
+  "description": "Create local MyBlog drafts from trusted templates, then observe, validate, serialize, and safely deliver publishing and review transactions.",
   "author": "Zach424",
   "isDesktopOnly": true
 }

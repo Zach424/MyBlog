@@ -15,6 +15,11 @@ const stylesUrl = new URL(
   "../.obsidian/plugins/myblog-publisher/styles.css",
   import.meta.url,
 );
+const templateUrls = {
+  article: new URL("../templates/obsidian/article.md", import.meta.url),
+  project: new URL("../templates/obsidian/project.md", import.meta.url),
+  til: new URL("../templates/obsidian/til.md", import.meta.url),
+};
 
 function createEmitter() {
   const listeners = new Map();
@@ -40,9 +45,12 @@ function createElement(tag, options = {}) {
     attributes: {},
     children: [],
     classes,
+    disabled: false,
+    focused: false,
     style: {},
     tag,
     text: options.text ?? "",
+    value: options.value ?? "",
     addClass(...names) {
       for (const name of names) classes.add(name);
     },
@@ -62,6 +70,9 @@ function createElement(tag, options = {}) {
     empty() {
       this.children.length = 0;
     },
+    focus() {
+      this.focused = true;
+    },
     setAttr(name, value) {
       this.attributes[name] = String(value);
     },
@@ -76,8 +87,11 @@ function createElement(tag, options = {}) {
 
 async function createPluginHarness({
   activeFilePath,
+  createFailure,
   desktop = true,
+  fileContents = {},
   files = ["content/projects/myblog.md"],
+  openFailure,
   platform = "win32",
   throwSpawnAt = [],
 } = {}) {
@@ -86,6 +100,8 @@ async function createPluginHarness({
   const modals = [];
   const notices = [];
   const openedFiles = [];
+  const createdFiles = [];
+  const templateReads = [];
   let reconciliations = 0;
   const spawned = [];
   let spawnAttempts = 0;
@@ -160,8 +176,9 @@ async function createPluginHarness({
     return child;
   };
 
+  const contentMap = new Map(Object.entries(fileContents));
   const fileMap = new Map(
-    files.map((path) => [
+    [...new Set([...files, ...contentMap.keys()])].map((path) => [
       path,
       { extension: path.endsWith(".md") ? "md" : "", path },
     ]),
@@ -170,6 +187,22 @@ async function createPluginHarness({
   const app = {
     vault: {
       adapter,
+      async cachedRead(file) {
+        templateReads.push(file.path);
+        if (!contentMap.has(file.path)) {
+          throw new Error(`Missing fixture content: ${file.path}`);
+        }
+        return contentMap.get(file.path);
+      },
+      async create(path, content) {
+        if (createFailure) throw new Error(createFailure);
+        if (fileMap.has(path)) throw new Error(`File already exists: ${path}`);
+        const file = { extension: "md", path };
+        fileMap.set(path, file);
+        contentMap.set(path, content);
+        createdFiles.push({ content, file, path });
+        return file;
+      },
       getAbstractFileByPath(path) {
         return fileMap.get(path) ?? null;
       },
@@ -184,6 +217,7 @@ async function createPluginHarness({
           : undefined,
       getLeaf: () => ({
         async openFile(file) {
+          if (openFailure) throw new Error(openFailure);
           openedFiles.push(file);
         },
       }),
@@ -207,6 +241,7 @@ async function createPluginHarness({
 
   return {
     commands,
+    createdFiles,
     get reconciliations() {
       return reconciliations;
     },
@@ -215,6 +250,7 @@ async function createPluginHarness({
     openedFiles,
     plugin,
     spawned,
+    templateReads,
   };
 }
 
@@ -565,7 +601,7 @@ function authorDoctorReport() {
     ["workspace-dependencies", "workspace", "Workspace dependencies", "35/35 pinned packages", "all declared packages installed at pinned versions"],
     ["content-layout", "workspace", "Content layout", "5/5 required paths", "5 required authoring paths"],
     ["obsidian-vault", "vault", "Obsidian Vault", ".obsidian present", ".obsidian directory present"],
-    ["publisher-plugin", "vault", "MyBlog Publisher", "myblog-publisher@1.18.0 · desktop", "myblog-publisher 1.18.0 desktop plugin"],
+    ["publisher-plugin", "vault", "MyBlog Publisher", "myblog-publisher@1.19.0 · desktop", "myblog-publisher 1.19.0 desktop plugin"],
   ];
   const scripts = [
     "content:author:doctor",
@@ -612,7 +648,7 @@ function authorDoctorReport() {
           isDesktopOnly: true,
           mainPresent: true,
           stylesPresent: true,
-          version: "1.18.0",
+          version: "1.19.0",
         },
       },
       workspace: {
@@ -684,6 +720,222 @@ function findCommand(harness, id) {
   return command;
 }
 
+async function readObsidianTemplates() {
+  const entries = await Promise.all(
+    Object.entries(templateUrls).map(async ([kind, url]) => [kind, await readFile(url, "utf8")]),
+  );
+  return Object.fromEntries(
+    entries.map(([kind, content]) => [`templates/obsidian/${kind}.md`, content]),
+  );
+}
+
+test("creates and opens one inbox draft from the focused native wizard", async () => {
+  const harness = await createPluginHarness({
+    fileContents: await readObsidianTemplates(),
+    files: [],
+  });
+  harness.plugin.getDraftCreationToday = () => "2026-08-06";
+  const command = findCommand(harness, "create-blog-draft");
+  assert.equal(command.checkCallback(true), true);
+  assert.equal(command.checkCallback(false), true);
+  assert.equal(harness.spawned.length, 0);
+  assert.equal(harness.modals.length, 1);
+
+  const modal = harness.modals[0];
+  assert.equal(modal.contentEl.classes.has("myblog-draft-create"), true);
+  assert.deepEqual(
+    elementsByTag(modal, "h2").map((element) => element.text),
+    ["新建博客草稿"],
+  );
+  assert.match(
+    elementsByTag(modal, "p").map((element) => element.text).join(" "),
+    /只创建一个本地 inbox Markdown.*不会发布、提交或联网/u,
+  );
+
+  const [kind] = elementsByTag(modal, "select");
+  const [title, slug] = elementsByTag(modal, "input");
+  const options = elementsByTag(modal, "option");
+  assert.deepEqual(options.map((option) => option.value), ["article", "til", "project"]);
+  assert.equal(title.attributes["aria-label"], "标题");
+  assert.equal(slug.attributes["aria-label"], "英文 slug");
+  assert.equal(title.focused, true);
+  kind.value = "article";
+  title.value = 'Quoted "Title" \\ path';
+  slug.value = "safe-draft";
+
+  const submit = elementsByTag(modal, "button").find(
+    (button) => button.text === "创建草稿",
+  );
+  assert.ok(submit);
+  await Promise.all([submit.trigger("click"), submit.trigger("click")]);
+
+  assert.equal(harness.createdFiles.length, 1);
+  assert.equal(harness.createdFiles[0].path, "content/inbox/safe-draft.md");
+  assert.match(
+    harness.createdFiles[0].content,
+    /title: "Quoted \\"Title\\" \\\\ path"/u,
+  );
+  assert.match(harness.createdFiles[0].content, /^slug: safe-draft$/mu);
+  assert.equal(
+    harness.createdFiles[0].content.match(/2026-08-06/gu)?.length,
+    3,
+  );
+  assert.doesNotMatch(harness.createdFiles[0].content, /\{\{/u);
+  assert.deepEqual(harness.templateReads, ["templates/obsidian/article.md"]);
+  assert.deepEqual(harness.openedFiles, [harness.createdFiles[0].file]);
+  assert.equal(modal.closed, true);
+  assert.match(harness.notices.at(-1).message, /草稿已创建并打开/u);
+  assert.equal(harness.spawned.length, 0);
+
+  const mobile = await createPluginHarness({ desktop: false });
+  assert.equal(findCommand(mobile, "create-blog-draft").checkCallback(true), false);
+  assert.equal(mobile.modals.length, 0);
+});
+
+test("maps article, TIL, and project to their exact trusted templates", async (t) => {
+  const templates = await readObsidianTemplates();
+  const cases = [
+    ["article", "type: article", "freshness: historical"],
+    ["til", "type: til", "freshness: historical"],
+    ["project", "status: planning", "freshness: current"],
+  ];
+
+  for (const [kind, marker, freshness] of cases) {
+    await t.test(kind, async () => {
+      const harness = await createPluginHarness({ fileContents: templates, files: [] });
+      harness.plugin.getDraftCreationToday = () => "2026-08-06";
+      const result = await harness.plugin.createDraftFromTemplate({
+        kind,
+        slug: `${kind}-draft`,
+        title: `${kind} 标题`,
+      });
+      assert.deepEqual(harness.templateReads, [`templates/obsidian/${kind}.md`]);
+      assert.equal(result.path, `content/inbox/${kind}-draft.md`);
+      assert.equal(result.opened, true);
+      assert.match(harness.createdFiles[0].content, new RegExp(`^${marker}$`, "mu"));
+      assert.match(harness.createdFiles[0].content, new RegExp(`^${freshness}$`, "mu"));
+      assert.match(harness.createdFiles[0].content, /draft: true/u);
+    });
+  }
+});
+
+test("rejects invalid draft input before reading a template", async (t) => {
+  const cases = [
+    ["unknown kind", { kind: "post", slug: "safe-slug", title: "Title" }, /类型/u],
+    ["empty title", { kind: "article", slug: "safe-slug", title: "   " }, /标题/u],
+    ["multiline title", { kind: "article", slug: "safe-slug", title: "A\nB" }, /标题/u],
+    ["long title", { kind: "article", slug: "safe-slug", title: "a".repeat(121) }, /120/u],
+    ["uppercase slug", { kind: "article", slug: "Unsafe", title: "Title" }, /slug/u],
+    ["path slug", { kind: "article", slug: "../unsafe", title: "Title" }, /slug/u],
+    ["long slug", { kind: "article", slug: "a".repeat(81), title: "Title" }, /80/u],
+  ];
+
+  for (const [name, input, expected] of cases) {
+    await t.test(name, async () => {
+      const harness = await createPluginHarness({ files: [] });
+      await assert.rejects(harness.plugin.createDraftFromTemplate(input), expected);
+      assert.deepEqual(harness.templateReads, []);
+      assert.deepEqual(harness.createdFiles, []);
+      assert.deepEqual(harness.openedFiles, []);
+    });
+  }
+});
+
+test("fails closed on template drift and every existing content namespace", async (t) => {
+  const templates = await readObsidianTemplates();
+  const driftCases = [
+    ["missing", {}],
+    ["prefilled title", {
+      "templates/obsidian/article.md": templates["templates/obsidian/article.md"].replace('title: ""', 'title: "Existing"'),
+    }],
+    ["unknown token", {
+      "templates/obsidian/article.md": `${templates["templates/obsidian/article.md"]}\n{{unknown}}\n`,
+    }],
+    ["wrong kind marker", {
+      "templates/obsidian/article.md": templates["templates/obsidian/article.md"].replace("type: article", "type: til"),
+    }],
+  ];
+  for (const [name, fileContents] of driftCases) {
+    await t.test(`template ${name}`, async () => {
+      const harness = await createPluginHarness({ fileContents, files: [] });
+      await assert.rejects(
+        harness.plugin.createDraftFromTemplate({ kind: "article", slug: "drift", title: "Drift" }),
+        /模板/u,
+      );
+      assert.deepEqual(harness.createdFiles, []);
+      assert.deepEqual(harness.openedFiles, []);
+    });
+  }
+
+  for (const existingPath of [
+    "content/inbox/collision.md",
+    "content/posts/collision.md",
+    "content/projects/collision.md",
+  ]) {
+    await t.test(`collision ${existingPath}`, async () => {
+      const harness = await createPluginHarness({
+        fileContents: templates,
+        files: [existingPath],
+      });
+      await assert.rejects(
+        harness.plugin.createDraftFromTemplate({ kind: "til", slug: "collision", title: "Collision" }),
+        /已存在/u,
+      );
+      assert.deepEqual(harness.templateReads, []);
+      assert.deepEqual(harness.createdFiles, []);
+    });
+  }
+});
+
+test("keeps atomic create and post-create open failures explicit", async () => {
+  const templates = await readObsidianTemplates();
+  const raced = await createPluginHarness({
+    createFailure: "File already exists after preflight",
+    fileContents: templates,
+    files: [],
+  });
+  findCommand(raced, "create-blog-draft").checkCallback(false);
+  const racedModal = raced.modals[0];
+  const [racedTitle, racedSlug] = elementsByTag(racedModal, "input");
+  racedTitle.value = "Raced";
+  racedSlug.value = "raced";
+  const racedSubmit = elementsByTag(racedModal, "button").find(
+    (button) => button.text === "创建草稿",
+  );
+  await racedSubmit.trigger("click");
+  assert.equal(racedModal.closed, false);
+  assert.equal(racedSubmit.disabled, false);
+  assert.deepEqual(raced.createdFiles, []);
+  assert.deepEqual(raced.openedFiles, []);
+  const racedError = allElements(racedModal.contentEl).find(
+    (element) => element.classes.has("myblog-draft-create__error"),
+  );
+  assert.equal(racedError.attributes.role, "alert");
+  assert.match(racedError.text, /创建失败.*未覆盖任何文件/u);
+
+  const unopened = await createPluginHarness({
+    fileContents: templates,
+    files: [],
+    openFailure: "workspace unavailable",
+  });
+  findCommand(unopened, "create-blog-draft").checkCallback(false);
+  const unopenedModal = unopened.modals[0];
+  const [unopenedTitle, unopenedSlug] = elementsByTag(unopenedModal, "input");
+  unopenedTitle.value = "Created but unopened";
+  unopenedSlug.value = "created-but-unopened";
+  const unopenedSubmit = elementsByTag(unopenedModal, "button").find(
+    (button) => button.text === "创建草稿",
+  );
+  await unopenedSubmit.trigger("click");
+  assert.equal(unopened.createdFiles.length, 1);
+  assert.deepEqual(unopened.openedFiles, []);
+  assert.equal(unopenedModal.closed, true);
+  assert.match(
+    unopened.notices.at(-1).message,
+    /草稿已创建.*无法自动打开.*content\/inbox\/created-but-unopened\.md/u,
+  );
+});
+
 test("renders a versioned maintenance ledger and opens an exact Vault note", async () => {
   const [manifestSource, styles, harness] = await Promise.all([
     readFile(manifestUrl, "utf8"),
@@ -691,8 +943,10 @@ test("renders a versioned maintenance ledger and opens an exact Vault note", asy
     createPluginHarness(),
   ]);
   const manifest = JSON.parse(manifestSource);
-  assert.equal(manifest.version, "1.18.0");
+  assert.equal(manifest.version, "1.19.0");
   assert.equal(manifest.isDesktopOnly, true);
+  assert.match(styles, /^\.myblog-draft-create \{/mu);
+  assert.match(styles, /myblog-draft-create__error:empty/u);
   assert.match(styles, /^\.myblog-maintenance \{/mu);
   assert.match(styles, /\[data-status="overdue"\]/u);
   assert.match(styles, /font-family: var\(--font-interface\)/u);

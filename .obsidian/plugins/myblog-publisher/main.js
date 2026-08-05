@@ -12,7 +12,33 @@ const CONTENT_PUBLISH_DELIVERY_RECEIPT_VERSION = 1;
 const CONTENT_DELIVERY_TRIAGE_REPORT_VERSION = 1;
 const AUTHOR_DOCTOR_REPORT_VERSION = 1;
 const AUTHOR_DOCTOR_NODE_ENGINE = ">=22.13.0";
-const AUTHOR_DOCTOR_PLUGIN_VERSION = "1.18.0";
+const AUTHOR_DOCTOR_PLUGIN_VERSION = "1.19.0";
+const DRAFT_TITLE_MAX_LENGTH = 120;
+const DRAFT_SLUG_MAX_LENGTH = 80;
+const DRAFT_SLUG_PATTERN = /^[a-z0-9]+(?:-[a-z0-9]+)*$/u;
+const DRAFT_DATE_TOKEN = "{{date:YYYY-MM-DD}}";
+const DRAFT_CREATION_KINDS = Object.freeze({
+  article: Object.freeze({
+    label: "技术文章 · ARTICLE",
+    requiredLines: Object.freeze(["type: article", "freshness: historical"]),
+    templatePath: "templates/obsidian/article.md",
+  }),
+  til: Object.freeze({
+    label: "今日所学 · TIL",
+    requiredLines: Object.freeze(["type: til", "freshness: historical"]),
+    templatePath: "templates/obsidian/til.md",
+  }),
+  project: Object.freeze({
+    label: "项目记录 · PROJECT",
+    requiredLines: Object.freeze(["status: planning", "freshness: current"]),
+    templatePath: "templates/obsidian/project.md",
+  }),
+});
+const DRAFT_CONTENT_DIRECTORIES = Object.freeze([
+  "content/inbox",
+  "content/posts",
+  "content/projects",
+]);
 const AUTHOR_TRANSACTION_PHASE_LABELS = Object.freeze({
   preflight: "前置检查 · PREFLIGHT",
   domain: "发布或复核 · DOMAIN",
@@ -122,6 +148,10 @@ function assertNonEmptyString(value, label) {
   if (typeof value !== "string" || value.trim() !== value || value.length === 0) {
     valueError(label, "必须是无首尾空白的非空字符串");
   }
+}
+
+function countExactLine(source, line) {
+  return source.split("\n").filter((candidate) => candidate === line).length;
 }
 
 function parseIsoDate(value, label) {
@@ -2066,6 +2096,150 @@ function createCandidateProofRow(container, candidate) {
   return row;
 }
 
+class DraftCreationModal extends Modal {
+  constructor(plugin) {
+    super(plugin.app);
+    this.plugin = plugin;
+    this.submitting = false;
+  }
+
+  onOpen() {
+    const { contentEl } = this;
+    contentEl.empty();
+    contentEl.addClass("myblog-draft-create");
+    contentEl.createEl("p", {
+      cls: "myblog-draft-create__eyebrow",
+      text: "DRAFT ORIGIN / LOCAL ONLY",
+    });
+    contentEl.createEl("h2", {
+      cls: "myblog-draft-create__title",
+      text: "新建博客草稿",
+    });
+    contentEl.createEl("p", {
+      cls: "myblog-draft-create__boundary",
+      text: "只创建一个本地 inbox Markdown 并尝试打开；不会发布、提交或联网。",
+    });
+
+    const form = contentEl.createEl("div", {
+      cls: "myblog-draft-create__form",
+    });
+    const kindField = form.createEl("label", {
+      cls: "myblog-draft-create__field",
+    });
+    kindField.createEl("span", {
+      cls: "myblog-draft-create__label",
+      text: "内容类型",
+    });
+    const kind = kindField.createEl("select");
+    kind.setAttr("aria-label", "内容类型");
+    for (const [value, config] of Object.entries(DRAFT_CREATION_KINDS)) {
+      const option = kind.createEl("option", { text: config.label });
+      option.value = value;
+    }
+    kind.value = "article";
+    kindField.createEl("span", {
+      cls: "myblog-draft-create__hint",
+      text: "选择后只读取对应的受信模板。",
+    });
+
+    const titleField = form.createEl("label", {
+      cls: "myblog-draft-create__field",
+    });
+    titleField.createEl("span", {
+      cls: "myblog-draft-create__label",
+      text: "标题",
+    });
+    const title = titleField.createEl("input");
+    title.setAttr("aria-label", "标题");
+    title.setAttr("maxlength", String(DRAFT_TITLE_MAX_LENGTH));
+    title.setAttr("placeholder", "例如：用 TypeScript 构建内容管线");
+    title.setAttr("type", "text");
+    titleField.createEl("span", {
+      cls: "myblog-draft-create__hint",
+      text: "写入 frontmatter；引号与反斜杠会安全转义。",
+    });
+
+    const slugField = form.createEl("label", {
+      cls: "myblog-draft-create__field",
+    });
+    slugField.createEl("span", {
+      cls: "myblog-draft-create__label",
+      text: "英文 slug",
+    });
+    const slug = slugField.createEl("input");
+    slug.setAttr("aria-label", "英文 slug");
+    slug.setAttr("autocapitalize", "none");
+    slug.setAttr("autocomplete", "off");
+    slug.setAttr("maxlength", String(DRAFT_SLUG_MAX_LENGTH));
+    slug.setAttr("placeholder", "typescript-content-pipeline");
+    slug.setAttr("spellcheck", "false");
+    slug.setAttr("type", "text");
+    slugField.createEl("span", {
+      cls: "myblog-draft-create__hint",
+      text: "仅限小写英文、数字和单个连字符；同时检查 inbox、posts 与 projects。",
+    });
+
+    const error = form.createEl("p", {
+      cls: "myblog-draft-create__error",
+    });
+    error.setAttr("aria-live", "polite");
+    error.setAttr("role", "alert");
+
+    const actions = form.createEl("div", {
+      cls: "modal-button-container myblog-draft-create__actions",
+    });
+    const cancel = actions.createEl("button", { text: "取消" });
+    cancel.setAttr("type", "button");
+    const submit = actions.createEl("button", {
+      cls: "mod-cta",
+      text: "创建草稿",
+    });
+    submit.setAttr("type", "button");
+
+    cancel.addEventListener("click", () => this.close());
+    submit.addEventListener("click", async () => {
+      if (this.submitting) return;
+      this.submitting = true;
+      error.setText("");
+      for (const control of [kind, title, slug, cancel, submit]) {
+        control.disabled = true;
+      }
+      let completed = false;
+      try {
+        const result = await this.plugin.createDraftFromTemplate({
+          kind: kind.value,
+          slug: slug.value,
+          title: title.value,
+        });
+        completed = true;
+        this.close();
+        if (result.opened) {
+          new Notice(`草稿已创建并打开：${result.path}`, 5000);
+        } else {
+          new Notice(
+            `草稿已创建，但无法自动打开：${result.path}。请从文件列表手动打开。`,
+            10000,
+          );
+        }
+      } catch (creationError) {
+        const message = creationError instanceof Error
+          ? creationError.message
+          : "草稿创建失败；未覆盖任何文件。";
+        error.setText(message);
+      } finally {
+        if (!completed) {
+          this.submitting = false;
+          for (const control of [kind, title, slug, cancel, submit]) {
+            control.disabled = false;
+          }
+        }
+      }
+    });
+
+    title.focus();
+  }
+}
+
 class ReadOnlyReportModal extends Modal {
   constructor(app, { description, report, title }) {
     super(app);
@@ -3160,6 +3334,12 @@ module.exports = class MyBlogPublisher extends Plugin {
     this.lastAuthorTransactionReceipt = null;
 
     this.addCommand({
+      id: "create-blog-draft",
+      name: "新建博客草稿",
+      checkCallback: (checking) => this.openDraftCreationWizard(checking),
+    });
+
+    this.addCommand({
       id: "validate-current-note",
       name: "检查当前草稿",
       checkCallback: (checking) => this.publishCurrentNote(checking, false),
@@ -3281,6 +3461,157 @@ module.exports = class MyBlogPublisher extends Plugin {
 
   isDesktopVault() {
     return this.app.vault.adapter instanceof FileSystemAdapter;
+  }
+
+  openDraftCreationWizard(checking) {
+    if (!this.isDesktopVault()) return false;
+    if (checking) return true;
+    new DraftCreationModal(this).open();
+    return true;
+  }
+
+  getDraftCreationToday() {
+    const parts = new Intl.DateTimeFormat("en-US", {
+      day: "2-digit",
+      month: "2-digit",
+      timeZone: "Asia/Shanghai",
+      year: "numeric",
+    }).formatToParts(new Date());
+    const values = Object.fromEntries(
+      parts
+        .filter((part) => ["year", "month", "day"].includes(part.type))
+        .map((part) => [part.type, part.value]),
+    );
+    return `${values.year}-${values.month}-${values.day}`;
+  }
+
+  validateDraftCreationInput({ kind, slug, title } = {}) {
+    const config = DRAFT_CREATION_KINDS[kind];
+    if (!config) {
+      throw new Error("内容类型无效；请选择 article、til 或 project。");
+    }
+    if (typeof title !== "string") {
+      throw new Error("标题必须是文本。");
+    }
+    const normalizedTitle = title.trim();
+    if (normalizedTitle.length === 0) {
+      throw new Error("标题不能为空。");
+    }
+    if (/\0|\r|\n/u.test(normalizedTitle)) {
+      throw new Error("标题不能包含换行或空字符。");
+    }
+    if (normalizedTitle.length > DRAFT_TITLE_MAX_LENGTH) {
+      throw new Error(`标题不能超过 ${DRAFT_TITLE_MAX_LENGTH} 个字符。`);
+    }
+    if (typeof slug !== "string" || slug.length === 0) {
+      throw new Error("英文 slug 不能为空。");
+    }
+    if (slug.length > DRAFT_SLUG_MAX_LENGTH) {
+      throw new Error(`英文 slug 不能超过 ${DRAFT_SLUG_MAX_LENGTH} 个字符。`);
+    }
+    if (!DRAFT_SLUG_PATTERN.test(slug)) {
+      throw new Error("英文 slug 仅允许小写英文、数字和单个连字符。");
+    }
+    return Object.freeze({ config, kind, slug, title: normalizedTitle });
+  }
+
+  getDraftCollisionPaths(slug) {
+    return DRAFT_CONTENT_DIRECTORIES.map((directory) => `${directory}/${slug}.md`);
+  }
+
+  assertDraftPathsAvailable(slug) {
+    for (const path of this.getDraftCollisionPaths(slug)) {
+      if (this.app.vault.getAbstractFileByPath(path)) {
+        throw new Error(`内容路径已存在：${path}。未覆盖任何文件。`);
+      }
+    }
+  }
+
+  renderDraftTemplate(template, draft, today) {
+    if (typeof template !== "string") {
+      throw new Error("受信模板内容无效。");
+    }
+    const source = template.replace(/\r\n?/gu, "\n");
+    if (!source.startsWith("---\n") || source.indexOf("\n---\n", 4) === -1) {
+      throw new Error("受信模板 frontmatter 边界已漂移。");
+    }
+    const exactLines = [
+      ['title: ""', 1],
+      ['slug: "{{title}}"', 1],
+      ["draft: true", 1],
+      ["featured: false", 1],
+      ...draft.config.requiredLines.map((line) => [line, 1]),
+    ];
+    for (const [line, expected] of exactLines) {
+      if (countExactLine(source, line) !== expected) {
+        throw new Error(`受信模板字段已漂移：${line}`);
+      }
+    }
+    const tokens = source.match(/\{\{[^{}\n]+\}\}/gu) ?? [];
+    const expectedTokens = ["{{title}}", DRAFT_DATE_TOKEN, DRAFT_DATE_TOKEN, DRAFT_DATE_TOKEN];
+    if (
+      tokens.length !== expectedTokens.length ||
+      tokens.some((token, index) => token !== expectedTokens[index])
+    ) {
+      throw new Error("受信模板占位符已漂移。");
+    }
+    parseIsoDate(today, "草稿创建日期");
+    const rendered = source
+      .replace('title: ""', `title: ${JSON.stringify(draft.title)}`)
+      .replace('slug: "{{title}}"', `slug: ${draft.slug}`)
+      .replaceAll(DRAFT_DATE_TOKEN, today);
+    if (/\{\{[^{}\n]+\}\}/u.test(rendered)) {
+      throw new Error("受信模板仍有未解析占位符。");
+    }
+    return rendered.endsWith("\n") ? rendered : `${rendered}\n`;
+  }
+
+  async createDraftFromTemplate(input) {
+    if (!this.isDesktopVault()) {
+      throw new Error("新建草稿只支持桌面 Vault。");
+    }
+    const draft = this.validateDraftCreationInput(input);
+    const path = `content/inbox/${draft.slug}.md`;
+    this.assertDraftPathsAvailable(draft.slug);
+
+    const templateFile = this.app.vault.getAbstractFileByPath(
+      draft.config.templatePath,
+    );
+    if (
+      !templateFile ||
+      templateFile.path !== draft.config.templatePath ||
+      templateFile.extension !== "md"
+    ) {
+      throw new Error(`找不到受信模板：${draft.config.templatePath}`);
+    }
+
+    let template;
+    try {
+      template = await this.app.vault.cachedRead(templateFile);
+    } catch (error) {
+      throw new Error(`受信模板读取失败：${draft.config.templatePath} · ${error.message}`);
+    }
+    const content = this.renderDraftTemplate(
+      template,
+      draft,
+      this.getDraftCreationToday(),
+    );
+    this.assertDraftPathsAvailable(draft.slug);
+
+    let file;
+    try {
+      file = await this.app.vault.create(path, content);
+    } catch (error) {
+      throw new Error(`草稿创建失败：${error.message}。未覆盖任何文件。`);
+    }
+
+    let opened = true;
+    try {
+      await this.app.workspace.getLeaf(false).openFile(file);
+    } catch {
+      opened = false;
+    }
+    return Object.freeze({ file, opened, path });
   }
 
   getAuthorTransactionNow() {
