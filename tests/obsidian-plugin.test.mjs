@@ -75,6 +75,7 @@ function createElement(tag, options = {}) {
 }
 
 async function createPluginHarness({
+  activeFilePath,
   desktop = true,
   files = ["content/projects/myblog.md"],
   platform = "win32",
@@ -84,6 +85,7 @@ async function createPluginHarness({
   const modals = [];
   const notices = [];
   const openedFiles = [];
+  let reconciliations = 0;
   const spawned = [];
 
   class FileSystemAdapter {
@@ -91,7 +93,9 @@ async function createPluginHarness({
       return "D:\\Study\\blog";
     }
 
-    reconcile() {}
+    reconcile() {
+      reconciliations += 1;
+    }
   }
 
   class Modal {
@@ -164,7 +168,13 @@ async function createPluginHarness({
       },
     },
     workspace: {
-      getActiveFile: () => undefined,
+      getActiveFile: () =>
+        activeFilePath
+          ? {
+              extension: activeFilePath.endsWith(".md") ? "md" : "",
+              path: activeFilePath,
+            }
+          : undefined,
       getLeaf: () => ({
         async openFile(file) {
           openedFiles.push(file);
@@ -188,7 +198,17 @@ async function createPluginHarness({
   const plugin = new PluginClass(app);
   plugin.onload();
 
-  return { commands, modals, notices, openedFiles, plugin, spawned };
+  return {
+    commands,
+    get reconciliations() {
+      return reconciliations;
+    },
+    modals,
+    notices,
+    openedFiles,
+    plugin,
+    spawned,
+  };
 }
 
 function allElements(root) {
@@ -271,7 +291,7 @@ test("renders a versioned maintenance ledger and opens an exact Vault note", asy
     createPluginHarness(),
   ]);
   const manifest = JSON.parse(manifestSource);
-  assert.equal(manifest.version, "1.3.0");
+  assert.equal(manifest.version, "1.4.0");
   assert.equal(manifest.isDesktopOnly, true);
   assert.match(styles, /^\.myblog-maintenance \{/mu);
   assert.match(styles, /\[data-status="overdue"\]/u);
@@ -501,4 +521,64 @@ test("runs the JSON maintenance report without a shell on POSIX desktops", async
   harness.plugin.onunload();
   assert.equal(harness.spawned.length, 1);
   assert.equal(harness.spawned[0].child.killed, true);
+});
+
+test("checks or syncs only the active formal content note", async () => {
+  const activeFilePath = "content/projects/myblog.md";
+  const harness = await createPluginHarness({ activeFilePath });
+  const check = findCommand(harness, "validate-current-published-note");
+  const sync = findCommand(harness, "review-current-published-note");
+  assert.equal(check.checkCallback(true), true);
+  assert.equal(sync.checkCallback(true), true);
+
+  check.checkCallback(false);
+  assert.deepEqual(plain(harness.spawned[0].args), [
+    "/d",
+    "/s",
+    "/c",
+    "npm",
+    "run",
+    "content:review",
+    "--",
+    activeFilePath,
+    "--check-only",
+  ]);
+  harness.spawned[0].child.stdout.emit(
+    "data",
+    Buffer.from("[review] 正式内容复核检查通过"),
+  );
+  harness.spawned[0].child.emit("close", 0);
+  assert.equal(harness.reconciliations, 1);
+
+  sync.checkCallback(false);
+  assert.deepEqual(plain(harness.spawned[1].args), [
+    "/d",
+    "/s",
+    "/c",
+    "npm",
+    "run",
+    "content:review",
+    "--",
+    activeFilePath,
+    "--push",
+  ]);
+  harness.spawned[1].child.emit("close", 0);
+  assert.equal(harness.reconciliations, 2);
+
+  const inbox = await createPluginHarness({
+    activeFilePath: "content/inbox/draft.md",
+  });
+  assert.equal(
+    findCommand(inbox, "validate-current-published-note").checkCallback(true),
+    false,
+  );
+  assert.equal(
+    findCommand(inbox, "review-current-published-note").checkCallback(true),
+    false,
+  );
+  const mobile = await createPluginHarness({ activeFilePath, desktop: false });
+  assert.equal(
+    findCommand(mobile, "review-current-published-note").checkCallback(true),
+    false,
+  );
 });

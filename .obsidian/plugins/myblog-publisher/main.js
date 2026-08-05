@@ -462,6 +462,20 @@ module.exports = class MyBlogPublisher extends Plugin {
     });
 
     this.addCommand({
+      id: "validate-current-published-note",
+      name: "检查当前正式内容复核",
+      checkCallback: (checking) =>
+        this.reviewCurrentPublishedNote(checking, false),
+    });
+
+    this.addCommand({
+      id: "review-current-published-note",
+      name: "提交并同步当前正式内容复核",
+      checkCallback: (checking) =>
+        this.reviewCurrentPublishedNote(checking, true),
+    });
+
+    this.addCommand({
       id: "inspect-inbox-readiness",
       name: "查看全部草稿发布就绪状态",
       checkCallback: (checking) => this.inspectInboxReadiness(checking),
@@ -678,6 +692,39 @@ module.exports = class MyBlogPublisher extends Plugin {
     } catch (error) {
       new Notice(`笔记打开失败：${error.message}`, 10000);
     }
+  }
+
+  reviewCurrentPublishedNote(checking, push) {
+    const file = this.app.workspace.getActiveFile();
+    const isPublishedNote =
+      file?.extension === "md" &&
+      /^content\/(?:posts|projects)\/[a-z0-9]+(?:-[a-z0-9]+)*\.md$/u.test(
+        file.path,
+      );
+    if (!isPublishedNote || !this.isDesktopVault()) return false;
+    if (checking) return true;
+
+    return this.runRepositoryCommand(
+      [
+        "run",
+        "content:review",
+        "--",
+        file.path,
+        push ? "--push" : "--check-only",
+      ],
+      {
+        failure: "正式内容复核未完成",
+        progress: push
+          ? "正在执行完整检查、提交并同步复核…"
+          : "正在执行正式内容完整复核检查…",
+        startFailure: "正式内容复核命令无法启动",
+        success: push
+          ? "正式内容复核已提交并同步，等待线上部署完成。"
+          : "正式内容复核检查通过；没有暂存、提交或推送。",
+        successDuration: 8000,
+      },
+      () => this.app.vault.adapter.reconcile?.(),
+    );
   }
 
   publishCurrentNote(checking, push) {
