@@ -537,7 +537,7 @@ test("ships a desktop Obsidian command without hidden shell interpolation", asyn
     readFile(new URL("../.obsidian/plugins/myblog-publisher/main.js", import.meta.url), "utf8"),
   ]);
   assert.equal(JSON.parse(manifest).isDesktopOnly, true);
-  assert.equal(JSON.parse(manifest).version, "1.12.0");
+  assert.equal(JSON.parse(manifest).version, "1.13.0");
   assert.match(plugin, /FileSystemAdapter/);
   assert.match(plugin, /InboxReadinessModal/);
   assert.match(plugin, /inspect-inbox-readiness/);
@@ -562,6 +562,8 @@ test("ships a desktop Obsidian command without hidden shell interpolation", asyn
   assert.match(plugin, /content:publish:deliver/);
   assert.match(plugin, /inspect-delivery-triage/);
   assert.match(plugin, /content:delivery:status/);
+  assert.match(plugin, /inspect-author-environment/);
+  assert.match(plugin, /content:author:doctor/);
   assert.equal(
     JSON.parse(packageSource).scripts["content:review:status"],
     "node --experimental-strip-types scripts/report-content-review-delivery.mjs",
@@ -581,6 +583,10 @@ test("ships a desktop Obsidian command without hidden shell interpolation", asyn
   assert.equal(
     JSON.parse(packageSource).scripts["content:delivery:status"],
     "node --experimental-strip-types scripts/report-content-delivery-triage.mjs",
+  );
+  assert.equal(
+    JSON.parse(packageSource).scripts["content:author:doctor"],
+    "node --experimental-strip-types scripts/report-author-doctor.mjs",
   );
   assert.match(plugin, /shell:\s*false/);
   assert.match(plugin, /--push/);

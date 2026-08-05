@@ -10,6 +10,29 @@ const CONTENT_REVIEW_DELIVERY_RECEIPT_VERSION = 1;
 const CONTENT_PUBLISH_DELIVERY_REPORT_VERSION = 1;
 const CONTENT_PUBLISH_DELIVERY_RECEIPT_VERSION = 1;
 const CONTENT_DELIVERY_TRIAGE_REPORT_VERSION = 1;
+const AUTHOR_DOCTOR_REPORT_VERSION = 1;
+const AUTHOR_DOCTOR_NODE_ENGINE = ">=22.13.0";
+const AUTHOR_DOCTOR_PLUGIN_VERSION = "1.13.0";
+const AUTHOR_DOCTOR_REQUIRED_SCRIPTS = [
+  "content:author:doctor",
+  "content:delivery:status",
+  "content:inbox",
+  "content:publish",
+  "content:publish:deliver",
+  "content:publish:status",
+  "content:review",
+  "content:review:deliver",
+  "content:review:status",
+  "content:status",
+  "release:check",
+];
+const AUTHOR_DOCTOR_REQUIRED_PATHS = [
+  { kind: "directory", path: "content/inbox" },
+  { kind: "directory", path: "content/posts" },
+  { kind: "directory", path: "content/projects" },
+  { kind: "file", path: "docs/STATUS.md" },
+  { kind: "directory", path: "templates/obsidian" },
+];
 const GIT_OBJECT_ID_PATTERN = /^(?:[a-f0-9]{40}|[a-f0-9]{64})$/u;
 const CONTENT_REVIEW_DELIVERY_STATUSES = [
   "synchronized",
@@ -1247,6 +1270,426 @@ function parseContentDeliveryTriageReport(output) {
   return report;
 }
 
+function normalizeAuthorDoctorRoot(value) {
+  const normalized = value.replace(/\\/gu, "/").replace(/\/+$/u, "");
+  return /^[A-Za-z]:\//u.test(normalized)
+    ? normalized.toLocaleLowerCase("en-US")
+    : normalized;
+}
+
+function authorDoctorVersionAtLeast(value, minimum) {
+  const actual = value.match(/^v(\d+)\.(\d+)\.(\d+)(?:[-+].*)?$/u);
+  const expected = minimum.match(/^(\d+)\.(\d+)\.(\d+)(?:[-+].*)?$/u);
+  if (!actual || !expected) return false;
+  for (let index = 1; index <= 3; index += 1) {
+    const left = Number(actual[index]);
+    const right = Number(expected[index]);
+    if (left !== right) return left > right;
+  }
+  return true;
+}
+
+function deriveAuthorDoctorChecks(observation) {
+  const requiredScripts = new Set(AUTHOR_DOCTOR_REQUIRED_SCRIPTS);
+  const scriptNames = new Set(observation.workspace.scriptNames);
+  const scriptsReady =
+    scriptNames.size === observation.workspace.scriptNames.length &&
+    AUTHOR_DOCTOR_REQUIRED_SCRIPTS.every((name) => scriptNames.has(name));
+  const pathsReady = AUTHOR_DOCTOR_REQUIRED_PATHS.every((required, index) => {
+    const observed = observation.workspace.paths[index];
+    return (
+      observed?.kind === required.kind &&
+      observed.path === required.path &&
+      observed.present === true
+    );
+  });
+  const localHead = observation.repository.localHead;
+  const trackingHead = observation.repository.trackingHead;
+  const baselineReady =
+    observation.repository.upstream === "origin/main" &&
+    observation.repository.relation === "synchronized" &&
+    localHead !== null &&
+    GIT_OBJECT_ID_PATTERN.test(localHead) &&
+    trackingHead === localHead;
+  const plugin = observation.vault.plugin;
+  const pluginReady =
+    plugin?.id === "myblog-publisher" &&
+    plugin.version === AUTHOR_DOCTOR_PLUGIN_VERSION &&
+    plugin.isDesktopOnly === true &&
+    plugin.mainPresent === true &&
+    plugin.stylesPresent === true;
+  const identityObserved = `${observation.identity.nameConfigured ? "name configured" : "name missing"} · ${observation.identity.emailConfigured ? "email configured" : "email missing"}`;
+  const definitions = [
+    {
+      expected: AUTHOR_DOCTOR_NODE_ENGINE,
+      group: "runtime",
+      id: "node-runtime",
+      label: "Node.js runtime",
+      observed: observation.nodeVersion,
+      pass: authorDoctorVersionAtLeast(observation.nodeVersion, "22.13.0"),
+      repair: "安装 Node.js 22.13.0 或更高版本后重启 Obsidian",
+    },
+    {
+      expected: "available semantic version",
+      group: "runtime",
+      id: "npm-cli",
+      label: "npm CLI",
+      observed: observation.npmVersion ?? "missing",
+      pass:
+        observation.npmVersion !== null &&
+        /^\d+\.\d+\.\d+(?:[-+].*)?$/u.test(observation.npmVersion),
+      repair: "重新安装受支持的 Node.js（应同时提供 npm）",
+    },
+    {
+      expected: "available version",
+      group: "runtime",
+      id: "git-cli",
+      label: "Git CLI",
+      observed: observation.gitVersion ?? "missing",
+      pass:
+        observation.gitVersion !== null &&
+        /^git version \d+\.\d+\.\d+(?:[.-][0-9A-Za-z]+)*$/u.test(
+          observation.gitVersion,
+        ),
+      repair: "安装 Git 后重启 Obsidian",
+    },
+    {
+      expected: "current directory equals Git toplevel",
+      group: "git",
+      id: "repository-root",
+      label: "Repository root",
+      observed: observation.repository.root ?? "missing",
+      pass:
+        observation.repository.root !== null &&
+        normalizeAuthorDoctorRoot(observation.currentDirectory) ===
+          normalizeAuthorDoctorRoot(observation.repository.root),
+      repair: "把当前 Vault 设为 MyBlog 仓库根目录",
+    },
+    {
+      expected: "main",
+      group: "git",
+      id: "main-branch",
+      label: "Current branch",
+      observed: observation.repository.currentBranch ?? "detached HEAD",
+      pass: observation.repository.currentBranch === "main",
+      repair: "切换到 main 后重新检查",
+    },
+    {
+      expected: "main -> origin/main synchronized",
+      group: "git",
+      id: "delivery-baseline",
+      label: "Delivery baseline",
+      observed: `${observation.repository.upstream ?? "no upstream"} · ${observation.repository.relation ?? "unavailable"}`,
+      pass: baselineReady,
+      repair: "运行 npm run content:delivery:status 检查本地交付状态",
+    },
+    {
+      expected: "user.name and user.email configured",
+      group: "git",
+      id: "author-identity",
+      label: "Author identity",
+      observed: identityObserved,
+      pass:
+        observation.identity.nameConfigured &&
+        observation.identity.emailConfigured,
+      repair: "配置 Git user.name 与 user.email 后重新检查",
+    },
+    {
+      expected: `zach424-myblog · node ${AUTHOR_DOCTOR_NODE_ENGINE}`,
+      group: "workspace",
+      id: "workspace-contract",
+      label: "Workspace contract",
+      observed: `${observation.workspace.packageName ?? "missing"} · node ${observation.workspace.nodeEngine ?? "missing"}`,
+      pass:
+        observation.workspace.packageName === "zach424-myblog" &&
+        observation.workspace.nodeEngine === AUTHOR_DOCTOR_NODE_ENGINE,
+      repair: "恢复仓库根 package.json 的项目名称与 Node engines 契约",
+    },
+    {
+      expected: `${AUTHOR_DOCTOR_REQUIRED_SCRIPTS.length} required author scripts`,
+      group: "workspace",
+      id: "npm-scripts",
+      label: "Author scripts",
+      observed: `${observation.workspace.scriptNames.filter((name) => requiredScripts.has(name)).length}/${AUTHOR_DOCTOR_REQUIRED_SCRIPTS.length} required scripts`,
+      pass: scriptsReady,
+      repair: "恢复 package.json 中缺失的作者脚本",
+    },
+    {
+      expected: "all declared packages installed at pinned versions",
+      group: "workspace",
+      id: "workspace-dependencies",
+      label: "Workspace dependencies",
+      observed:
+        observation.workspace.dependencyIssues.length === 0
+          ? `${observation.workspace.dependencyMatching}/${observation.workspace.dependencyExpected} pinned packages`
+          : observation.workspace.dependencyIssues.join(" · "),
+      pass:
+        observation.workspace.dependencyMatching ===
+          observation.workspace.dependencyExpected &&
+        observation.workspace.dependencyIssues.length === 0,
+      repair: "在仓库根运行 npm ci",
+    },
+    {
+      expected: `${AUTHOR_DOCTOR_REQUIRED_PATHS.length} required authoring paths`,
+      group: "workspace",
+      id: "content-layout",
+      label: "Content layout",
+      observed: `${observation.workspace.paths.filter((path) => path.present).length}/${AUTHOR_DOCTOR_REQUIRED_PATHS.length} required paths`,
+      pass: pathsReady,
+      repair: "恢复缺失的内容目录、模板或 docs/STATUS.md",
+    },
+    {
+      expected: ".obsidian directory present",
+      group: "vault",
+      id: "obsidian-vault",
+      label: "Obsidian Vault",
+      observed: observation.vault.obsidianDirectoryPresent
+        ? ".obsidian present"
+        : ".obsidian missing",
+      pass: observation.vault.obsidianDirectoryPresent,
+      repair: "把仓库根作为 Obsidian Vault 打开",
+    },
+    {
+      expected: `myblog-publisher ${AUTHOR_DOCTOR_PLUGIN_VERSION} desktop plugin`,
+      group: "vault",
+      id: "publisher-plugin",
+      label: "MyBlog Publisher",
+      observed: plugin
+        ? `${plugin.id}@${plugin.version} · ${plugin.isDesktopOnly ? "desktop" : "not desktop"}`
+        : "missing",
+      pass: pluginReady,
+      repair: `重新安装或启用 MyBlog Publisher ${AUTHOR_DOCTOR_PLUGIN_VERSION}`,
+    },
+  ];
+  return definitions.map(({ pass, repair, ...evidence }) => ({
+    ...evidence,
+    resolution: pass ? null : repair,
+    status: pass ? "pass" : "attention",
+  }));
+}
+
+function parseAuthorDoctorReport(output, expectedRoot) {
+  let report;
+  try {
+    report = JSON.parse(output);
+  } catch {
+    throw new Error("作者环境自检证据不是有效 JSON");
+  }
+  const label = "作者环境自检证据";
+  assertPlainObject(report, label);
+  assertExactKeys(
+    report,
+    ["version", "mode", "status", "observation", "summary", "checks", "safety"],
+    label,
+  );
+  if (report.version !== AUTHOR_DOCTOR_REPORT_VERSION) {
+    valueError(`${label} version`, `必须是 ${AUTHOR_DOCTOR_REPORT_VERSION}`);
+  }
+  if (report.mode !== "read-only") valueError(`${label} mode`, "必须是 read-only");
+  if (!new Set(["ready", "needs-attention"]).has(report.status)) {
+    valueError(`${label} status`, "不是受支持的状态");
+  }
+
+  const observation = report.observation;
+  assertPlainObject(observation, `${label} observation`);
+  assertExactKeys(
+    observation,
+    ["currentDirectory", "gitVersion", "identity", "nodeVersion", "npmVersion", "repository", "vault", "workspace"],
+    `${label} observation`,
+  );
+  for (const field of ["currentDirectory", "nodeVersion"]) {
+    assertNonEmptyString(observation[field], `${label} observation.${field}`);
+  }
+  for (const field of ["gitVersion", "npmVersion"]) {
+    if (observation[field] !== null) {
+      assertNonEmptyString(observation[field], `${label} observation.${field}`);
+    }
+  }
+  if (/[ -]/u.test(observation.currentDirectory)) {
+    valueError(`${label} observation.currentDirectory`, "不能包含控制字符");
+  }
+  if (
+    expectedRoot &&
+    normalizeAuthorDoctorRoot(observation.currentDirectory) !==
+      normalizeAuthorDoctorRoot(expectedRoot)
+  ) {
+    valueError(`${label} observation.currentDirectory`, "必须是当前 Vault 根目录");
+  }
+
+  assertPlainObject(observation.identity, `${label} observation.identity`);
+  assertExactKeys(
+    observation.identity,
+    ["emailConfigured", "nameConfigured"],
+    `${label} observation.identity`,
+  );
+  for (const value of Object.values(observation.identity)) {
+    if (typeof value !== "boolean") {
+      valueError(`${label} observation.identity`, "字段必须是布尔值");
+    }
+  }
+
+  assertPlainObject(observation.repository, `${label} observation.repository`);
+  assertExactKeys(
+    observation.repository,
+    ["currentBranch", "localHead", "relation", "root", "trackingHead", "upstream"],
+    `${label} observation.repository`,
+  );
+  for (const field of ["currentBranch", "root", "upstream"]) {
+    if (observation.repository[field] !== null) {
+      assertNonEmptyString(
+        observation.repository[field],
+        `${label} observation.repository.${field}`,
+      );
+    }
+  }
+  for (const field of ["localHead", "trackingHead"]) {
+    if (observation.repository[field] !== null) {
+      assertGitObjectId(
+        observation.repository[field],
+        `${label} observation.repository.${field}`,
+      );
+    }
+  }
+  if (
+    observation.repository.relation !== null &&
+    !new Set(["synchronized", "local-ahead", "behind", "diverged", "tracking-missing"]).has(
+      observation.repository.relation,
+    )
+  ) {
+    valueError(`${label} observation.repository.relation`, "不是受支持的关系");
+  }
+
+  const workspace = observation.workspace;
+  assertPlainObject(workspace, `${label} observation.workspace`);
+  assertExactKeys(
+    workspace,
+    ["dependencyExpected", "dependencyIssues", "dependencyMatching", "nodeEngine", "packageName", "paths", "scriptNames"],
+    `${label} observation.workspace`,
+  );
+  for (const field of ["dependencyExpected", "dependencyMatching"]) {
+    assertInteger(workspace[field], `${label} observation.workspace.${field}`, 0);
+  }
+  if (workspace.dependencyMatching > workspace.dependencyExpected) {
+    valueError(`${label} observation.workspace`, "依赖匹配数不能超过声明数");
+  }
+  for (const field of ["nodeEngine", "packageName"]) {
+    if (workspace[field] !== null) {
+      assertNonEmptyString(workspace[field], `${label} observation.workspace.${field}`);
+    }
+  }
+  for (const field of ["dependencyIssues", "scriptNames"]) {
+    if (!Array.isArray(workspace[field])) {
+      valueError(`${label} observation.workspace.${field}`, "必须是数组");
+    }
+    for (const value of workspace[field]) {
+      assertNonEmptyString(value, `${label} observation.workspace.${field}`);
+    }
+    if (new Set(workspace[field]).size !== workspace[field].length) {
+      valueError(`${label} observation.workspace.${field}`, "不能重复");
+    }
+  }
+  if (!Array.isArray(workspace.paths)) {
+    valueError(`${label} observation.workspace.paths`, "必须是数组");
+  }
+  if (workspace.paths.length !== AUTHOR_DOCTOR_REQUIRED_PATHS.length) {
+    valueError(`${label} observation.workspace.paths`, "必须包含固定作者路径");
+  }
+  workspace.paths.forEach((path, index) => {
+    assertPlainObject(path, `${label} observation.workspace.paths[${index}]`);
+    assertExactKeys(
+      path,
+      ["kind", "path", "present"],
+      `${label} observation.workspace.paths[${index}]`,
+    );
+    const expected = AUTHOR_DOCTOR_REQUIRED_PATHS[index];
+    if (
+      path.kind !== expected.kind ||
+      path.path !== expected.path ||
+      typeof path.present !== "boolean"
+    ) {
+      valueError(`${label} observation.workspace.paths[${index}]`, "与固定路径契约不一致");
+    }
+  });
+
+  assertPlainObject(observation.vault, `${label} observation.vault`);
+  assertExactKeys(
+    observation.vault,
+    ["obsidianDirectoryPresent", "plugin"],
+    `${label} observation.vault`,
+  );
+  if (typeof observation.vault.obsidianDirectoryPresent !== "boolean") {
+    valueError(`${label} observation.vault.obsidianDirectoryPresent`, "必须是布尔值");
+  }
+  if (observation.vault.plugin !== null) {
+    assertPlainObject(observation.vault.plugin, `${label} observation.vault.plugin`);
+    assertExactKeys(
+      observation.vault.plugin,
+      ["id", "isDesktopOnly", "mainPresent", "stylesPresent", "version"],
+      `${label} observation.vault.plugin`,
+    );
+    for (const field of ["id", "version"]) {
+      assertNonEmptyString(
+        observation.vault.plugin[field],
+        `${label} observation.vault.plugin.${field}`,
+      );
+    }
+    for (const field of ["isDesktopOnly", "mainPresent", "stylesPresent"]) {
+      if (typeof observation.vault.plugin[field] !== "boolean") {
+        valueError(`${label} observation.vault.plugin.${field}`, "必须是布尔值");
+      }
+    }
+  }
+
+  const expectedChecks = deriveAuthorDoctorChecks(observation);
+  if (!Array.isArray(report.checks) || report.checks.length !== expectedChecks.length) {
+    valueError(`${label} checks`, "必须包含固定的 13 项检查");
+  }
+  expectedChecks.forEach((expected, index) => {
+    const actual = report.checks[index];
+    assertPlainObject(actual, `${label} checks[${index}]`);
+    assertExactKeys(
+      actual,
+      ["expected", "group", "id", "label", "observed", "resolution", "status"],
+      `${label} checks[${index}]`,
+    );
+    for (const field of ["expected", "group", "id", "label", "observed", "resolution", "status"]) {
+      if (actual[field] !== expected[field]) {
+        valueError(`${label} checks[${index}].${field}`, "与原始观测派生结果不一致");
+      }
+    }
+  });
+
+  const passed = expectedChecks.filter((item) => item.status === "pass").length;
+  const attention = expectedChecks.length - passed;
+  assertPlainObject(report.summary, `${label} summary`);
+  assertExactKeys(
+    report.summary,
+    ["attention", "passed", "total"],
+    `${label} summary`,
+  );
+  if (
+    report.summary.attention !== attention ||
+    report.summary.passed !== passed ||
+    report.summary.total !== expectedChecks.length ||
+    report.status !== (attention === 0 ? "ready" : "needs-attention")
+  ) {
+    valueError(`${label} summary`, "与固定检查结果不一致");
+  }
+
+  assertPlainObject(report.safety, `${label} safety`);
+  assertExactKeys(
+    report.safety,
+    ["configurationChanged", "credentialsRead", "filesChanged", "networkChecked"],
+    `${label} safety`,
+  );
+  for (const field of Object.keys(report.safety)) {
+    if (report.safety[field] !== false) {
+      valueError(`${label} safety.${field}`, "必须是 false");
+    }
+  }
+  return report;
+}
+
 function parseContentPublishDeliveryReceipt(output) {
   let receipt;
   try {
@@ -1692,6 +2135,136 @@ class ContentDeliveryTriageTextModal extends ReadOnlyReportModal {
         "结构化分诊证据不可用，以下为重新执行后的本地只读文本；没有 fetch、push 或路由命令执行。",
       report,
       title: "Git 交付恢复分诊 · 纯文本",
+    });
+  }
+}
+
+class AuthorDoctorTextModal extends ReadOnlyReportModal {
+  constructor(app, report) {
+    super(app, {
+      description:
+        "结构化作者环境证据不可用，以下为重新执行后的本地只读文本；不会安装依赖、修改配置、读取凭据或访问网络。",
+      report,
+      title: "本机发布环境自检 · 纯文本",
+    });
+  }
+}
+
+function createAuthorDoctorCheck(container, check) {
+  const row = container.createEl("div", {
+    cls: "myblog-author-doctor__check",
+  });
+  row.setAttr("data-state", check.status);
+  const term = row.createEl("dt");
+  term.createEl("span", {
+    cls: "myblog-author-doctor__check-state",
+    text: check.status === "pass" ? "PASS" : "ATTENTION",
+  });
+  term.createEl("span", { text: check.label });
+  const detail = row.createEl("dd");
+  detail.createEl("code", { text: check.observed });
+  detail.createEl("p", {
+    cls: "myblog-author-doctor__expected",
+    text: `Expected · ${check.expected}`,
+  });
+  if (check.resolution) {
+    detail.createEl("p", {
+      cls: "myblog-author-doctor__resolution",
+      text: `修复 · ${check.resolution}`,
+    });
+  }
+  return row;
+}
+
+class AuthorDoctorModal extends Modal {
+  constructor(app, report) {
+    super(app);
+    this.report = report;
+  }
+
+  onOpen() {
+    const { contentEl, report } = this;
+    const ready = report.status === "ready";
+    const groups = [
+      ["runtime", "RUNTIME"],
+      ["git", "GIT"],
+      ["workspace", "WORKSPACE"],
+      ["vault", "VAULT"],
+    ];
+    contentEl.empty();
+    contentEl.addClass("myblog-author-doctor");
+    contentEl.setAttr("data-status", report.status);
+    contentEl.createEl("p", {
+      cls: "myblog-author-doctor__eyebrow",
+      text: "AUTHOR PREFLIGHT / LOCAL ONLY",
+    });
+    contentEl.createEl("h2", {
+      cls: "myblog-author-doctor__title",
+      text: "本机发布环境自检",
+    });
+    contentEl.createEl("p", {
+      cls: "myblog-author-doctor__boundary",
+      text: "只读取本机运行时、Git、工作区与 Vault 的发布前置条件；不会安装依赖、修改配置、读取凭据或访问网络。",
+    });
+
+    const circuit = contentEl.createEl("section", {
+      cls: "myblog-author-doctor__circuit",
+    });
+    circuit.setAttr(
+      "aria-label",
+      `作者发布前电路：${ready ? "AUTHOR READY" : "HOLD"}`,
+    );
+    circuit.createEl("p", {
+      cls: "myblog-author-doctor__circuit-label",
+      text: `PREFLIGHT CIRCUIT / ${ready ? "AUTHOR READY" : "HOLD"}`,
+    });
+    const stations = circuit.createEl("div", {
+      cls: "myblog-author-doctor__stations",
+    });
+    for (const [group, label] of groups) {
+      const checks = report.checks.filter((item) => item.group === group);
+      const passed = checks.filter((item) => item.status === "pass").length;
+      const stationReady = passed === checks.length;
+      const station = stations.createEl("div", {
+        cls: "myblog-author-doctor__station",
+      });
+      station.setAttr("data-state", stationReady ? "pass" : "attention");
+      station.createEl("p", {
+        cls: "myblog-author-doctor__station-label",
+        text: `${label} / ${stationReady ? "PASS" : "HOLD"}`,
+      });
+      station.createEl("p", {
+        cls: "myblog-author-doctor__station-count",
+        text: `${passed}/${checks.length}`,
+      });
+    }
+    circuit.createEl("p", {
+      cls: "myblog-author-doctor__endpoint",
+      text: ready ? "AUTHOR READY" : "AUTHOR HOLD",
+    });
+    circuit.createEl("p", {
+      cls: "myblog-author-doctor__summary",
+      text: `${report.summary.passed} PASS / ${report.summary.attention} ATTENTION`,
+    });
+
+    const ledger = contentEl.createEl("section", {
+      cls: "myblog-author-doctor__ledger",
+    });
+    ledger.setAttr("aria-label", "作者发布环境检查证据");
+    for (const [group, label] of groups) {
+      const section = ledger.createEl("section", {
+        cls: "myblog-author-doctor__group",
+      });
+      section.createEl("h3", { text: label });
+      const list = section.createEl("dl");
+      for (const item of report.checks.filter((check) => check.group === group)) {
+        createAuthorDoctorCheck(list, item);
+      }
+    }
+
+    contentEl.createEl("p", {
+      cls: "myblog-author-doctor__note",
+      text: "该自检只证明本机前置条件；不会安装依赖、修改配置、读取凭据或访问网络，也不替代 content status、delivery status 或 release:check。",
     });
   }
 }
@@ -2586,6 +3159,12 @@ module.exports = class MyBlogPublisher extends Plugin {
     });
 
     this.addCommand({
+      id: "inspect-author-environment",
+      name: "检查本机发布环境",
+      checkCallback: (checking) => this.inspectAuthorEnvironment(checking),
+    });
+
+    this.addCommand({
       id: "inspect-delivery-triage",
       name: "查看 Git 交付恢复",
       checkCallback: (checking) => this.inspectDeliveryTriage(checking),
@@ -2863,6 +3442,62 @@ module.exports = class MyBlogPublisher extends Plugin {
         startFailure: "Git 交付恢复分诊命令无法启动",
       },
       (output) => this.openStructuredDeliveryTriage(output),
+    );
+  }
+
+  inspectAuthorEnvironment(checking) {
+    if (!this.isDesktopVault()) return false;
+    if (checking) return true;
+    return this.runRepositoryCommand(
+      [
+        "--silent",
+        "run",
+        "content:author:doctor",
+        "--",
+        "--format",
+        "json",
+      ],
+      {
+        allowedExitCodes: [0, 1],
+        failure: "本机发布环境自检未完成",
+        progress: "正在读取本机作者发布前置条件…",
+        startFailure: "本机发布环境自检命令无法启动",
+      },
+      (output) => this.openStructuredAuthorEnvironment(output),
+    );
+  }
+
+  openStructuredAuthorEnvironment(output) {
+    try {
+      const root = this.app.vault.adapter.getBasePath();
+      const report = parseAuthorDoctorReport(output, root);
+      new AuthorDoctorModal(this.app, report).open();
+      new Notice(
+        report.status === "ready"
+          ? "本机发布环境已就绪。"
+          : `本机发布环境有 ${report.summary.attention} 项需要处理。`,
+        6000,
+      );
+    } catch (error) {
+      new Notice(
+        `结构化作者环境证据不可用：${error.message}。正在重新读取本地纯文本证据…`,
+        10000,
+      );
+      this.inspectAuthorEnvironmentText();
+    }
+  }
+
+  inspectAuthorEnvironmentText() {
+    return this.runRepositoryCommand(
+      ["--silent", "run", "content:author:doctor"],
+      {
+        allowedExitCodes: [0, 1],
+        failure: "纯文本本机发布环境自检未完成",
+        progress: "正在读取本机纯文本作者环境证据…",
+        startFailure: "纯文本本机发布环境自检命令无法启动",
+        success: "已打开纯文本本机发布环境自检。",
+      },
+      (report) => new AuthorDoctorTextModal(this.app, report).open(),
     );
   }
 

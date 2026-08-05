@@ -544,6 +544,99 @@ function deliveryTriageReport({
   };
 }
 
+function authorDoctorReport() {
+  const checkDefinitions = [
+    ["node-runtime", "runtime", "Node.js runtime", "v24.14.0", ">=22.13.0"],
+    ["npm-cli", "runtime", "npm CLI", "11.9.0", "available semantic version"],
+    ["git-cli", "runtime", "Git CLI", "git version 2.37.1.windows.1", "available version"],
+    ["repository-root", "git", "Repository root", "D:/Study/blog", "current directory equals Git toplevel"],
+    ["main-branch", "git", "Current branch", "main", "main"],
+    ["delivery-baseline", "git", "Delivery baseline", "origin/main · synchronized", "main -> origin/main synchronized"],
+    ["author-identity", "git", "Author identity", "name configured · email configured", "user.name and user.email configured"],
+    ["workspace-contract", "workspace", "Workspace contract", "zach424-myblog · node >=22.13.0", "zach424-myblog · node >=22.13.0"],
+    ["npm-scripts", "workspace", "Author scripts", "11/11 required scripts", "11 required author scripts"],
+    ["workspace-dependencies", "workspace", "Workspace dependencies", "35/35 pinned packages", "all declared packages installed at pinned versions"],
+    ["content-layout", "workspace", "Content layout", "5/5 required paths", "5 required authoring paths"],
+    ["obsidian-vault", "vault", "Obsidian Vault", ".obsidian present", ".obsidian directory present"],
+    ["publisher-plugin", "vault", "MyBlog Publisher", "myblog-publisher@1.13.0 · desktop", "myblog-publisher 1.13.0 desktop plugin"],
+  ];
+  const scripts = [
+    "content:author:doctor",
+    "content:delivery:status",
+    "content:inbox",
+    "content:publish",
+    "content:publish:deliver",
+    "content:publish:status",
+    "content:review",
+    "content:review:deliver",
+    "content:review:status",
+    "content:status",
+    "release:check",
+  ];
+  const paths = [
+    ["content/inbox", "directory"],
+    ["content/posts", "directory"],
+    ["content/projects", "directory"],
+    ["docs/STATUS.md", "file"],
+    ["templates/obsidian", "directory"],
+  ].map(([path, kind]) => ({ kind, path, present: true }));
+  return {
+    version: 1,
+    mode: "read-only",
+    status: "ready",
+    observation: {
+      currentDirectory: "D:/Study/blog",
+      gitVersion: "git version 2.37.1.windows.1",
+      identity: { emailConfigured: true, nameConfigured: true },
+      nodeVersion: "v24.14.0",
+      npmVersion: "11.9.0",
+      repository: {
+        currentBranch: "main",
+        localHead: "a".repeat(40),
+        relation: "synchronized",
+        root: "D:/Study/blog",
+        trackingHead: "a".repeat(40),
+        upstream: "origin/main",
+      },
+      vault: {
+        obsidianDirectoryPresent: true,
+        plugin: {
+          id: "myblog-publisher",
+          isDesktopOnly: true,
+          mainPresent: true,
+          stylesPresent: true,
+          version: "1.13.0",
+        },
+      },
+      workspace: {
+        dependencyExpected: 35,
+        dependencyIssues: [],
+        dependencyMatching: 35,
+        nodeEngine: ">=22.13.0",
+        packageName: "zach424-myblog",
+        paths,
+        scriptNames: scripts,
+      },
+    },
+    summary: { attention: 0, passed: 13, total: 13 },
+    checks: checkDefinitions.map(([id, group, label, observed, expected]) => ({
+      expected,
+      group,
+      id,
+      label,
+      observed,
+      resolution: null,
+      status: "pass",
+    })),
+    safety: {
+      configurationChanged: false,
+      credentialsRead: false,
+      filesChanged: false,
+      networkChecked: false,
+    },
+  };
+}
+
 function findCommand(harness, id) {
   const command = harness.commands.find((candidate) => candidate.id === id);
   assert.ok(command, `Expected command ${id}`);
@@ -557,7 +650,7 @@ test("renders a versioned maintenance ledger and opens an exact Vault note", asy
     createPluginHarness(),
   ]);
   const manifest = JSON.parse(manifestSource);
-  assert.equal(manifest.version, "1.12.0");
+  assert.equal(manifest.version, "1.13.0");
   assert.equal(manifest.isDesktopOnly, true);
   assert.match(styles, /^\.myblog-maintenance \{/mu);
   assert.match(styles, /\[data-status="overdue"\]/u);
@@ -569,6 +662,7 @@ test("renders a versioned maintenance ledger and opens an exact Vault note", asy
   assert.match(styles, /^\.myblog-review-delivery \{/mu);
   assert.match(styles, /^\.myblog-review-delivery-receipt \{/mu);
   assert.match(styles, /^\.myblog-delivery-triage \{/mu);
+  assert.match(styles, /^\.myblog-author-doctor \{/mu);
   assert.doesNotMatch(styles, /(?:linear-gradient|@keyframes|animation:)/u);
 
   const command = findCommand(harness, "inspect-published-maintenance");
@@ -832,6 +926,84 @@ test("routes one exact publication through a read-only delivery switchyard", asy
     findCommand(mobile, "inspect-delivery-triage").checkCallback(true),
     false,
   );
+});
+
+test("renders a local-only author preflight circuit without repairing it", async () => {
+  const [styles, harness] = await Promise.all([
+    readFile(stylesUrl, "utf8"),
+    createPluginHarness(),
+  ]);
+  const command = findCommand(harness, "inspect-author-environment");
+  assert.equal(command.checkCallback(true), true);
+  command.checkCallback(false);
+  assert.deepEqual(plain(harness.spawned[0].args), [
+    "/d",
+    "/s",
+    "/c",
+    "npm",
+    "--silent",
+    "run",
+    "content:author:doctor",
+    "--",
+    "--format",
+    "json",
+  ]);
+  harness.spawned[0].child.stdout.emit(
+    "data",
+    Buffer.from(JSON.stringify(authorDoctorReport())),
+  );
+  harness.spawned[0].child.emit("close", 0);
+
+  assert.equal(harness.modals.length, 1);
+  const modal = harness.modals[0];
+  assert.equal(modal.contentEl.classes.has("myblog-author-doctor"), true);
+  assert.equal(elementsByTag(modal, "button").length, 0);
+  const text = allElements(modal.contentEl).map((element) => element.text).join(" ");
+  assert.match(text, /AUTHOR PREFLIGHT \/ LOCAL ONLY/u);
+  assert.match(text, /PREFLIGHT CIRCUIT \/ AUTHOR READY/u);
+  assert.match(
+    text,
+    /RUNTIME \/ PASS.*GIT \/ PASS.*WORKSPACE \/ PASS.*VAULT \/ PASS/su,
+  );
+  assert.match(text, /13 PASS \/ 0 ATTENTION/u);
+  assert.match(text, /Node\.js runtime/u);
+  assert.match(text, /MyBlog Publisher/u);
+  assert.match(text, /不会安装依赖、修改配置、读取凭据或访问网络/u);
+  assert.match(styles, /myblog-author-doctor__circuit/u);
+  assert.match(styles, /myblog-author-doctor__station/u);
+  assert.equal(harness.spawned.length, 1);
+
+  const mobile = await createPluginHarness({ desktop: false });
+  assert.equal(
+    findCommand(mobile, "inspect-author-environment").checkCallback(true),
+    false,
+  );
+});
+
+test("falls back to pure text when author preflight evidence is inconsistent", async () => {
+  const harness = await createPluginHarness();
+  const report = authorDoctorReport();
+  report.summary.passed = 12;
+  findCommand(harness, "inspect-author-environment").checkCallback(false);
+  harness.spawned[0].child.stdout.emit("data", Buffer.from(JSON.stringify(report)));
+  harness.spawned[0].child.emit("close", 0);
+  assert.equal(harness.spawned.length, 2);
+  assert.deepEqual(plain(harness.spawned[1].args), [
+    "/d",
+    "/s",
+    "/c",
+    "npm",
+    "--silent",
+    "run",
+    "content:author:doctor",
+  ]);
+  harness.spawned[1].child.stdout.emit(
+    "data",
+    Buffer.from("[author-doctor] HOLD · 1 prerequisite needs attention."),
+  );
+  harness.spawned[1].child.emit("close", 1);
+  assert.equal(harness.modals.length, 1);
+  assert.match(elementsByTag(harness.modals[0], "pre")[0].text, /HOLD/u);
 });
 
 test("falls back without executing a route when triage evidence is inconsistent", async () => {
