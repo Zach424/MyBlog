@@ -77,13 +77,35 @@ module.exports = class MyBlogPublisher extends Plugin {
   onunload() {
     for (const [child, run] of [...this.activeRuns]) {
       run.cancel();
+      this.terminateChild(child);
+    }
+    this.activeRuns.clear();
+  }
+
+  terminateChild(child) {
+    const killDirectly = () => {
       try {
         child.kill();
       } catch {
         // The process may already have exited between the snapshot and kill.
       }
+    };
+
+    if (process.platform !== "win32" || !Number.isInteger(child.pid)) {
+      killDirectly();
+      return;
     }
-    this.activeRuns.clear();
+
+    try {
+      const killer = spawn(
+        "taskkill.exe",
+        ["/pid", String(child.pid), "/t", "/f"],
+        { shell: false, stdio: "ignore", windowsHide: true },
+      );
+      killer.on("error", killDirectly);
+    } catch {
+      killDirectly();
+    }
   }
 
   isDesktopVault() {

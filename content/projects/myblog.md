@@ -58,7 +58,7 @@ GitHub Actions 把 action 自身运行时和应用运行时分开管理：checko
 
 Studio 内容复核页复用正式维护报告，而不是在浏览器重写日期规则。动态 JSON 端点只映射已公开 Current 内容的标题、slug、状态、复核期限和两个安全导航目标，不返回正文、草稿或源文件路径；部署内容集合保持确定，报告日按请求时的 `Asia/Shanghai` 当天推进。浏览器严格核对版本、计数、日期、状态与 URL，再绘制 Review Horizon 和逐条账本；坏响应进入可重试失败态，不自动改日期或发送外部提醒。
 
-Obsidian 插件用固定参数数组和 `shell: false` 在 Vault 根目录启动同一 `content:status`，把报告以 `setText` 写入原生只读 Modal；Windows 通过隐藏 `cmd.exe` 运行 npm，POSIX 直接运行 npm。发布、inbox 和维护命令共享活动进程账本与 200,000 字符输出边界，成功、错误、非零退出或插件卸载都会关闭持续 Notice，卸载还会终止未完成子进程并忽略迟到事件。报告不访问网络、不写内容，也不改变正式构建门。
+Obsidian 插件用固定参数数组和 `shell: false` 在 Vault 根目录启动同一 `content:status`，把报告以 `setText` 写入原生只读 Modal；Windows 通过隐藏 `cmd.exe` 运行 npm，POSIX 直接运行 npm。发布、inbox 和维护命令共享活动进程账本与 200,000 字符输出边界，成功、错误、非零退出或插件卸载都会关闭持续 Notice；卸载在 Windows 以固定参数、无 shell 的 `taskkill.exe /T /F` 终止命令进程树，POSIX 直接终止子进程，并忽略迟到事件。报告不访问网络、不写内容，也不改变正式构建门。
 
 视觉系统以 Commit Trace 为唯一主要识别元素，把日期、文章类型和项目里程碑连成一条工程轨迹。Evidence Rail 只显示可验证状态，不展示虚构的完成率。
 

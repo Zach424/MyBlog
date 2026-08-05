@@ -44,7 +44,7 @@ Current record 至少每 180 天逐项复核一次架构、版本、状态、外
 
 日常可先打开 `/studio/maintenance` 查看 Review Horizon 和全库优先级，再从 `Edit entry` 进入稳定条目。该页面的内容集合来自当前部署、日期按请求时的 `Asia/Shanghai` 当天推进；因此修改只有在新 Production 上线后可见，但无需为了日期变化重新部署。接口只返回已公开 Current 内容的最小元数据，不返回正文、源路径、草稿或 Historical。页面失败时先点 `Retry`，仍失败再运行 `npm run content:status` 并检查 `/studio/maintenance.json` 的 HTTP 状态；不要用手工改日期或缓存快照替代复核。
 
-在本机 Vault 中也可从命令面板运行“查看已发布内容复核队列”。插件 1.2.0 只启动本地 `content:status` 并显示纯文本证据，零网络、零写入；Windows 子进程隐藏运行且不插入 shell 字符串。持续 Notice 若没有在命令终态消失，或插件关闭后仍存在 npm 进程，视为插件生命周期故障；可先禁用插件并在终端运行同一命令取证，再回滚插件提交。插件文件更新后，已打开的 Obsidian 需要重启或重新启用插件才能加载新版本。
+在本机 Vault 中也可从命令面板运行“查看已发布内容复核队列”。插件 1.2.0 只启动本地 `content:status` 并显示纯文本证据，零网络、零写入；Windows 报告子进程隐藏运行且不插入动态 shell 字符串，插件卸载时以固定 `taskkill.exe /T /F` 参数清理整棵命令进程树，POSIX 直接终止子进程。持续 Notice 若没有在命令终态消失，或插件关闭后仍存在 npm 进程，视为插件生命周期故障；可先禁用插件并在终端运行同一命令取证，再回滚插件提交。插件文件更新后，已打开的 Obsidian 需要重启或重新启用插件才能加载新版本。
 
 外部链接使用 `npm run links:external` 做本地确定性库存；命令默认不访问网络并随 `release:check` 输出。需要现场证据时运行 `npm run links:external -- --check`，但 403/429、HEAD 不支持、5xx、超时和网络错误只进入人工复核，不能直接作为生产事故或默认构建失败。检查器不下载正文、不访问私网、不改写链接；若显式 `--fail-on-broken` 返回失败，先在普通浏览器复核确定 4xx 或坏重定向再修改内容。
 

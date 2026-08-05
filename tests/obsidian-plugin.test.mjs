@@ -99,6 +99,7 @@ async function createPluginHarness({ desktop = true, platform = "win32" } = {}) 
 
   const spawn = (executable, args, options) => {
     const child = createEmitter();
+    child.pid = 1000 + spawned.length;
     child.stdout = createEmitter();
     child.stderr = createEmitter();
     child.killed = false;
@@ -223,8 +224,22 @@ test("keeps reports desktop-only and cleans up failures and active children", as
 
   harness.plugin.onunload();
   assert.equal(harness.plugin.activeRuns.size, 0);
-  assert.equal(harness.spawned[1].child.killed, true);
   assert.equal(harness.notices[1].hidden, true);
+  assert.equal(harness.spawned.length, 3);
+  assert.equal(harness.spawned[2].executable, "taskkill.exe");
+  assert.deepEqual(plain(harness.spawned[2].args), [
+    "/pid",
+    String(harness.spawned[1].child.pid),
+    "/t",
+    "/f",
+  ]);
+  assert.deepEqual(plain(harness.spawned[2].options), {
+    shell: false,
+    stdio: "ignore",
+    windowsHide: true,
+  });
+  harness.spawned[2].child.emit("error", new Error("taskkill unavailable"));
+  assert.equal(harness.spawned[1].child.killed, true);
 });
 
 test("runs the maintenance report without a shell on POSIX desktops", async () => {
@@ -241,4 +256,7 @@ test("runs the maintenance report without a shell on POSIX desktops", async () =
   ]);
   assert.equal(harness.spawned[0].options.shell, false);
   assert.equal(harness.spawned[0].options.windowsHide, true);
+  harness.plugin.onunload();
+  assert.equal(harness.spawned.length, 1);
+  assert.equal(harness.spawned[0].child.killed, true);
 });
