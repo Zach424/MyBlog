@@ -3,6 +3,283 @@ const { FileSystemAdapter, Modal, Notice, Plugin } = require("obsidian");
 const { spawn } = require("node:child_process");
 
 const MAX_CAPTURED_OUTPUT = 200_000;
+const MAINTENANCE_REPORT_VERSION = 1;
+const MAINTENANCE_STATUSES = [
+  "healthy",
+  "review-soon",
+  "due-soon",
+  "overdue",
+];
+const STATUS_LABELS = {
+  healthy: "健康",
+  "review-soon": "进入复核窗口",
+  "due-soon": "即将到期",
+  overdue: "已过期",
+};
+const STATUS_ORDER = {
+  overdue: 0,
+  "due-soon": 1,
+  "review-soon": 2,
+  healthy: 3,
+};
+
+function valueError(label, expectation) {
+  throw new Error(`${label} ${expectation}`);
+}
+
+function assertPlainObject(value, label) {
+  if (!value || typeof value !== "object" || Array.isArray(value)) {
+    valueError(label, "必须是对象");
+  }
+}
+
+function assertExactKeys(value, keys, label) {
+  const actual = Object.keys(value).sort();
+  const expected = [...keys].sort();
+  if (
+    actual.length !== expected.length ||
+    actual.some((key, index) => key !== expected[index])
+  ) {
+    valueError(label, `字段必须严格为 ${expected.join(", ")}`);
+  }
+}
+
+function assertInteger(value, label, minimum = Number.NEGATIVE_INFINITY) {
+  if (!Number.isInteger(value) || value < minimum) {
+    valueError(label, `必须是大于等于 ${minimum} 的整数`);
+  }
+}
+
+function assertNonEmptyString(value, label) {
+  if (typeof value !== "string" || value.trim() !== value || value.length === 0) {
+    valueError(label, "必须是无首尾空白的非空字符串");
+  }
+}
+
+function parseIsoDate(value, label) {
+  if (typeof value !== "string" || !/^\d{4}-\d{2}-\d{2}$/u.test(value)) {
+    valueError(label, "必须是 YYYY-MM-DD 日期");
+  }
+  const date = new Date(`${value}T00:00:00.000Z`);
+  if (
+    Number.isNaN(date.getTime()) ||
+    date.toISOString().slice(0, 10) !== value
+  ) {
+    valueError(label, "不是有效日期");
+  }
+  return date;
+}
+
+function addIsoDays(value, days) {
+  const date = parseIsoDate(value, "日期");
+  date.setUTCDate(date.getUTCDate() + days);
+  return date.toISOString().slice(0, 10);
+}
+
+function dayDifference(later, earlier) {
+  return (later.getTime() - earlier.getTime()) / 86_400_000;
+}
+
+function expectedStatus(remainingDays, thresholds) {
+  if (remainingDays < 0) return "overdue";
+  if (remainingDays <= thresholds.dueSoonDays) return "due-soon";
+  if (remainingDays <= thresholds.reviewSoonDays) return "review-soon";
+  return "healthy";
+}
+
+function parseMaintenanceReport(output) {
+  let report;
+  try {
+    report = JSON.parse(output);
+  } catch {
+    throw new Error("维护报告不是有效 JSON");
+  }
+
+  assertPlainObject(report, "维护报告");
+  assertExactKeys(
+    report,
+    [
+      "version",
+      "buildDate",
+      "counts",
+      "currentCount",
+      "excludedCount",
+      "historicalCount",
+      "maxAgeDays",
+      "records",
+      "reviewChecklist",
+      "thresholds",
+    ],
+    "维护报告",
+  );
+  if (report.version !== MAINTENANCE_REPORT_VERSION) {
+    valueError(
+      "维护报告 version",
+      `必须是 ${MAINTENANCE_REPORT_VERSION}`,
+    );
+  }
+
+  const buildDate = parseIsoDate(report.buildDate, "维护报告 buildDate");
+  assertInteger(report.currentCount, "维护报告 currentCount", 0);
+  assertInteger(report.excludedCount, "维护报告 excludedCount", 0);
+  assertInteger(report.historicalCount, "维护报告 historicalCount", 0);
+  assertInteger(report.maxAgeDays, "维护报告 maxAgeDays", 1);
+
+  assertPlainObject(report.thresholds, "维护报告 thresholds");
+  assertExactKeys(
+    report.thresholds,
+    ["dueSoonDays", "reviewSoonDays"],
+    "维护报告 thresholds",
+  );
+  assertInteger(
+    report.thresholds.dueSoonDays,
+    "维护报告 thresholds.dueSoonDays",
+    0,
+  );
+  assertInteger(
+    report.thresholds.reviewSoonDays,
+    "维护报告 thresholds.reviewSoonDays",
+    0,
+  );
+  if (
+    report.thresholds.dueSoonDays > report.thresholds.reviewSoonDays ||
+    report.thresholds.reviewSoonDays > report.maxAgeDays
+  ) {
+    valueError(
+      "维护报告 thresholds",
+      "必须满足 dueSoonDays ≤ reviewSoonDays ≤ maxAgeDays",
+    );
+  }
+
+  assertPlainObject(report.counts, "维护报告 counts");
+  assertExactKeys(report.counts, MAINTENANCE_STATUSES, "维护报告 counts");
+  for (const status of MAINTENANCE_STATUSES) {
+    assertInteger(report.counts[status], `维护报告 counts.${status}`, 0);
+  }
+
+  if (!Array.isArray(report.reviewChecklist) || report.reviewChecklist.length === 0) {
+    valueError("维护报告 reviewChecklist", "必须是非空数组");
+  }
+  const checklist = new Set();
+  for (const [index, item] of report.reviewChecklist.entries()) {
+    assertNonEmptyString(item, `维护报告 reviewChecklist[${index}]`);
+    if (checklist.has(item)) {
+      valueError("维护报告 reviewChecklist", "不能包含重复项");
+    }
+    checklist.add(item);
+  }
+
+  if (!Array.isArray(report.records)) {
+    valueError("维护报告 records", "必须是数组");
+  }
+  const sources = new Set();
+  const countedStatuses = Object.fromEntries(
+    MAINTENANCE_STATUSES.map((status) => [status, 0]),
+  );
+  for (const [index, record] of report.records.entries()) {
+    const label = `维护报告 records[${index}]`;
+    assertPlainObject(record, label);
+    assertExactKeys(
+      record,
+      [
+        "ageDays",
+        "kind",
+        "remainingDays",
+        "reviewedAt",
+        "reviewBy",
+        "slug",
+        "sourcePath",
+        "status",
+        "title",
+        "url",
+      ],
+      label,
+    );
+    assertInteger(record.ageDays, `${label}.ageDays`, 0);
+    assertInteger(record.remainingDays, `${label}.remainingDays`);
+    assertNonEmptyString(record.title, `${label}.title`);
+    if (record.kind !== "post" && record.kind !== "project") {
+      valueError(`${label}.kind`, "必须是 post 或 project");
+    }
+    if (
+      typeof record.slug !== "string" ||
+      !/^[a-z0-9]+(?:-[a-z0-9]+)*$/u.test(record.slug)
+    ) {
+      valueError(`${label}.slug`, "必须是稳定的小写 kebab-case slug");
+    }
+    const directory = record.kind === "post" ? "posts" : "projects";
+    const expectedSourcePath = `content/${directory}/${record.slug}.md`;
+    if (record.sourcePath !== expectedSourcePath) {
+      valueError(`${label}.sourcePath`, `必须是 ${expectedSourcePath}`);
+    }
+    if (record.url !== `/${directory}/${record.slug}`) {
+      valueError(`${label}.url`, "必须与 kind 和 slug 的公开路由一致");
+    }
+    if (sources.has(record.sourcePath)) {
+      valueError(`${label}.sourcePath`, "不能重复");
+    }
+    sources.add(record.sourcePath);
+
+    const reviewedAt = parseIsoDate(record.reviewedAt, `${label}.reviewedAt`);
+    parseIsoDate(record.reviewBy, `${label}.reviewBy`);
+    if (dayDifference(buildDate, reviewedAt) !== record.ageDays) {
+      valueError(`${label}.ageDays`, "必须等于 buildDate 与 reviewedAt 的日差");
+    }
+    if (record.reviewBy !== addIsoDays(record.reviewedAt, report.maxAgeDays)) {
+      valueError(`${label}.reviewBy`, "必须等于 reviewedAt 加 maxAgeDays");
+    }
+    if (record.remainingDays !== report.maxAgeDays - record.ageDays) {
+      valueError(`${label}.remainingDays`, "必须等于 maxAgeDays 减 ageDays");
+    }
+    if (!MAINTENANCE_STATUSES.includes(record.status)) {
+      valueError(`${label}.status`, "不是受支持的状态");
+    }
+    if (record.status !== expectedStatus(record.remainingDays, report.thresholds)) {
+      valueError(`${label}.status`, "与剩余天数和阈值不一致");
+    }
+    countedStatuses[record.status] += 1;
+  }
+
+  if (report.currentCount !== report.records.length) {
+    valueError("维护报告 currentCount", "必须等于 records 数量");
+  }
+  for (const status of MAINTENANCE_STATUSES) {
+    if (report.counts[status] !== countedStatuses[status]) {
+      valueError(`维护报告 counts.${status}`, "必须与 records 一致");
+    }
+  }
+  for (let index = 1; index < report.records.length; index += 1) {
+    const previous = report.records[index - 1];
+    const current = report.records[index];
+    const outOfOrder =
+      STATUS_ORDER[previous.status] > STATUS_ORDER[current.status] ||
+      (STATUS_ORDER[previous.status] === STATUS_ORDER[current.status] &&
+        previous.remainingDays > current.remainingDays) ||
+      (STATUS_ORDER[previous.status] === STATUS_ORDER[current.status] &&
+        previous.remainingDays === current.remainingDays &&
+        previous.sourcePath.localeCompare(current.sourcePath, "en") > 0);
+    if (outOfOrder) {
+      valueError("维护报告 records", "必须按紧急程度、剩余天数和来源路径排序");
+    }
+  }
+
+  return report;
+}
+
+function remainingLabel(remainingDays) {
+  return remainingDays >= 0
+    ? `剩余 ${remainingDays} 天`
+    : `逾期 ${Math.abs(remainingDays)} 天`;
+}
+
+function createMetric(container, label, value, className) {
+  const metric = container.createEl("div", {
+    cls: `myblog-maintenance__metric ${className ?? ""}`.trim(),
+  });
+  metric.createEl("dt", { text: label });
+  metric.createEl("dd", { text: String(value) });
+  return metric;
+}
 
 class ReadOnlyReportModal extends Modal {
   constructor(app, { description, report, title }) {
@@ -35,13 +312,136 @@ class InboxReadinessModal extends ReadOnlyReportModal {
   }
 }
 
-class ContentMaintenanceModal extends ReadOnlyReportModal {
+class ContentMaintenanceTextModal extends ReadOnlyReportModal {
   constructor(app, report) {
     super(app, {
-      description: "只读检查；不会修改 reviewedAt、内容、提交或推送文件。",
+      description:
+        "结构化视图不可用，以下为只读纯文本证据；不会修改 reviewedAt、内容、提交或推送文件。",
       report,
-      title: "已发布内容复核队列",
+      title: "已发布内容复核台账 · 纯文本",
     });
+  }
+}
+
+class ContentMaintenanceModal extends Modal {
+  constructor(app, report, openSource) {
+    super(app);
+    this.report = report;
+    this.openSource = openSource;
+  }
+
+  onOpen() {
+    const { contentEl, report } = this;
+    contentEl.empty();
+    contentEl.addClass("myblog-maintenance");
+    contentEl.createEl("h2", {
+      cls: "myblog-maintenance__title",
+      text: "已发布内容复核台账",
+    });
+    contentEl.createEl("p", {
+      cls: "myblog-maintenance__boundary",
+      text: "只读证据视图；Git 内容文件仍是唯一事实源。打开笔记不会修改 reviewedAt，也不会提交或推送。",
+    });
+    contentEl.createEl("p", {
+      cls: "myblog-maintenance__stamp",
+      text: `结构版本 v${report.version} · 报告日期 ${report.buildDate} · 最长复核周期 ${report.maxAgeDays} 天`,
+    });
+
+    const scope = contentEl.createEl("dl", {
+      cls: "myblog-maintenance__scope",
+    });
+    createMetric(scope, "持续复核", report.currentCount);
+    createMetric(scope, "历史快照", report.historicalCount);
+    createMetric(scope, "未公开", report.excludedCount);
+
+    const horizon = contentEl.createEl("section", {
+      cls: "myblog-maintenance__horizon",
+    });
+    horizon.createEl("p", {
+      cls: "myblog-maintenance__section-label",
+      text: `期限分布 · ${report.thresholds.reviewSoonDays} 天进入复核窗口 · ${report.thresholds.dueSoonDays} 天进入到期提醒`,
+    });
+    const trace = horizon.createEl("ol", {
+      cls: "myblog-maintenance__trace",
+    });
+    for (const status of MAINTENANCE_STATUSES) {
+      const item = trace.createEl("li", {
+        cls: "myblog-maintenance__trace-item",
+      });
+      item.setAttr("data-status", status);
+      item.createEl("span", { text: STATUS_LABELS[status] });
+      item.createEl("strong", { text: String(report.counts[status]) });
+    }
+
+    const records = contentEl.createEl("section", {
+      cls: "myblog-maintenance__records-section",
+    });
+    records.createEl("p", {
+      cls: "myblog-maintenance__section-label",
+      text: `复核期限台账 · ${report.records.length} 项`,
+    });
+    if (report.records.length === 0) {
+      records.createEl("p", {
+        cls: "myblog-maintenance__empty",
+        text: "当前没有已发布内容需要纳入复核。",
+      });
+    } else {
+      const list = records.createEl("ol", {
+        cls: "myblog-maintenance__records",
+      });
+      for (const record of report.records) {
+        const item = list.createEl("li", {
+          cls: "myblog-maintenance__record",
+        });
+        item.setAttr("data-status", record.status);
+        const statusLine = item.createEl("div", {
+          cls: "myblog-maintenance__record-status",
+        });
+        statusLine.createEl("span", { text: STATUS_LABELS[record.status] });
+        statusLine.createEl("strong", {
+          text: remainingLabel(record.remainingDays),
+        });
+        item.createEl("h3", {
+          cls: "myblog-maintenance__record-title",
+          text: record.title,
+        });
+        item.createEl("p", {
+          cls: "myblog-maintenance__route",
+          text: `${record.kind === "post" ? "文章" : "项目"} · ${record.url}`,
+        });
+        const dates = item.createEl("dl", {
+          cls: "myblog-maintenance__dates",
+        });
+        createMetric(dates, "最近复核", record.reviewedAt);
+        createMetric(dates, "最后有效日", record.reviewBy);
+        createMetric(dates, "已运行", `${record.ageDays} 天`);
+        const source = item.createEl("p", {
+          cls: "myblog-maintenance__source",
+        });
+        source.createEl("span", { text: "来源 " });
+        source.createEl("code", { text: record.sourcePath });
+        const button = item.createEl("button", {
+          cls: "mod-cta myblog-maintenance__open",
+          text: "打开笔记",
+        });
+        button.setAttr("type", "button");
+        button.setAttr("aria-label", `打开 ${record.sourcePath}`);
+        button.addEventListener("click", () =>
+          this.openSource(record.sourcePath, this),
+        );
+      }
+    }
+
+    const checklist = contentEl.createEl("details", {
+      cls: "myblog-maintenance__checklist",
+    });
+    checklist.createEl("summary", {
+      text: `复核清单（${report.reviewChecklist.length}）`,
+    });
+    const checklistItems = checklist.createEl("ol");
+    for (const item of report.reviewChecklist) {
+      checklistItems.createEl("li", { text: item });
+    }
   }
 }
 
@@ -69,7 +469,7 @@ module.exports = class MyBlogPublisher extends Plugin {
 
     this.addCommand({
       id: "inspect-published-maintenance",
-      name: "查看已发布内容复核队列",
+      name: "查看已发布内容复核台账",
       checkCallback: (checking) => this.inspectPublishedMaintenance(checking),
     });
   }
@@ -170,9 +570,16 @@ module.exports = class MyBlogPublisher extends Plugin {
     });
     child.on("close", (code) => {
       if (!cancel()) return;
-      if (code === 0) {
-        new Notice(messages.success, messages.successDuration ?? 5000);
-        onSuccess(report());
+      const allowedExitCodes = messages.allowedExitCodes ?? [0];
+      if (allowedExitCodes.includes(code)) {
+        try {
+          onSuccess(report(), code);
+          if (messages.success) {
+            new Notice(messages.success, messages.successDuration ?? 5000);
+          }
+        } catch (error) {
+          new Notice(`${messages.failure}: ${error.message}`, 15000);
+        }
         return;
       }
       const summary = report().split(/\r?\n/u).slice(-4).join("\n");
@@ -205,15 +612,72 @@ module.exports = class MyBlogPublisher extends Plugin {
     if (checking) return true;
 
     return this.runRepositoryCommand(
+      [
+        "--silent",
+        "run",
+        "content:status",
+        "--",
+        "--format",
+        "json",
+      ],
+      {
+        allowedExitCodes: [0, 1],
+        failure: "内容复核检查未完成",
+        progress: "正在读取结构化复核台账…",
+        startFailure: "内容复核检查无法启动",
+      },
+      (output) => this.openStructuredMaintenance(output),
+    );
+  }
+
+  openStructuredMaintenance(output) {
+    try {
+      const report = parseMaintenanceReport(output);
+      new ContentMaintenanceModal(
+        this.app,
+        report,
+        (sourcePath, modal) => this.openMaintenanceSource(sourcePath, modal),
+      ).open();
+      new Notice("已发布内容复核台账已更新。", 5000);
+    } catch (error) {
+      new Notice(
+        `结构化复核台账不可用：${error.message}。正在读取纯文本证据…`,
+        10000,
+      );
+      this.inspectPublishedMaintenanceText();
+    }
+  }
+
+  inspectPublishedMaintenanceText() {
+    return this.runRepositoryCommand(
       ["--silent", "run", "content:status"],
       {
-        failure: "内容复核检查未完成",
-        progress: "正在读取已发布内容复核队列…",
-        startFailure: "内容复核检查无法启动",
-        success: "已发布内容复核队列已更新。",
+        allowedExitCodes: [0, 1],
+        failure: "纯文本内容复核证据未完成",
+        progress: "正在读取纯文本复核证据…",
+        startFailure: "纯文本内容复核检查无法启动",
+        success: "已打开纯文本复核证据。",
       },
-      (report) => new ContentMaintenanceModal(this.app, report).open(),
+      (report) => new ContentMaintenanceTextModal(this.app, report).open(),
     );
+  }
+
+  async openMaintenanceSource(sourcePath, modal) {
+    if (!/^content\/(?:posts|projects)\/[a-z0-9]+(?:-[a-z0-9]+)*\.md$/u.test(sourcePath)) {
+      new Notice("维护记录的来源路径不安全，已拒绝打开。", 10000);
+      return;
+    }
+    const file = this.app.vault.getAbstractFileByPath(sourcePath);
+    if (!file || file.path !== sourcePath || file.extension !== "md") {
+      new Notice(`找不到可打开的 Markdown 笔记：${sourcePath}`, 10000);
+      return;
+    }
+    try {
+      await this.app.workspace.getLeaf(false).openFile(file);
+      modal.close();
+    } catch (error) {
+      new Notice(`笔记打开失败：${error.message}`, 10000);
+    }
   }
 
   publishCurrentNote(checking, push) {

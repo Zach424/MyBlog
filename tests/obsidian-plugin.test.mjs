@@ -1,7 +1,7 @@
 import assert from "node:assert/strict";
 import { readFile } from "node:fs/promises";
-import vm from "node:vm";
 import test from "node:test";
+import vm from "node:vm";
 
 const pluginUrl = new URL(
   "../.obsidian/plugins/myblog-publisher/main.js",
@@ -9,6 +9,10 @@ const pluginUrl = new URL(
 );
 const manifestUrl = new URL(
   "../.obsidian/plugins/myblog-publisher/manifest.json",
+  import.meta.url,
+);
+const stylesUrl = new URL(
+  "../.obsidian/plugins/myblog-publisher/styles.css",
   import.meta.url,
 );
 
@@ -28,11 +32,28 @@ function createEmitter() {
 }
 
 function createElement(tag, options = {}) {
+  const classes = new Set(
+    typeof options.cls === "string" ? options.cls.split(/\s+/u).filter(Boolean) : [],
+  );
+  const events = new Map();
   return {
+    attributes: {},
     children: [],
+    classes,
     style: {},
     tag,
     text: options.text ?? "",
+    addClass(...names) {
+      for (const name of names) classes.add(name);
+    },
+    addEventListener(name, listener) {
+      const current = events.get(name) ?? [];
+      current.push(listener);
+      events.set(name, current);
+    },
+    createDiv(childOptions = {}) {
+      return this.createEl("div", childOptions);
+    },
     createEl(childTag, childOptions = {}) {
       const child = createElement(childTag, childOptions);
       this.children.push(child);
@@ -41,17 +62,28 @@ function createElement(tag, options = {}) {
     empty() {
       this.children.length = 0;
     },
+    setAttr(name, value) {
+      this.attributes[name] = String(value);
+    },
     setText(value) {
-      this.text = value;
+      this.text = String(value);
+    },
+    async trigger(name) {
+      for (const listener of events.get(name) ?? []) await listener();
     },
   };
 }
 
-async function createPluginHarness({ desktop = true, platform = "win32" } = {}) {
+async function createPluginHarness({
+  desktop = true,
+  files = ["content/projects/myblog.md"],
+  platform = "win32",
+} = {}) {
   const source = await readFile(pluginUrl, "utf8");
   const commands = [];
   const modals = [];
   const notices = [];
+  const openedFiles = [];
   const spawned = [];
 
   class FileSystemAdapter {
@@ -65,7 +97,13 @@ async function createPluginHarness({ desktop = true, platform = "win32" } = {}) 
   class Modal {
     constructor(app) {
       this.app = app;
+      this.closed = false;
       this.contentEl = createElement("div");
+    }
+
+    close() {
+      this.closed = true;
+      this.onClose?.();
     }
 
     open() {
@@ -111,10 +149,28 @@ async function createPluginHarness({ desktop = true, platform = "win32" } = {}) 
     return child;
   };
 
+  const fileMap = new Map(
+    files.map((path) => [
+      path,
+      { extension: path.endsWith(".md") ? "md" : "", path },
+    ]),
+  );
   const adapter = desktop ? new FileSystemAdapter() : {};
   const app = {
-    vault: { adapter },
-    workspace: { getActiveFile: () => undefined },
+    vault: {
+      adapter,
+      getAbstractFileByPath(path) {
+        return fileMap.get(path) ?? null;
+      },
+    },
+    workspace: {
+      getActiveFile: () => undefined,
+      getLeaf: () => ({
+        async openFile(file) {
+          openedFiles.push(file);
+        },
+      }),
+    },
   };
   const context = vm.createContext({
     module: { exports: {} },
@@ -132,33 +188,97 @@ async function createPluginHarness({ desktop = true, platform = "win32" } = {}) 
   const plugin = new PluginClass(app);
   plugin.onload();
 
-  return { commands, modals, notices, plugin, spawned };
+  return { commands, modals, notices, openedFiles, plugin, spawned };
 }
 
-function childText(modal, tag) {
-  return modal.contentEl.children
-    .filter((element) => element.tag === tag)
-    .map((element) => element.text);
+function allElements(root) {
+  return root.children.flatMap((child) => [child, ...allElements(child)]);
+}
+
+function elementsByTag(modal, tag) {
+  return allElements(modal.contentEl).filter((element) => element.tag === tag);
 }
 
 function plain(value) {
   return JSON.parse(JSON.stringify(value));
 }
 
-test("registers a read-only published-maintenance command with a hidden Windows process", async () => {
-  const [manifestSource, harness] = await Promise.all([
+function shiftDate(date, days) {
+  const value = new Date(`${date}T00:00:00.000Z`);
+  value.setUTCDate(value.getUTCDate() + days);
+  return value.toISOString().slice(0, 10);
+}
+
+function maintenanceRecord({
+  ageDays = 0,
+  kind = "project",
+  maxAgeDays = 180,
+  slug = "myblog",
+  status = "healthy",
+} = {}) {
+  const buildDate = "2026-08-05";
+  const reviewedAt = shiftDate(buildDate, -ageDays);
+  const sourceDirectory = kind === "post" ? "posts" : "projects";
+  return {
+    ageDays,
+    kind,
+    remainingDays: maxAgeDays - ageDays,
+    reviewedAt,
+    reviewBy: shiftDate(reviewedAt, maxAgeDays),
+    slug,
+    sourcePath: `content/${sourceDirectory}/${slug}.md`,
+    status,
+    title: slug === "myblog" ? "MyBlog 项目复盘" : slug,
+    url: `/${sourceDirectory}/${slug}`,
+  };
+}
+
+function maintenanceReport({ records = [maintenanceRecord()], version = 1 } = {}) {
+  const counts = {
+    healthy: records.filter((record) => record.status === "healthy").length,
+    "review-soon": records.filter((record) => record.status === "review-soon").length,
+    "due-soon": records.filter((record) => record.status === "due-soon").length,
+    overdue: records.filter((record) => record.status === "overdue").length,
+  };
+  return {
+    version,
+    buildDate: "2026-08-05",
+    counts,
+    currentCount: records.length,
+    excludedCount: 0,
+    historicalCount: 0,
+    maxAgeDays: 180,
+    records,
+    reviewChecklist: [
+      "核对结论是否仍然成立",
+      "复查链接、命令和截图",
+      "更新 reviewedAt 后再发布",
+    ],
+    thresholds: { dueSoonDays: 7, reviewSoonDays: 30 },
+  };
+}
+
+function findCommand(harness, id) {
+  const command = harness.commands.find((candidate) => candidate.id === id);
+  assert.ok(command, `Expected command ${id}`);
+  return command;
+}
+
+test("renders a versioned maintenance ledger and opens an exact Vault note", async () => {
+  const [manifestSource, styles, harness] = await Promise.all([
     readFile(manifestUrl, "utf8"),
+    readFile(stylesUrl, "utf8"),
     createPluginHarness(),
   ]);
   const manifest = JSON.parse(manifestSource);
-  assert.equal(manifest.version, "1.2.0");
+  assert.equal(manifest.version, "1.3.0");
   assert.equal(manifest.isDesktopOnly, true);
+  assert.match(styles, /^\.myblog-maintenance \{/mu);
+  assert.match(styles, /\[data-status="overdue"\]/u);
+  assert.match(styles, /font-family: var\(--font-interface\)/u);
+  assert.doesNotMatch(styles, /(?:linear-gradient|@keyframes|animation:)/u);
 
-  const command = harness.commands.find(
-    (candidate) => candidate.id === "inspect-published-maintenance",
-  );
-  assert.ok(command);
-  assert.equal(command.name, "查看已发布内容复核队列");
+  const command = findCommand(harness, "inspect-published-maintenance");
   assert.equal(command.checkCallback(true), true);
   assert.equal(command.checkCallback(false), true);
   assert.equal(harness.spawned.length, 1);
@@ -170,6 +290,9 @@ test("registers a read-only published-maintenance command with a hidden Windows 
     "--silent",
     "run",
     "content:status",
+    "--",
+    "--format",
+    "json",
   ]);
   assert.equal(
     harness.spawned[0].executable,
@@ -183,32 +306,150 @@ test("registers a read-only published-maintenance command with a hidden Windows 
 
   harness.spawned[0].child.stdout.emit(
     "data",
-    Buffer.from("[maintenance] 健康 · content/projects/myblog.md · review by 2027-02-01"),
+    Buffer.from(JSON.stringify(maintenanceReport())),
   );
   harness.spawned[0].child.emit("close", 0);
   assert.equal(harness.notices[0].hidden, true);
-  assert.equal(harness.notices.at(-1).message, "已发布内容复核队列已更新。");
   assert.equal(harness.modals.length, 1);
-  assert.deepEqual(childText(harness.modals[0], "h2"), ["已发布内容复核队列"]);
-  assert.match(childText(harness.modals[0], "p")[0], /不会修改 reviewedAt/u);
-  assert.match(childText(harness.modals[0], "pre")[0], /content\/projects\/myblog\.md/u);
+  assert.equal(
+    harness.modals[0].contentEl.classes.has("myblog-maintenance"),
+    true,
+  );
+  assert.deepEqual(
+    elementsByTag(harness.modals[0], "h2").map((element) => element.text),
+    ["已发布内容复核台账"],
+  );
+  assert.match(
+    elementsByTag(harness.modals[0], "h3")[0].text,
+    /MyBlog 项目复盘/u,
+  );
+  assert.equal(
+    elementsByTag(harness.modals[0], "code")[0].text,
+    "content/projects/myblog.md",
+  );
+  const openButton = elementsByTag(harness.modals[0], "button").find(
+    (button) => button.text === "打开笔记",
+  );
+  assert.ok(openButton);
+  assert.equal(openButton.attributes["aria-label"], "打开 content/projects/myblog.md");
+  await openButton.trigger("click");
+  assert.deepEqual(
+    harness.openedFiles.map((file) => file.path),
+    ["content/projects/myblog.md"],
+  );
+  assert.equal(harness.modals[0].closed, true);
+});
+
+test("accepts a valid overdue report even though the CLI exits with code 1", async () => {
+  const overdue = maintenanceRecord({ ageDays: 181, status: "overdue" });
+  const harness = await createPluginHarness();
+  findCommand(harness, "inspect-published-maintenance").checkCallback(false);
+  harness.spawned[0].child.stdout.emit(
+    "data",
+    Buffer.from(JSON.stringify(maintenanceReport({ records: [overdue] }))),
+  );
+  harness.spawned[0].child.emit("close", 1);
+
+  assert.equal(harness.modals.length, 1);
+  const record = allElements(harness.modals[0].contentEl).find((element) =>
+    element.classes.has("myblog-maintenance__record"),
+  );
+  assert.ok(record);
+  assert.equal(record.attributes["data-status"], "overdue");
+  assert.equal(harness.spawned.length, 1);
+});
+
+test("falls back to the plain-text report for invalid JSON, schema, or paths", async (t) => {
+  const invalidCases = [
+    ["invalid JSON", "not-json"],
+    ["unsupported version", JSON.stringify(maintenanceReport({ version: 2 }))],
+    [
+      "unsafe path",
+      JSON.stringify(
+        maintenanceReport({
+          records: [
+            {
+              ...maintenanceRecord(),
+              sourcePath: "content/projects/../private.md",
+            },
+          ],
+        }),
+      ),
+    ],
+  ];
+
+  for (const [name, primaryOutput] of invalidCases) {
+    await t.test(name, async () => {
+      const harness = await createPluginHarness();
+      findCommand(harness, "inspect-published-maintenance").checkCallback(false);
+      harness.spawned[0].child.stdout.emit("data", Buffer.from(primaryOutput));
+      harness.spawned[0].child.emit("close", 0);
+      assert.equal(harness.spawned.length, 2);
+      assert.deepEqual(plain(harness.spawned[1].args), [
+        "/d",
+        "/s",
+        "/c",
+        "npm",
+        "--silent",
+        "run",
+        "content:status",
+      ]);
+      harness.spawned[1].child.stdout.emit(
+        "data",
+        Buffer.from("[maintenance] 纯文本复核证据"),
+      );
+      harness.spawned[1].child.emit("close", 1);
+      assert.equal(harness.modals.length, 1);
+      assert.match(elementsByTag(harness.modals[0], "pre")[0].text, /纯文本复核证据/u);
+    });
+  }
+});
+
+test("shows an empty structured state without inventing records", async () => {
+  const harness = await createPluginHarness();
+  findCommand(harness, "inspect-published-maintenance").checkCallback(false);
+  harness.spawned[0].child.stdout.emit(
+    "data",
+    Buffer.from(JSON.stringify(maintenanceReport({ records: [] }))),
+  );
+  harness.spawned[0].child.emit("close", 0);
+
+  assert.equal(harness.modals.length, 1);
+  assert.equal(elementsByTag(harness.modals[0], "button").length, 0);
+  assert.match(
+    elementsByTag(harness.modals[0], "p")
+      .map((element) => element.text)
+      .join(" "),
+    /当前没有已发布内容需要纳入复核/u,
+  );
+});
+
+test("refuses to open a missing Vault file", async () => {
+  const harness = await createPluginHarness({ files: [] });
+  findCommand(harness, "inspect-published-maintenance").checkCallback(false);
+  harness.spawned[0].child.stdout.emit(
+    "data",
+    Buffer.from(JSON.stringify(maintenanceReport())),
+  );
+  harness.spawned[0].child.emit("close", 0);
+  const openButton = elementsByTag(harness.modals[0], "button").find(
+    (button) => button.text === "打开笔记",
+  );
+  await openButton.trigger("click");
+  assert.equal(harness.openedFiles.length, 0);
+  assert.match(harness.notices.at(-1).message, /找不到可打开的 Markdown 笔记/u);
+  assert.equal(harness.modals[0].closed, false);
 });
 
 test("keeps reports desktop-only and cleans up failures and active children", async () => {
   const mobile = await createPluginHarness({ desktop: false });
-  const mobileCommand = mobile.commands.find(
-    (candidate) => candidate.id === "inspect-published-maintenance",
-  );
+  const mobileCommand = findCommand(mobile, "inspect-published-maintenance");
   assert.equal(mobileCommand.checkCallback(true), false);
   assert.equal(mobile.spawned.length, 0);
 
   const harness = await createPluginHarness();
-  const maintenance = harness.commands.find(
-    (candidate) => candidate.id === "inspect-published-maintenance",
-  );
-  const inbox = harness.commands.find(
-    (candidate) => candidate.id === "inspect-inbox-readiness",
-  );
+  const maintenance = findCommand(harness, "inspect-published-maintenance");
+  const inbox = findCommand(harness, "inspect-inbox-readiness");
   maintenance.checkCallback(false);
   inbox.checkCallback(false);
   assert.equal(harness.spawned.length, 2);
@@ -217,7 +458,7 @@ test("keeps reports desktop-only and cleans up failures and active children", as
   harness.spawned[0].child.emit("error", new Error("spawn unavailable"));
   assert.equal(harness.plugin.activeRuns.size, 1);
   assert.equal(harness.notices[0].hidden, true);
-  assert.match(harness.notices.at(-1).message, /内容复核检查无法启动.*spawn unavailable/su);
+  assert.match(harness.notices.at(-1).message, /spawn unavailable/su);
   const noticeCountAfterError = harness.notices.length;
   harness.spawned[0].child.emit("close", 1);
   assert.equal(harness.notices.length, noticeCountAfterError);
@@ -242,17 +483,18 @@ test("keeps reports desktop-only and cleans up failures and active children", as
   assert.equal(harness.spawned[1].child.killed, true);
 });
 
-test("runs the maintenance report without a shell on POSIX desktops", async () => {
+test("runs the JSON maintenance report without a shell on POSIX desktops", async () => {
   const harness = await createPluginHarness({ platform: "linux" });
-  const command = harness.commands.find(
-    (candidate) => candidate.id === "inspect-published-maintenance",
-  );
+  const command = findCommand(harness, "inspect-published-maintenance");
   command.checkCallback(false);
   assert.equal(harness.spawned[0].executable, "npm");
   assert.deepEqual(plain(harness.spawned[0].args), [
     "--silent",
     "run",
     "content:status",
+    "--",
+    "--format",
+    "json",
   ]);
   assert.equal(harness.spawned[0].options.shell, false);
   assert.equal(harness.spawned[0].options.windowsHide, true);

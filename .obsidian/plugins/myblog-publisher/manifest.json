@@ -1,9 +1,9 @@
 {
   "id": "myblog-publisher",
   "name": "MyBlog Publisher",
-  "version": "1.2.0",
+  "version": "1.3.0",
   "minAppVersion": "1.5.0",
-  "description": "Inspect published maintenance and inbox readiness, then validate and publish MyBlog notes through the repository quality gate.",
+  "description": "Review published maintenance in a structured ledger, inspect inbox readiness, and publish MyBlog notes through the repository quality gate.",
   "author": "Zach424",
   "isDesktopOnly": true
 }

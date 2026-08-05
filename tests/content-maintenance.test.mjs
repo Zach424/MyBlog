@@ -73,6 +73,7 @@ test("reports only published current records and sorts urgency first", () => {
     report.records.map((record) => record.slug),
     ["overdue", "healthy"],
   );
+  assert.equal(report.version, 1);
   assert.equal(report.currentCount, 2);
   assert.equal(report.historicalCount, 1);
   assert.equal(report.excludedCount, 2);

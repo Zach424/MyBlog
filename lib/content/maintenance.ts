@@ -40,6 +40,7 @@ export type ContentMaintenanceEntry = {
 };
 
 export type ContentMaintenanceReport = {
+  version: 1;
   buildDate: string;
   counts: Record<ContentMaintenanceStatus, number>;
   currentCount: number;
@@ -152,6 +153,7 @@ export function createContentMaintenanceReport(
   ) as Record<ContentMaintenanceStatus, number>;
 
   return {
+    version: 1,
     buildDate,
     counts,
     currentCount: entries.length,
