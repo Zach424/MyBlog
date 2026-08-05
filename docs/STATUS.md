@@ -15,7 +15,7 @@ MyBlog 是 Zach424 的个人技术知识库与公开工程日志。它把学习�
 | Markdown | done | GFM、代码高亮、语言标签、渐进增强的一键复制、与实际渲染一致的 H1–H6 heading id、H2/H3 目录与原生永久链接、Obsidian 兼容脚注/尾注与行内/块级数学公式、A4 打印/PDF 版式、阅读时间、相邻文章与响应式正文图片 |
 | 内容发现 | done | SEO、内容级 OG/Twitter 封面、JSON-LD、RSS、Sitemap、robots、本地全文搜索 |
 | 网页写作 | done | `/studio`、GitHub OAuth、Decap workflow、PR、按 slug 归档媒体、稳定 slug 锁定、双层 SHA-256 冲突预检、快速重选 latest-wins、生产规则公式预览与全字段只读发布清单 |
-| Obsidian 写作 | done | Vault、模板、桌面插件 1.8.0、版本化维护台账/Author Proof v3/交付状态、候选指纹、deferred 并行草稿、正式内容精确同步和新稿 `--check-only`/`--push` |
+| Obsidian 写作 | done | Vault、模板、桌面插件 1.9.0、版本化维护台账/Author Proof v3/交付状态与可信回执、候选指纹、deferred 并行草稿、正式内容精确同步和新稿 `--check-only`/`--push` |
 | Inbox 发布就绪 | done | 全草稿 ready/scheduled/blocked、真实媒体候选、目标/共享附件诊断、CLI 与 Obsidian 只读弹窗 |
 | 附件发布 | done | Wiki/Markdown 图片转换、按内容隔离、稳定命名、越界保护、失败回滚 |
 | 自动交付 | done | GitHub `main` → Vercel Production → 稳定域名冒烟；checkout/setup-node v6 Node 24 action runtime，应用 Node 22 与 workflow 语义有结构测试 |
@@ -38,7 +38,7 @@ MyBlog 是 Zach424 的个人技术知识库与公开工程日志。它把学习�
 - 运行时：Next.js 16.3.0、React 19.2.6、TypeScript 5、Node.js 22+；
 - 内容：仓库内 Markdown、YAML、Zod，GitHub 是唯一事实源；
 - 阅读：react-markdown、remark-gfm、remark-math、rehype-slug、rehype-highlight、rehype-katex 与 KaTeX；服务端 Markdown、中文脚注语义与回链、HTML + MathML 数学公式、MarkdownHeading 永久链接与 PrintSource 可信来源，最小 CodeBlock 客户端岛、Clipboard API 与 aria-live；GFM + math 共享 mdast 继续复现标题、链接、媒体和搜索语义，生产阅读与 Studio 共享 remark/rehype/KaTeX/安全 URL 规则，构建期公式使用 `trust: false`/严格资源上限；A4 `@page` 与 scoped print CSS 只重排既有语义 DOM；
-- 发布：Decap CMS 3.14.1、GitHub OAuth、stable slug 自定义控件、同源媒体清单、内存会话账本、per-input generation 与 SHA-256 冲突确认、官方 preview template、同源只读公式/全字段预检端点、public-only 内容维护快照与严格浏览器契约、内容字段 allowlist、Obsidian 自有插件 1.8.0、版本化维护 deadline ledger/复核 Author Proof v3/本地交付 rail/inbox 只读 Modal、候选 SHA-256 与 Git-clean blob 绑定、待交付提交识别、共享 worktree impact classifier、deferred 路径证据、review-note 领域/Git/交付门、三条纯文本降级、统一子进程生命周期与 Node 发布脚本；
+- 发布：Decap CMS 3.14.1、GitHub OAuth、stable slug 自定义控件、同源媒体清单、内存会话账本、per-input generation 与 SHA-256 冲突确认、官方 preview template、同源只读公式/全字段预检端点、public-only 内容维护快照与严格浏览器契约、内容字段 allowlist、Obsidian 自有插件 1.9.0、版本化维护 deadline ledger/复核 Author Proof v3/本地交付 rail 与 sealed receipt/inbox 只读 Modal、候选 SHA-256 与 Git-clean blob 绑定、待交付提交识别和精确 OID refspec 重送、共享 worktree impact classifier、deferred 路径证据、review-note 领域/Git/交付门、三条纯文本降级、统一子进程生命周期与 Node 发布脚本；
 - 媒体：Sharp 0.35.3、浏览器 magic/帧结构解析、`createImageBitmap` 与 Web Crypto、构建期确定性摘要清单、mdast-util-from-markdown 2.0.3、`next/image`、固有尺寸、WebP 优化、引用所有权与 Git 附件跟踪；
 - 维护：内容新鲜度、根暂存媒体与正文/结构化端点外链的 CLI；Studio 与 Obsidian 都可显示公开 Current 队列，确定性库存进入本地发布候选，时间/DNS 敏感的外链 HEAD 只显式运行；
 - 路由：严格 YAML + Zod 永久重定向注册表、Next `redirects()` 308、构建期现行路由与静态文件交叉校验；
@@ -50,22 +50,22 @@ MyBlog 是 Zach424 的个人技术知识库与公开工程日志。它把学习�
 
 - 仓库：<https://github.com/Zach424/MyBlog>，生产分支 `main`；
 - 生产站：<https://blog-iota-five-59.vercel.app>；
-- 本轮实现提交：`d128b807278a2b6d24213768dce3950db21275eb`（待交付状态分析、严格本地 Git 观察、重复复核阻断与 Obsidian recovery rail）；
-- 自动交付：本轮实现 Quality Gate `30995223063`（#101）与 Vercel Production 验证 `30995260542`（#94）均 completed/success；
-- 最新完成迭代：0057 正式复核待交付识别与只读恢复证据；
+- 本轮实现提交：`3c1a7bdff540205cfbbe75b8c28f8c2a46ed26ee`（待交付复核精确 OID 重送、后置不变量验证与 Obsidian sealed receipt）；
+- 自动交付：本轮实现 Quality Gate `30997586204`（#103）与 Vercel Production 验证 `30997626809`（#96）均 completed/success；
+- 最新完成迭代：0058 待交付正式复核安全重送与可信回执；
 - Obsidian 状态：仓库根目录就是 Vault，`docs/STATUS.md` 与 `docs/iterations/*.md` 可直接阅读和维护；
 - 手动外部接入：自定义域名、统计、评论、公开邮箱均暂缓，不阻塞当前开发。
 
 ## 本轮新增能力
 
-MyBlog Publisher 1.8.0 为“候选已验证但 push 未送达”提供独立只读状态。纯分析器把本地 main 相对最后观察 origin/main 分类为六态；pending-review 只接受 behind 0 / ahead 1、单父级等于 tracking head、严格 `content: review <slug>`、唯一对应正式路径和可读 tree/blob 的提交，其他 ahead 只进入 inspect。CLI 文本/JSON 都声明 `networkChecked: false` 且不写 HEAD/index/worktree；Obsidian 严格重算 schema 关系后用 `ORIGIN/MAIN · LAST OBSERVED ─ +1 ─ LOCAL MAIN` 展示完整证据与固定恢复命令。review-note 在质量门前后都要求 synchronized，避免重复复核或 tracking ref 门中漂移。最终门为 195/195 单元、45 条构建页面、19/19 生产应用测试与 audit 0；`.next/static` 为 1,819,941 B，插件 main/manifest/styles 合计 68,821 B且不进入公开客户端。
+MyBlog Publisher 1.9.0 把上一轮只读 pending-review 证据推进为独立执行事务。`content:review:deliver` 在 main 上重新读取同一个精确复核，保存 index/worktree，再以 `git push origin <verified-oid>:refs/heads/main` 执行普通非强制 push；状态漂移、错误分支、服务器拒绝和 unseen remote advance 都失败并保留本地提交。成功后必须证明 local/tracking 同为原 commit 且 HEAD/index/worktree 稳定，才生成 version 1 receipt。Obsidian 严格重算 receipt 后显示 `VERIFIED LOCAL COMMIT ─ SEALED PUSH ─ ORIGIN/MAIN · OBSERVED AFTER PUSH`，不提供重试按钮，也不把 Git 送达冒充 Vercel 上线。最终门为 199/199 单元、45 条构建页面、19/19 生产应用测试与 audit 0；`.next/static` 为 1,819,914 B，插件 main/manifest/styles 合计 78,904 B且不进入公开客户端。
 
 ## 风险与下一步
 
 1. Studio 已完成真实格式/预算、生产/会话摘要、快速重选竞态、数学公式作者预览和全字段只读 Author Proof，但有意不自动缩放/转 WebP，也不在第一版阻断保存；跨文章 slug/专题连续性、媒体引用和站内关系仍由完整仓库门验证；
 2. 首次保存后的 slug 已在 Studio 控件层锁定；真正迁移仍只能通过 Git 同步修改内容文件、正文引用、附件目录和 `content/redirects.yml`。注册表不自动推断迁移且有意只支持精确单跳路径；该控件依赖固定 Decap 3.14.1 bundle 的 `entry/newRecord` 契约，升级时必须重审；
 3. inbox readiness 已覆盖全部本地草稿，但有意不进入 Actions：未跟踪草稿和附件天然不在 CI 检出中；当前真实 inbox 为空，正向/阻塞路径由临时 Git/媒体夹具验证，首次实际多草稿使用时仍应按 Modal 逐项复核；
-4. Current record 已有 Studio、Obsidian 与每周 Actions 三个只读视图；Obsidian 1.8.0 已显示严格 Author Proof v3 与本地交付状态，并安全隔离并行 inbox/根新附件。目标字节、HEAD、index、tree 和重复复核风险已关闭；交付报告明确 tracking ref 可能过期且不冒充实时远端。当前恢复命令仍需终端执行，下一轮将增加再次验证后的固定 push 动作。真实主题组合与大路径清单仍由 DOM/CSS 契约而非宿主像素验收覆盖；
+4. Current record 已有 Studio、Obsidian 与每周 Actions 三个只读视图；Obsidian 1.9.0 已显示严格 Author Proof v3、本地交付状态与精确重送回执，并安全隔离并行 inbox/根新附件。复核目标字节、HEAD、index、tree、重复复核和待交付重送风险已关闭；tracking ref 仍明确只是最后本地观察。真实主题组合与大路径清单仍由 DOM/CSS 契约而非宿主像素验收覆盖；
 5. Obsidian 块引用是专有语法，当前明确拒绝；知识地图已公开，但当前 SVG 双列布局为小型内容库优化，内容增长后需要在不牺牲 HTML 语义的前提下增加过滤或分组；
 6. 正文与结构化 HTTPS 端点已有统一离线库存和显式健康检查，但 DNS/限流/网络仍只是观察证据；本机直连 Vercel 域名继续出现 timeout 假阴性，因此实时检查不进 Actions；
 7. 标题锚点采用严格的实际渲染 id；改名或调整重复标题顺序时必须同步正文深链，Obsidian 块引用和模糊匹配仍明确不支持；
@@ -74,4 +74,4 @@ MyBlog Publisher 1.8.0 为“候选已验证但 push 未送达”提供独立只
 10. `decap-cms` 的开发依赖树仍有上游无修复的高危审计项；它不进入公开服务端生产依赖，但其浏览器编辑器包仅对已授权作者开放，后续应单独评估升级或替代方案。
 11. checkout/setup-node v6 的官方 major tag 会移动；当前策略延续既有 major 更新方式并记录本轮 tag 指针，若以后提高供应链固定强度，应单独设计 immutable SHA 与自动更新流程，而不是在功能轮静默切换。
 
-下一轮唯一主任务：增加待交付复核的独立安全恢复动作。执行前必须重新读取并验证仍是同一个 pending-review，且当前分支为 main；只允许固定 `git push origin main`，成功后重新读取本地 refs 并证明 synchronized/HEAD 不变，才返回成功和 reconcile。远端拒绝、网络失败、状态漂移或 push 后 tracking 未对齐都失败并保留提交；不自动 fetch、rebase、reset，不在恢复 Modal 内放隐式按钮，不引入外部 API。
+下一轮唯一主任务：把同样的交付可恢复性扩展到“新草稿发布”事务。当前 `content:publish -- --push` 在质量门后创建 `content: publish <slug>`，但 push 失败只保留本地提交和错误文本；应先定义多路径发布提交（正式 Markdown、已跟踪 inbox 删除、归档附件）的精确身份与只读状态，再提供与复核重送隔离的恢复动作。不得把普通 ahead 当作发布提交，不自动 fetch/rebase/reset，不复用复核 receipt 冒充新内容交付，也不引入外部 API。
