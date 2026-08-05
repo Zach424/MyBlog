@@ -75,6 +75,8 @@
 0068-obsidian-trusted-template-draft-wizard.md
 0069-filename-owned-draft-rename.md
 0070-legacy-draft-identity-evidence.md
+0071-current-draft-author-intent.md
+0072-source-scoped-draft-media-evidence.md
 ```
 
 ## 必填结构
