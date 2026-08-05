@@ -4,7 +4,7 @@ const { spawn } = require("node:child_process");
 
 const MAX_CAPTURED_OUTPUT = 200_000;
 const MAINTENANCE_REPORT_VERSION = 1;
-const CONTENT_REVIEW_PROOF_VERSION = 2;
+const CONTENT_REVIEW_PROOF_VERSION = 3;
 const MAINTENANCE_STATUSES = [
   "healthy",
   "review-soon",
@@ -278,7 +278,7 @@ function parseContentReviewProof(output, expectedSourcePath) {
   assertPlainObject(proof, "正式内容复核证据");
   assertExactKeys(
     proof,
-    ["version", "mode", "review", "git", "qualityGate"],
+    ["version", "mode", "candidate", "review", "git", "qualityGate"],
     "正式内容复核证据",
   );
   if (proof.version !== CONTENT_REVIEW_PROOF_VERSION) {
@@ -289,6 +289,31 @@ function parseContentReviewProof(output, expectedSourcePath) {
   }
   if (proof.mode !== "check-only") {
     valueError("正式内容复核证据 mode", "必须是 check-only");
+  }
+
+  assertPlainObject(proof.candidate, "正式内容复核证据 candidate");
+  assertExactKeys(
+    proof.candidate,
+    ["algorithm", "digest", "stableAfterQualityGate"],
+    "正式内容复核证据 candidate",
+  );
+  if (proof.candidate.algorithm !== "sha256") {
+    valueError("正式内容复核证据 candidate.algorithm", "必须是 sha256");
+  }
+  if (
+    typeof proof.candidate.digest !== "string" ||
+    !/^[a-f0-9]{64}$/u.test(proof.candidate.digest)
+  ) {
+    valueError(
+      "正式内容复核证据 candidate.digest",
+      "必须是 64 位小写 SHA-256",
+    );
+  }
+  if (proof.candidate.stableAfterQualityGate !== true) {
+    valueError(
+      "正式内容复核证据 candidate.stableAfterQualityGate",
+      "必须证明门前与门后候选一致",
+    );
   }
 
   assertPlainObject(proof.review, "正式内容复核证据 review");
@@ -584,6 +609,33 @@ function createDeferredProofRow(container, git) {
   return row;
 }
 
+function createCandidateProofRow(container, candidate) {
+  const row = container.createEl("div", {
+    cls: "myblog-review-proof__row myblog-review-proof__candidate",
+  });
+  row.setAttr("data-state", "candidate");
+  row.createEl("dt", { text: "内容候选" });
+  const detail = row.createEl("dd");
+  detail.createEl("p", {
+    cls: "myblog-review-proof__candidate-label",
+    text: "CANDIDATE / GATE-STABLE",
+  });
+  const digest = detail.createEl("code", {
+    cls: "myblog-review-proof__candidate-digest",
+    text: `sha256:${candidate.digest.slice(0, 12)}…${candidate.digest.slice(-8)}`,
+  });
+  digest.setAttr("title", `sha256:${candidate.digest}`);
+  digest.setAttr(
+    "aria-label",
+    `完整内容候选 SHA-256：${candidate.digest}`,
+  );
+  detail.createEl("p", {
+    cls: "myblog-review-proof__candidate-note",
+    text: "门前与完整质量门后的字节一致。",
+  });
+  return row;
+}
+
 class ReadOnlyReportModal extends Modal {
   constructor(app, { description, report, title }) {
     super(app);
@@ -709,6 +761,7 @@ class ContentReviewProofModal extends Modal {
     createProofRow(ledger, "质量门", "npm run check · passed", {
       state: "passed",
     });
+    createCandidateProofRow(ledger, proof.candidate);
     createProofRow(
       ledger,
       "分支与工作区",

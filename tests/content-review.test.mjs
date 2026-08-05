@@ -1,6 +1,7 @@
 import assert from "node:assert/strict";
 import { spawnSync } from "node:child_process";
 import {
+  chmod,
   mkdtemp,
   mkdir,
   readFile,
@@ -14,6 +15,7 @@ import test from "node:test";
 import { resolveContentBuildDate } from "../build/content-build-date.ts";
 import {
   createContentReviewProof,
+  fingerprintContentReviewCandidate,
   inspectContentReview,
 } from "../lib/content/review-note.ts";
 import { classifyContentReviewWorktree } from "../lib/content/review-worktree.ts";
@@ -188,6 +190,17 @@ test("accepts an explicit review-only date advance", () => {
   );
 });
 
+test("fingerprints the exact review candidate bytes with SHA-256", () => {
+  assert.equal(
+    fingerprintContentReviewCandidate(Buffer.from("abc", "utf8")),
+    "ba7816bf8f01cfea414140de5dae2223b00361a396177a9cb410ff61f20015ad",
+  );
+  assert.notEqual(
+    fingerprintContentReviewCandidate(Buffer.from("abc\n", "utf8")),
+    fingerprintContentReviewCandidate(Buffer.from("abc", "utf8")),
+  );
+});
+
 test("classifies only isolated author drafts as deferred review work", () => {
   assert.deepEqual(
     classifyContentReviewWorktree({
@@ -353,9 +366,17 @@ test("checks one reviewed note without changing Git state", async () => {
     );
     assert.equal(result.status, 0, `${result.stdout}\n${result.stderr}`);
     const proof = JSON.parse(result.stdout);
+    const candidateDigest = fingerprintContentReviewCandidate(
+      Buffer.from(fixture.reviewedContent, "utf8"),
+    );
     assert.deepEqual(proof, {
-      version: 2,
+      version: 3,
       mode: "check-only",
+      candidate: {
+        algorithm: "sha256",
+        digest: candidateDigest,
+        stableAfterQualityGate: true,
+      },
       review: {
         kind: "post",
         previousReviewedAt: fixture.previousDate,
@@ -381,11 +402,15 @@ test("checks one reviewed note without changing Git state", async () => {
       },
     });
     assert.deepEqual(
-      createContentReviewProof(proof.review, {
-        blockingPaths: [],
-        ...proof.git,
-        targetChanged: true,
-      }),
+      createContentReviewProof(
+        proof.review,
+        {
+          blockingPaths: [],
+          ...proof.git,
+          targetChanged: true,
+        },
+        candidateDigest,
+      ),
       proof,
     );
     assert.doesNotMatch(result.stdout, /> .* check/u);
@@ -393,6 +418,50 @@ test("checks one reviewed note without changing Git state", async () => {
     assert.equal(git(fixture.root, "rev-parse", "HEAD"), fixture.baseHead);
     assert.equal(git(fixture.root, "diff", "--cached", "--name-only"), "");
     assert.equal(git(fixture.root, "diff", "--name-only"), sourcePath);
+  } finally {
+    await removeFixture(fixture);
+  }
+});
+
+test("rejects a target edited during the quality gate", async () => {
+  const fixture = await createReviewFixture(
+    0,
+    0,
+    'require("node:fs").appendFileSync("content/posts/reviewed-note.md", "\\nlate target edit\\n");',
+  );
+  try {
+    const result = runReviewer(fixture.root, "--push");
+    assert.equal(result.status, 1, `${result.stdout}\n${result.stderr}`);
+    assert.match(`${result.stdout}\n${result.stderr}`, /全量检查失败/u);
+    assert.match(
+      `${result.stdout}\n${result.stderr}`,
+      /正式内容在质量门期间发生变化.*候选指纹不再匹配/su,
+    );
+    assert.equal(git(fixture.root, "rev-parse", "HEAD"), fixture.baseHead);
+    assert.equal(git(fixture.root, "diff", "--cached", "--name-only"), "");
+    assert.equal(git(fixture.remote, "rev-parse", "refs/heads/main"), fixture.baseHead);
+  } finally {
+    await removeFixture(fixture);
+  }
+});
+
+test("rejects a HEAD changed during the quality gate", async () => {
+  const fixture = await createReviewFixture(
+    0,
+    0,
+    'require("node:child_process").execFileSync("git", ["commit", "--allow-empty", "-m", "late head"]);',
+  );
+  try {
+    const result = runReviewer(fixture.root, "--push");
+    assert.equal(result.status, 1, `${result.stdout}\n${result.stderr}`);
+    assert.match(`${result.stdout}\n${result.stderr}`, /全量检查失败/u);
+    assert.match(
+      `${result.stdout}\n${result.stderr}`,
+      /质量门期间 HEAD 已变化/u,
+    );
+    assert.notEqual(git(fixture.root, "rev-parse", "HEAD"), fixture.baseHead);
+    assert.equal(git(fixture.root, "diff", "--cached", "--name-only"), "");
+    assert.equal(git(fixture.remote, "rev-parse", "refs/heads/main"), fixture.baseHead);
   } finally {
     await removeFixture(fixture);
   }
@@ -564,9 +633,90 @@ test("commits and pushes exactly the reviewed note", async () => {
       ],
     );
     assert.match(result.stdout, /隔离作者工作（不进入本次提交）：3/u);
+    assert.match(result.stdout, /候选指纹：sha256:[a-f0-9]{12}…[a-f0-9]{8} · 门前\/门后一致/u);
+    const committedContent = run(
+      fixture.root,
+      "git",
+      ["show", `HEAD:${sourcePath}`],
+    ).stdout;
+    assert.equal(committedContent, fixture.reviewedContent);
+    assert.equal(
+      fingerprintContentReviewCandidate(Buffer.from(committedContent, "utf8")),
+      fingerprintContentReviewCandidate(Buffer.from(fixture.reviewedContent, "utf8")),
+    );
     assert.equal(
       await readFile(join(fixture.root, ...sourcePath.split("/")), "utf8"),
       fixture.reviewedContent,
+    );
+  } finally {
+    await removeFixture(fixture);
+  }
+});
+
+test("binds the candidate through Git clean filters before comparing blobs", async () => {
+  const fixture = await createReviewFixture();
+  try {
+    git(fixture.root, "config", "core.autocrlf", "true");
+    const crlfCandidate = fixture.reviewedContent.replaceAll("\n", "\r\n");
+    await writeFile(
+      join(fixture.root, ...sourcePath.split("/")),
+      crlfCandidate,
+    );
+
+    const result = runReviewer(fixture.root, "--push");
+    assert.equal(result.status, 0, `${result.stdout}\n${result.stderr}`);
+    assert.equal(
+      run(fixture.root, "git", ["show", `HEAD:${sourcePath}`]).stdout,
+      fixture.reviewedContent,
+    );
+    assert.equal(
+      await readFile(join(fixture.root, ...sourcePath.split("/")), "utf8"),
+      crlfCandidate,
+    );
+    assert.equal(
+      git(fixture.remote, "rev-parse", "refs/heads/main"),
+      git(fixture.root, "rev-parse", "HEAD"),
+    );
+  } finally {
+    await removeFixture(fixture);
+  }
+});
+
+test("rolls back a commit tree that no longer matches the checked candidate", async () => {
+  const fixture = await createReviewFixture();
+  try {
+    const hookPath = join(fixture.root, ".git", "hooks", "post-commit");
+    await writeFile(
+      hookPath,
+      `#!/bin/sh
+marker=".git/myblog-post-commit-once"
+if test -f "$marker"; then
+  exit 0
+fi
+: > "$marker"
+printf '\\npost-commit drift\\n' >> "${sourcePath}"
+git add -- "${sourcePath}"
+git commit --amend --no-edit --no-verify >/dev/null 2>&1
+`,
+    );
+    await chmod(hookPath, 0o755);
+
+    const result = runReviewer(fixture.root, "--push");
+    assert.equal(result.status, 1, `${result.stdout}\n${result.stderr}`);
+    assert.match(
+      `${result.stdout}\n${result.stderr}`,
+      /未通过候选指纹验证；已撤回本地提交并保留工作区/u,
+    );
+    assert.match(
+      `${result.stdout}\n${result.stderr}`,
+      /复核提交内容与通过质量门的候选指纹不一致/u,
+    );
+    assert.equal(git(fixture.root, "rev-parse", "HEAD"), fixture.baseHead);
+    assert.equal(git(fixture.root, "diff", "--cached", "--name-only"), "");
+    assert.equal(git(fixture.remote, "rev-parse", "refs/heads/main"), fixture.baseHead);
+    assert.match(
+      await readFile(join(fixture.root, ...sourcePath.split("/")), "utf8"),
+      /post-commit drift/u,
     );
   } finally {
     await removeFixture(fixture);

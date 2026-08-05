@@ -279,10 +279,13 @@ function maintenanceReport({ records = [maintenanceRecord()], version = 1 } = {}
 }
 
 function contentReviewProof({
+  candidateAlgorithm = "sha256",
+  candidateDigest = "0123456789abcdef".repeat(4),
+  candidateStable = true,
   deferredPaths = [],
   sourcePath = "content/projects/myblog.md",
   untrackedPaths = [],
-  version = 2,
+  version = 3,
 } = {}) {
   const untrackedSet = new Set(untrackedPaths);
   const changedPaths = [
@@ -292,6 +295,11 @@ function contentReviewProof({
   return {
     version,
     mode: "check-only",
+    candidate: {
+      algorithm: candidateAlgorithm,
+      digest: candidateDigest,
+      stableAfterQualityGate: candidateStable,
+    },
     review: {
       kind: "project",
       previousReviewedAt: "2026-08-04",
@@ -331,7 +339,7 @@ test("renders a versioned maintenance ledger and opens an exact Vault note", asy
     createPluginHarness(),
   ]);
   const manifest = JSON.parse(manifestSource);
-  assert.equal(manifest.version, "1.6.0");
+  assert.equal(manifest.version, "1.7.0");
   assert.equal(manifest.isDesktopOnly, true);
   assert.match(styles, /^\.myblog-maintenance \{/mu);
   assert.match(styles, /\[data-status="overdue"\]/u);
@@ -339,6 +347,7 @@ test("renders a versioned maintenance ledger and opens an exact Vault note", asy
   assert.match(styles, /^\.myblog-review-proof \{/mu);
   assert.match(styles, /myblog-review-proof__transition/u);
   assert.match(styles, /myblog-review-proof__deferred/u);
+  assert.match(styles, /myblog-review-proof__candidate/u);
   assert.doesNotMatch(styles, /(?:linear-gradient|@keyframes|animation:)/u);
 
   const command = findCommand(harness, "inspect-published-maintenance");
@@ -628,6 +637,24 @@ test("checks or syncs only the active formal content note", async () => {
       .join(" "),
     /DEFERRED \/ NOT IN COMMIT.*2 条.*MODIFIED.*UNTRACKED/su,
   );
+  assert.match(
+    allElements(harness.modals[0].contentEl)
+      .map((element) => element.text)
+      .join(" "),
+    /CANDIDATE \/ GATE-STABLE.*门前与完整质量门后的字节一致/su,
+  );
+  const fingerprint = elementsByTag(harness.modals[0], "code").find(
+    (element) => element.text === "sha256:0123456789ab…89abcdef",
+  );
+  assert.ok(fingerprint);
+  assert.equal(
+    fingerprint.attributes.title,
+    `sha256:${proof.candidate.digest}`,
+  );
+  assert.equal(
+    fingerprint.attributes["aria-label"],
+    `完整内容候选 SHA-256：${proof.candidate.digest}`,
+  );
   for (const deferredPath of proof.git.deferredPaths) {
     assert.ok(
       elementsByTag(harness.modals[0], "code").some(
@@ -682,6 +709,9 @@ test("falls back to plain review evidence for invalid or mismatched proof JSON",
   const modifiedRootMedia = contentReviewProof({
     deferredPaths: ["public/uploads/tracked.png"],
   });
+  const invalidDigest = contentReviewProof({ candidateDigest: "not-a-digest" });
+  const unstableCandidate = contentReviewProof({ candidateStable: false });
+  const invalidAlgorithm = contentReviewProof({ candidateAlgorithm: "sha512" });
   const cases = [
     ["invalid JSON", "not-json"],
     [
@@ -690,11 +720,14 @@ test("falls back to plain review evidence for invalid or mismatched proof JSON",
         contentReviewProof({ sourcePath: "content/projects/other.md" }),
       ),
     ],
-    ["unsupported version", JSON.stringify(contentReviewProof({ version: 3 }))],
+    ["unsupported version", JSON.stringify(contentReviewProof({ version: 4 }))],
     ["inconsistent update evidence", JSON.stringify(inconsistentUpdate)],
     ["unsafe deferred path", JSON.stringify(unsafeDeferred)],
     ["untracked path missing from deferred", JSON.stringify(missingDeferred)],
     ["modified root media", JSON.stringify(modifiedRootMedia)],
+    ["invalid candidate digest", JSON.stringify(invalidDigest)],
+    ["unstable candidate", JSON.stringify(unstableCandidate)],
+    ["invalid candidate algorithm", JSON.stringify(invalidAlgorithm)],
   ];
 
   for (const [name, output] of cases) {

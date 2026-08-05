@@ -5,6 +5,7 @@ import { parseArgs } from "node:util";
 import { resolveContentBuildDate } from "../build/content-build-date.ts";
 import {
   createContentReviewProof,
+  fingerprintContentReviewCandidate,
   inspectContentReview,
   PUBLISHED_NOTE_PATTERN,
 } from "../lib/content/review-note.ts";
@@ -19,6 +20,7 @@ function run(command, args, options = {}) {
   const result = spawnSync(command, args, {
     cwd: process.cwd(),
     encoding: "utf8",
+    input: options.input,
     maxBuffer: 5_000_000,
     stdio: options.capture ? "pipe" : "inherit",
     shell: false,
@@ -119,6 +121,58 @@ function printDeferredEvidence(impact) {
   }
 }
 
+function readReviewCandidate(absoluteSource, sourcePath) {
+  const bytes = readFileSync(absoluteSource);
+  return {
+    blobOid: capturedGit(
+      ["hash-object", `--path=${sourcePath}`, "--stdin"],
+      { input: bytes },
+    ).stdout.trim(),
+    bytes,
+    digest: fingerprintContentReviewCandidate(bytes),
+  };
+}
+
+function assertCandidateUnchanged(absoluteSource, candidate) {
+  const currentDigest = fingerprintContentReviewCandidate(
+    readFileSync(absoluteSource),
+  );
+  if (currentDigest !== candidate.digest) {
+    throw new Error(
+      "正式内容在质量门期间发生变化，候选指纹不再匹配；请等待编辑完成后重新检查",
+    );
+  }
+}
+
+function assertHeadUnchanged(baseHead) {
+  const currentHead = capturedGit(["rev-parse", "HEAD"]).stdout.trim();
+  if (currentHead !== baseHead) {
+    throw new Error(
+      "质量门期间 HEAD 已变化；复核必须基于同一个历史快照重新执行",
+    );
+  }
+}
+
+function shortCandidateDigest(digest) {
+  return `${digest.slice(0, 12)}…${digest.slice(-8)}`;
+}
+
+function printCandidateEvidence(candidate) {
+  console.log(
+    `[review] 候选指纹：sha256:${shortCandidateDigest(candidate.digest)} · 门前/门后一致`,
+  );
+}
+
+function rollbackInvalidReviewCommit(baseHead, sourcePath) {
+  const invalidHead = capturedGit(["rev-parse", "HEAD"]).stdout.trim();
+  const parent = capturedGit(["rev-parse", "HEAD^"]).stdout.trim();
+  if (parent !== baseHead) {
+    throw new Error("新提交的父提交已经变化，无法自动撤回复核提交");
+  }
+  runGit(["update-ref", "refs/heads/main", baseHead, invalidHead]);
+  runGit(["restore", "--staged", "--", sourcePath]);
+}
+
 let parsedArgs;
 try {
   parsedArgs = parseArgs({
@@ -155,11 +209,18 @@ if (!existsSync(absoluteSource)) fail(`找不到正式内容：${sourcePath}`);
 
 let inspection;
 let impact;
+let candidate;
+let baseHead;
 try {
   impact = inspectReviewWorktree(sourcePath);
-  const previousContent = capturedGit(["show", `HEAD:${sourcePath}`]).stdout;
+  baseHead = capturedGit(["rev-parse", "HEAD"]).stdout.trim();
+  const previousContent = capturedGit([
+    "show",
+    `${baseHead}:${sourcePath}`,
+  ]).stdout;
+  candidate = readReviewCandidate(absoluteSource, sourcePath);
   inspection = inspectContentReview({
-    currentContent: readFileSync(absoluteSource, "utf8"),
+    currentContent: candidate.bytes.toString("utf8"),
     previousContent,
     reviewDate: resolveContentBuildDate(),
     sourcePath,
@@ -192,23 +253,35 @@ try {
   } else {
     runNpm(["run", "check"]);
   }
+  assertHeadUnchanged(baseHead);
   impact = inspectReviewWorktree(sourcePath);
+  assertCandidateUnchanged(absoluteSource, candidate);
 } catch (error) {
   fail(`全量检查失败；文件保持未暂存。${error instanceof Error ? ` ${error.message}` : ""}`);
 }
 
 if (checkOnly) {
   if (format === "json") {
-    console.log(JSON.stringify(createContentReviewProof(inspection, impact), null, 2));
+    console.log(
+      JSON.stringify(
+        createContentReviewProof(inspection, impact, candidate.digest),
+        null,
+        2,
+      ),
+    );
   } else {
+    printCandidateEvidence(candidate);
     printDeferredEvidence(impact);
     console.log("[review] 正式内容复核检查通过；未暂存、未提交、未推送。");
   }
   process.exit(0);
 }
 
-let committed = false;
+let commitCreated = false;
+let commitVerified = false;
 try {
+  assertHeadUnchanged(baseHead);
+  printCandidateEvidence(candidate);
   printDeferredEvidence(impact);
   runGit(["add", "--", sourcePath]);
   const staged = nulPaths(
@@ -223,8 +296,16 @@ try {
   if (staged.length !== 1 || staged[0] !== sourcePath) {
     throw new Error(`暂存结果不唯一：${staged.join("、") || "空"}`);
   }
+  const stagedBlobOid = capturedGit(["rev-parse", `:${sourcePath}`]).stdout.trim();
+  if (stagedBlobOid !== candidate.blobOid) {
+    throw new Error("暂存内容与通过质量门的候选指纹不一致");
+  }
   runGit(["commit", "--only", "-m", `content: review ${inspection.slug}`, "--", sourcePath]);
-  committed = true;
+  commitCreated = true;
+  const committedParent = capturedGit(["rev-parse", "HEAD^"]).stdout.trim();
+  if (committedParent !== baseHead) {
+    throw new Error("复核提交没有直接基于检查时的 HEAD");
+  }
   const committedPaths = nulPaths(
     capturedGit([
       "diff-tree",
@@ -238,10 +319,30 @@ try {
   if (committedPaths.length !== 1 || committedPaths[0] !== sourcePath) {
     throw new Error(`复核提交包含意外路径：${committedPaths.join("、") || "空"}`);
   }
+  const committedBlobOid = capturedGit([
+    "rev-parse",
+    `HEAD:${sourcePath}`,
+  ]).stdout.trim();
+  if (committedBlobOid !== candidate.blobOid) {
+    throw new Error("复核提交内容与通过质量门的候选指纹不一致");
+  }
+  commitVerified = true;
   runGit(["push", "origin", "main"]);
   console.log(`[review] 已提交并同步正式内容复核：${inspection.slug}`);
 } catch (error) {
-  if (!committed) {
+  if (commitCreated && !commitVerified) {
+    try {
+      rollbackInvalidReviewCommit(baseHead, sourcePath);
+    } catch (rollbackError) {
+      fail(
+        `复核提交未通过候选指纹验证，且无法自动撤回；请保留现场人工检查 HEAD 和暂存区。${rollbackError instanceof Error ? ` ${rollbackError.message}` : ""}`,
+      );
+    }
+    fail(
+      `复核提交未通过候选指纹验证；已撤回本地提交并保留工作区。${error instanceof Error ? ` ${error.message}` : ""}`,
+    );
+  }
+  if (!commitCreated) {
     capturedGit(["restore", "--staged", "--", sourcePath], {
       allowFailure: true,
     });

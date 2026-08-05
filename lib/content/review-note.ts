@@ -1,3 +1,4 @@
+import { createHash } from "node:crypto";
 import {
   ContentValidationError,
   isPublished,
@@ -12,7 +13,8 @@ import {
 
 export const PUBLISHED_NOTE_PATTERN =
   /^content\/(posts|projects)\/([a-z0-9]+(?:-[a-z0-9]+)*)\.md$/u;
-export const CONTENT_REVIEW_PROOF_VERSION = 2;
+export const CONTENT_REVIEW_PROOF_VERSION = 3;
+export const CONTENT_REVIEW_DIGEST_PATTERN = /^[a-f0-9]{64}$/u;
 
 type ContentReviewInput = {
   currentContent: string;
@@ -34,8 +36,13 @@ export type ContentReviewInspection = {
 };
 
 export type ContentReviewProof = {
-  version: 2;
+  version: 3;
   mode: "check-only";
+  candidate: {
+    algorithm: "sha256";
+    digest: string;
+    stableAfterQualityGate: true;
+  };
   review: {
     kind: ContentRecord["kind"];
     previousReviewedAt: string;
@@ -84,6 +91,7 @@ function parsePublishedNote(sourcePath: string, content: string) {
 
 function substantiveSnapshot(record: ContentRecord) {
   const snapshot = { ...record } as Partial<ContentRecord>;
+  snapshot.body = record.body.replaceAll("\r\n", "\n").replaceAll("\r", "\n");
   delete snapshot.readingMinutes;
   delete snapshot.reviewedAt;
   delete snapshot.updatedAt;
@@ -156,10 +164,18 @@ export function inspectContentReview({
   };
 }
 
+export function fingerprintContentReviewCandidate(content: string | Uint8Array) {
+  return createHash("sha256").update(content).digest("hex");
+}
+
 export function createContentReviewProof(
   inspection: ContentReviewInspection,
   impact: ContentReviewWorktreeImpact,
+  candidateDigest: string,
 ): ContentReviewProof {
+  if (!CONTENT_REVIEW_DIGEST_PATTERN.test(candidateDigest)) {
+    throw new Error("正式内容候选指纹必须是 64 位小写 SHA-256");
+  }
   const verifiedImpact = classifyContentReviewWorktree({
     changedPaths: impact.changedPaths,
     sourcePath: inspection.sourcePath,
@@ -178,6 +194,11 @@ export function createContentReviewProof(
   return {
     version: CONTENT_REVIEW_PROOF_VERSION,
     mode: "check-only",
+    candidate: {
+      algorithm: "sha256",
+      digest: candidateDigest,
+      stableAfterQualityGate: true,
+    },
     review: {
       kind: inspection.kind,
       previousReviewedAt: inspection.previousReviewedAt,

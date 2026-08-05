@@ -348,6 +348,29 @@
   padding-inline-start: var(--size-4-3);
 }
 
+.myblog-review-proof__candidate {
+  border-inline-start: 0.22rem solid var(--myblog-proof-verified);
+  padding-inline-start: var(--size-4-3);
+}
+
+.myblog-review-proof__candidate-label {
+  color: var(--myblog-proof-verified);
+  font-family: var(--font-monospace);
+  font-size: var(--font-ui-smaller);
+  font-weight: var(--font-semibold);
+  letter-spacing: 0.06em;
+  margin: 0 0 var(--size-2-2);
+}
+
+.myblog-review-proof__candidate-digest {
+  overflow-wrap: anywhere;
+}
+
+.myblog-review-proof__candidate-note {
+  color: var(--text-muted);
+  margin: var(--size-2-2) 0 0;
+}
+
 .myblog-review-proof__deferred-label {
   color: var(--myblog-proof-caution);
   font-family: var(--font-monospace);
