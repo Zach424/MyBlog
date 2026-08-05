@@ -8,11 +8,11 @@
 | 4. 作者自助写作 | done | `/studio` OAuth + editorial workflow PR、Obsidian Vault/模板/附件/真实 `--push` |
 | 5. Vercel 原生迁移 | production live | 原生 Next.js、无 Cloudflare 依赖、24 路由生产冒烟通过 |
 | 6. 所有者生产上线 | done | Git 自动 Production、稳定域名自动冒烟、双端发布、回滚与恢复均已验收 |
-| 7. 持续内容与作者体验 | in progress | Iteration 0055 完成共享 worktree impact classifier、deferred 作者工作与 Proof v2 |
+| 7. 持续内容与作者体验 | in progress | Iteration 0056 完成候选 SHA-256、HEAD/index/tree 绑定、Proof v3 与异常提交回退 |
 
 ## 当前唯一主线
 
-进入持续内容与作者体验阶段。Iteration 0055 已把 MyBlog Publisher 升到 1.6.0：共享 impact classifier 只放行已修改/未跟踪的稳定 inbox 与未跟踪根图片，Proof v2 明确列出 deferred；staged、已跟踪根媒体、嵌套媒体、正式内容、代码与未知路径继续阻断。分类在完整门前后复算，push 的 pathspec、`commit --only` 和唯一 tree 不变。下一主线绑定“被检查的确切候选内容”：门前计算 SHA-256，门后、index 与提交 tree 必须保持同一 blob，Proof 显示短指纹，防止长检查期间目标笔记再次编辑造成证据/提交错位。需要品牌域名时再绑定自定义域名，旧公开站继续只作为迁移历史证据。
+进入持续内容与作者体验阶段。Iteration 0056 已把 MyBlog Publisher 升到 1.7.0：门前固定 HEAD、原始字节 SHA-256 与 Git-clean blob；完整门后再次验证 HEAD/字节，push 再核对 index、提交父级、唯一 diff 与 tree。Proof v3 显示可人工比对的短指纹，hook 改写 tree 会在 push 前原子撤回异常提交；deferred 作者工作与严格阻断边界保持不变。下一主线处理“合法提交已创建但 push 未送达”的恢复体验：以只读证据说明本地/远端关系、待交付提交和安全恢复命令，并阻止重复复核。需要品牌域名时再绑定自定义域名，旧公开站继续只作为迁移历史证据。
 
 ## 已知风险
 
@@ -32,7 +32,7 @@
 - slug 迁移已有构建验证的精确单跳 redirect 注册表，但仍是需要作者审阅的 Git 操作；不支持通配参数或自动推断，迁移必须同步处理内容、附件和引用；
 - Obsidian 已有全 inbox readiness 总览，但该报告有意只代表本地单篇写入事务，不替代正式发布的完整仓库门禁，也不进入看不到未跟踪草稿的 Actions；
 - Current record 已有 Studio 实时只读队列、每周 60/30 天 Actions 提醒和过期门；队列数据只随新 Production 接收内容变更，且仍不发送外部消息；若未来需要邮件/聊天通知，必须由所有者选择渠道后再接入；
-- Obsidian 维护/Author Proof 1.6.0 已验证两套版本化 JSON、活动 sourcePath、deferred 差集和纯文本降级；真实主题组合、超长路径和大量记录仍需随使用观察。当前 inspection 在完整门前解析目标，门后只复查路径状态；若目标本身在长检查期间再次变化，Proof 可能仍描述旧语义，下一轮必须用内容指纹绑定门、index 与提交 tree；
+- Obsidian 维护/Author Proof 1.7.0 已验证两套版本化 JSON、活动 sourcePath、候选 SHA-256、deferred 差集和纯文本降级；真实主题组合、超长路径和大量记录仍需随使用观察。合法复核提交若因网络或远端拒绝而 push 失败会保留在本地，这是数据安全边界，但当前只有错误文本提示恢复命令，尚无独立的待交付状态视图；
 - 内部链接支持内容页和严格标题锚点，行内/引用式/自引用共享实际渲染 slug 规则，详情页与公开知识地图共享 outgoing/backlinks；明确不支持 Obsidian 块引用，标题改名必须同步深链，当前双列 SVG 为小型内容库优化，内容规模增长后需要过滤/分组；
 - 正文普通 HTTPS 与结构化 repository/demo/canonical 已有统一确定性库存和受控实时报告；实时 DNS/网络结果有意不进 Actions，timeout/限流不能冒充内容错误；
 - 文章与项目已有完整 A4 打印版式，但 PDF 仍由读者通过浏览器打印生成，仓库不把二进制 PDF 当作发布源，也不提供服务端 PDF 缓存；后续版式变化仍需重新做真实 PDF 全页复核；
