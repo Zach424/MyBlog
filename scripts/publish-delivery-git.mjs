@@ -102,6 +102,13 @@ function readPendingCommit(cwd, localHead) {
   };
 }
 
+export function readContentPublishCommitFromGit(
+  commitOid,
+  cwd = process.cwd(),
+) {
+  return readPendingCommit(cwd, commitOid);
+}
+
 export function inspectContentPublishDeliveryFromGit(cwd = process.cwd()) {
   const local = git(cwd, ["rev-parse", "--verify", CONTENT_PUBLISH_LOCAL_REF], {
     allowFailure: true,

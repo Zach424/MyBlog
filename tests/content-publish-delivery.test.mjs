@@ -13,13 +13,19 @@ import { join } from "node:path";
 import { fileURLToPath } from "node:url";
 import test from "node:test";
 import sharp from "sharp";
-import { analyzeContentPublishDelivery } from "../lib/content/publish-delivery.ts";
+import {
+  analyzeContentPublishDelivery,
+  createContentPublishDeliveryReceipt,
+} from "../lib/content/publish-delivery.ts";
 
 const publisherScriptPath = fileURLToPath(
   new URL("../scripts/publish-note.mjs", import.meta.url),
 );
 const reportScriptPath = fileURLToPath(
   new URL("../scripts/report-content-publish-delivery.mjs", import.meta.url),
+);
+const deliveryScriptPath = fileURLToPath(
+  new URL("../scripts/deliver-content-publish.mjs", import.meta.url),
 );
 
 const oid = (value) => value.repeat(40);
@@ -65,6 +71,15 @@ function runReport(root, ...args) {
     root,
     process.execPath,
     ["--experimental-strip-types", reportScriptPath, ...args],
+    { allowFailure: true },
+  );
+}
+
+function runDelivery(root, ...args) {
+  return run(
+    root,
+    process.execPath,
+    ["--experimental-strip-types", deliveryScriptPath, ...args],
     { allowFailure: true },
   );
 }
@@ -200,6 +215,72 @@ test("keeps ambiguous local commits out of publication recovery", () => {
   const stacked = analyze({ ahead: 2, pendingCommit: null });
   assert.equal(stacked.relation.status, "local-ahead");
   assert.equal(stacked.pendingPublication, null);
+});
+
+test("creates a receipt only for the same sealed publication envelope", () => {
+  const before = analyze();
+  const after = analyze({
+    ahead: 0,
+    behind: 0,
+    localHead: oid("b"),
+    pendingCommit: null,
+    trackingHead: oid("b"),
+  });
+  const receipt = createContentPublishDeliveryReceipt({
+    after,
+    before,
+    indexStable: true,
+    manifestStable: true,
+    worktreeStable: true,
+  });
+  assert.deepEqual(receipt, {
+    version: 1,
+    mode: "delivered",
+    publication: before.pendingPublication,
+    transition: {
+      before: {
+        localHead: oid("b"),
+        relation: "pending-publication",
+        trackingHead: oid("a"),
+      },
+      after: {
+        localHead: oid("b"),
+        relation: "synchronized",
+        trackingHead: oid("b"),
+      },
+      command: `git push origin ${oid("b")}:refs/heads/main`,
+    },
+    safety: {
+      fetchExecuted: false,
+      headStable: true,
+      indexStable: true,
+      manifestStable: true,
+      rebaseExecuted: false,
+      resetExecuted: false,
+      worktreeStable: true,
+    },
+  });
+
+  const invalidCases = [
+    { before: analyze({ currentBranch: "feature" }) },
+    { before: analyze({ ahead: 2, pendingCommit: null }) },
+    { after: analyze() },
+    { indexStable: false },
+    { manifestStable: false },
+    { worktreeStable: false },
+  ];
+  for (const overrides of invalidCases) {
+    assert.throws(() =>
+      createContentPublishDeliveryReceipt({
+        after,
+        before,
+        indexStable: true,
+        manifestStable: true,
+        worktreeStable: true,
+        ...overrides,
+      }),
+    );
+  }
 });
 
 const article = `---
@@ -342,13 +423,46 @@ test("reports an exact failed publication push and blocks a second publish", asy
     );
     assert.doesNotMatch(`${repeated.stdout}\n${repeated.stderr}`, /找不到草稿/u);
 
-    await rm(fixture.hookPath, { force: true });
-    git(
-      fixture.root,
-      "push",
-      "origin",
-      `${pendingHead}:refs/heads/main`,
+    const rejectedDelivery = runDelivery(fixture.root, "--format", "json");
+    assert.equal(
+      rejectedDelivery.status,
+      1,
+      `${rejectedDelivery.stdout}\n${rejectedDelivery.stderr}`,
     );
+    assert.match(
+      `${rejectedDelivery.stdout}\n${rejectedDelivery.stderr}`,
+      /本地发布提交保持不变/u,
+    );
+    assert.deepEqual(
+      {
+        head: git(fixture.root, "rev-parse", "HEAD"),
+        index: git(fixture.root, "write-tree"),
+        remote: git(fixture.remote, "rev-parse", "refs/heads/main"),
+        worktree: git(fixture.root, "status", "--porcelain=v2"),
+      },
+      { ...stateBefore, remote: fixture.baseHead },
+    );
+
+    await rm(fixture.hookPath, { force: true });
+    const delivered = runDelivery(fixture.root, "--format", "json");
+    assert.equal(delivered.status, 0, `${delivered.stdout}\n${delivered.stderr}`);
+    const receipt = JSON.parse(delivered.stdout);
+    assert.equal(receipt.mode, "delivered");
+    assert.equal(receipt.publication.commitOid, pendingHead);
+    assert.equal(receipt.publication.changes.length, 3);
+    assert.equal(
+      receipt.transition.command,
+      `git push origin ${pendingHead}:refs/heads/main`,
+    );
+    assert.deepEqual(receipt.safety, {
+      fetchExecuted: false,
+      headStable: true,
+      indexStable: true,
+      manifestStable: true,
+      rebaseExecuted: false,
+      resetExecuted: false,
+      worktreeStable: true,
+    });
     const synchronized = runReport(fixture.root, "--format", "json");
     assert.equal(
       synchronized.status,
@@ -370,6 +484,48 @@ test("reports an exact failed publication push and blocks a second publish", asy
     await Promise.all([
       rm(fixture.root, { recursive: true, force: true }),
       rm(fixture.remote, { recursive: true, force: true }),
+    ]);
+  }
+});
+
+test("refuses an unseen non-fast-forward remote without changing the local envelope", async () => {
+  const fixture = await createPublishFixture();
+  const peerParent = await mkdtemp(join(tmpdir(), "myblog-publish-peer-"));
+  const peer = join(peerParent, "peer");
+  try {
+    const publish = runPublisher(fixture.root, "--push");
+    assert.equal(publish.status, 1, `${publish.stdout}\n${publish.stderr}`);
+    const pendingHead = git(fixture.root, "rev-parse", "HEAD");
+    await rm(fixture.hookPath, { force: true });
+
+    run(peerParent, "git", ["clone", "-b", "main", fixture.remote, peer]);
+    git(peer, "config", "user.name", "Remote Peer");
+    git(peer, "config", "user.email", "peer@example.test");
+    await writeFile(join(peer, "remote-note.txt"), "remote advance\n");
+    git(peer, "add", "remote-note.txt");
+    git(peer, "commit", "-m", "fixture: unseen remote advance");
+    git(peer, "push", "origin", "main");
+    const remoteHead = git(fixture.remote, "rev-parse", "refs/heads/main");
+
+    const delivery = runDelivery(fixture.root, "--format", "json");
+    assert.equal(delivery.status, 1, `${delivery.stdout}\n${delivery.stderr}`);
+    assert.match(`${delivery.stdout}\n${delivery.stderr}`, /本地发布提交保持不变/u);
+    assert.equal(git(fixture.root, "rev-parse", "HEAD"), pendingHead);
+    assert.equal(git(fixture.remote, "rev-parse", "refs/heads/main"), remoteHead);
+    assert.equal(
+      git(fixture.root, "rev-parse", "refs/remotes/origin/main"),
+      fixture.baseHead,
+    );
+    assert.equal(
+      JSON.parse(runReport(fixture.root, "--format", "json").stdout)
+        .relation.status,
+      "pending-publication",
+    );
+  } finally {
+    await Promise.all([
+      rm(fixture.root, { recursive: true, force: true }),
+      rm(fixture.remote, { recursive: true, force: true }),
+      rm(peerParent, { recursive: true, force: true }),
     ]);
   }
 });

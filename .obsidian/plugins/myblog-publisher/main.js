@@ -8,6 +8,7 @@ const CONTENT_REVIEW_PROOF_VERSION = 3;
 const CONTENT_REVIEW_DELIVERY_REPORT_VERSION = 1;
 const CONTENT_REVIEW_DELIVERY_RECEIPT_VERSION = 1;
 const CONTENT_PUBLISH_DELIVERY_REPORT_VERSION = 1;
+const CONTENT_PUBLISH_DELIVERY_RECEIPT_VERSION = 1;
 const GIT_OBJECT_ID_PATTERN = /^(?:[a-f0-9]{40}|[a-f0-9]{64})$/u;
 const CONTENT_REVIEW_DELIVERY_STATUSES = [
   "synchronized",
@@ -1059,6 +1060,136 @@ function parseContentPublishDeliveryReport(output) {
   return report;
 }
 
+function parseContentPublishDeliveryReceipt(output) {
+  let receipt;
+  try {
+    receipt = JSON.parse(output);
+  } catch {
+    throw new Error("新内容发布交付回执不是有效 JSON");
+  }
+  const label = "新内容发布交付回执";
+  assertPlainObject(receipt, label);
+  assertExactKeys(
+    receipt,
+    ["version", "mode", "publication", "transition", "safety"],
+    label,
+  );
+  if (receipt.version !== CONTENT_PUBLISH_DELIVERY_RECEIPT_VERSION) {
+    valueError(
+      `${label} version`,
+      `必须是 ${CONTENT_PUBLISH_DELIVERY_RECEIPT_VERSION}`,
+    );
+  }
+  if (receipt.mode !== "delivered") {
+    valueError(`${label} mode`, "必须是 delivered");
+  }
+
+  assertPlainObject(receipt.publication, `${label} publication`);
+  const publication = receipt.publication;
+  const validated = parseContentPublishDeliveryReport(
+    JSON.stringify({
+      version: CONTENT_PUBLISH_DELIVERY_REPORT_VERSION,
+      mode: "read-only",
+      observation: {
+        currentBranch: "main",
+        localHead: publication.commitOid,
+        localRef: "refs/heads/main",
+        networkChecked: false,
+        trackingHead: publication.parentOid,
+        trackingRef: "refs/remotes/origin/main",
+      },
+      relation: { ahead: 1, behind: 0, status: "pending-publication" },
+      pendingPublication: publication,
+      recovery: {
+        action: "push-pending-publication",
+        autoExecuted: false,
+        command: `git push origin ${publication.commitOid}:refs/heads/main`,
+      },
+    }),
+  );
+  receipt.publication = validated.pendingPublication;
+
+  assertPlainObject(receipt.transition, `${label} transition`);
+  assertExactKeys(
+    receipt.transition,
+    ["before", "after", "command"],
+    `${label} transition`,
+  );
+  for (const phase of ["before", "after"]) {
+    assertPlainObject(receipt.transition[phase], `${label} transition.${phase}`);
+    assertExactKeys(
+      receipt.transition[phase],
+      ["localHead", "relation", "trackingHead"],
+      `${label} transition.${phase}`,
+    );
+    assertGitObjectId(
+      receipt.transition[phase].localHead,
+      `${label} transition.${phase}.localHead`,
+    );
+    assertGitObjectId(
+      receipt.transition[phase].trackingHead,
+      `${label} transition.${phase}.trackingHead`,
+    );
+  }
+  if (
+    receipt.transition.before.relation !== "pending-publication" ||
+    receipt.transition.before.localHead !== publication.commitOid ||
+    receipt.transition.before.trackingHead !== publication.parentOid
+  ) {
+    valueError(
+      `${label} transition.before`,
+      "必须绑定待交付发布 commit 与父 tracking head",
+    );
+  }
+  if (
+    receipt.transition.after.relation !== "synchronized" ||
+    receipt.transition.after.localHead !== publication.commitOid ||
+    receipt.transition.after.trackingHead !== publication.commitOid
+  ) {
+    valueError(
+      `${label} transition.after`,
+      "必须证明 local/tracking 都是已交付发布 commit",
+    );
+  }
+  const expectedCommand = `git push origin ${publication.commitOid}:refs/heads/main`;
+  if (receipt.transition.command !== expectedCommand) {
+    valueError(
+      `${label} transition.command`,
+      "必须是绑定已验证发布 commit 的精确非强制 push",
+    );
+  }
+
+  assertPlainObject(receipt.safety, `${label} safety`);
+  assertExactKeys(
+    receipt.safety,
+    [
+      "fetchExecuted",
+      "headStable",
+      "indexStable",
+      "manifestStable",
+      "rebaseExecuted",
+      "resetExecuted",
+      "worktreeStable",
+    ],
+    `${label} safety`,
+  );
+  const expectedSafety = {
+    fetchExecuted: false,
+    headStable: true,
+    indexStable: true,
+    manifestStable: true,
+    rebaseExecuted: false,
+    resetExecuted: false,
+    worktreeStable: true,
+  };
+  for (const [field, expected] of Object.entries(expectedSafety)) {
+    if (receipt.safety[field] !== expected) {
+      valueError(`${label} safety.${field}`, `必须是 ${expected}`);
+    }
+  }
+  return receipt;
+}
+
 function parseContentReviewDeliveryReceipt(output) {
   let receipt;
   try {
@@ -1655,6 +1786,116 @@ class ContentPublishDeliveryModal extends Modal {
   }
 }
 
+class ContentPublishDeliveryReceiptModal extends Modal {
+  constructor(app, receipt) {
+    super(app);
+    this.receipt = receipt;
+  }
+
+  onOpen() {
+    const { contentEl, receipt } = this;
+    const publication = receipt.publication;
+    contentEl.empty();
+    contentEl.addClass("myblog-publish-delivery");
+    contentEl.addClass("myblog-publish-delivery-receipt");
+    contentEl.setAttr("data-status", "synchronized");
+    contentEl.createEl("p", {
+      cls: "myblog-publish-delivery__eyebrow",
+      text: "PUBLICATION RECEIPT / SEALED ENVELOPE",
+    });
+    contentEl.createEl("h2", {
+      cls: "myblog-publish-delivery__title",
+      text: "新内容发布包已重新同步",
+    });
+    contentEl.createEl("p", {
+      cls: "myblog-publish-delivery__boundary",
+      text: "已把验证过的精确 Commit Envelope 推送到 origin/main；未执行 fetch、rebase、reset，也未修改 index 或工作区。",
+    });
+
+    const transition = contentEl.createEl("section", {
+      cls: "myblog-publish-delivery__transition",
+    });
+    transition.setAttr("aria-label", "已验证发布提交精确送达到 origin/main");
+    const local = transition.createEl("div", {
+      cls: "myblog-publish-delivery__node",
+    });
+    local.createEl("span", { text: "VERIFIED COMMIT ENVELOPE" });
+    local.createEl("code", {
+      text: shortGitObjectId(receipt.transition.before.localHead),
+    });
+    const track = transition.createEl("div", {
+      cls: "myblog-publish-delivery__track myblog-publish-delivery__track--sealed",
+    });
+    track.createEl("span", { text: "SEALED PUSH" });
+    const tracking = transition.createEl("div", {
+      cls: "myblog-publish-delivery__node myblog-publish-delivery__node--local",
+    });
+    tracking.createEl("span", { text: "ORIGIN/MAIN · OBSERVED AFTER PUSH" });
+    tracking.createEl("code", {
+      text: shortGitObjectId(receipt.transition.after.trackingHead),
+    });
+
+    const manifest = contentEl.createEl("section", {
+      cls: "myblog-publish-delivery__manifest myblog-publish-delivery__manifest--sealed",
+    });
+    manifest.setAttr("aria-label", "已交付发布提交原子路径清单");
+    manifest.createEl("p", {
+      cls: "myblog-publish-delivery__manifest-label",
+      text: `DELIVERED ENVELOPE / ${publication.changes.length} PATHS`,
+    });
+    const target = publication.changes.find(
+      (change) => change.path === publication.targetPath,
+    );
+    const attachments = publication.changes.filter((change) =>
+      change.path.startsWith(`public/uploads/${publication.slug}/`),
+    );
+    const inbox = publication.changes.find(
+      (change) => change.path === publication.inboxSourcePath,
+    );
+    createPublishManifestItem(manifest, "NOTE / ADDED", target);
+    attachments.forEach((change, index) => {
+      createPublishManifestItem(
+        manifest,
+        `MEDIA ${String(index + 1).padStart(2, "0")} / ADDED`,
+        change,
+      );
+    });
+    if (inbox) createPublishManifestItem(manifest, "INBOX / DELETED", inbox);
+
+    const ledger = contentEl.createEl("dl", {
+      cls: "myblog-publish-delivery__ledger",
+    });
+    createPublishDeliveryRow(ledger, "交付状态", "DELIVERED / SYNCHRONIZED", {
+      state: "synchronized",
+    });
+    createPublishDeliveryRow(ledger, "内容标题", publication.title);
+    createPublishDeliveryRow(ledger, "commit", publication.commitOid, {
+      code: true,
+    });
+    createPublishDeliveryRow(ledger, "tree", publication.treeOid, {
+      code: true,
+    });
+    createPublishDeliveryRow(ledger, "target blob", publication.targetBlobOid, {
+      code: true,
+    });
+    createPublishDeliveryRow(ledger, "精确 refspec", receipt.transition.command, {
+      code: true,
+    });
+
+    const stability = contentEl.createEl("p", {
+      cls: "myblog-publish-delivery-receipt__stability",
+    });
+    stability.createEl("span", { text: "HEAD STABLE" });
+    stability.createEl("span", { text: "INDEX STABLE" });
+    stability.createEl("span", { text: "WORKTREE STABLE" });
+    stability.createEl("span", { text: "MANIFEST STABLE" });
+    contentEl.createEl("p", {
+      cls: "myblog-publish-delivery__note",
+      text: "local main 与最后观察到的 origin/main 已对齐到同一发布提交；线上部署仍由 GitHub 与 Vercel 的独立检查确认。",
+    });
+  }
+}
+
 class ContentReviewDeliveryReceiptModal extends Modal {
   constructor(app, receipt) {
     super(app);
@@ -2005,6 +2246,12 @@ module.exports = class MyBlogPublisher extends Plugin {
       name: "重新同步待交付正式内容复核",
       checkCallback: (checking) => this.deliverPendingReview(checking),
     });
+
+    this.addCommand({
+      id: "deliver-pending-publication",
+      name: "重新同步待交付新内容发布",
+      checkCallback: (checking) => this.deliverPendingPublication(checking),
+    });
   }
 
   onunload() {
@@ -2292,6 +2539,39 @@ module.exports = class MyBlogPublisher extends Plugin {
         new ContentReviewDeliveryReceiptModal(this.app, receipt).open();
         this.app.vault.adapter.reconcile?.();
         new Notice("待交付正式内容复核已重新同步。", 8000);
+      },
+    );
+  }
+
+  deliverPendingPublication(checking) {
+    if (!this.isDesktopVault()) return false;
+    if (checking) return true;
+    return this.runRepositoryCommand(
+      [
+        "--silent",
+        "run",
+        "content:publish:deliver",
+        "--",
+        "--format",
+        "json",
+      ],
+      {
+        failure: "待交付新内容发布重新同步未完成",
+        progress: "正在重新验证并同步精确发布包…",
+        startFailure: "待交付新内容发布重新同步命令无法启动",
+      },
+      (output) => {
+        let receipt;
+        try {
+          receipt = parseContentPublishDeliveryReceipt(output);
+        } catch (error) {
+          throw new Error(
+            `重新同步未能生成可信发布回执：${error.message}；请运行“查看待同步新内容发布”重新取证`,
+          );
+        }
+        new ContentPublishDeliveryReceiptModal(this.app, receipt).open();
+        this.app.vault.adapter.reconcile?.();
+        new Notice("待交付新内容发布已重新同步。", 8000);
       },
     );
   }

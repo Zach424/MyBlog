@@ -476,6 +476,38 @@ function publishDeliveryReport({
   };
 }
 
+function publishDeliveryReceipt() {
+  const report = publishDeliveryReport();
+  const publication = report.pendingPublication;
+  return {
+    version: 1,
+    mode: "delivered",
+    publication,
+    transition: {
+      before: {
+        localHead: publication.commitOid,
+        relation: "pending-publication",
+        trackingHead: publication.parentOid,
+      },
+      after: {
+        localHead: publication.commitOid,
+        relation: "synchronized",
+        trackingHead: publication.commitOid,
+      },
+      command: `git push origin ${publication.commitOid}:refs/heads/main`,
+    },
+    safety: {
+      fetchExecuted: false,
+      headStable: true,
+      indexStable: true,
+      manifestStable: true,
+      rebaseExecuted: false,
+      resetExecuted: false,
+      worktreeStable: true,
+    },
+  };
+}
+
 function findCommand(harness, id) {
   const command = harness.commands.find((candidate) => candidate.id === id);
   assert.ok(command, `Expected command ${id}`);
@@ -489,7 +521,7 @@ test("renders a versioned maintenance ledger and opens an exact Vault note", asy
     createPluginHarness(),
   ]);
   const manifest = JSON.parse(manifestSource);
-  assert.equal(manifest.version, "1.10.0");
+  assert.equal(manifest.version, "1.11.0");
   assert.equal(manifest.isDesktopOnly, true);
   assert.match(styles, /^\.myblog-maintenance \{/mu);
   assert.match(styles, /\[data-status="overdue"\]/u);
@@ -774,6 +806,78 @@ test("does not retry delivery or reconcile when its success receipt is invalid",
   assert.ok(
     harness.notices.some((notice) =>
       /重新同步未能生成可信回执/u.test(notice.message),
+    ),
+  );
+});
+
+test("delivers an exact pending publication and renders a sealed envelope receipt", async () => {
+  const harness = await createPluginHarness();
+  const command = findCommand(harness, "deliver-pending-publication");
+  assert.equal(command.checkCallback(true), true);
+  command.checkCallback(false);
+  assert.deepEqual(plain(harness.spawned[0].args), [
+    "/d",
+    "/s",
+    "/c",
+    "npm",
+    "--silent",
+    "run",
+    "content:publish:deliver",
+    "--",
+    "--format",
+    "json",
+  ]);
+  const receipt = publishDeliveryReceipt();
+  harness.spawned[0].child.stdout.emit("data", Buffer.from(JSON.stringify(receipt)));
+  harness.spawned[0].child.emit("close", 0);
+
+  assert.equal(harness.reconciliations, 1);
+  assert.equal(harness.modals.length, 1);
+  const modal = harness.modals[0];
+  assert.equal(
+    modal.contentEl.classes.has("myblog-publish-delivery-receipt"),
+    true,
+  );
+  assert.equal(elementsByTag(modal, "button").length, 0);
+  const text = allElements(modal.contentEl).map((element) => element.text).join(" ");
+  assert.match(text, /PUBLICATION RECEIPT \/ SEALED ENVELOPE/u);
+  assert.match(
+    text,
+    /VERIFIED COMMIT ENVELOPE.*SEALED PUSH.*ORIGIN\/MAIN/su,
+  );
+  assert.match(text, /DELIVERED ENVELOPE \/ 3 PATHS/u);
+  assert.match(text, /NOTE \/ ADDED.*content\/posts\/new-delivery\.md/su);
+  assert.match(
+    text,
+    /MEDIA 01 \/ ADDED.*public\/uploads\/new-delivery\/evidence\.webp/su,
+  );
+  assert.match(text, /INBOX \/ DELETED.*content\/inbox\/new-delivery\.md/su);
+  assert.match(
+    text,
+    /HEAD STABLE.*INDEX STABLE.*WORKTREE STABLE.*MANIFEST STABLE/su,
+  );
+  assert.ok(text.includes(receipt.transition.command));
+
+  const mobile = await createPluginHarness({ desktop: false });
+  assert.equal(
+    findCommand(mobile, "deliver-pending-publication").checkCallback(true),
+    false,
+  );
+});
+
+test("does not retry or reconcile an untrusted publication receipt", async () => {
+  const harness = await createPluginHarness();
+  const receipt = publishDeliveryReceipt();
+  receipt.safety.manifestStable = false;
+  findCommand(harness, "deliver-pending-publication").checkCallback(false);
+  harness.spawned[0].child.stdout.emit("data", Buffer.from(JSON.stringify(receipt)));
+  harness.spawned[0].child.emit("close", 0);
+  assert.equal(harness.spawned.length, 1);
+  assert.equal(harness.modals.length, 0);
+  assert.equal(harness.reconciliations, 0);
+  assert.ok(
+    harness.notices.some((notice) =>
+      /重新同步未能生成可信发布回执.*查看待同步新内容发布/u.test(notice.message),
     ),
   );
 });

@@ -1,4 +1,5 @@
 export const CONTENT_PUBLISH_DELIVERY_REPORT_VERSION = 1;
+export const CONTENT_PUBLISH_DELIVERY_RECEIPT_VERSION = 1;
 export const CONTENT_PUBLISH_LOCAL_REF = "refs/heads/main";
 export const CONTENT_PUBLISH_TRACKING_REF = "refs/remotes/origin/main";
 export const CONTENT_PUBLISH_GIT_OBJECT_ID_PATTERN =
@@ -78,6 +79,42 @@ export type ContentPublishDeliveryReport = {
     autoExecuted: false;
     command: string | null;
   };
+};
+
+export type ContentPublishDeliveryReceipt = {
+  version: 1;
+  mode: "delivered";
+  publication: NonNullable<ContentPublishDeliveryReport["pendingPublication"]>;
+  transition: {
+    before: {
+      localHead: string;
+      relation: "pending-publication";
+      trackingHead: string;
+    };
+    after: {
+      localHead: string;
+      relation: "synchronized";
+      trackingHead: string;
+    };
+    command: string;
+  };
+  safety: {
+    fetchExecuted: false;
+    headStable: true;
+    indexStable: true;
+    manifestStable: true;
+    rebaseExecuted: false;
+    resetExecuted: false;
+    worktreeStable: true;
+  };
+};
+
+type ContentPublishDeliveryReceiptInput = {
+  after: ContentPublishDeliveryReport;
+  before: ContentPublishDeliveryReport;
+  indexStable: boolean;
+  manifestStable: boolean;
+  worktreeStable: boolean;
 };
 
 const SLUG_PATTERN = /^[a-z0-9]+(?:-[a-z0-9]+)*$/u;
@@ -304,5 +341,72 @@ export function analyzeContentPublishDelivery(
       : status === "synchronized"
         ? { action: "none", autoExecuted: false, command: null }
         : { action: "inspect-git-state", autoExecuted: false, command: null },
+  };
+}
+
+export function createContentPublishDeliveryReceipt({
+  after,
+  before,
+  indexStable,
+  manifestStable,
+  worktreeStable,
+}: ContentPublishDeliveryReceiptInput): ContentPublishDeliveryReceipt {
+  if (
+    before.relation.status !== "pending-publication" ||
+    before.pendingPublication === null
+  ) {
+    throw new Error("交付前必须存在一个精确待同步新内容发布包");
+  }
+  if (before.observation.currentBranch !== "main") {
+    throw new Error("只能在 main 分支重新同步新内容发布包");
+  }
+  const publication = before.pendingPublication;
+  if (
+    before.observation.localHead !== publication.commitOid ||
+    before.observation.trackingHead !== publication.parentOid
+  ) {
+    throw new Error("交付前的 HEAD、父级与新内容发布包不一致");
+  }
+  if (
+    after.relation.status !== "synchronized" ||
+    after.observation.currentBranch !== "main" ||
+    after.observation.localHead !== publication.commitOid ||
+    after.observation.trackingHead !== publication.commitOid
+  ) {
+    throw new Error("交付后的 main 必须仍是已验证发布提交并与 tracking ref 同步");
+  }
+  if (!indexStable) throw new Error("交付期间 index 必须保持不变");
+  if (!worktreeStable) throw new Error("交付期间 worktree 必须保持不变");
+  if (!manifestStable) throw new Error("交付期间发布路径与 blob 清单必须保持不变");
+
+  return {
+    version: CONTENT_PUBLISH_DELIVERY_RECEIPT_VERSION,
+    mode: "delivered",
+    publication: {
+      ...publication,
+      changes: publication.changes.map((change) => ({ ...change })),
+    },
+    transition: {
+      before: {
+        localHead: publication.commitOid,
+        relation: "pending-publication",
+        trackingHead: publication.parentOid,
+      },
+      after: {
+        localHead: publication.commitOid,
+        relation: "synchronized",
+        trackingHead: publication.commitOid,
+      },
+      command: `git push origin ${publication.commitOid}:refs/heads/main`,
+    },
+    safety: {
+      fetchExecuted: false,
+      headStable: true,
+      indexStable: true,
+      manifestStable: true,
+      rebaseExecuted: false,
+      resetExecuted: false,
+      worktreeStable: true,
+    },
   };
 }
