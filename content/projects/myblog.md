@@ -62,6 +62,16 @@ Markdown 正文图片复用同一个媒体描述器：服务端按 AST 中的 `/
 
 ## 问题与解决
 
+### 把体积预算写成可复核公式
+
+客户端体积预算不只是构建脚本里的常量，也是内容、字体与交互方案共同遵守的边界。记客户端资源总量为 $B_{\mathrm{client}}$，当前质量门要求 JavaScript、CSS 与字体的生产资源之和保持在 3 MiB 内：
+
+$$
+B_{\mathrm{client}} = \sum_i B_{\mathrm{JS},i} + \sum_j B_{\mathrm{CSS},j} + \sum_k B_{\mathrm{font},k} < 3\,\mathrm{MiB}
+$$
+
+公式沿用 Obsidian 的原生定界符，发布时在服务端生成可视 HTML 与 MathML；因此无 JavaScript 阅读、站内搜索和打印稿都来自同一份 Markdown。公式过长时只在屏幕阅读区横向滚动，不推动 320px 页面整体越界。
+
 2026-07-19 根据维护目标把托管从 Cloudflare/Sites 迁移到 Vercel。迁移删除 Vinext、Vite、Worker、Wrangler 与 Sites 托管标记，恢复原生 `next dev/build/start`；原先 Worker 中的 Studio 静态资源、OAuth 与安全响应头分别迁入 App Router Route Handlers 和 Next.js headers。内容仍以 Git 为唯一事实来源，Obsidian 与网页后台产生的提交都会触发 Vercel 自动部署，因此迁移没有数据库或媒体数据搬运。
 
 Cloudflare 阶段的初始模板 npm scripts 隐含了特定 shell，导致 Windows 开发失败。当时的命令被收敛为跨平台的 Vinext 入口，并用实际构建验证；迁移到原生 Next.js 后，同一约束继续由 `next dev/build/start` 保持。

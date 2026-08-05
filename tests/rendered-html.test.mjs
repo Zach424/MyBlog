@@ -282,6 +282,21 @@ test("renders project Markdown and returns a real 404 for unknown content", asyn
     projectHtml,
     /"image":"https:\/\/blog\.example\.test\/uploads\/myblog\/cover\.webp"/,
   );
+  assert.match(projectHtml, /class="katex-mathml"/u);
+  assert.match(projectHtml, /<math xmlns="http:\/\/www\.w3\.org\/1998\/Math\/MathML"/u);
+  assert.match(projectHtml, /<annotation encoding="application\/x-tex">B_\{\\mathrm\{client\}\}/u);
+  assert.match(
+    projectHtml,
+    /<span(?=[^>]*class="katex-html")(?=[^>]*aria-hidden="true")[^>]*>/u,
+  );
+  assert.match(
+    projectHtml,
+    /<span(?=[^>]*class="katex-display")(?=[^>]*role="region")(?=[^>]*aria-label="数学公式，可横向滚动")(?=[^>]*tabindex="0")[^>]*>/u,
+  );
+  assert.doesNotMatch(
+    projectHtml,
+    /class="code-block"[^]*?B_\{\\mathrm\{client\}\}/u,
+  );
 
   const missingResponse = await render("/posts/does-not-exist");
   assert.equal(missingResponse.status, 404);
@@ -298,6 +313,12 @@ test("server-renders a shareable search query against posts and projects", async
   assert.match(html, /Cloudflare/);
   assert.match(html, /MyBlog — 把学习记录做成工程资产/);
   assert.match(html, /NO TRACKING/);
+
+  const formulaResponse = await render("/search?q=B_i");
+  assert.equal(formulaResponse.status, 200);
+  const formulaHtml = await formulaResponse.text();
+  assert.match(formulaHtml, /value="B_i"/u);
+  assert.match(formulaHtml, /MyBlog — 把学习记录做成工程资产/u);
 });
 
 test("publishes RSS, Sitemap and robots from the same public content index", async () => {

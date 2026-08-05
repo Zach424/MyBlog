@@ -1,11 +1,12 @@
 import { lookup as lookupDns } from "node:dns/promises";
 import { request as requestHttps } from "node:https";
 import { BlockList, isIP } from "node:net";
-import { gfmFromMarkdown } from "mdast-util-gfm";
-import { fromMarkdown } from "mdast-util-from-markdown";
-import { gfm } from "micromark-extension-gfm";
-
 import type { ContentRecord } from "./contract.ts";
+import {
+  parseMarkdown,
+  walkMarkdown,
+  type MarkdownNode,
+} from "./markdown.ts";
 
 export const EXTERNAL_LINK_CHECK_DEFAULTS = {
   concurrency: 4,
@@ -93,15 +94,6 @@ export type ExternalLinkReport = {
   links: ExternalLinkEntry[];
 };
 
-type MarkdownNode = {
-  children?: MarkdownNode[];
-  identifier?: string;
-  position?: { start?: { line?: number } };
-  type: string;
-  url?: string;
-  value?: string;
-};
-
 type ResolvedAddress = {
   address: string;
   family: 4 | 6;
@@ -172,11 +164,6 @@ for (const [network, prefix] of [
   BLOCKED_IPV6_NETWORKS.addSubnet(network, prefix, "ipv6");
 }
 
-function walkMarkdown(node: MarkdownNode, visit: (node: MarkdownNode) => void) {
-  visit(node);
-  for (const child of node.children ?? []) walkMarkdown(child, visit);
-}
-
 function markdownText(node: MarkdownNode): string {
   if (node.value) return node.value;
   return (node.children ?? []).map(markdownText).join("");
@@ -240,10 +227,7 @@ function occurrenceFor(
 }
 
 function extractRecordExternalLinks(record: ContentRecord) {
-  const tree = fromMarkdown(record.body, {
-    extensions: [gfm()],
-    mdastExtensions: [gfmFromMarkdown()],
-  }) as MarkdownNode;
+  const tree = parseMarkdown(record.body);
   const definitions = new Map<string, string>();
   walkMarkdown(tree, (node) => {
     if (node.type === "definition" && node.identifier && node.url) {

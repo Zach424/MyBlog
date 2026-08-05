@@ -11,7 +11,7 @@ import {
   MARKDOWN_FOOTNOTE_CLOBBER_PREFIX,
   MARKDOWN_FOOTNOTE_LABEL,
 } from "../lib/markdown-footnote.ts";
-import { markdownToPlainText } from "../lib/search.ts";
+import { markdownToPlainText } from "../lib/search-index.ts";
 
 const fixture = `## 结论
 
@@ -33,7 +33,8 @@ test("localizes footnote semantics without adding another parser", async () => {
     "返回正文中的注释 1（第 2 处）",
   );
   assert.doesNotMatch(component, /["']use client["']/u);
-  assert.match(component, /remarkPlugins=\{\[remarkGfm\]\}/u);
+  assert.match(component, /remarkPlugins=\{\[/u);
+  assert.match(component, /remarkGfm/u);
   assert.match(component, /remarkRehypeOptions=\{MARKDOWN_REHYPE_OPTIONS\}/u);
   assert.match(component, /<a\s+\{\.\.\.props\}/u);
   assert.match(component, /id === "footnote-label"/u);

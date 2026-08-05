@@ -1,5 +1,3 @@
-import type { ContentRecord } from "./content";
-
 export interface SearchDocument {
   kind: "article" | "til" | "project";
   title: string;
@@ -17,47 +15,8 @@ export interface SearchMatch {
   excerpt: string;
 }
 
-export function markdownToPlainText(markdown: string) {
-  return markdown
-    .replace(/^---[\s\S]*?---\s*/m, "")
-    .replace(/```[^\n]*\n([\s\S]*?)```/g, "$1")
-    .replace(/~~~[^\n]*\n([\s\S]*?)~~~/g, "$1")
-    .replace(/^\s{0,3}\[\^[^\]\r\n]+\]:[ \t]*/gm, "")
-    .replace(/\[\^[^\]\r\n]+\]/g, "")
-    .replace(/!\[([^\]]*)\]\([^)]*\)/g, "$1")
-    .replace(/\[([^\]]+)\]\([^)]*\)/g, "$1")
-    .replace(/<[^>]+>/g, " ")
-    .replace(/^\s{0,3}(?:#{1,6}|>|[-+*]|\d+[.)])\s+/gm, "")
-    .replace(/[`*_~]/g, "")
-    .replace(/\s+/g, " ")
-    .trim();
-}
-
 function normalize(value: string) {
   return value.normalize("NFKC").toLocaleLowerCase("zh-CN");
-}
-
-function kindFor(record: ContentRecord): SearchDocument["kind"] {
-  if (record.kind === "project") return "project";
-  return record.type === "til" ? "til" : "article";
-}
-
-export function createSearchDocuments(records: ContentRecord[]) {
-  return records
-    .map<SearchDocument>((record) => ({
-      kind: kindFor(record),
-      title: record.title,
-      description: record.description,
-      publishedAt: record.publishedAt,
-      tags: record.tags,
-      url: record.url,
-      body: markdownToPlainText(record.body),
-    }))
-    .sort(
-      (left, right) =>
-        right.publishedAt.localeCompare(left.publishedAt) ||
-        left.title.localeCompare(right.title, "zh-CN"),
-    );
 }
 
 function excerptFor(document: SearchDocument, terms: string[]) {

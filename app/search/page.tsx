@@ -3,7 +3,7 @@ import Link from "next/link";
 import { CollectionIntro } from "@/components/ContentViews";
 import { SearchExperience } from "@/components/SearchExperience";
 import { getAllContent } from "@/lib/content";
-import { createSearchDocuments } from "@/lib/search";
+import { createSearchDocuments } from "@/lib/search-index";
 
 export const metadata: Metadata = {
   title: "搜索",

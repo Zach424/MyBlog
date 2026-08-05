@@ -1,9 +1,9 @@
 import assert from "node:assert/strict";
 import test from "node:test";
 import {
-  markdownToPlainText,
   searchDocuments,
 } from "../lib/search.ts";
+import { markdownToPlainText } from "../lib/search-index.ts";
 
 const documents = [
   {

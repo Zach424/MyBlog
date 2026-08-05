@@ -1,8 +1,11 @@
 import Image from "next/image";
+import rehypeKatex from "rehype-katex";
 import rehypeHighlight from "rehype-highlight";
 import rehypeSlug from "rehype-slug";
 import ReactMarkdown, { type Components } from "react-markdown";
 import remarkGfm from "remark-gfm";
+import remarkMath from "remark-math";
+import "katex/dist/katex.min.css";
 import { Children, isValidElement } from "react";
 import { CodeBlock } from "@/components/CodeBlock";
 import { MarkdownHeading } from "@/components/MarkdownHeading";
@@ -17,6 +20,7 @@ import {
   getMarkdownContentImages,
   type ContentImageDescriptor,
 } from "@/lib/content/media";
+import { MARKDOWN_MATH_KATEX_OPTIONS } from "@/lib/markdown-math";
 
 const CONTENT_IMAGE_SIZES =
   "(max-width: 42rem) calc(100vw - 2rem), (max-width: 55rem) 90vw, 48rem";
@@ -117,6 +121,27 @@ function createMarkdownComponents(
         <CodeBlock language={getCodeLanguageLabel(className)}>{children}</CodeBlock>
       );
     },
+    span({ children, className, node, ...props }) {
+      void node;
+      if (className?.split(/\s+/u).includes("katex-display")) {
+        return (
+          <span
+            {...props}
+            aria-label="数学公式，可横向滚动"
+            className={className}
+            role="region"
+            tabIndex={0}
+          >
+            {children}
+          </span>
+        );
+      }
+      return (
+        <span {...props} className={className}>
+          {children}
+        </span>
+      );
+    },
     table({ children }) {
       return (
         <div
@@ -146,10 +171,14 @@ export async function MarkdownContent({
         components={createMarkdownComponents(localImages)}
         rehypePlugins={[
           rehypeSlug,
+          [rehypeKatex, MARKDOWN_MATH_KATEX_OPTIONS],
           [rehypeHighlight, { detect: false, ignoreMissing: true }],
         ]}
         remarkRehypeOptions={MARKDOWN_REHYPE_OPTIONS}
-        remarkPlugins={[remarkGfm]}
+        remarkPlugins={[
+          remarkGfm,
+          [remarkMath, { singleDollarTextMath: true }],
+        ]}
       >
         {source}
       </ReactMarkdown>

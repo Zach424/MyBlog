@@ -1,7 +1,9 @@
 import GithubSlugger from "github-slugger";
 import { gfmFromMarkdown } from "mdast-util-gfm";
 import { fromMarkdown } from "mdast-util-from-markdown";
+import { mathFromMarkdown } from "mdast-util-math";
 import { gfm } from "micromark-extension-gfm";
+import { math } from "micromark-extension-math";
 
 export interface TableOfContentsItem {
   depth: 2 | 3;
@@ -30,7 +32,8 @@ export type InternalContentReference =
       kind: "self";
     };
 
-type MarkdownNode = {
+export type MarkdownNode = {
+  alt?: string;
   children?: MarkdownNode[];
   depth?: number;
   identifier?: string;
@@ -44,20 +47,29 @@ type MarkdownNode = {
   value?: string;
 };
 
-function parseMarkdown(markdown: string) {
+export function parseMarkdown(markdown: string) {
   return fromMarkdown(markdown, {
-    extensions: [gfm()],
-    mdastExtensions: [gfmFromMarkdown()],
+    extensions: [gfm(), math({ singleDollarTextMath: true })],
+    mdastExtensions: [gfmFromMarkdown(), mathFromMarkdown()],
   }) as MarkdownNode;
 }
 
-function walkMarkdown(node: MarkdownNode, visit: (node: MarkdownNode) => void) {
+export function walkMarkdown(
+  node: MarkdownNode,
+  visit: (node: MarkdownNode) => void,
+) {
   visit(node);
   for (const child of node.children ?? []) walkMarkdown(child, visit);
 }
 
 function renderedHeadingText(node: MarkdownNode): string {
-  if (node.type === "text" || node.type === "inlineCode") return node.value ?? "";
+  if (
+    node.type === "text" ||
+    node.type === "inlineCode" ||
+    node.type === "inlineMath"
+  ) {
+    return node.value ?? "";
+  }
   if (
     node.type === "break" ||
     node.type === "html" ||
@@ -67,6 +79,25 @@ function renderedHeadingText(node: MarkdownNode): string {
     return "";
   }
   return (node.children ?? []).map(renderedHeadingText).join("");
+}
+
+export interface MarkdownMathExpression {
+  display: boolean;
+  line?: number;
+  value: string;
+}
+
+export function extractMarkdownMathExpressions(markdown: string) {
+  const expressions: MarkdownMathExpression[] = [];
+  walkMarkdown(parseMarkdown(markdown), (node) => {
+    if (node.type !== "math" && node.type !== "inlineMath") return;
+    expressions.push({
+      display: node.type === "math",
+      ...(node.position?.start?.line ? { line: node.position.start.line } : {}),
+      value: node.value ?? "",
+    });
+  });
+  return expressions;
 }
 
 function internalReferenceFromUrl(

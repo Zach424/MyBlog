@@ -38,6 +38,7 @@ test("defines a scoped A4 print reading and pagination contract", async () => {
   assert.match(styles, /\.markdown-content h2 \+ \*,[\s\S]*?break-before:\s*avoid-page;/u);
   assert.match(styles, /\.markdown-content pre\s*\{[\s\S]*?white-space:\s*pre-wrap;/u);
   assert.match(styles, /\.markdown-content table\s*\{[\s\S]*?min-width:\s*0;/u);
+  assert.match(styles, /@media print[\s\S]*?\.markdown-content \.katex-display[\s\S]*?overflow:\s*visible;/u);
   assert.match(styles, /a\[href\^="http"\]::after[\s\S]*?attr\(href\)/u);
   assert.match(styles, /\.content-relation-group\s*\{[\s\S]*?break-inside:\s*avoid-page;/u);
   assert.match(styles, /\.content-relation-group \.content-index-row\s*\{\s*min-height:\s*0;/u);

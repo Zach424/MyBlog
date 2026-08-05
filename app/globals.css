@@ -1528,6 +1528,55 @@ input:focus-visible {
   margin-bottom: 0;
 }
 
+.markdown-content .katex {
+  color: var(--ink);
+  font-size: 1.04em;
+}
+
+.markdown-content p > .katex {
+  padding-inline: 0.12em;
+  border-bottom: 0.0625rem solid var(--trace);
+}
+
+.markdown-content .katex-display {
+  position: relative;
+  display: block;
+  max-width: 100%;
+  margin: 2.25rem 0;
+  padding: 2.75rem 1.25rem 1.4rem;
+  overflow-x: auto;
+  overflow-y: hidden;
+  border-block: 0.0625rem solid var(--trace-dark);
+  background: var(--paper);
+  text-align: center;
+  overscroll-behavior-inline: contain;
+  scrollbar-color: var(--trace-dark) transparent;
+  scrollbar-width: thin;
+}
+
+.markdown-content .katex-display::before {
+  position: absolute;
+  top: 0.7rem;
+  left: 1rem;
+  color: var(--faint);
+  content: "CALCULATION / MODEL";
+  font-family: var(--mono);
+  font-size: 0.625rem;
+  font-weight: 700;
+  letter-spacing: 0.12em;
+}
+
+.markdown-content .katex-display > .katex {
+  display: block;
+  width: max-content;
+  min-width: 100%;
+}
+
+.markdown-content .katex-display:focus-visible {
+  outline: 0.125rem solid var(--signal);
+  outline-offset: 0.1875rem;
+}
+
 .markdown-content :not(pre) > code {
   padding: 0.15em 0.35em;
   border: 0.0625rem solid var(--rule);
@@ -3652,6 +3701,7 @@ input:focus-visible {
   }
 
   .markdown-content blockquote,
+  .markdown-content .katex-display,
   .markdown-image,
   .code-block,
   .table-scroll {
@@ -3660,6 +3710,26 @@ input:focus-visible {
 
   .markdown-content blockquote {
     border-left-width: 0.5mm;
+  }
+
+  .markdown-content .katex-display {
+    margin: 5mm 0;
+    padding: 8mm 3mm 4mm;
+    overflow: visible;
+    border-block-width: 0.3mm;
+    background: var(--paper);
+    font-size: 0.86em;
+  }
+
+  .markdown-content .katex-display::before {
+    top: 2mm;
+    left: 2.5mm;
+    font-size: 5.5pt;
+  }
+
+  .markdown-content .katex-display > .katex {
+    width: auto;
+    min-width: 0;
   }
 
   .code-block {

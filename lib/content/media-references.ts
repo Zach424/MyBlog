@@ -1,20 +1,7 @@
-import { fromMarkdown } from "mdast-util-from-markdown";
 import path from "node:path";
 import { isSupportedImageExtension } from "../media-policy.ts";
 import { ContentValidationError } from "./contract.ts";
-
-type MarkdownNode = {
-  alt?: string;
-  children?: MarkdownNode[];
-  identifier?: string;
-  position?: {
-    start?: {
-      line?: number;
-    };
-  };
-  type: string;
-  url?: string;
-};
+import { parseMarkdown, walkMarkdown } from "./markdown.ts";
 
 export interface MarkdownImageReference {
   alt: string;
@@ -22,13 +9,8 @@ export interface MarkdownImageReference {
   url: string;
 }
 
-function walkMarkdown(node: MarkdownNode, visit: (node: MarkdownNode) => void) {
-  visit(node);
-  for (const child of node.children ?? []) walkMarkdown(child, visit);
-}
-
 export function extractMarkdownImageReferences(markdown: string) {
-  const tree = fromMarkdown(markdown) as MarkdownNode;
+  const tree = parseMarkdown(markdown);
   const definitions = new Map<string, string>();
 
   walkMarkdown(tree, (node) => {

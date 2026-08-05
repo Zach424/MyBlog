@@ -1,5 +1,6 @@
 import { parseDocument } from "yaml";
 import { z } from "zod";
+import { getMarkdownMathIssue } from "../markdown-math.ts";
 
 const SLUG_PATTERN = /^[a-z0-9]+(?:-[a-z0-9]+)*$/;
 const ISO_DATE_PATTERN = /^\d{4}-\d{2}-\d{2}$/;
@@ -332,6 +333,15 @@ function parseFrontmatter<T>(
   const body = normalizedSource.slice(frontmatterMatch[0].length).trim();
   if (!body) {
     throw new ContentValidationError(sourcePath, "正文不能为空");
+  }
+
+  const mathIssue = getMarkdownMathIssue(body);
+  if (mathIssue) {
+    const location = mathIssue.line ? `正文第 ${mathIssue.line} 行` : "正文";
+    throw new ContentValidationError(
+      sourcePath,
+      `${location}数学公式无法解析：${mathIssue.message}`,
+    );
   }
 
   return { data: result.data, body };
