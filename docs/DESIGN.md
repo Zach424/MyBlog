@@ -149,6 +149,8 @@ Obsidian 的维护入口服从宿主应用而不是复制网页皮肤。1.3.0 �
 
 1.21.0 把旧式身份处理画成一张本地证据页，而不是迁移向导。`DRAFT IDENTITY / LOCAL EVIDENCE`、标题和边界先声明默认只读，唯一视觉签名 `FILE ⇄ FRONTMATTER` 并列文件名与顶层字段；状态仅为 `READY / FILE OWNED`、`LEGACY / MATCHED` 或 `HOLD / CONFLICT`。`DRAFT / INBOX / POST / PROJECT` 四行 ledger 使用宿主 token 与规则线表达事实，不显示评分、进度或虚构健康度。常规和冲突状态只有“关闭”；完全匹配时才出现“移除冗余 slug”，错误复用同一 `role=alert`。没有卡片、渐变、动画、历史、批量选择或第二套导航。
 
+1.22.0 把当前草稿的作者意图压缩成一张快速核对页，而不是复制全 inbox 报告或发布确认。`AUTHOR INTENT / LOCAL EVIDENCE` 与边界先声明它只复用正式发布解析，唯一视觉签名 `DRAFT → PUBLIC` 并列冻结的 inbox 路径和派生公开目标。状态只取 `READY / PUBLIC ON PASS`、`SCHEDULED / FUTURE DATE` 或 `HOLD / n BLOCKER(S)`；下方 `TYPE / DATE / MEDIA / LINKS` 规则线 ledger 分别呈现 Article/TIL/Project、NOW/SCHEDULED、附件数和站内引用次数，blocked 才追加有序问题证据。界面只有“关闭”，不提供检查、修复或发布按钮；使用 Obsidian 字体、颜色 token 和规则线，没有通用卡片、渐变、阴影、动画、历史或第二套导航。
+
 ## 站点图标
 
 `app/icon.png` 为 `256 × 256` PNG，只保留 Commit Trace 的节点、轨迹环与信号色半环，不包含文字、缩写或第二套标志。图标以社交分享卡为风格参考生成，再确定性缩放并纳入尺寸与体积测试；它用于小尺寸识别，不替代首页的工程轨迹签名。

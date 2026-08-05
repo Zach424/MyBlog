@@ -15,8 +15,8 @@ MyBlog 是 Zach424 的个人技术知识库与公开工程日志。它把学习�
 | Markdown | done | GFM、代码高亮、语言标签、渐进增强的一键复制、与实际渲染一致的 H1–H6 heading id、H2/H3 目录与原生永久链接、Obsidian 兼容脚注/尾注与行内/块级数学公式、A4 打印/PDF 版式、阅读时间、相邻文章与响应式正文图片 |
 | 内容发现 | done | SEO、内容级 OG/Twitter 封面、JSON-LD、RSS、Sitemap、robots、本地全文搜索 |
 | 网页写作 | done | `/studio`、GitHub OAuth、Decap workflow、PR、按 slug 归档媒体、稳定 slug 锁定、双层 SHA-256 冲突预检、快速重选 latest-wins、生产规则公式预览与全字段只读发布清单 |
-| Obsidian 写作 | done | Vault、三类受信模板、桌面插件 1.21.0、文件名唯一草稿身份、本地原子新建/安全改名/旧身份取证与严格清理、四个新发布/复核事务的 single-flight lease、阶段/输出活动脉冲、会话内最近终态回执与自动 doctor 联锁、13 项本机前置电路、统一只读 Git 交付分诊、版本化维护台账/Author Proof v3、两类安全重送/可信回执、deferred 并行草稿和新稿 `--check-only`/`--push` |
-| Inbox 发布就绪 | done | 全草稿 ready/scheduled/blocked、真实媒体候选、目标/共享附件诊断、CLI 与 Obsidian 只读弹窗 |
+| Obsidian 写作 | done | Vault、三类受信模板、桌面插件 1.22.0、文件名唯一草稿身份、本地原子新建/安全改名/旧身份取证与严格清理、当前草稿作者意图摘要、四个新发布/复核事务的 single-flight lease、阶段/输出活动脉冲、会话内最近终态回执与自动 doctor 联锁、13 项本机前置电路、统一只读 Git 交付分诊、版本化维护台账/Author Proof v3、两类安全重送/可信回执、deferred 并行草稿和新稿 `--check-only`/`--push` |
+| Inbox 发布就绪 | done | version 1/read-only 全草稿 ready/scheduled/blocked、Article/TIL/Project、站内引用计数、真实媒体候选、目标/共享附件诊断、CLI 全库文本与 Obsidian 当前草稿原生摘要 |
 | 附件发布 | done | Wiki/Markdown 图片转换、按内容隔离、稳定命名、越界保护、失败回滚 |
 | 自动交付 | done | GitHub `main` → Vercel Production → 稳定域名冒烟；checkout/setup-node v6 Node 24 action runtime，应用 Node 22 与 workflow 语义有结构测试 |
 | 恢复能力 | done | Vercel 显式目标回滚、当前版本恢复、再次冒烟 |
@@ -38,7 +38,7 @@ MyBlog 是 Zach424 的个人技术知识库与公开工程日志。它把学习�
 - 运行时：Next.js 16.3.0、React 19.2.6、TypeScript 5、Node.js 22+；
 - 内容：仓库内 Markdown、YAML、Zod，GitHub 是唯一事实源；
 - 阅读：react-markdown、remark-gfm、remark-math、rehype-slug、rehype-highlight、rehype-katex 与 KaTeX；服务端 Markdown、中文脚注语义与回链、HTML + MathML 数学公式、MarkdownHeading 永久链接与 PrintSource 可信来源，最小 CodeBlock 客户端岛、Clipboard API 与 aria-live；GFM + math 共享 mdast 继续复现标题、链接、媒体和搜索语义，生产阅读与 Studio 共享 remark/rehype/KaTeX/安全 URL 规则，构建期公式使用 `trust: false`/严格资源上限；A4 `@page` 与 scoped print CSS 只重排既有语义 DOM；
-- 发布：Decap CMS 3.14.1、GitHub OAuth、stable slug 自定义控件、同源媒体清单、内存会话账本、per-input generation 与 SHA-256 冲突确认、官方 preview template、同源只读公式/全字段预检端点、public-only 内容维护快照与严格浏览器契约、内容字段 allowlist、Obsidian 自有插件 1.21.0、Article/TIL/Project 受信模板、文件名唯一草稿身份、Vault 原子创建/旧身份清理与 FileManager 安全改名、四事务 single-flight lease/active 阶段与 stdout/stderr 活动快照/会话内最近终态回执/自动 author-doctor interlock/version 1 的 13 项 preflight circuit、单快照 Git 交付 switchyard、版本化维护 deadline ledger/复核 Author Proof v3/两类本地交付 rail 与 sealed receipt/发布 Commit Envelope/inbox 只读 Modal、候选 SHA-256 与 Git-clean blob 绑定、两类待交付提交识别和独立安全重送、精确 OID refspec、防重复发布、manifest 稳定性、共享 worktree impact classifier、deferred 路径证据、review-note/publish-note 领域与 Git 交付门、六条纯文本降级、统一子进程生命周期与 Node 发布脚本；
+- 发布：Decap CMS 3.14.1、GitHub OAuth、stable slug 自定义控件、同源媒体清单、内存会话账本、per-input generation 与 SHA-256 冲突确认、官方 preview template、同源只读公式/全字段预检端点、public-only 内容维护快照与严格浏览器契约、内容字段 allowlist、Obsidian 自有插件 1.22.0、Article/TIL/Project 受信模板、文件名唯一草稿身份、Vault 原子创建/旧身份清理与 FileManager 安全改名、version 1 inbox evidence 与 `DRAFT → PUBLIC` 当前草稿摘要、四事务 single-flight lease/active 阶段与 stdout/stderr 活动快照/会话内最近终态回执/自动 author-doctor interlock/version 1 的 13 项 preflight circuit、单快照 Git 交付 switchyard、版本化维护 deadline ledger/复核 Author Proof v3/两类本地交付 rail 与 sealed receipt/发布 Commit Envelope/inbox 只读 Modal、候选 SHA-256 与 Git-clean blob 绑定、两类待交付提交识别和独立安全重送、精确 OID refspec、防重复发布、manifest 稳定性、共享 worktree impact classifier、deferred 路径证据、review-note/publish-note 领域与 Git 交付门、六条纯文本降级、统一子进程生命周期与 Node 发布脚本；
 - 媒体：Sharp 0.35.3、浏览器 magic/帧结构解析、`createImageBitmap` 与 Web Crypto、构建期确定性摘要清单、mdast-util-from-markdown 2.0.3、`next/image`、固有尺寸、WebP 优化、引用所有权与 Git 附件跟踪；
 - 维护：内容新鲜度、根暂存媒体与正文/结构化端点外链的 CLI；Studio 与 Obsidian 都可显示公开 Current 队列，确定性库存进入本地发布候选，时间/DNS 敏感的外链 HEAD 只显式运行；
 - 路由：严格 YAML + Zod 永久重定向注册表、Next `redirects()` 308、构建期现行路由与静态文件交叉校验；
@@ -50,22 +50,22 @@ MyBlog 是 Zach424 的个人技术知识库与公开工程日志。它把学习�
 
 - 仓库：<https://github.com/Zach424/MyBlog>，生产分支 `main`；
 - 生产站：<https://blog-iota-five-59.vercel.app>；
-- 本轮实现提交：`77df7791e9d30ca1450d71d2154a2a31caad6951`（Obsidian 旧式草稿身份取证与原子清理）；
+- 本轮实现提交：`3754eb01389cf7152ae2a87ab0a7aa034df45ba4`（Obsidian 当前草稿作者意图摘要）；
 - 自动交付：实现提交已推送；远端 Quality、Vercel 验证与生产状态仍由 GitHub/Vercel 按提交独立报告；
-- 最新完成迭代：0070 旧式草稿身份取证与原子清理；
+- 最新完成迭代：0071 当前草稿作者意图摘要；
 - Obsidian 状态：仓库根目录就是 Vault，`docs/STATUS.md` 与 `docs/iterations/*.md` 可直接阅读和维护；
 - 手动外部接入：自定义域名、统计、评论、公开邮箱均暂缓，不阻塞当前开发。
 
 ## 本轮新增能力
 
-MyBlog Publisher 1.21.0 新增“检查当前草稿身份”：原生证据页以 `FILE ⇄ FRONTMATTER` 核对文件名、顶层 slug、`draft` 和 posts/projects 命名空间。常规草稿只报告文件名已拥有身份；不匹配、YAML/原始格式歧义、非 draft 或正式碰撞保持只读。只有精确 `slug: <filename>` 才出现一次性清理，且在 `Vault.process` 原子 callback 中再次比较最新正文；成功只删除该行，CRLF、注释、顺序和正文逐字节保留。双击和多 Modal 由两层 guard 串行化，宿主或后置结果不确定时不重试。定向插件测试 107/107、相关三文件 125/125、真实 doctor 13/13；两遍完整门均通过 292/292、45 个构建页面、19/19 生产应用测试和生产依赖审计 0。
+MyBlog Publisher 1.22.0 新增“查看当前草稿发布意图”：命令冻结活动安全 inbox `TFile`，读取 version 1、`mode: read-only` 的完整 inbox evidence，严格核对四项 false 安全声明、entry/媒体/issue、状态日期、路径与聚合计数，再只选择一个同来源结果。原生页面以 `DRAFT → PUBLIC` 显示公开目标，并用 `TYPE / DATE / MEDIA / LINKS` 显示 Article/TIL/Project、NOW/SCHEDULED、附件数和正式解析识别的站内引用次数；blocked 只列证据，全部状态都只有“关闭”。插件不解析 Markdown/YAML、不进入 author lease、不写 Vault、不 reconcile、不发布或联网；活动对象漂移或 JSON 不可信时失败关闭且不回退、不重试。失败优先合同 16 项先全部失败后 16/16 通过，相关四文件回归 143/143；真实 doctor 13/13。第一遍完整门在 304/304 后捕获 TypeScript 联合类型收窄问题，改为显式 post/project 分支后，两遍完整门均通过 304/304、45 个构建页面、19/19 生产应用测试和生产依赖审计 0。
 
 ## 风险与下一步
 
 1. Studio 已完成真实格式/预算、生产/会话摘要、快速重选竞态、数学公式作者预览和全字段只读 Author Proof，但有意不自动缩放/转 WebP，也不在第一版阻断保存；跨文章 slug/专题连续性、媒体引用和站内关系仍由完整仓库门验证；
 2. 首次保存后的 slug 已在 Studio 控件层锁定；真正迁移仍只能通过 Git 同步修改内容文件、正文引用、附件目录和 `content/redirects.yml`。注册表不自动推断迁移且有意只支持精确单跳路径；该控件依赖固定 Decap 3.14.1 bundle 的 `entry/newRecord` 契约，升级时必须重审；
 3. inbox readiness 已覆盖全部本地草稿，但有意不进入 Actions：未跟踪草稿和附件天然不在 CI 检出中；当前真实 inbox 为空，正向/阻塞路径由临时 Git/媒体夹具验证，首次实际多草稿使用时仍应按 Modal 逐项复核；
-4. Current record 已有 Studio、Obsidian 与每周 Actions 三个只读视图；Obsidian 1.21.0 已闭合本地草稿创建、旧身份取证/严格清理与文件名改名，并继续保留四事务 owner-checked lease、活动脉冲、会话内终态回执、Author Proof v3、统一 Git 交付 switchyard、两类独立交付状态、精确重送与可信回执。身份页已有 DOM/CSS、格式歧义、逐字节保真、竞态、宿主拒绝和不确定后置状态测试，但没有真实 Obsidian 宿主像素快照；带注释、引号、anchor/tag、缩进、重复键或不匹配值的旧 slug 故意保持只读；
+4. Current record 已有 Studio、Obsidian 与每周 Actions 三个只读视图；Obsidian 1.22.0 已闭合本地草稿创建、旧身份取证/严格清理、文件名改名和当前草稿作者意图摘要，并继续保留四事务 owner-checked lease、活动脉冲、会话内终态回执、Author Proof v3、统一 Git 交付 switchyard、两类独立交付状态、精确重送与可信回执。作者意图页已有 DOM/CSS、ready/scheduled/blocked、完整媒体包络、schema/safety/计数漂移和活动文件漂移测试，但没有真实 Obsidian 宿主像素快照；当前命令为保留共享附件判断仍检查整个 inbox，草稿和大图很多时可能做无关媒体派生；带注释、引号、anchor/tag、缩进、重复键或不匹配值的旧 slug 故意保持只读；
 5. Obsidian 块引用是专有语法，当前明确拒绝；知识地图已公开，但当前 SVG 双列布局为小型内容库优化，内容增长后需要在不牺牲 HTML 语义的前提下增加过滤或分组；
 6. 正文与结构化 HTTPS 端点已有统一离线库存和显式健康检查，但 DNS/限流/网络仍只是观察证据；本机直连 Vercel 域名继续出现 timeout 假阴性，因此实时检查不进 Actions；
 7. 标题锚点采用严格的实际渲染 id；改名或调整重复标题顺序时必须同步正文深链，Obsidian 块引用和模糊匹配仍明确不支持；
@@ -74,4 +74,4 @@ MyBlog Publisher 1.21.0 新增“检查当前草稿身份”：原生证据页�
 10. `decap-cms` 的开发依赖树仍有上游无修复的高危审计项；它不进入公开服务端生产依赖，但其浏览器编辑器包仅对已授权作者开放，后续应单独评估升级或替代方案。
 11. checkout/setup-node v6 的官方 major tag 会移动；当前策略延续既有 major 更新方式并记录本轮 tag 指针，若以后提高供应链固定强度，应单独设计 immutable SHA 与自动更新流程，而不是在功能轮静默切换。
 
-下一轮唯一主任务：评估当前 Obsidian 草稿的单篇作者意图摘要，复用既有解析结果只读展示类型、公开目标、日期语义、附件与站内链接数量；不得重复实现 inbox readiness、引入云服务/真实 API、自动发布或自动修复。
+下一轮唯一主任务：评估 source-scoped inbox evidence：在保留全草稿轻量解析和共享附件/目标碰撞判断的前提下，只对当前目标草稿执行真实媒体派生，减少作者意图摘要在多草稿工作区的无关开销；不得复制发布规则、弱化全库就绪报告、引入云服务/真实 API、自动发布或自动修复。

@@ -18,7 +18,7 @@ demo: "https://blog-iota-five-59.vercel.app"
 
 ## 当前状态（2026-08-06）
 
-MyBlog 当前运行在 Vercel，稳定公开地址是 [blog-iota-five-59.vercel.app](https://blog-iota-five-59.vercel.app)。仓库使用原生 Next.js 16.3、React 19 和 TypeScript；GitHub `main` 自动触发 Production，质量门和独立线上冒烟共同验证交付。网页 Studio 与 Obsidian 都可由作者独立发布；MyBlog Publisher 1.21.0 支持文件名唯一的草稿创建、安全改名，以及旧式重复 slug 的本地取证与严格原子清理。
+MyBlog 当前运行在 Vercel，稳定公开地址是 [blog-iota-five-59.vercel.app](https://blog-iota-five-59.vercel.app)。仓库使用原生 Next.js 16.3、React 19 和 TypeScript；GitHub `main` 自动触发 Production，质量门和独立线上冒烟共同验证交付。网页 Studio 与 Obsidian 都可由作者独立发布；MyBlog Publisher 1.22.0 支持文件名唯一的草稿创建、安全改名、旧式重复 slug 的严格原子清理，以及当前草稿的只读作者意图摘要。
 
 Cloudflare、Sites、Vinext、Vite Worker 和 Wrangler 仅属于 2026-07-18 至 2026-07-19 的首版与迁移历史，不再是当前运行依赖。旧公开站保留为迁移期回退证据，页面顶部的 Live demo 始终指向当前生产站。
 
@@ -59,6 +59,8 @@ GitHub Actions 把 action 自身运行时和应用运行时分开管理：checko
 Studio 内容复核页复用正式维护报告，而不是在浏览器重写日期规则。动态 JSON 端点只映射已公开 Current 内容的标题、slug、状态、复核期限和两个安全导航目标，不返回正文、草稿或源文件路径；部署内容集合保持确定，报告日按请求时的 `Asia/Shanghai` 当天推进。浏览器严格核对版本、计数、日期、状态与 URL，再绘制 Review Horizon 和逐条账本；坏响应进入可重试失败态，不自动改日期或发送外部提醒。
 
 Obsidian 插件用固定参数数组和 `shell: false` 在 Vault 根目录启动同一 `content:status`，把报告以 `setText` 写入原生只读 Modal；Windows 通过隐藏 `cmd.exe` 运行 npm，POSIX 直接运行 npm。发布、inbox 和维护命令共享活动进程账本与 200,000 字符输出边界，成功、错误、非零退出或插件卸载都会关闭持续 Notice；卸载在 Windows 以固定参数、无 shell 的 `taskkill.exe /T /F` 终止命令进程树，POSIX 直接终止子进程，并忽略迟到事件。报告不访问网络、不写内容，也不改变正式构建门。
+
+当前草稿作者意图没有在插件中再解析 Markdown/YAML。正式发布器在同一次链接目标与标题锚点校验中返回站内引用次数，version 1 inbox readiness 再加入 Article/TIL/Project、公开日、正式目标、媒体候选与只读安全声明。插件严格选中活动路径，以 `DRAFT → PUBLIC` 和 `TYPE / DATE / MEDIA / LINKS` 汇总；JSON、计数、安全边界或活动文件漂移时失败关闭，不回退、不重试，也不提供发布动作。
 
 视觉系统以 Commit Trace 为唯一主要识别元素，把日期、文章类型和项目里程碑连成一条工程轨迹。Evidence Rail 只显示可验证状态，不展示虚构的完成率。
 
@@ -102,7 +104,7 @@ Sites 首次生产发布后，首页与集合页返回 200，但没有任何内�
 
 ### Vercel 阶段（当前）
 
-当前站的 Studio/Obsidian 双发布、内容维护、关系门与 Vercel 恢复均已验收。Iteration 0069 用文件名统一 inbox 草稿身份，并以原生 FileManager 提供发布前安全改名；定向回归 111/111，完整门的 277 项单元与集成、45 页构建和远端 3/3 检查均通过。项目保持 `maintained`，生产站公开且不依赖 Cloudflare。
+当前站的 Studio/Obsidian 双发布、内容维护、关系门与 Vercel 恢复均已验收。Iteration 0071 把正式发布解析结果提升为版本化只读 inbox evidence，并为当前活动草稿提供 Article/TIL/Project、公开目标、日期语义、附件数、站内链接数和阻塞证据。相关四文件回归 143/143，真实 doctor 13/13；两遍完整门均通过 304/304 单元与集成、45 页构建、19/19 生产应用测试和生产依赖审计 0。项目保持 `maintained`，生产站公开且不依赖 Cloudflare。
 
 ## 复盘
 
@@ -110,4 +112,4 @@ Sites 首次生产发布后，首页与集合页返回 200，但没有任何内�
 
 ## 下一步
 
-下一轮评估旧式 inbox 草稿的只读身份迁移诊断；证明不了单文件原子修改与恢复时，不增加自动清理。云 API、自定义域名、公开邮箱、评论与统计保持范围外。
+下一轮评估 source-scoped inbox evidence：保留跨草稿共享附件和目标碰撞判断，只跳过无关草稿的真实媒体派生，减少多草稿工作区中当前摘要的等待。云 API、自定义域名、公开邮箱、评论、统计、自动发布和自动修复保持范围外。
