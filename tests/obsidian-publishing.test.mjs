@@ -274,8 +274,14 @@ test("leaves attachment examples inside fenced code untouched", () => {
 test("normalizes Obsidian note and heading links into stable blog URLs", () => {
   const withContentLinks = article.replace(
     "正文图片 ![evidence](/uploads/obsidian-evidence.png)。",
-    "参见 [[building-a-maintainable-blog#设计也要表达真实结构|设计文章]]、[项目](../projects/myblog.md) 与 [[#方法|本文方法]]。",
+    `参见 [[building-a-maintainable-blog#设计也要表达真实结构|设计文章]]、[项目](../projects/myblog.md) 与 [[#方法|本文方法]]。
+再次核对 [[building-a-maintainable-blog#设计也要表达真实结构|同一设计目标]]。`,
   );
+  const sourceLines = withContentLinks
+    .split(/\r?\n/u)
+    .map((line, index) => ({ index: index + 1, line }))
+    .filter(({ line }) => line.includes("building-a-maintainable-blog#设计也要表达真实结构"))
+    .map(({ index }) => index);
   const result = prepareObsidianNote(
     "content/inbox/obsidian-publishing.md",
     withContentLinks,
@@ -291,6 +297,26 @@ test("normalizes Obsidian note and heading links into stable blog URLs", () => {
   assert.match(result.content, /\[本文方法\]\(#方法\)/u);
   assert.deepEqual(result.attachments, []);
   assert.equal(result.internalLinkCount, 3);
+  assert.deepEqual(result.internalLinks, [
+    {
+      kind: "post",
+      occurrences: 2,
+      sourceLines,
+      target: "/posts/building-a-maintainable-blog#设计也要表达真实结构",
+    },
+    {
+      kind: "project",
+      occurrences: 1,
+      sourceLines: [sourceLines[0]],
+      target: "/projects/myblog",
+    },
+    {
+      kind: "self",
+      occurrences: 1,
+      sourceLines: [sourceLines[0]],
+      target: "/posts/obsidian-publishing#方法",
+    },
+  ]);
 });
 
 test("keeps external and code-example links out of Obsidian link conversion", () => {
@@ -315,6 +341,7 @@ test("keeps external and code-example links out of Obsidian link conversion", ()
   assert.match(result.content, /`\[\[building-a-maintainable-blog\]\]`/u);
   assert.match(result.content, /\[\[myblog\|项目\]\]/u);
   assert.equal(result.internalLinkCount, 0);
+  assert.deepEqual(result.internalLinks, []);
 });
 
 test("rejects missing, ambiguous, and block-level Obsidian links", () => {
@@ -551,7 +578,7 @@ test("ships a desktop Obsidian command without hidden shell interpolation", asyn
     readFile(new URL("../.obsidian/plugins/myblog-publisher/main.js", import.meta.url), "utf8"),
   ]);
   assert.equal(JSON.parse(manifest).isDesktopOnly, true);
-  assert.equal(JSON.parse(manifest).version, "1.23.0");
+  assert.equal(JSON.parse(manifest).version, "1.24.0");
   assert.equal(JSON.parse(manifest).minAppVersion, "1.5.7");
   assert.match(plugin, /FileSystemAdapter/);
   assert.match(plugin, /create-blog-draft/);

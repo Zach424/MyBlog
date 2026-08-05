@@ -3,7 +3,7 @@ import { createHash } from "node:crypto";
 import { parsePostFile, parseProjectFile } from "./content/contract.ts";
 import {
   decodeMarkdownHeadingFragment,
-  extractInternalContentReferences,
+  extractInternalContentReferenceEvidence,
   extractMarkdownHeadingAnchors,
   markdownHeadingAnchor,
   transformMarkdownProse,
@@ -25,6 +25,13 @@ export interface ObsidianLinkTarget {
   body?: string;
   kind: ObsidianContentKind;
   slug: string;
+}
+
+export interface PreparedInternalLink {
+  kind: "post" | "project" | "self";
+  occurrences: number;
+  sourceLines: number[];
+  target: string;
 }
 
 function normalizePath(value: string) {
@@ -325,31 +332,38 @@ function validatePreparedContentLinks(
     extractMarkdownHeadingAnchors(markdown).map((heading) => heading.id),
   );
 
-  const references = extractInternalContentReferences(markdown);
+  const references = extractInternalContentReferenceEvidence(markdown);
+  const internalLinks: PreparedInternalLink[] = [];
   for (const reference of references) {
     const targetUrl = reference.kind === "self" ? ownUrl : reference.url;
     const target = reference.kind === "self" ? undefined : targetsByUrl.get(targetUrl);
     if (reference.kind !== "self" && !target) {
       throw new Error(`找不到站内内容链接目标：${targetUrl}`);
     }
-    if (!reference.fragment) continue;
-
-    let fragment: string;
-    try {
-      fragment = decodeMarkdownHeadingFragment(reference.fragment);
-    } catch {
-      throw new Error(`站内链接标题锚点包含无效 URL 编码：${targetUrl}#${reference.fragment}`);
+    if (reference.fragment) {
+      let fragment: string;
+      try {
+        fragment = decodeMarkdownHeadingFragment(reference.fragment);
+      } catch {
+        throw new Error(`站内链接标题锚点包含无效 URL 编码：${targetUrl}#${reference.fragment}`);
+      }
+      const headingIds = reference.kind === "self"
+        ? ownHeadingIds
+        : target?.body === undefined
+          ? undefined
+          : new Set(extractMarkdownHeadingAnchors(target.body).map((heading) => heading.id));
+      if (headingIds && !headingIds.has(fragment)) {
+        throw new Error(`站内链接标题锚点不存在：${targetUrl}#${reference.fragment}`);
+      }
     }
-    const headingIds = reference.kind === "self"
-      ? ownHeadingIds
-      : target?.body === undefined
-        ? undefined
-        : new Set(extractMarkdownHeadingAnchors(target.body).map((heading) => heading.id));
-    if (headingIds && !headingIds.has(fragment)) {
-      throw new Error(`站内链接标题锚点不存在：${targetUrl}#${reference.fragment}`);
-    }
+    internalLinks.push({
+      kind: reference.kind,
+      occurrences: reference.occurrences,
+      sourceLines: reference.sourceLines,
+      target: `${targetUrl}${reference.fragment ? `#${reference.fragment}` : ""}`,
+    });
   }
-  return references.length;
+  return internalLinks;
 }
 
 export function prepareObsidianNote(
@@ -384,7 +398,7 @@ export function prepareObsidianNote(
     throw new Error("无法关闭草稿状态，请检查 frontmatter 中的 draft 字段");
   }
 
-  const internalLinkCount = validatePreparedContentLinks(prepared, kind, slug, linkTargets);
+  const internalLinks = validatePreparedContentLinks(prepared, kind, slug, linkTargets);
   if (kind === "post") parsePostFile(targetPath, prepared);
   else parseProjectFile(targetPath, prepared);
 
@@ -395,6 +409,7 @@ export function prepareObsidianNote(
     targetPath,
     content: prepared.endsWith("\n") ? prepared : `${prepared}\n`,
     attachments: normalizedAttachments.attachments,
-    internalLinkCount,
+    internalLinkCount: internalLinks.length,
+    internalLinks,
   };
 }

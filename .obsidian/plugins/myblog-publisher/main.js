@@ -19,9 +19,9 @@ const CONTENT_PUBLISH_DELIVERY_REPORT_VERSION = 1;
 const CONTENT_PUBLISH_DELIVERY_RECEIPT_VERSION = 1;
 const CONTENT_DELIVERY_TRIAGE_REPORT_VERSION = 1;
 const AUTHOR_DOCTOR_REPORT_VERSION = 1;
-const INBOX_READINESS_REPORT_VERSION = 1;
+const INBOX_READINESS_REPORT_VERSION = 2;
 const AUTHOR_DOCTOR_NODE_ENGINE = ">=22.13.0";
-const AUTHOR_DOCTOR_PLUGIN_VERSION = "1.23.0";
+const AUTHOR_DOCTOR_PLUGIN_VERSION = "1.24.0";
 const DRAFT_TITLE_MAX_LENGTH = 120;
 const DRAFT_SLUG_MAX_LENGTH = 80;
 const DRAFT_SLUG_PATTERN = /^[a-z0-9]+(?:-[a-z0-9]+)*$/u;
@@ -247,6 +247,7 @@ function parseInboxReadinessReport(output, expectedSourcePath) {
         "attachments",
         "draftState",
         "internalLinkCount",
+        "internalLinks",
         "issues",
         "sourcePath",
         "state",
@@ -303,6 +304,69 @@ function parseInboxReadinessReport(output, expectedSourcePath) {
         valueError(`${entryLabel}.targetPath`, `必须是 ${expectedTargetPath}`);
       }
       parseIsoDate(entry.publishedAt, `${entryLabel}.publishedAt`);
+    }
+
+    if (!Array.isArray(entry.internalLinks)) {
+      valueError(`${entryLabel}.internalLinks`, "必须是数组");
+    }
+    if (entry.internalLinkCount !== entry.internalLinks.length) {
+      valueError(`${entryLabel}.internalLinkCount`, "必须与精确站内链接目标数量一致");
+    }
+    if (preparedCount === 0 && entry.internalLinks.length !== 0) {
+      valueError(`${entryLabel}.internalLinks`, "未完成正式解析时必须为空");
+    }
+    const exactLinkTargets = new Set();
+    const safeInternalTarget = /^\/(posts|projects)\/([a-z0-9]+(?:-[a-z0-9]+)*)(?:#([^\s#\u0000-\u001f\u007f]+))?$/u;
+    for (const [linkIndex, link] of entry.internalLinks.entries()) {
+      const linkLabel = `${entryLabel}.internalLinks[${linkIndex}]`;
+      assertPlainObject(link, linkLabel);
+      assertExactKeys(
+        link,
+        ["kind", "occurrences", "sourceLines", "target"],
+        linkLabel,
+      );
+      if (!new Set(["post", "project", "self"]).has(link.kind)) {
+        valueError(`${linkLabel}.kind`, "必须是 post、project 或 self");
+      }
+      assertInteger(link.occurrences, `${linkLabel}.occurrences`, 1);
+      if (!Array.isArray(link.sourceLines) || link.sourceLines.length !== link.occurrences) {
+        valueError(`${linkLabel}.sourceLines`, "必须逐次记录每个引用的源码行号");
+      }
+      let previousLine = 0;
+      for (const [lineIndex, line] of link.sourceLines.entries()) {
+        assertInteger(line, `${linkLabel}.sourceLines[${lineIndex}]`, 1);
+        if (line < previousLine) {
+          valueError(`${linkLabel}.sourceLines`, "必须按源码顺序排列");
+        }
+        previousLine = line;
+      }
+      if (typeof link.target !== "string") {
+        valueError(`${linkLabel}.target`, "必须是安全的站内公开目标");
+      }
+      const targetMatch = link.target.match(safeInternalTarget);
+      if (!targetMatch) {
+        valueError(`${linkLabel}.target`, "必须是安全的站内公开目标");
+      }
+      if (exactLinkTargets.has(link.target)) {
+        valueError(`${linkLabel}.target`, "精确目标不能重复");
+      }
+      exactLinkTargets.add(link.target);
+      if (link.kind === "post" && targetMatch[1] !== "posts") {
+        valueError(`${linkLabel}.target`, "必须与 post 类型一致");
+      }
+      if (link.kind === "project" && targetMatch[1] !== "projects") {
+        valueError(`${linkLabel}.target`, "必须与 project 类型一致");
+      }
+      if (link.kind === "self") {
+        if (preparedCount !== preparedFields.length || !targetMatch[3]) {
+          valueError(`${linkLabel}.target`, "self 必须指向已解析草稿的标题锚点");
+        }
+        const directory = entry.kind === "post" ? "posts" : "projects";
+        const ownTargetPrefix = `/${directory}/${entry.slug}#`;
+        if (!link.target.startsWith(ownTargetPrefix)) {
+          valueError(`${linkLabel}.target`, `必须指向 ${ownTargetPrefix}`);
+        }
+      }
     }
 
     if (!Array.isArray(entry.attachments)) {
@@ -2851,6 +2915,25 @@ class DraftIntentModal extends Modal {
       const row = evidence.createDiv({ cls: "myblog-draft-intent__evidence-row" });
       row.createEl("dt", { text: term });
       row.createEl("dd", { text: value });
+    }
+
+    if (entry.internalLinks.length > 0) {
+      const links = contentEl.createEl("section", {
+        cls: "myblog-draft-intent__links",
+      });
+      const linksHeader = links.createDiv({ cls: "myblog-draft-intent__links-header" });
+      linksHeader.createEl("h3", { text: "LINK TRACE" });
+      linksHeader.createEl("span", { text: `${entry.internalLinks.length} VERIFIED` });
+      const list = links.createEl("ol");
+      for (const link of entry.internalLinks) {
+        const item = list.createEl("li");
+        const trace = item.createDiv({ cls: "myblog-draft-intent__link-trace" });
+        trace.createEl("span", { text: link.kind.toUpperCase() });
+        trace.createEl("code", { text: link.target });
+        trace.createEl("span", {
+          text: `${link.sourceLines.map((line) => `L${line}`).join(", ")}${link.occurrences > 1 ? ` · ×${link.occurrences}` : ""}`,
+        });
+      }
     }
 
     if (entry.issues.length > 0) {

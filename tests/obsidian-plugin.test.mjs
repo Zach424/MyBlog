@@ -413,7 +413,7 @@ function inboxReadinessReport({
   entry = {},
   reportDate = "2026-08-06",
   safety = {},
-  version = 1,
+  version = 2,
 } = {}) {
   const sourcePath = "content/inbox/current-draft.md";
   const resolvedEntry = {
@@ -421,6 +421,20 @@ function inboxReadinessReport({
     contentType: "article",
     draftState: "draft",
     internalLinkCount: 2,
+    internalLinks: [
+      {
+        kind: "post",
+        occurrences: 2,
+        sourceLines: [18, 22],
+        target: "/posts/building-a-maintainable-blog#method",
+      },
+      {
+        kind: "project",
+        occurrences: 1,
+        sourceLines: [19],
+        target: "/projects/myblog",
+      },
+    ],
     issues: [],
     kind: "post",
     publishedAt: reportDate,
@@ -761,7 +775,7 @@ function authorDoctorReport() {
     ["workspace-dependencies", "workspace", "Workspace dependencies", "35/35 pinned packages", "all declared packages installed at pinned versions"],
     ["content-layout", "workspace", "Content layout", "5/5 required paths", "5 required authoring paths"],
     ["obsidian-vault", "vault", "Obsidian Vault", ".obsidian present", ".obsidian directory present"],
-    ["publisher-plugin", "vault", "MyBlog Publisher", "myblog-publisher@1.23.0 · desktop", "myblog-publisher 1.23.0 desktop plugin"],
+    ["publisher-plugin", "vault", "MyBlog Publisher", "myblog-publisher@1.24.0 · desktop", "myblog-publisher 1.24.0 desktop plugin"],
   ];
   const scripts = [
     "content:author:doctor",
@@ -808,7 +822,7 @@ function authorDoctorReport() {
           isDesktopOnly: true,
           mainPresent: true,
           stylesPresent: true,
-          version: "1.23.0",
+          version: "1.24.0",
         },
       },
       workspace: {
@@ -1225,10 +1239,17 @@ test("renders one current draft author-intent summary from versioned local evide
   assert.match(text, /READY \/ PUBLIC ON PASS/u);
   assert.match(text, /current-draft\.md.*content\/posts\/current-draft\.md/su);
   assert.match(text, /TYPE.*ARTICLE.*DATE.*2026-08-06.*NOW.*MEDIA.*1.*LINKS.*2/su);
+  assert.match(text, /LINK TRACE.*2 VERIFIED/su);
+  assert.match(
+    text,
+    /POST.*\/posts\/building-a-maintainable-blog#method.*L18, L22.*×2/su,
+  );
+  assert.match(text, /PROJECT.*\/projects\/myblog.*L19/su);
   assert.match(text, /不会修改、发布、提交、推送或联网/u);
   assert.deepEqual(elementsByTag(modal, "button").map((button) => button.text), ["关闭"]);
   assert.match(styles, /^\.myblog-draft-intent \{/mu);
   assert.match(styles, /myblog-draft-intent__signature/u);
+  assert.match(styles, /myblog-draft-intent__links/u);
   assert.deepEqual(harness.processAttempts, []);
   assert.deepEqual(harness.vaultReads, []);
   assert.equal(harness.reconciliations, 0);
@@ -1297,7 +1318,7 @@ test("fails closed when current-draft intent evidence is untrusted or the active
   multiEntryReport.counts.ready = 2;
   const invalidCases = [
     ["invalid JSON", "not-json"],
-    ["unsupported version", JSON.stringify(inboxReadinessReport({ version: 2 }))],
+    ["unsupported version", JSON.stringify(inboxReadinessReport({ version: 3 }))],
     [
       "unsafe safety claim",
       JSON.stringify(inboxReadinessReport({ safety: { networkChecked: true } })),
@@ -1319,6 +1340,73 @@ test("fails closed when current-draft intent evidence is untrusted or the active
         ...inboxReadinessReport(),
         counts: { ...inboxReadinessReport().counts, ready: 0 },
       }),
+    ],
+    [
+      "link count does not match evidence",
+      JSON.stringify(inboxReadinessReport({ entry: { internalLinkCount: 1 } })),
+    ],
+    [
+      "duplicate exact link target",
+      JSON.stringify(inboxReadinessReport({
+        entry: {
+          internalLinks: [
+            {
+              kind: "post",
+              occurrences: 1,
+              sourceLines: [18],
+              target: "/posts/duplicate",
+            },
+            {
+              kind: "post",
+              occurrences: 1,
+              sourceLines: [22],
+              target: "/posts/duplicate",
+            },
+          ],
+        },
+      })),
+    ],
+    [
+      "link occurrence and source lines drift",
+      JSON.stringify(inboxReadinessReport({
+        entry: {
+          internalLinkCount: 1,
+          internalLinks: [{
+            kind: "post",
+            occurrences: 2,
+            sourceLines: [18],
+            target: "/posts/building-a-maintainable-blog",
+          }],
+        },
+      })),
+    ],
+    [
+      "link kind and target route disagree",
+      JSON.stringify(inboxReadinessReport({
+        entry: {
+          internalLinkCount: 1,
+          internalLinks: [{
+            kind: "project",
+            occurrences: 1,
+            sourceLines: [18],
+            target: "/posts/building-a-maintainable-blog",
+          }],
+        },
+      })),
+    ],
+    [
+      "self link points at another page",
+      JSON.stringify(inboxReadinessReport({
+        entry: {
+          internalLinkCount: 1,
+          internalLinks: [{
+            kind: "self",
+            occurrences: 1,
+            sourceLines: [18],
+            target: "/posts/another-draft#method",
+          }],
+        },
+      })),
     ],
   ];
   for (const [name, output] of invalidCases) {
@@ -1725,7 +1813,7 @@ test("renders a versioned maintenance ledger and opens an exact Vault note", asy
     createPluginHarness(),
   ]);
   const manifest = JSON.parse(manifestSource);
-  assert.equal(manifest.version, "1.23.0");
+  assert.equal(manifest.version, "1.24.0");
   assert.equal(manifest.minAppVersion, "1.5.7");
   assert.equal(manifest.isDesktopOnly, true);
   assert.match(styles, /^\.myblog-draft-create \{/mu);

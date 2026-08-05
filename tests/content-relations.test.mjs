@@ -3,6 +3,7 @@ import test from "node:test";
 
 import { parsePostFile, parseProjectFile } from "../lib/content/contract.ts";
 import {
+  extractInternalContentReferenceEvidence,
   extractInternalContentReferences,
   extractMarkdownHeadingAnchors,
   extractTableOfContents,
@@ -49,8 +50,9 @@ ${body}`,
 }
 
 test("extracts inline, reference-style, and self content links outside code examples", () => {
-  const references = extractInternalContentReferences(`
+  const markdown = `
 [文章](/posts/linked-post#方法)
+[相同目标](/posts/linked-post#方法)
 [重复引用](/posts/linked-post)
 [项目][project-reference]
 [本文章节](#当前章节)
@@ -64,7 +66,8 @@ test("extracts inline, reference-style, and self content links outside code exam
 \`\`\`md
 [围栏示例](/projects/fenced-example)
 \`\`\`
-`);
+`;
+  const references = extractInternalContentReferences(markdown);
 
   assert.deepEqual(references, [
     {
@@ -75,22 +78,57 @@ test("extracts inline, reference-style, and self content links outside code exam
       fragment: "方法",
     },
     {
-      bodyLine: 3,
+      bodyLine: 4,
       kind: "post",
       slug: "linked-post",
       url: "/posts/linked-post",
     },
     {
-      bodyLine: 4,
+      bodyLine: 5,
       kind: "project",
       slug: "linked-project",
       url: "/projects/linked-project",
       fragment: "%E7%BB%93%E6%9E%9C",
     },
     {
-      bodyLine: 5,
+      bodyLine: 6,
       kind: "self",
       fragment: "当前章节",
+    },
+  ]);
+  assert.deepEqual(extractInternalContentReferenceEvidence(markdown), [
+    {
+      bodyLine: 2,
+      kind: "post",
+      slug: "linked-post",
+      url: "/posts/linked-post",
+      fragment: "方法",
+      occurrences: 2,
+      sourceLines: [2, 3],
+    },
+    {
+      bodyLine: 4,
+      kind: "post",
+      slug: "linked-post",
+      url: "/posts/linked-post",
+      occurrences: 1,
+      sourceLines: [4],
+    },
+    {
+      bodyLine: 5,
+      kind: "project",
+      slug: "linked-project",
+      url: "/projects/linked-project",
+      fragment: "%E7%BB%93%E6%9E%9C",
+      occurrences: 1,
+      sourceLines: [5],
+    },
+    {
+      bodyLine: 6,
+      kind: "self",
+      fragment: "当前章节",
+      occurrences: 1,
+      sourceLines: [6],
     },
   ]);
 });

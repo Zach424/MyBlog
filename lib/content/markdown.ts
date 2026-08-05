@@ -32,6 +32,11 @@ export type InternalContentReference =
       kind: "self";
     };
 
+export type InternalContentReferenceEvidence = InternalContentReference & {
+  occurrences: number;
+  sourceLines: number[];
+};
+
 export type MarkdownNode = {
   alt?: string;
   children?: MarkdownNode[];
@@ -198,7 +203,7 @@ export function markdownHeadingAnchor(value: string) {
   return extractMarkdownHeadingAnchors(`# ${value.replace(/\r?\n/gu, " ")}`)[0]?.id ?? "";
 }
 
-export function extractInternalContentReferences(markdown: string) {
+export function extractInternalContentReferenceEvidence(markdown: string) {
   const tree = parseMarkdown(markdown);
   const definitions = new Map<string, string>();
   walkMarkdown(tree, (node) => {
@@ -207,7 +212,7 @@ export function extractInternalContentReferences(markdown: string) {
     }
   });
 
-  const references = new Map<string, InternalContentReference>();
+  const references = new Map<string, InternalContentReferenceEvidence>();
   walkMarkdown(tree, (node) => {
     const value = node.type === "link"
       ? node.url
@@ -220,9 +225,35 @@ export function extractInternalContentReferences(markdown: string) {
     const key = reference.kind === "self"
       ? `self#${reference.fragment}`
       : `${reference.url}#${reference.fragment ?? ""}`;
-    if (!references.has(key)) references.set(key, reference);
+    const existing = references.get(key);
+    if (existing) {
+      existing.occurrences += 1;
+      if (reference.bodyLine) existing.sourceLines.push(reference.bodyLine);
+      return;
+    }
+    references.set(key, {
+      ...reference,
+      occurrences: 1,
+      sourceLines: reference.bodyLine ? [reference.bodyLine] : [],
+    });
   });
   return [...references.values()];
+}
+
+export function extractInternalContentReferences(markdown: string) {
+  return extractInternalContentReferenceEvidence(markdown).map((reference) => {
+    const location = reference.bodyLine ? { bodyLine: reference.bodyLine } : {};
+    if (reference.kind === "self") {
+      return { ...location, fragment: reference.fragment, kind: reference.kind };
+    }
+    return {
+      ...location,
+      ...(reference.fragment === undefined ? {} : { fragment: reference.fragment }),
+      kind: reference.kind,
+      slug: reference.slug,
+      url: reference.url,
+    };
+  });
 }
 
 export function extractMarkdownHeadingAnchors(markdown: string) {

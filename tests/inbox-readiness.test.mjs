@@ -91,6 +91,14 @@ async function createFixture() {
 test("reports ready and scheduled drafts with real media derivation", async () => {
   const root = await createFixture();
   try {
+    const readyDraft = article(
+      "ready-note",
+      "2026-08-05",
+      "证据 ![[evidence.png|示例图]]；[[#方法|回看方法]]。",
+    );
+    const internalLinkLine = readyDraft
+      .split(/\r?\n/u)
+      .findIndex((line) => line.includes("[[#方法|回看方法]]")) + 1;
     const image = await sharp({
       create: {
         width: 1200,
@@ -102,11 +110,7 @@ test("reports ready and scheduled drafts with real media derivation", async () =
     await Promise.all([
       writeFile(
         join(root, "content", "inbox", "ready-note.md"),
-        article(
-          "ready-note",
-          "2026-08-05",
-          "证据 ![[evidence.png|示例图]]；[[#方法|回看方法]]。",
-        ),
+        readyDraft,
       ),
       writeFile(
         join(root, "content", "inbox", "scheduled-project.md"),
@@ -120,7 +124,7 @@ test("reports ready and scheduled drafts with real media derivation", async () =
     const report = await inspectInboxReadiness(root, "2026-08-05", { stagingParent });
     const byPath = Object.fromEntries(report.entries.map((entry) => [entry.sourcePath, entry]));
 
-    assert.equal(report.version, 1);
+    assert.equal(report.version, 2);
     assert.equal(report.mode, "read-only");
     assert.deepEqual(report.safety, {
       authorFilesChanged: false,
@@ -141,6 +145,14 @@ test("reports ready and scheduled drafts with real media derivation", async () =
     assert.equal(byPath["content/inbox/ready-note.md"].contentType, "article");
     assert.equal(byPath["content/inbox/ready-note.md"].draftState, "draft");
     assert.equal(byPath["content/inbox/ready-note.md"].internalLinkCount, 1);
+    assert.deepEqual(byPath["content/inbox/ready-note.md"].internalLinks, [
+      {
+        kind: "self",
+        occurrences: 1,
+        sourceLines: [internalLinkLine],
+        target: "/posts/ready-note#方法",
+      },
+    ]);
     assert.equal(
       byPath["content/inbox/ready-note.md"].attachments[0].preparation.output.format,
       "webp",
@@ -149,6 +161,7 @@ test("reports ready and scheduled drafts with real media derivation", async () =
     assert.equal(byPath["content/inbox/scheduled-project.md"].kind, "project");
     assert.equal(byPath["content/inbox/scheduled-project.md"].contentType, "project");
     assert.equal(byPath["content/inbox/scheduled-project.md"].internalLinkCount, 0);
+    assert.deepEqual(byPath["content/inbox/scheduled-project.md"].internalLinks, []);
     assert.deepEqual(
       await readFile(join(root, "public", "uploads", "evidence.png")),
       sourceBefore,
@@ -365,7 +378,7 @@ test("runs the real JSON CLI and leaves the repository byte-for-byte untouched",
     );
     assert.equal(result.status, 0, `${result.stdout}\n${result.stderr}`);
     const report = JSON.parse(result.stdout);
-    assert.equal(report.version, 1);
+    assert.equal(report.version, 2);
     assert.equal(report.mode, "read-only");
     assert.equal(report.counts.ready, 1);
     assert.equal(report.counts.drafts, 1);

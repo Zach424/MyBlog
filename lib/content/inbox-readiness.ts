@@ -14,6 +14,7 @@ import {
   type ObsidianContentKind,
   type ObsidianLinkTarget,
   type PreparedAttachment,
+  type PreparedInternalLink,
   prepareObsidianNote,
 } from "../obsidian-publishing.ts";
 import {
@@ -27,7 +28,7 @@ const ISO_DATE_PATTERN = /^\d{4}-\d{2}-\d{2}$/u;
 const INBOX_SOURCE_PREFIX = "content/inbox/";
 const SLUG_PATTERN = /^[a-z0-9]+(?:-[a-z0-9]+)*$/u;
 
-export const INBOX_READINESS_REPORT_VERSION = 1 as const;
+export const INBOX_READINESS_REPORT_VERSION = 2 as const;
 
 export const INBOX_READINESS_STATES = ["blocked", "scheduled", "ready"] as const;
 export type InboxReadinessState = (typeof INBOX_READINESS_STATES)[number];
@@ -57,6 +58,7 @@ export type InboxReadinessEntry = {
   contentType?: "article" | "project" | "til";
   draftState: "disabled" | "draft" | "unknown";
   internalLinkCount: number;
+  internalLinks: PreparedInternalLink[];
   issues: InboxReadinessIssue[];
   kind?: ObsidianContentKind;
   publishedAt?: string;
@@ -194,6 +196,7 @@ function blockedEntry(sourcePath: string): InboxReadinessEntry {
     attachments: [],
     draftState: "unknown",
     internalLinkCount: 0,
+    internalLinks: [],
     issues: [],
     ...(SLUG_PATTERN.test(candidateSlug) ? { slug: candidateSlug } : {}),
     sourcePath,
@@ -245,6 +248,7 @@ async function inspectDraft(
   entry.targetPath = prepared.targetPath;
   entry.attachments = prepared.attachments.map((attachment) => ({ ...attachment }));
   entry.internalLinkCount = prepared.internalLinkCount;
+  entry.internalLinks = prepared.internalLinks;
   if (prepared.kind === "post") {
     const record = parsePostFile(prepared.targetPath, prepared.content);
     entry.publishedAt = record.publishedAt;
@@ -504,6 +508,11 @@ export function formatInboxReadinessText(report: InboxReadinessReport) {
     for (const attachment of entry.attachments) {
       lines.push(
         `[inbox]   附件 ${attachment.sourcePath} -> ${attachment.targetPath}${attachment.preparation ? ` · ${formatMediaPreparation(attachment.preparation)}` : " · 未完成媒体派生"}`,
+      );
+    }
+    for (const link of entry.internalLinks) {
+      lines.push(
+        `[inbox]   站内链接 [${link.kind}] ${link.sourceLines.map((line) => `L${line}`).join(", ")} -> ${link.target}${link.occurrences > 1 ? ` · ×${link.occurrences}` : ""}`,
       );
     }
     for (const issue of entry.issues) {
