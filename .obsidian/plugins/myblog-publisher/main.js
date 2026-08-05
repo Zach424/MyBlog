@@ -19,9 +19,9 @@ const CONTENT_PUBLISH_DELIVERY_REPORT_VERSION = 1;
 const CONTENT_PUBLISH_DELIVERY_RECEIPT_VERSION = 1;
 const CONTENT_DELIVERY_TRIAGE_REPORT_VERSION = 1;
 const AUTHOR_DOCTOR_REPORT_VERSION = 1;
-const INBOX_READINESS_REPORT_VERSION = 3;
+const INBOX_READINESS_REPORT_VERSION = 4;
 const AUTHOR_DOCTOR_NODE_ENGINE = ">=22.13.0";
-const AUTHOR_DOCTOR_PLUGIN_VERSION = "1.26.0";
+const AUTHOR_DOCTOR_PLUGIN_VERSION = "1.27.0";
 const DRAFT_TITLE_MAX_LENGTH = 120;
 const DRAFT_SLUG_MAX_LENGTH = 80;
 const DRAFT_SLUG_PATTERN = /^[a-z0-9]+(?:-[a-z0-9]+)*$/u;
@@ -254,6 +254,7 @@ function parseInboxReadinessReport(output, expectedSourcePath) {
 
   const states = ["blocked", "scheduled", "ready"];
   const issueCodes = new Set([
+    "attachment-alt-empty",
     "attachment-invalid",
     "attachment-missing",
     "attachment-shared",
@@ -407,6 +408,7 @@ function parseInboxReadinessReport(output, expectedSourcePath) {
     const attachmentSources = new Set();
     const attachmentTargets = new Set();
     const mediaUsageRoleOrder = new Map([["cover", 0], ["body", 1]]);
+    const emptyAltAttachmentSources = new Set();
     const unpreparedAttachmentSources = new Set();
     for (const [attachmentIndex, attachment] of entry.attachments.entries()) {
       const attachmentLabel = `${entryLabel}.attachments[${attachmentIndex}]`;
@@ -426,7 +428,7 @@ function parseInboxReadinessReport(output, expectedSourcePath) {
         assertPlainObject(usage, usageLabel);
         assertExactKeys(
           usage,
-          ["occurrences", "role", "sourceLines"],
+          ["altTexts", "occurrences", "role", "sourceLines"],
           usageLabel,
         );
         const roleOrder = mediaUsageRoleOrder.get(usage.role);
@@ -444,6 +446,9 @@ function parseInboxReadinessReport(output, expectedSourcePath) {
         if (!Array.isArray(usage.sourceLines) || usage.sourceLines.length !== usage.occurrences) {
           valueError(`${usageLabel}.sourceLines`, "必须逐次记录每个媒体引用的源码行号");
         }
+        if (!Array.isArray(usage.altTexts) || usage.altTexts.length !== usage.occurrences) {
+          valueError(`${usageLabel}.altTexts`, "必须逐次记录每个媒体引用的最终替代文本");
+        }
         let previousLine = 0;
         for (const [lineIndex, line] of usage.sourceLines.entries()) {
           assertInteger(line, `${usageLabel}.sourceLines[${lineIndex}]`, 1);
@@ -451,6 +456,11 @@ function parseInboxReadinessReport(output, expectedSourcePath) {
             valueError(`${usageLabel}.sourceLines`, "必须按源码顺序排列");
           }
           previousLine = line;
+          const altText = usage.altTexts[lineIndex];
+          if (typeof altText !== "string") {
+            valueError(`${usageLabel}.altTexts[${lineIndex}]`, "必须是字符串");
+          }
+          if (!altText.trim()) emptyAltAttachmentSources.add(attachment.sourcePath);
         }
       }
       for (const field of ["sourcePath", "targetPath"]) {
@@ -573,6 +583,22 @@ function parseInboxReadinessReport(output, expectedSourcePath) {
       );
       if (!hasMatchingIssue) {
         valueError(`${entryLabel}.attachments`, `未派生附件必须有同源 missing/invalid 问题：${sourcePath}`);
+      }
+    }
+    for (const sourcePath of emptyAltAttachmentSources) {
+      const hasMatchingIssue = entry.issues.some((issue) =>
+        issue.code === "attachment-alt-empty" && issue.path === sourcePath,
+      );
+      if (!hasMatchingIssue) {
+        valueError(`${entryLabel}.attachments`, `空替代文本必须有同源阻塞问题：${sourcePath}`);
+      }
+    }
+    for (const issue of entry.issues) {
+      if (
+        issue.code === "attachment-alt-empty" &&
+        !emptyAltAttachmentSources.has(issue.path)
+      ) {
+        valueError(`${entryLabel}.issues`, `替代文本阻塞问题必须对应空值附件：${issue.path ?? "missing path"}`);
       }
     }
     if (entry.state === "blocked" && entry.issues.length === 0) {
@@ -3073,6 +3099,15 @@ class DraftIntentModal extends Modal {
           usageRow.createEl("span", {
             text: `${usage.sourceLines.map((line) => `L${line}`).join(", ")}${usage.occurrences > 1 ? ` · ×${usage.occurrences}` : ""}`,
           });
+          for (const [index, altText] of usage.altTexts.entries()) {
+            usageRow.createEl("span", { text: `ALT · L${usage.sourceLines[index]}` });
+            const altValue = usageRow.createEl("span", {
+              text: altText.trim() ? altText : "EMPTY · WILL FAIL",
+            });
+            if (!altText.trim()) {
+              altValue.addClass("myblog-draft-intent__media-alt--empty");
+            }
+          }
         }
         const mapping = item.createDiv({ cls: "myblog-draft-intent__media-mapping" });
         mapping.createEl("code", { text: attachment.sourcePath });

@@ -23,6 +23,7 @@ export interface PreparedAttachment {
 }
 
 export interface PreparedAttachmentUsage {
+  altTexts: string[];
   occurrences: number;
   role: "body" | "cover";
   sourceLines: number[];
@@ -160,6 +161,7 @@ function normalizeAttachmentLinks(
     allowBareName: boolean,
     role: PreparedAttachmentUsage["role"],
     sourceLine: number,
+    altText?: string,
   ) {
     let sourcePath: string | undefined;
     try {
@@ -191,10 +193,16 @@ function normalizeAttachmentLinks(
     }
     const usage = attachment.usages.find((candidate) => candidate.role === role);
     if (usage) {
+      if (altText !== undefined) usage.altTexts.push(altText);
       usage.occurrences += 1;
       usage.sourceLines.push(sourceLine);
     } else {
-      attachment.usages.push({ occurrences: 1, role, sourceLines: [sourceLine] });
+      attachment.usages.push({
+        altTexts: altText === undefined ? [] : [altText],
+        occurrences: 1,
+        role,
+        sourceLines: [sourceLine],
+      });
     }
     return attachment;
   }
@@ -228,20 +236,25 @@ function normalizeAttachmentLinks(
       ) => {
         const reference = markdownReference ?? wikiReference;
         if (!reference) return match;
+        const requestedDisplay = wikiDisplay?.trim();
+        const isDimensions = /^\d+(?:x\d+)?$/u.test(requestedDisplay ?? "");
+        const fallbackAlt = reference.split("/").at(-1) ?? "image";
+        const altText = markdownReference !== undefined
+          ? markdownAlt ?? ""
+          : requestedDisplay && !isDimensions
+            ? requestedDisplay
+            : fallbackAlt;
         const attachment = register(
           reference,
           wikiReference !== undefined,
           "body",
           normalizedSourceLine(segmentOffset + matchOffset),
+          altText,
         );
         if (!attachment) return match;
         if (markdownReference !== undefined) {
-          return `![${markdownAlt ?? ""}](${attachment.publicUrl})`;
+          return `![${altText}](${attachment.publicUrl})`;
         }
-        const requestedDisplay = wikiDisplay?.trim();
-        const isDimensions = /^\d+(?:x\d+)?$/u.test(requestedDisplay ?? "");
-        const fallbackAlt = reference.split("/").at(-1) ?? "image";
-        const altText = requestedDisplay && !isDimensions ? requestedDisplay : fallbackAlt;
         return `![${altText}](${attachment.publicUrl})`;
       },
     ),
@@ -457,8 +470,23 @@ export function prepareObsidianNote(
   }
 
   const internalLinks = validatePreparedContentLinks(prepared, kind, slug, linkTargets);
-  if (kind === "post") parsePostFile(targetPath, prepared);
-  else parseProjectFile(targetPath, prepared);
+  const record = kind === "post"
+    ? parsePostFile(targetPath, prepared)
+    : parseProjectFile(targetPath, prepared);
+  const attachments = normalizedAttachments.attachments.map((attachment) => ({
+    ...attachment,
+    usages: attachment.usages.map((usage) => {
+      const altTexts = usage.role === "cover"
+        ? record.coverAlt === undefined
+          ? []
+          : [record.coverAlt]
+        : usage.altTexts;
+      if (altTexts.length !== usage.occurrences) {
+        throw new Error(`附件替代文本证据不完整：${attachment.sourcePath} [${usage.role}]`);
+      }
+      return { ...usage, altTexts };
+    }),
+  }));
 
   return {
     kind,
@@ -466,7 +494,7 @@ export function prepareObsidianNote(
     sourcePath: normalizedSource,
     targetPath,
     content: prepared.endsWith("\n") ? prepared : `${prepared}\n`,
-    attachments: normalizedAttachments.attachments,
+    attachments,
     internalLinkCount: internalLinks.length,
     internalLinks,
   };

@@ -28,13 +28,14 @@ const ISO_DATE_PATTERN = /^\d{4}-\d{2}-\d{2}$/u;
 const INBOX_SOURCE_PREFIX = "content/inbox/";
 const SLUG_PATTERN = /^[a-z0-9]+(?:-[a-z0-9]+)*$/u;
 
-export const INBOX_READINESS_REPORT_VERSION = 3 as const;
+export const INBOX_READINESS_REPORT_VERSION = 4 as const;
 
 export const INBOX_READINESS_STATES = ["blocked", "scheduled", "ready"] as const;
 export type InboxReadinessState = (typeof INBOX_READINESS_STATES)[number];
 
 export type InboxReadinessIssueCode =
   | "attachment-invalid"
+  | "attachment-alt-empty"
   | "attachment-missing"
   | "attachment-shared"
   | "attachment-target-exists"
@@ -257,6 +258,24 @@ async function inspectDraft(
     const record = parseProjectFile(prepared.targetPath, prepared.content);
     entry.publishedAt = record.publishedAt;
     entry.contentType = "project";
+  }
+
+  for (const attachment of entry.attachments) {
+    const emptyAlternativeTextLocations = attachment.usages.flatMap((usage) =>
+      usage.altTexts.flatMap((altText, index) =>
+        altText.trim()
+          ? []
+          : [`${usage.role.toUpperCase()} L${usage.sourceLines[index]}`],
+      ),
+    );
+    if (emptyAlternativeTextLocations.length > 0) {
+      addIssue(
+        entry,
+        "attachment-alt-empty",
+        `附件替代文本为空：${emptyAlternativeTextLocations.join("、")}；请描述图片传达的信息`,
+        attachment.sourcePath,
+      );
+    }
   }
 
   if (await pathExists(resolve(projectRoot, prepared.targetPath))) {
@@ -513,6 +532,11 @@ export function formatInboxReadinessText(report: InboxReadinessReport) {
         lines.push(
           `[inbox]   附件来源 [${usage.role}] ${usage.sourceLines.map((line) => `L${line}`).join(", ")}${usage.occurrences > 1 ? ` · ×${usage.occurrences}` : ""}`,
         );
+        for (const [index, altText] of usage.altTexts.entries()) {
+          lines.push(
+            `[inbox]   附件替代文本 [${usage.role}] L${usage.sourceLines[index]} · ${altText.trim() ? JSON.stringify(altText) : "EMPTY · WILL FAIL"}`,
+          );
+        }
       }
     }
     for (const link of entry.internalLinks) {

@@ -413,7 +413,7 @@ function inboxReadinessReport({
   entry = {},
   reportDate = "2026-08-06",
   safety = {},
-  version = 3,
+  version = 4,
 } = {}) {
   const sourcePath = "content/inbox/current-draft.md";
   const resolvedEntry = {
@@ -474,11 +474,13 @@ function inboxPreparedAttachment(slug = "current-draft") {
     targetPath: `public/uploads/${slug}/evidence.webp`,
     usages: [
       {
+        altTexts: ["项目发布轨迹总览"],
         occurrences: 1,
         role: "cover",
         sourceLines: [12],
       },
       {
+        altTexts: ["构建日志截图", "变换前后对照", "运行证据"],
         occurrences: 3,
         role: "body",
         sourceLines: [20, 20, 24],
@@ -514,6 +516,7 @@ function inboxPreservedAttachment(slug = "current-draft") {
     targetPath: `public/uploads/${slug}/animation.gif`,
     usages: [
       {
+        altTexts: ["动画执行过程"],
         occurrences: 1,
         role: "body",
         sourceLines: [28],
@@ -822,7 +825,7 @@ function authorDoctorReport() {
     ["workspace-dependencies", "workspace", "Workspace dependencies", "35/35 pinned packages", "all declared packages installed at pinned versions"],
     ["content-layout", "workspace", "Content layout", "5/5 required paths", "5 required authoring paths"],
     ["obsidian-vault", "vault", "Obsidian Vault", ".obsidian present", ".obsidian directory present"],
-    ["publisher-plugin", "vault", "MyBlog Publisher", "myblog-publisher@1.26.0 · desktop", "myblog-publisher 1.26.0 desktop plugin"],
+    ["publisher-plugin", "vault", "MyBlog Publisher", "myblog-publisher@1.27.0 · desktop", "myblog-publisher 1.27.0 desktop plugin"],
   ];
   const scripts = [
     "content:author:doctor",
@@ -869,7 +872,7 @@ function authorDoctorReport() {
           isDesktopOnly: true,
           mainPresent: true,
           stylesPresent: true,
-          version: "1.26.0",
+          version: "1.27.0",
         },
       },
       workspace: {
@@ -1291,11 +1294,11 @@ test("renders one current draft author-intent summary from versioned local evide
   assert.match(text, /MEDIA TRACE.*2 ATTACHMENTS/su);
   assert.match(
     text,
-    /OPTIMIZED.*SAVED 1\.00 KiB.*33\.3%.*COVER.*L12.*BODY.*L20, L20, L24.*×3.*public\/uploads\/evidence\.png.*public\/uploads\/current-draft\/evidence\.webp.*\/uploads\/current-draft\/evidence\.webp.*PNG.*1200×630 PX.*3\.00 KiB.*WEBP.*1200×630 PX.*2\.00 KiB/su,
+    /OPTIMIZED.*SAVED 1\.00 KiB.*33\.3%.*COVER.*L12.*ALT · L12.*项目发布轨迹总览.*BODY.*L20, L20, L24.*×3.*ALT · L20.*构建日志截图.*ALT · L20.*变换前后对照.*ALT · L24.*运行证据.*public\/uploads\/evidence\.png.*public\/uploads\/current-draft\/evidence\.webp.*\/uploads\/current-draft\/evidence\.webp.*PNG.*1200×630 PX.*3\.00 KiB.*WEBP.*1200×630 PX.*2\.00 KiB/su,
   );
   assert.match(
     text,
-    /PRESERVED.*BYTE-STABLE.*BODY.*L28.*public\/uploads\/animation\.gif.*\/uploads\/current-draft\/animation\.gif.*GIF.*640×360 PX.*12 FRAMES.*4\.00 KiB/su,
+    /PRESERVED.*BYTE-STABLE.*BODY.*L28.*ALT · L28.*动画执行过程.*public\/uploads\/animation\.gif.*\/uploads\/current-draft\/animation\.gif.*GIF.*640×360 PX.*12 FRAMES.*4\.00 KiB/su,
   );
   assert.match(text, /LINK TRACE.*2 VERIFIED/su);
   assert.match(
@@ -1309,6 +1312,7 @@ test("renders one current draft author-intent summary from versioned local evide
   assert.match(styles, /myblog-draft-intent__signature/u);
   assert.match(styles, /myblog-draft-intent__media/u);
   assert.match(styles, /myblog-draft-intent__media-usage/u);
+  assert.match(styles, /myblog-draft-intent__media-alt--empty/u);
   assert.match(styles, /myblog-draft-intent__links/u);
   assert.deepEqual(harness.processAttempts, []);
   assert.deepEqual(harness.vaultReads, []);
@@ -1367,6 +1371,27 @@ test("shows scheduled and blocked date semantics without adding an action", asyn
       }),
       /HOLD \/ 1 BLOCKER.*MEDIA TRACE.*1 ATTACHMENT.*UNPROVEN.*MEDIA ENVELOPE UNAVAILABLE.*public\/uploads\/evidence\.png.*public\/uploads\/current-draft\/evidence\.webp.*\/uploads\/current-draft\/evidence\.webp/su,
     ],
+    [
+      "blocked empty alternative text remains visible",
+      (() => {
+        const attachment = inboxPreparedAttachment();
+        attachment.usages[1].altTexts[1] = "";
+        return inboxReadinessReport({
+          entry: {
+            attachments: [attachment],
+            issues: [
+              {
+                code: "attachment-alt-empty",
+                message: "附件替代文本为空：BODY L20；请描述图片传达的信息",
+                path: "public/uploads/evidence.png",
+              },
+            ],
+            state: "blocked",
+          },
+        });
+      })(),
+      /HOLD \/ 1 BLOCKER.*BODY.*ALT · L20.*构建日志截图.*ALT · L20.*EMPTY · WILL FAIL.*attachment-alt-empty/su,
+    ],
   ];
 
   for (const [name, report, expectation] of cases) {
@@ -1404,7 +1429,7 @@ test("fails closed when current-draft intent evidence is untrusted or the active
   multiEntryReport.counts.ready = 2;
   const invalidCases = [
     ["invalid JSON", "not-json"],
-    ["unsupported version", JSON.stringify(inboxReadinessReport({ version: 2 }))],
+    ["unsupported version", JSON.stringify(inboxReadinessReport({ version: 3 }))],
     [
       "unsafe safety claim",
       JSON.stringify(inboxReadinessReport({ safety: { networkChecked: true } })),
@@ -1505,6 +1530,46 @@ test("fails closed when current-draft intent evidence is untrusted or the active
       changedMediaReport((attachment) => {
         attachment.usages.push({ ...attachment.usages[1] });
       }),
+    ],
+    [
+      "media alternative texts are missing",
+      changedMediaReport((attachment) => {
+        delete attachment.usages[1].altTexts;
+      }),
+    ],
+    [
+      "media alternative text occurrence drifts",
+      changedMediaReport((attachment) => {
+        attachment.usages[1].altTexts.pop();
+      }),
+    ],
+    [
+      "media alternative text is not a string",
+      changedMediaReport((attachment) => {
+        attachment.usages[1].altTexts[0] = 42;
+      }),
+    ],
+    [
+      "empty alternative text has no matching blocker",
+      changedMediaReport((attachment) => {
+        attachment.usages[1].altTexts[0] = " ";
+      }),
+    ],
+    [
+      "alternative text blocker has no empty occurrence",
+      changedMediaReport(
+        () => {},
+        {
+          issues: [
+            {
+              code: "attachment-alt-empty",
+              message: "附件替代文本为空",
+              path: "public/uploads/evidence.png",
+            },
+          ],
+          state: "blocked",
+        },
+      ),
     ],
     [
       "cover usage repeats",
@@ -2001,7 +2066,7 @@ test("renders a versioned maintenance ledger and opens an exact Vault note", asy
     createPluginHarness(),
   ]);
   const manifest = JSON.parse(manifestSource);
-  assert.equal(manifest.version, "1.26.0");
+  assert.equal(manifest.version, "1.27.0");
   assert.equal(manifest.minAppVersion, "1.5.7");
   assert.equal(manifest.isDesktopOnly, true);
   assert.match(styles, /^\.myblog-draft-create \{/mu);

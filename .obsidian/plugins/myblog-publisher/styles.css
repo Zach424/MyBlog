@@ -516,9 +516,14 @@
   grid-template-columns: minmax(4.5rem, 0.25fr) minmax(0, 1fr);
 }
 
-.myblog-draft-intent__media-usage span:last-child {
+.myblog-draft-intent__media-usage span:nth-child(even) {
   color: var(--text-muted);
   overflow-wrap: anywhere;
+}
+
+.myblog-draft-intent__media-alt--empty {
+  color: var(--text-error) !important;
+  font-weight: var(--font-semibold);
 }
 
 .myblog-draft-intent__media-mapping,

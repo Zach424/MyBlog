@@ -143,6 +143,7 @@ test("prepares an Obsidian article for the existing content contract", () => {
       publicUrl: "/uploads/obsidian-publishing/obsidian-evidence.webp",
       usages: [
         {
+          altTexts: ["evidence"],
           occurrences: 1,
           role: "body",
           sourceLines: [16],
@@ -196,6 +197,7 @@ test("normalizes Obsidian attachment links into public blog URLs", () => {
       publicUrl: "/uploads/obsidian-publishing/obsidian-evidence.webp",
       usages: [
         {
+          altTexts: ["运行证据"],
           occurrences: 1,
           role: "body",
           sourceLines: [16],
@@ -208,6 +210,7 @@ test("normalizes Obsidian attachment links into public blog URLs", () => {
       publicUrl: "/uploads/obsidian-publishing/second-image.webp",
       usages: [
         {
+          altTexts: [""],
           occurrences: 1,
           role: "body",
           sourceLines: [18],
@@ -240,6 +243,7 @@ test("archives and rewrites an Obsidian cover with the same media transaction", 
       publicUrl: "/uploads/obsidian-publishing/obsidian-evidence.webp",
       usages: [
         {
+          altTexts: ["构建结果截图"],
           occurrences: 1,
           role: "cover",
           sourceLines: [12],
@@ -276,11 +280,13 @@ test("records exact cover and repeated body media usages in one normalization pa
       publicUrl: "/uploads/obsidian-publishing/obsidian-evidence.webp",
       usages: [
         {
+          altTexts: ["构建结果截图"],
           occurrences: 1,
           role: "cover",
           sourceLines: [coverLine],
         },
         {
+          altTexts: ["evidence", "again", "运行证据"],
           occurrences: 3,
           role: "body",
           sourceLines: [firstBodyLine, firstBodyLine, secondBodyLine],
@@ -316,6 +322,10 @@ test("scopes and stabilizes Obsidian pasted-image filenames", () => {
     result.attachments.map((attachment) => attachment.sourcePath),
     ["public/uploads/架构截图.png", "public/uploads/Pasted image 20260804 120000.PNG"],
   );
+  assert.deepEqual(
+    result.attachments.map((attachment) => attachment.usages[0].altTexts),
+    [["架构截图.png"], ["构建结果"]],
+  );
 });
 
 test("leaves attachment examples inside fenced code untouched", () => {
@@ -348,6 +358,7 @@ test("leaves attachment examples inside fenced code untouched", () => {
     .findIndex((line) => line.includes("真实图片 ![[real-image.png")) + 1;
   assert.deepEqual(result.attachments[0].usages, [
     {
+      altTexts: ["真实图片"],
       occurrences: 1,
       role: "body",
       sourceLines: [realImageLine],
@@ -662,7 +673,7 @@ test("ships a desktop Obsidian command without hidden shell interpolation", asyn
     readFile(new URL("../.obsidian/plugins/myblog-publisher/main.js", import.meta.url), "utf8"),
   ]);
   assert.equal(JSON.parse(manifest).isDesktopOnly, true);
-  assert.equal(JSON.parse(manifest).version, "1.26.0");
+  assert.equal(JSON.parse(manifest).version, "1.27.0");
   assert.equal(JSON.parse(manifest).minAppVersion, "1.5.7");
   assert.match(plugin, /FileSystemAdapter/);
   assert.match(plugin, /create-blog-draft/);

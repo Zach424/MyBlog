@@ -127,7 +127,7 @@ test("reports ready and scheduled drafts with real media derivation", async () =
     const report = await inspectInboxReadiness(root, "2026-08-05", { stagingParent });
     const byPath = Object.fromEntries(report.entries.map((entry) => [entry.sourcePath, entry]));
 
-    assert.equal(report.version, 3);
+    assert.equal(report.version, 4);
     assert.equal(report.mode, "read-only");
     assert.deepEqual(report.safety, {
       authorFilesChanged: false,
@@ -162,6 +162,7 @@ test("reports ready and scheduled drafts with real media derivation", async () =
     assert.equal(attachment.publicUrl, "/uploads/ready-note/evidence.webp");
     assert.deepEqual(attachment.usages, [
       {
+        altTexts: ["示例图"],
         occurrences: 1,
         role: "body",
         sourceLines: [imageLine],
@@ -215,6 +216,58 @@ test("reports ready and scheduled drafts with real media derivation", async () =
     );
     await assert.rejects(access(join(root, "public", "uploads", "ready-note")));
     assert.deepEqual(await readdir(stagingParent), []);
+  } finally {
+    await rm(root, { recursive: true, force: true });
+  }
+});
+
+test("blocks empty body alternative text while preserving exact source evidence", async () => {
+  const root = await createFixture();
+  try {
+    const draft = article(
+      "empty-alt",
+      "2026-08-05",
+      "证据 ![](/uploads/evidence.png)。",
+    );
+    const imageLine = draft
+      .split(/\r?\n/u)
+      .findIndex((line) => line.includes("![](/uploads/evidence.png)")) + 1;
+    const image = await sharp({
+      create: {
+        width: 640,
+        height: 360,
+        channels: 3,
+        background: "#486f78",
+      },
+    }).png().toBuffer();
+    await Promise.all([
+      writeFile(join(root, "content", "inbox", "empty-alt.md"), draft),
+      writeFile(join(root, "public", "uploads", "evidence.png"), image),
+    ]);
+
+    const report = await inspectInboxReadiness(root, "2026-08-05");
+    const entry = report.entries[0];
+    assert.equal(report.version, 4);
+    assert.equal(entry.state, "blocked");
+    assert.deepEqual(entry.attachments[0].usages, [
+      {
+        altTexts: [""],
+        occurrences: 1,
+        role: "body",
+        sourceLines: [imageLine],
+      },
+    ]);
+    assert.ok(entry.attachments[0].preparation);
+    assert.deepEqual(entry.issues, [
+      {
+        code: "attachment-alt-empty",
+        message: `附件替代文本为空：BODY L${imageLine}；请描述图片传达的信息`,
+        path: "public/uploads/evidence.png",
+      },
+    ]);
+    const output = formatInboxReadinessText(report);
+    assert.match(output, new RegExp(`附件替代文本 \\[body\\] L${imageLine} · EMPTY · WILL FAIL`, "u"));
+    assert.match(output, /\[attachment-alt-empty\]/u);
   } finally {
     await rm(root, { recursive: true, force: true });
   }
@@ -426,7 +479,7 @@ test("runs the real JSON CLI and leaves the repository byte-for-byte untouched",
     );
     assert.equal(result.status, 0, `${result.stdout}\n${result.stderr}`);
     const report = JSON.parse(result.stdout);
-    assert.equal(report.version, 3);
+    assert.equal(report.version, 4);
     assert.equal(report.mode, "read-only");
     assert.equal(report.counts.ready, 1);
     assert.equal(report.counts.drafts, 1);
