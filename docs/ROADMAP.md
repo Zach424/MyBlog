@@ -8,11 +8,11 @@
 | 4. 作者自助写作 | done | `/studio` OAuth + editorial workflow PR、Obsidian Vault/模板/附件/真实 `--push` |
 | 5. Vercel 原生迁移 | production live | 原生 Next.js、无 Cloudflare 依赖、24 路由生产冒烟通过 |
 | 6. 所有者生产上线 | done | Git 自动 Production、稳定域名自动冒烟、双端发布、回滚与恢复均已验收 |
-| 7. 持续内容与作者体验 | in progress | Iteration 0067 完成 Obsidian 会话内最近终态回执 |
+| 7. 持续内容与作者体验 | in progress | Iteration 0068 完成 Obsidian 模板驱动的新建草稿入口 |
 
 ## 当前唯一主线
 
-进入持续内容与作者体验阶段。Iteration 0067 已把 MyBlog Publisher 升到 1.18.0：最终 owner 结算时保存一条冻结、仅当前插件实例可读的 terminal receipt；“查看当前作者事务”在 active 时继续显示实时阶段/输出脉冲，空闲时显示最近操作、来源、最终阶段、开始/结束/总用时和 completed/held/command-failed/start-failed/result-failed/unloaded 终态。旧 lease/child 不能覆盖，后续事务只在真正结算后替换，新事务 active 始终优先。回执不含输出正文、不写 Vault 或插件配置，重载即清除，也不自动重试、恢复或 push。下一主线从遥测转向作者入口：用一个本地 Obsidian 向导从 `article / til / project` 受信模板安全创建 inbox 草稿；需要品牌域名时再绑定自定义域名，旧公开站继续只作为迁移历史证据。
+进入持续内容与作者体验阶段。Iteration 0068 已把 MyBlog Publisher 升到 1.19.0：命令面板的“新建博客草稿”用一个聚焦的原生 Modal 收集 `article / til / project`、标题和稳定 slug，只从精确的 Vault 模板生成一个 inbox Markdown。输入、模板漂移与全内容命名空间碰撞均在写入前失败；`vault.create` 承担最终排他边界，双击不会重复写入，创建后无法打开也不会删除新文件。该入口不启动子进程、不发布、不提交、不联网，既有 doctor、事务回执与交付恢复保持不变。下一主线评估未发布草稿的安全 slug 改名：只有能够同时固定 source/frontmatter/目标碰撞和失败恢复边界时才实现；需要品牌域名时再绑定自定义域名，旧公开站继续只作为迁移历史证据。
 
 ## 已知风险
 
@@ -32,7 +32,7 @@
 - slug 迁移已有构建验证的精确单跳 redirect 注册表，但仍是需要作者审阅的 Git 操作；不支持通配参数或自动推断，迁移必须同步处理内容、附件和引用；
 - Obsidian 已有全 inbox readiness 总览，但该报告有意只代表本地单篇写入事务，不替代正式发布的完整仓库门禁，也不进入看不到未跟踪草稿的 Actions；
 - Current record 已有 Studio 实时只读队列、每周 60/30 天 Actions 提醒和过期门；队列数据只随新 Production 接收内容变更，且仍不发送外部消息；若未来需要邮件/聊天通知，必须由所有者选择渠道后再接入；
-- Obsidian 维护/Author Proof/交付状态与回执 1.18.0 已为四个新发布/复核事务增加 owner-checked single-flight lease、phase/output activity pulse 和一条会话内 terminal receipt，并保留统一分诊及原有六套版本化 JSON、活动 sourcePath、候选 SHA-256、deferred 差集、复核与发布两种待交付关系、精确 OID refspec、各自安全重送和不自动重试的 deliver receipt；作者现在可在 Notice 消失后回查最近终态，但新建草稿仍要求手工创建 `content/inbox/<slug>.md`、选择 `article / til / project` 模板并替换日期/标题，占当前本地作者链路中最明显的重复操作。下一步只做模板驱动的安全创建与打开，不发布、不提交、不访问网络，并拒绝不安全 slug、模板漂移与任何已存在路径。新内容 Commit Envelope 的真实主题组合、超长 object id/path 和大量媒体仍需随使用观察；tracking ref 明确只是最后本地观察，inspect 路由不会猜测修复；
+- Obsidian 维护/Author Proof/交付状态与回执 1.19.0 保留四事务 owner-checked single-flight lease、phase/output activity pulse、会话内 terminal receipt、统一分诊及六套版本化 JSON；模板驱动向导已消除手工复制模板与替换标题/日期的重复操作，并用全命名空间预检和 Vault 排他创建防止覆盖。尚未解决的是草稿写作中途改变 slug 的安全迁移：直接手工改文件名/frontmatter 仍可能产生不一致，下一轮先冻结仅限未发布 inbox 的双字段一致性、三命名空间碰撞、并发与回滚合同，再决定是否实现。新内容 Commit Envelope 的真实主题组合、超长 object id/path 和大量媒体仍需随使用观察；tracking ref 明确只是最后本地观察，inspect 路由不会猜测修复；
 - 内部链接支持内容页和严格标题锚点，行内/引用式/自引用共享实际渲染 slug 规则，详情页与公开知识地图共享 outgoing/backlinks；明确不支持 Obsidian 块引用，标题改名必须同步深链，当前双列 SVG 为小型内容库优化，内容规模增长后需要过滤/分组；
 - 正文普通 HTTPS 与结构化 repository/demo/canonical 已有统一确定性库存和受控实时报告；实时 DNS/网络结果有意不进 Actions，timeout/限流不能冒充内容错误；
 - 文章与项目已有完整 A4 打印版式，但 PDF 仍由读者通过浏览器打印生成，仓库不把二进制 PDF 当作发布源，也不提供服务端 PDF 缓存；后续版式变化仍需重新做真实 PDF 全页复核；

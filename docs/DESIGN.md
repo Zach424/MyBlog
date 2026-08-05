@@ -143,6 +143,8 @@ Obsidian 的维护入口服从宿主应用而不是复制网页皮肤。1.3.0 �
 
 1.18.0 把事务结束后的空白状态设计为一条会话内证据回执。活动时仍显示 `ACTIVE`，结束后“查看当前作者事务”才显示 `IDLE · LAST RECEIPT`；信息顺序是 outcome → operation → source → final phase → started/ended/elapsed → 会话与动作边界。六类 outcome 同时使用中文动词与 `COMPLETED / HELD / COMMAND FAILED / START FAILED / RESULT FAILED / UNLOADED` monospace token，不使用绿色成功卡、红色错误卡或分数。回执仍是同一 Native Notice，不新增 Modal、CSS、按钮、动画或历史列表；最后一行明确重载即清除，且不会重试、恢复或推送。视觉上的取舍是让“刚才发生了什么”可复查，而不是把单条回执扩张成任务中心。
 
+1.19.0 把作者入口收敛成一个只完成“创建草稿”的原生 Modal。`DRAFT ORIGIN / LOCAL ONLY`、标题和边界说明先固定零发布/零提交/零网络，随后按内容类型 → 标题 → 英文 slug 的认知顺序排列三个宿主控件，类型标签同时保留中文与 `ARTICLE / TIL / PROJECT` token。提示文字直接说明受信模板、YAML 转义与三命名空间碰撞，不增加模板预览、文件树、步骤条或历史列表；底部只有取消和一个主动作。错误用同一字段区内的 `role=alert` 文本与宿主 error token 表达，输入保持可修复；提交时临时禁用全部控件避免重复。视觉继续使用宿主 text/interface/monospace、Trace 侧线和直角间距，不用卡片、阴影、渐变、图标、动画或虚构完成率。创建成功即关闭；自动打开失败以 Notice 明确“文件已创建”和精确路径，避免把打开故障误画成写入失败。
+
 ## 站点图标
 
 `app/icon.png` 为 `256 × 256` PNG，只保留 Commit Trace 的节点、轨迹环与信号色半环，不包含文字、缩写或第二套标志。图标以社交分享卡为风格参考生成，再确定性缩放并纳入尺寸与体积测试；它用于小尺寸识别，不替代首页的工程轨迹签名。
