@@ -508,6 +508,42 @@ function publishDeliveryReceipt() {
   };
 }
 
+function deliveryTriageReport({
+  currentBranch = "main",
+  kind = "publication",
+} = {}) {
+  const source = kind === "review"
+    ? reviewDeliveryReport()
+    : publishDeliveryReport();
+  const deliverable = currentBranch === "main";
+  const review = kind === "review" ? source.pendingReview : null;
+  const publication = kind === "publication"
+    ? source.pendingPublication
+    : null;
+  return {
+    version: 1,
+    mode: "read-only",
+    observation: {
+      ...source.observation,
+      currentBranch,
+    },
+    relation: {
+      ...source.relation,
+      status: `pending-${kind}`,
+    },
+    pending: { kind, publication, review },
+    route: {
+      autoExecuted: false,
+      deliverCommand: deliverable
+        ? `npm run content:${kind === "review" ? "review" : "publish"}:deliver -- --format json`
+        : null,
+      deliverable,
+      kind,
+      statusCommand: `npm run content:${kind === "review" ? "review" : "publish"}:status`,
+    },
+  };
+}
+
 function findCommand(harness, id) {
   const command = harness.commands.find((candidate) => candidate.id === id);
   assert.ok(command, `Expected command ${id}`);
@@ -521,7 +557,7 @@ test("renders a versioned maintenance ledger and opens an exact Vault note", asy
     createPluginHarness(),
   ]);
   const manifest = JSON.parse(manifestSource);
-  assert.equal(manifest.version, "1.11.0");
+  assert.equal(manifest.version, "1.12.0");
   assert.equal(manifest.isDesktopOnly, true);
   assert.match(styles, /^\.myblog-maintenance \{/mu);
   assert.match(styles, /\[data-status="overdue"\]/u);
@@ -532,6 +568,7 @@ test("renders a versioned maintenance ledger and opens an exact Vault note", asy
   assert.match(styles, /myblog-review-proof__candidate/u);
   assert.match(styles, /^\.myblog-review-delivery \{/mu);
   assert.match(styles, /^\.myblog-review-delivery-receipt \{/mu);
+  assert.match(styles, /^\.myblog-delivery-triage \{/mu);
   assert.doesNotMatch(styles, /(?:linear-gradient|@keyframes|animation:)/u);
 
   const command = findCommand(harness, "inspect-published-maintenance");
@@ -743,6 +780,87 @@ test("falls back to publication delivery text when the bundle is inconsistent", 
   assert.match(
     elementsByTag(harness.modals[0], "pre")[0].text,
     /待同步发布包/u,
+  );
+});
+
+test("routes one exact publication through a read-only delivery switchyard", async () => {
+  const [styles, harness] = await Promise.all([
+    readFile(stylesUrl, "utf8"),
+    createPluginHarness(),
+  ]);
+  const command = findCommand(harness, "inspect-delivery-triage");
+  assert.equal(command.checkCallback(true), true);
+  command.checkCallback(false);
+  assert.deepEqual(plain(harness.spawned[0].args), [
+    "/d",
+    "/s",
+    "/c",
+    "npm",
+    "--silent",
+    "run",
+    "content:delivery:status",
+    "--",
+    "--format",
+    "json",
+  ]);
+  const report = deliveryTriageReport();
+  harness.spawned[0].child.stdout.emit("data", Buffer.from(JSON.stringify(report)));
+  harness.spawned[0].child.emit("close", 1);
+
+  assert.equal(harness.modals.length, 1);
+  const modal = harness.modals[0];
+  assert.equal(modal.contentEl.classes.has("myblog-delivery-triage"), true);
+  assert.equal(elementsByTag(modal, "button").length, 0);
+  const text = allElements(modal.contentEl).map((element) => element.text).join(" ");
+  assert.match(text, /DELIVERY TRIAGE \/ READ ONLY/u);
+  assert.match(text, /DELIVERY SWITCHYARD \/ PUBLICATION ROUTE/u);
+  assert.match(text, /OBSERVED LOCAL MAIN/u);
+  assert.match(
+    text,
+    /REVIEW \/ STANDBY.*PUBLICATION \/ MATCHED.*INSPECT \/ STANDBY/su,
+  );
+  assert.match(text, /content\/posts\/new-delivery\.md/u);
+  assert.ok(text.includes(report.route.statusCommand));
+  assert.ok(text.includes(report.route.deliverCommand));
+  assert.match(text, /只读分诊不会执行 status 或 deliver 命令/u);
+  assert.match(styles, /myblog-delivery-triage__switchyard/u);
+  assert.match(styles, /myblog-delivery-triage__branch/u);
+  assert.equal(harness.spawned.length, 1);
+
+  const mobile = await createPluginHarness({ desktop: false });
+  assert.equal(
+    findCommand(mobile, "inspect-delivery-triage").checkCallback(true),
+    false,
+  );
+});
+
+test("falls back without executing a route when triage evidence is inconsistent", async () => {
+  const harness = await createPluginHarness();
+  const report = deliveryTriageReport();
+  report.route.deliverCommand =
+    "npm run content:review:deliver -- --format json";
+  findCommand(harness, "inspect-delivery-triage").checkCallback(false);
+  harness.spawned[0].child.stdout.emit("data", Buffer.from(JSON.stringify(report)));
+  harness.spawned[0].child.emit("close", 1);
+  assert.equal(harness.spawned.length, 2);
+  assert.deepEqual(plain(harness.spawned[1].args), [
+    "/d",
+    "/s",
+    "/c",
+    "npm",
+    "--silent",
+    "run",
+    "content:delivery:status",
+  ]);
+  harness.spawned[1].child.stdout.emit(
+    "data",
+    Buffer.from("[delivery-triage] 当前提交需要人工检查 Git 状态。"),
+  );
+  harness.spawned[1].child.emit("close", 1);
+  assert.equal(harness.modals.length, 1);
+  assert.match(
+    elementsByTag(harness.modals[0], "pre")[0].text,
+    /人工检查 Git 状态/u,
   );
 });
 

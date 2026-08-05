@@ -1,9 +1,8 @@
 import { spawnSync } from "node:child_process";
 import {
   analyzeContentReviewDelivery,
-  CONTENT_REVIEW_LOCAL_REF,
-  CONTENT_REVIEW_TRACKING_REF,
 } from "../lib/content/review-delivery.ts";
+import { readContentDeliveryGitSnapshot } from "./delivery-git-snapshot.mjs";
 
 function git(cwd, args, { allowFailure = false } = {}) {
   const result = spawnSync("git", args, {
@@ -58,55 +57,21 @@ function readPendingCommit(cwd, localHead) {
   };
 }
 
-export function inspectContentReviewDeliveryFromGit(cwd = process.cwd()) {
-  const local = git(cwd, ["rev-parse", "--verify", CONTENT_REVIEW_LOCAL_REF], {
-    allowFailure: true,
-  });
-  if (local.status !== 0) {
-    throw new Error("找不到本地 main；无法检查正式复核交付状态");
-  }
-  const localHead = local.stdout.trim();
-  const branchValue = git(cwd, ["branch", "--show-current"]).stdout.trim();
-  const currentBranch = branchValue || null;
-  const tracking = git(
-    cwd,
-    ["rev-parse", "--verify", CONTENT_REVIEW_TRACKING_REF],
-    { allowFailure: true },
-  );
-  if (tracking.status !== 0) {
-    return analyzeContentReviewDelivery({
-      ahead: null,
-      behind: null,
-      currentBranch,
-      localHead,
-      pendingCommit: null,
-      trackingHead: null,
-    });
-  }
+export function readContentReviewCommitFromGit(
+  commitOid,
+  cwd = process.cwd(),
+) {
+  return readPendingCommit(cwd, commitOid);
+}
 
-  const trackingHead = tracking.stdout.trim();
-  const counts = git(cwd, [
-    "rev-list",
-    "--left-right",
-    "--count",
-    `${CONTENT_REVIEW_TRACKING_REF}...${CONTENT_REVIEW_LOCAL_REF}`,
-  ]).stdout.trim().split(/\s+/u).map(Number);
-  if (
-    counts.length !== 2 ||
-    counts.some((value) => !Number.isInteger(value) || value < 0)
-  ) {
-    throw new Error("无法解析 main 与 origin/main tracking ref 的提交关系");
-  }
-  const [behind, ahead] = counts;
+export function inspectContentReviewDeliveryFromGit(cwd = process.cwd()) {
+  const snapshot = readContentDeliveryGitSnapshot(cwd);
+  const { ahead, behind, localHead } = snapshot;
   const pendingCommit = ahead === 1 && behind === 0
     ? readPendingCommit(cwd, localHead)
     : null;
   return analyzeContentReviewDelivery({
-    ahead,
-    behind,
-    currentBranch,
-    localHead,
+    ...snapshot,
     pendingCommit,
-    trackingHead,
   });
 }

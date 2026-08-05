@@ -9,6 +9,7 @@ const CONTENT_REVIEW_DELIVERY_REPORT_VERSION = 1;
 const CONTENT_REVIEW_DELIVERY_RECEIPT_VERSION = 1;
 const CONTENT_PUBLISH_DELIVERY_REPORT_VERSION = 1;
 const CONTENT_PUBLISH_DELIVERY_RECEIPT_VERSION = 1;
+const CONTENT_DELIVERY_TRIAGE_REPORT_VERSION = 1;
 const GIT_OBJECT_ID_PATTERN = /^(?:[a-f0-9]{40}|[a-f0-9]{64})$/u;
 const CONTENT_REVIEW_DELIVERY_STATUSES = [
   "synchronized",
@@ -20,6 +21,15 @@ const CONTENT_REVIEW_DELIVERY_STATUSES = [
 ];
 const CONTENT_PUBLISH_DELIVERY_STATUSES = [
   "synchronized",
+  "pending-publication",
+  "local-ahead",
+  "behind",
+  "diverged",
+  "tracking-missing",
+];
+const CONTENT_DELIVERY_TRIAGE_STATUSES = [
+  "synchronized",
+  "pending-review",
   "pending-publication",
   "local-ahead",
   "behind",
@@ -1060,6 +1070,183 @@ function parseContentPublishDeliveryReport(output) {
   return report;
 }
 
+function parseContentDeliveryTriageReport(output) {
+  let report;
+  try {
+    report = JSON.parse(output);
+  } catch {
+    throw new Error("Git 交付分诊证据不是有效 JSON");
+  }
+  const label = "Git 交付分诊证据";
+  assertPlainObject(report, label);
+  assertExactKeys(
+    report,
+    ["version", "mode", "observation", "relation", "pending", "route"],
+    label,
+  );
+  if (report.version !== CONTENT_DELIVERY_TRIAGE_REPORT_VERSION) {
+    valueError(
+      `${label} version`,
+      `必须是 ${CONTENT_DELIVERY_TRIAGE_REPORT_VERSION}`,
+    );
+  }
+  if (report.mode !== "read-only") {
+    valueError(`${label} mode`, "必须是 read-only");
+  }
+  assertPlainObject(report.relation, `${label} relation`);
+  assertExactKeys(
+    report.relation,
+    ["ahead", "behind", "status"],
+    `${label} relation`,
+  );
+  if (!CONTENT_DELIVERY_TRIAGE_STATUSES.includes(report.relation.status)) {
+    valueError(`${label} relation.status`, "不是受支持的状态");
+  }
+
+  const reviewPending = report.relation.status === "pending-review";
+  const publicationPending = report.relation.status === "pending-publication";
+  if (reviewPending || publicationPending) {
+    assertPlainObject(report.pending, `${label} pending`);
+    assertExactKeys(
+      report.pending,
+      ["kind", "publication", "review"],
+      `${label} pending`,
+    );
+    if (
+      reviewPending &&
+      (report.pending.kind !== "review" ||
+        report.pending.review === null ||
+        report.pending.publication !== null)
+    ) {
+      valueError(`${label} pending`, "必须只包含正式复核身份");
+    }
+    if (
+      publicationPending &&
+      (report.pending.kind !== "publication" ||
+        report.pending.publication === null ||
+        report.pending.review !== null)
+    ) {
+      valueError(`${label} pending`, "必须只包含新内容发布身份");
+    }
+  } else if (report.pending !== null) {
+    valueError(`${label} pending`, "非精确待交付状态必须是 null");
+  }
+
+  const reviewStatus = reviewPending ? "pending-review"
+    : publicationPending ? "local-ahead"
+      : report.relation.status;
+  const publicationStatus = publicationPending ? "pending-publication"
+    : reviewPending ? "local-ahead"
+      : report.relation.status;
+  const review = parseContentReviewDeliveryReport(
+    JSON.stringify({
+      version: CONTENT_REVIEW_DELIVERY_REPORT_VERSION,
+      mode: "read-only",
+      observation: report.observation,
+      relation: {
+        ahead: report.relation.ahead,
+        behind: report.relation.behind,
+        status: reviewStatus,
+      },
+      pendingReview: reviewPending ? report.pending.review : null,
+      recovery: reviewPending
+        ? {
+            action: "push-origin-main",
+            autoExecuted: false,
+            command: "git push origin main",
+          }
+        : reviewStatus === "synchronized"
+          ? { action: "none", autoExecuted: false, command: null }
+          : {
+              action: "inspect-git-state",
+              autoExecuted: false,
+              command: null,
+            },
+    }),
+  );
+  const publication = parseContentPublishDeliveryReport(
+    JSON.stringify({
+      version: CONTENT_PUBLISH_DELIVERY_REPORT_VERSION,
+      mode: "read-only",
+      observation: report.observation,
+      relation: {
+        ahead: report.relation.ahead,
+        behind: report.relation.behind,
+        status: publicationStatus,
+      },
+      pendingPublication: publicationPending
+        ? report.pending.publication
+        : null,
+      recovery: publicationPending
+        ? {
+            action: "push-pending-publication",
+            autoExecuted: false,
+            command: `git push origin ${report.pending.publication.commitOid}:refs/heads/main`,
+          }
+        : publicationStatus === "synchronized"
+          ? { action: "none", autoExecuted: false, command: null }
+          : {
+              action: "inspect-git-state",
+              autoExecuted: false,
+              command: null,
+            },
+    }),
+  );
+  if (
+    review.observation.localHead !== publication.observation.localHead ||
+    review.observation.trackingHead !== publication.observation.trackingHead
+  ) {
+    valueError(`${label} observation`, "领域证据必须来自同一 Git 观察");
+  }
+  if (reviewPending) report.pending.review = review.pendingReview;
+  if (publicationPending) {
+    report.pending.publication = publication.pendingPublication;
+  }
+
+  assertPlainObject(report.route, `${label} route`);
+  assertExactKeys(
+    report.route,
+    [
+      "autoExecuted",
+      "deliverCommand",
+      "deliverable",
+      "kind",
+      "statusCommand",
+    ],
+    `${label} route`,
+  );
+  const expectedKind = reviewPending
+    ? "review"
+    : publicationPending
+      ? "publication"
+      : report.relation.status === "synchronized"
+        ? "none"
+        : "inspect";
+  const expectedStatusCommand = reviewPending
+    ? "npm run content:review:status"
+    : publicationPending
+      ? "npm run content:publish:status"
+      : null;
+  const expectedDeliverable =
+    (reviewPending || publicationPending) &&
+    report.observation.currentBranch === "main";
+  const expectedDeliverCommand = expectedDeliverable
+    ? reviewPending
+      ? "npm run content:review:deliver -- --format json"
+      : "npm run content:publish:deliver -- --format json"
+    : null;
+  if (
+    report.route.autoExecuted !== false ||
+    report.route.kind !== expectedKind ||
+    report.route.statusCommand !== expectedStatusCommand ||
+    report.route.deliverable !== expectedDeliverable ||
+    report.route.deliverCommand !== expectedDeliverCommand
+  ) {
+    valueError(`${label} route`, "与提交身份、分支或关系状态不一致");
+  }
+  return report;
+}
+
 function parseContentPublishDeliveryReceipt(output) {
   let receipt;
   try {
@@ -1498,6 +1685,17 @@ class ContentPublishDeliveryTextModal extends ReadOnlyReportModal {
   }
 }
 
+class ContentDeliveryTriageTextModal extends ReadOnlyReportModal {
+  constructor(app, report) {
+    super(app, {
+      description:
+        "结构化分诊证据不可用，以下为重新执行后的本地只读文本；没有 fetch、push 或路由命令执行。",
+      report,
+      title: "Git 交付恢复分诊 · 纯文本",
+    });
+  }
+}
+
 function createDeliveryRow(container, label, value, options = {}) {
   const row = container.createEl("div", {
     cls: "myblog-review-delivery__row",
@@ -1512,6 +1710,164 @@ function createDeliveryRow(container, label, value, options = {}) {
 
 function shortGitObjectId(oid) {
   return oid ? `${oid.slice(0, 12)}…${oid.slice(-8)}` : "MISSING";
+}
+
+function createTriageRow(container, label, value, options = {}) {
+  const row = container.createEl("div", {
+    cls: "myblog-delivery-triage__row",
+  });
+  if (options.state) row.setAttr("data-state", options.state);
+  row.createEl("dt", { text: label });
+  const detail = row.createEl("dd");
+  if (options.code) detail.createEl("code", { text: String(value) });
+  else detail.setText(String(value));
+  return row;
+}
+
+class ContentDeliveryTriageModal extends Modal {
+  constructor(app, report) {
+    super(app);
+    this.report = report;
+  }
+
+  onOpen() {
+    const { contentEl, report } = this;
+    const activeRoute = report.route.kind;
+    const routeLabel = activeRoute === "review"
+      ? "REVIEW ROUTE"
+      : activeRoute === "publication"
+        ? "PUBLICATION ROUTE"
+        : activeRoute === "inspect"
+          ? "INSPECT ROUTE"
+          : "CLEAR";
+    contentEl.empty();
+    contentEl.addClass("myblog-delivery-triage");
+    contentEl.setAttr("data-status", report.relation.status);
+    contentEl.setAttr("data-route", activeRoute);
+    contentEl.createEl("p", {
+      cls: "myblog-delivery-triage__eyebrow",
+      text: "DELIVERY TRIAGE / READ ONLY",
+    });
+    contentEl.createEl("h2", {
+      cls: "myblog-delivery-triage__title",
+      text: "Git 交付恢复分诊",
+    });
+    contentEl.createEl("p", {
+      cls: "myblog-delivery-triage__boundary",
+      text: "只读取同一个本地 main、tracking ref 与 HEAD commit 快照；没有 fetch、push、历史修改，也不会运行分诊结果中的命令。",
+    });
+
+    const switchyard = contentEl.createEl("section", {
+      cls: "myblog-delivery-triage__switchyard",
+    });
+    switchyard.setAttr("aria-label", `Git 交付分诊结果：${routeLabel}`);
+    switchyard.createEl("p", {
+      cls: "myblog-delivery-triage__switchyard-label",
+      text: `DELIVERY SWITCHYARD / ${routeLabel}`,
+    });
+    const head = switchyard.createEl("div", {
+      cls: "myblog-delivery-triage__head",
+    });
+    head.createEl("span", { text: "OBSERVED LOCAL MAIN" });
+    head.createEl("code", {
+      text: shortGitObjectId(report.observation.localHead),
+    });
+    const branches = switchyard.createEl("div", {
+      cls: "myblog-delivery-triage__branches",
+    });
+    for (const branch of ["review", "publication", "inspect"]) {
+      const matched = activeRoute === branch;
+      const node = branches.createEl("div", {
+        cls: "myblog-delivery-triage__branch",
+      });
+      node.setAttr("data-active", matched ? "true" : "false");
+      node.createEl("span", {
+        text: `${branch.toUpperCase()} / ${matched ? "MATCHED" : "STANDBY"}`,
+      });
+    }
+
+    const ledger = contentEl.createEl("dl", {
+      cls: "myblog-delivery-triage__ledger",
+    });
+    const statusLabel = activeRoute === "review"
+      ? "PENDING REVIEW / EXACT COMMIT"
+      : activeRoute === "publication"
+        ? "PENDING PUBLICATION / EXACT COMMIT"
+        : activeRoute === "none"
+          ? "SYNCHRONIZED / NO PENDING DELIVERY"
+          : `INSPECT / ${report.relation.status.toUpperCase()}`;
+    createTriageRow(ledger, "分诊结果", statusLabel, {
+      state: activeRoute === "inspect" ? "inspect" : activeRoute,
+    });
+    createTriageRow(
+      ledger,
+      "提交关系",
+      `behind ${report.relation.behind ?? "unknown"} · ahead ${report.relation.ahead ?? "unknown"}`,
+      { code: true },
+    );
+    createTriageRow(
+      ledger,
+      "当前分支",
+      report.observation.currentBranch ?? "detached HEAD",
+      { code: true },
+    );
+    if (report.pending?.kind === "review") {
+      const review = report.pending.review;
+      createTriageRow(ledger, "正式内容", review.sourcePath, { code: true });
+      createTriageRow(ledger, "提交声明", review.subject, { code: true });
+      createTriageRow(ledger, "commit", review.commitOid, { code: true });
+      createTriageRow(ledger, "tree", review.treeOid, { code: true });
+      createTriageRow(ledger, "content blob", review.blobOid, { code: true });
+    } else if (report.pending?.kind === "publication") {
+      const publication = report.pending.publication;
+      createTriageRow(ledger, "内容标题", publication.title);
+      createTriageRow(ledger, "正式内容", publication.targetPath, {
+        code: true,
+      });
+      createTriageRow(
+        ledger,
+        "发布包",
+        `${publication.changes.length} paths · ${publication.attachmentCount} media`,
+        { code: true },
+      );
+      createTriageRow(ledger, "提交声明", publication.subject, { code: true });
+      createTriageRow(ledger, "commit", publication.commitOid, { code: true });
+      createTriageRow(ledger, "tree", publication.treeOid, { code: true });
+      createTriageRow(ledger, "target blob", publication.targetBlobOid, {
+        code: true,
+      });
+    }
+    if (report.route.statusCommand) {
+      createTriageRow(ledger, "先读状态", report.route.statusCommand, {
+        code: true,
+        state: "status",
+      });
+    }
+    if (report.route.deliverCommand) {
+      createTriageRow(ledger, "确认后执行", report.route.deliverCommand, {
+        code: true,
+        state: "deliver",
+      });
+    } else if (report.pending && !report.route.deliverable) {
+      createTriageRow(
+        ledger,
+        "写入锁",
+        "BRANCH HOLD / SWITCH TO MAIN BEFORE DELIVERY",
+        { state: "inspect" },
+      );
+    } else if (activeRoute === "inspect") {
+      createTriageRow(
+        ledger,
+        "下一步",
+        "当前提交不属于受支持的单一交付包；先人工检查 Git 状态。",
+        { state: "inspect" },
+      );
+    }
+    contentEl.createEl("p", {
+      cls: "myblog-delivery-triage__note",
+      text: "只读分诊不会执行 status 或 deliver 命令；先查看对应领域证据，再单独运行写命令。origin/main 仍只是最后一次本地观察。",
+    });
+  }
 }
 
 class ContentReviewDeliveryModal extends Modal {
@@ -2230,6 +2586,12 @@ module.exports = class MyBlogPublisher extends Plugin {
     });
 
     this.addCommand({
+      id: "inspect-delivery-triage",
+      name: "查看 Git 交付恢复",
+      checkCallback: (checking) => this.inspectDeliveryTriage(checking),
+    });
+
+    this.addCommand({
       id: "inspect-review-delivery",
       name: "查看待同步正式内容复核",
       checkCallback: (checking) => this.inspectReviewDelivery(checking),
@@ -2479,6 +2841,56 @@ module.exports = class MyBlogPublisher extends Plugin {
         startFailure: "新内容发布交付状态命令无法启动",
       },
       (output) => this.openStructuredPublishDelivery(output),
+    );
+  }
+
+  inspectDeliveryTriage(checking) {
+    if (!this.isDesktopVault()) return false;
+    if (checking) return true;
+    return this.runRepositoryCommand(
+      [
+        "--silent",
+        "run",
+        "content:delivery:status",
+        "--",
+        "--format",
+        "json",
+      ],
+      {
+        allowedExitCodes: [0, 1],
+        failure: "Git 交付恢复分诊未完成",
+        progress: "正在读取同一个本地 Git 交付快照…",
+        startFailure: "Git 交付恢复分诊命令无法启动",
+      },
+      (output) => this.openStructuredDeliveryTriage(output),
+    );
+  }
+
+  openStructuredDeliveryTriage(output) {
+    try {
+      const report = parseContentDeliveryTriageReport(output);
+      new ContentDeliveryTriageModal(this.app, report).open();
+      new Notice("Git 交付恢复分诊已更新。", 5000);
+    } catch (error) {
+      new Notice(
+        `结构化分诊证据不可用：${error.message}。正在重新读取本地纯文本证据…`,
+        10000,
+      );
+      this.inspectDeliveryTriageText();
+    }
+  }
+
+  inspectDeliveryTriageText() {
+    return this.runRepositoryCommand(
+      ["--silent", "run", "content:delivery:status"],
+      {
+        allowedExitCodes: [0, 1],
+        failure: "纯文本 Git 交付恢复分诊未完成",
+        progress: "正在读取本地纯文本交付分诊证据…",
+        startFailure: "纯文本 Git 交付恢复分诊命令无法启动",
+        success: "已打开纯文本 Git 交付恢复分诊。",
+      },
+      (report) => new ContentDeliveryTriageTextModal(this.app, report).open(),
     );
   }
 

@@ -415,6 +415,150 @@
   }
 }
 
+.myblog-delivery-triage {
+  --myblog-triage-ink: var(--text-normal, #1f272a);
+  --myblog-triage-verified: var(--color-green, #2f756f);
+  --myblog-triage-trace: var(--text-accent, #486f78);
+  --myblog-triage-caution: var(--color-orange, #c6683c);
+  --myblog-triage-paper: var(--background-primary, #f4f3ef);
+  color: var(--myblog-triage-ink);
+  font-family: var(--font-interface);
+  max-width: 54rem;
+}
+
+.myblog-delivery-triage__eyebrow,
+.myblog-delivery-triage__switchyard-label,
+.myblog-delivery-triage__branch-label,
+.myblog-delivery-triage__state {
+  font-family: var(--font-monospace);
+  font-size: var(--font-ui-smaller);
+  font-weight: var(--font-semibold);
+  letter-spacing: 0.08em;
+  text-transform: uppercase;
+}
+
+.myblog-delivery-triage__eyebrow {
+  color: var(--myblog-triage-trace);
+  margin: 0 0 var(--size-2-2);
+}
+
+.myblog-delivery-triage__title {
+  font-family: var(--font-text);
+  margin: 0 0 var(--size-4-2);
+}
+
+.myblog-delivery-triage__boundary,
+.myblog-delivery-triage__note {
+  border-inline-start: 0.2rem solid var(--myblog-triage-trace);
+  color: var(--text-muted);
+  margin: 0 0 var(--size-4-4);
+  padding: var(--size-2-2) var(--size-4-3);
+}
+
+.myblog-delivery-triage__switchyard {
+  border-block: 1px solid var(--background-modifier-border);
+  margin-block-end: var(--size-4-5);
+  padding-block: var(--size-4-3);
+}
+
+.myblog-delivery-triage__switchyard-label {
+  color: var(--myblog-triage-caution);
+  margin: 0 0 var(--size-4-3);
+}
+
+.myblog-delivery-triage__head {
+  border: 1px solid var(--background-modifier-border);
+  color: var(--myblog-triage-trace);
+  font-family: var(--font-monospace);
+  margin: 0 auto;
+  max-width: 30rem;
+  overflow-wrap: anywhere;
+  padding: var(--size-4-2);
+  text-align: center;
+}
+
+.myblog-delivery-triage__branches {
+  display: grid;
+  gap: var(--size-4-2);
+  grid-template-columns: repeat(3, minmax(0, 1fr));
+  margin-block-start: var(--size-4-4);
+}
+
+.myblog-delivery-triage__branch {
+  border-block-start: 0.2rem solid var(--background-modifier-border);
+  min-width: 0;
+  padding-block-start: var(--size-4-2);
+}
+
+.myblog-delivery-triage__branch.is-active {
+  border-block-start-color: var(--myblog-triage-caution);
+}
+
+.myblog-delivery-triage__branch-label {
+  color: var(--text-muted);
+  margin: 0;
+}
+
+.myblog-delivery-triage__state {
+  color: var(--text-faint);
+  margin: var(--size-2-1) 0 0;
+}
+
+.myblog-delivery-triage__branch.is-active
+  .myblog-delivery-triage__branch-label,
+.myblog-delivery-triage__branch.is-active .myblog-delivery-triage__state {
+  color: var(--myblog-triage-caution);
+}
+
+.myblog-delivery-triage__ledger {
+  margin-block-end: var(--size-4-5);
+}
+
+.myblog-delivery-triage__row {
+  border-block-end: 1px solid var(--background-modifier-border);
+  display: grid;
+  gap: var(--size-4-3);
+  grid-template-columns: minmax(8rem, 0.32fr) minmax(0, 1fr);
+  padding-block: var(--size-4-2);
+}
+
+.myblog-delivery-triage__row-label {
+  color: var(--text-muted);
+  font-family: var(--font-monospace);
+  font-size: var(--font-ui-smaller);
+  letter-spacing: 0.04em;
+  text-transform: uppercase;
+}
+
+.myblog-delivery-triage__row-value {
+  overflow-wrap: anywhere;
+}
+
+.myblog-delivery-triage__row-value code {
+  font-family: var(--font-monospace);
+}
+
+.myblog-delivery-triage[data-status="synchronized"]
+  .myblog-delivery-triage__eyebrow,
+.myblog-delivery-triage[data-status="synchronized"]
+  .myblog-delivery-triage__switchyard-label,
+.myblog-delivery-triage[data-status="synchronized"]
+  .myblog-delivery-triage__head {
+  color: var(--myblog-triage-verified);
+}
+
+.myblog-delivery-triage[data-status="synchronized"]
+  .myblog-delivery-triage__note {
+  border-inline-start-color: var(--myblog-triage-verified);
+}
+
+@media (max-width: 36rem) {
+  .myblog-delivery-triage__branches,
+  .myblog-delivery-triage__row {
+    grid-template-columns: 1fr;
+  }
+}
+
 .myblog-publish-delivery {
   --myblog-publish-ink: var(--text-normal, #1f272a);
   --myblog-publish-verified: var(--color-green, #2f756f);

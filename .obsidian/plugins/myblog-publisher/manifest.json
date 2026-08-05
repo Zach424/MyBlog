@@ -1,9 +1,9 @@
 {
   "id": "myblog-publisher",
   "name": "MyBlog Publisher",
-  "version": "1.11.0",
+  "version": "1.12.0",
   "minAppVersion": "1.5.0",
-  "description": "Inspect and safely redeliver exact publication bundles, redeliver pending reviews, bind proofs to content fingerprints, and publish MyBlog notes through the repository quality gate.",
+  "description": "Triage Git delivery from one local snapshot, safely redeliver exact publication and review commits, bind proofs to content fingerprints, and publish MyBlog notes through guarded repository workflows.",
   "author": "Zach424",
   "isDesktopOnly": true
 }
