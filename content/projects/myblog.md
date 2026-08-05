@@ -18,7 +18,7 @@ demo: "https://blog-iota-five-59.vercel.app"
 
 ## 当前状态（2026-08-06）
 
-MyBlog 当前运行在 Vercel，稳定公开地址是 [blog-iota-five-59.vercel.app](https://blog-iota-five-59.vercel.app)。仓库使用原生 Next.js 16.3、React 19 和 TypeScript；GitHub `main` 自动触发 Production，质量门和独立线上冒烟共同验证交付。网页 Studio 与 Obsidian 都可由作者独立发布；MyBlog Publisher 1.20.0 支持文件名唯一的本地草稿创建与发布前安全改名。
+MyBlog 当前运行在 Vercel，稳定公开地址是 [blog-iota-five-59.vercel.app](https://blog-iota-five-59.vercel.app)。仓库使用原生 Next.js 16.3、React 19 和 TypeScript；GitHub `main` 自动触发 Production，质量门和独立线上冒烟共同验证交付。网页 Studio 与 Obsidian 都可由作者独立发布；MyBlog Publisher 1.21.0 支持文件名唯一的草稿创建、安全改名，以及旧式重复 slug 的本地取证与严格原子清理。
 
 Cloudflare、Sites、Vinext、Vite Worker 和 Wrangler 仅属于 2026-07-18 至 2026-07-19 的首版与迁移历史，不再是当前运行依赖。旧公开站保留为迁移期回退证据，页面顶部的 Live demo 始终指向当前生产站。
 

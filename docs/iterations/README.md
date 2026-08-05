@@ -56,6 +56,25 @@
 0049-github-actions-node24-runtime.md
 0050-studio-content-maintenance-queue.md
 0051-obsidian-published-maintenance-report.md
+0052-obsidian-structured-maintenance-ledger.md
+0053-obsidian-published-content-review.md
+0054-obsidian-structured-review-proof.md
+0055-review-worktree-impact-classifier.md
+0056-review-candidate-fingerprint.md
+0057-pending-review-delivery.md
+0058-safe-review-redelivery.md
+0059-pending-publication-envelope.md
+0060-safe-publication-redelivery.md
+0061-unified-delivery-triage.md
+0062-local-author-environment-doctor.md
+0063-author-transaction-preflight-interlock.md
+0064-author-transaction-single-flight-lease.md
+0065-author-transaction-active-snapshot.md
+0066-author-transaction-activity-pulse.md
+0067-author-transaction-terminal-receipt.md
+0068-obsidian-trusted-template-draft-wizard.md
+0069-filename-owned-draft-rename.md
+0070-legacy-draft-identity-evidence.md
 ```
 
 ## 必填结构

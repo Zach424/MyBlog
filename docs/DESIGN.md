@@ -147,6 +147,8 @@ Obsidian 的维护入口服从宿主应用而不是复制网页皮肤。1.3.0 �
 
 1.20.0 把改名画成一次可核对的草稿身份转换，而不是文件管理器或迁移仪表盘。`DRAFT IDENTITY / FILE OWNED` 与边界说明先固定“只改 inbox 文件名、链接更新服从 Obsidian 设置、零发布/提交/网络”，随后以唯一的 `CURRENT → TARGET` 轨迹并列原 slug 和实时目标；当前精确路径单独放在上方，输入区只收一个新 slug。底部仍只有取消与“重命名草稿”，错误留在同一 `role=alert` 区域，提交时禁用当前 Modal 控件。成功关闭并用 Notice 给出新路径；宿主结果无法证明时关闭并用长 Notice 同时给出旧/新路径和“不自动重试”。视觉继续使用宿主字体/token、Trace 规则线、Signal 箭头和直角间距；不增加卡片、文件树、历史、进度、动画、渐变或回滚按钮。
 
+1.21.0 把旧式身份处理画成一张本地证据页，而不是迁移向导。`DRAFT IDENTITY / LOCAL EVIDENCE`、标题和边界先声明默认只读，唯一视觉签名 `FILE ⇄ FRONTMATTER` 并列文件名与顶层字段；状态仅为 `READY / FILE OWNED`、`LEGACY / MATCHED` 或 `HOLD / CONFLICT`。`DRAFT / INBOX / POST / PROJECT` 四行 ledger 使用宿主 token 与规则线表达事实，不显示评分、进度或虚构健康度。常规和冲突状态只有“关闭”；完全匹配时才出现“移除冗余 slug”，错误复用同一 `role=alert`。没有卡片、渐变、动画、历史、批量选择或第二套导航。
+
 ## 站点图标
 
 `app/icon.png` 为 `256 × 256` PNG，只保留 Commit Trace 的节点、轨迹环与信号色半环，不包含文字、缩写或第二套标志。图标以社交分享卡为风格参考生成，再确定性缩放并纳入尺寸与体积测试；它用于小尺寸识别，不替代首页的工程轨迹签名。
