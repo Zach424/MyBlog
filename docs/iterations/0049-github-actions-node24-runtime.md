@@ -65,6 +65,7 @@
 - 本地对稳定域名再次运行 `npm run production:smoke -- https://blog-iota-five-59.vercel.app --expect-oauth`，通过 24 条 Sitemap 路由与 OAuth 302；
 - 新 Quality job 的未登录汇总/详情 HTML 为 completed/success，未出现 Node 20、Node20、warning 或 annotation 文本。已连接浏览器能打开正确 job 标题，但 GitHub 动态日志 DOM 两次加载超时，未形成逐行日志证据，因此本轮不声称取得了日志截图；官方 v6 runtime 声明、结构测试和真实成功 job 是主要证据；
 - weekly cron 未人为等待，manual rollback 未触发真实外部回滚；YAML 结构测试分别锁定 `0 1 * * 1` 和 rollback 的唯一 `workflow_dispatch`、production environment、required inputs、secrets、固定 Vercel CLI 与回滚后 smoke，符合“不为测试制造生产副作用”的边界。
+- 归档提交 `ca4abc588a8ab076af44339fea94175ef21f7645` 已推送；Quality Gate `30978707456`（#82）与 Vercel Production 验证 `30978736445`（#75）均 completed/success，证明 Obsidian 状态/知识归档进入 `main` 后仍保持完整交付链路。
 
 ## 8. 经验与教训
 
