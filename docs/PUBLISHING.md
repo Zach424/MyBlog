@@ -65,15 +65,15 @@ npm run content:inbox -- --date 2026-08-05
 
 ### 在 Obsidian 查看已发布内容复核台账
 
-打开命令面板并运行“查看已发布内容复核台账”。MyBlog Publisher 1.7.0 会在仓库根目录隐藏运行 `npm --silent run content:status -- --format json`，验证版本化报告后，用原生 deadline ledger 显示报告日期、Current/Historical/未公开数量、healthy/review-soon/due-soon/overdue 四档计数、源笔记路径、review-by、剩余天数和复核清单。每条记录的“打开笔记”只打开 Vault 中精确存在的 `content/posts|projects/<slug>.md`。该命令不读取网络、不修改 `reviewedAt`、不保存文件、不提交也不推送；它和 Studio 队列、每周 Actions 复用同一维护规则。
+打开命令面板并运行“查看已发布内容复核台账”。MyBlog Publisher 1.8.0 会在仓库根目录隐藏运行 `npm --silent run content:status -- --format json`，验证版本化报告后，用原生 deadline ledger 显示报告日期、Current/Historical/未公开数量、healthy/review-soon/due-soon/overdue 四档计数、源笔记路径、review-by、剩余天数和复核清单。每条记录的“打开笔记”只打开 Vault 中精确存在的 `content/posts|projects/<slug>.md`。该命令不读取网络、不修改 `reviewedAt`、不保存文件、不提交也不推送；它和 Studio 队列、每周 Actions 复用同一维护规则。
 
-检查期间的持续 Notice 会在成功、降级、失败或插件卸载时关闭。维护 CLI 用退出码 1 表达“存在逾期内容”时，插件仍会展示通过 schema 的结构化报告；JSON、schema、安全路径或 UI 渲染不可信时，插件自动再读一次纯文本报告，而不是打开半可信交互。命令无法启动时仍只显示诊断；可在仓库终端运行 `npm run content:status` 取得完整输出。仓库更新了插件版本而 Obsidian 已经打开时，需要重启 Obsidian，或先关闭再启用 MyBlog Publisher，才能加载 1.7.0 代码。
+检查期间的持续 Notice 会在成功、降级、失败或插件卸载时关闭。维护 CLI 用退出码 1 表达“存在逾期内容”时，插件仍会展示通过 schema 的结构化报告；JSON、schema、安全路径或 UI 渲染不可信时，插件自动再读一次纯文本报告，而不是打开半可信交互。命令无法启动时仍只显示诊断；可在仓库终端运行 `npm run content:status` 取得完整输出。仓库更新了插件版本而 Obsidian 已经打开时，需要重启 Obsidian，或先关闭再启用 MyBlog Publisher，才能加载 1.8.0 代码。
 
 ### 在 Obsidian 完成正式内容复核
 
 复核不是自动更新时间戳。先从台账打开正式文章或项目，逐项核对正文中的版本、架构、项目状态、命令和链接：无事实变化时只把 `reviewedAt` 改为上海当天；有正文或元数据变化时，同时把 `updatedAt` 和 `reviewedAt` 改为当天。不要改变 `publishedAt`，Historical、draft 或未来内容不进入该流程。
 
-保存笔记后先运行“MyBlog Publisher: 检查当前正式内容复核”。MyBlog Publisher 1.7.0 要求 `main`、目标已被 Git 跟踪且暂存区完全为空；工作区除目标外，可以保留稳定的 inbox 草稿和未跟踪根图片。完整 `npm run check` 前后使用同一个 impact classifier 重算，并要求 HEAD 与目标原始字节的 SHA-256 不变。成功 Proof 会显示 `CANDIDATE / GATE-STABLE` 短指纹，把并行工作列为 `DEFERRED / NOT IN COMMIT`，并继续显示日期迁移、事实变化、updatedAt、质量门和唯一可提交路径。已跟踪根媒体、嵌套归档媒体、其他正式内容、代码或未知路径不会 deferred，而会直接阻断。确认后运行“提交并同步当前正式内容复核”，它再次执行同样门禁，只暂存该 Markdown，核对 index 与提交 tree 的 Git-clean blob 后以 `content: review <slug>` 提交并推送 `origin main`；并行草稿保持原状态。
+保存笔记后先运行“MyBlog Publisher: 检查当前正式内容复核”。MyBlog Publisher 1.8.0 要求 `main`、本地 main 与最后观察到的 origin/main synchronized、目标已被 Git 跟踪且暂存区完全为空；工作区除目标外，可以保留稳定的 inbox 草稿和未跟踪根图片。完整 `npm run check` 前后使用同一个 impact classifier 重算，并要求 HEAD、tracking 关系与目标原始字节的 SHA-256 不变。成功 Proof 会显示 `CANDIDATE / GATE-STABLE` 短指纹，把并行工作列为 `DEFERRED / NOT IN COMMIT`，并继续显示日期迁移、事实变化、updatedAt、质量门和唯一可提交路径。已跟踪根媒体、嵌套归档媒体、其他正式内容、代码或未知路径不会 deferred，而会直接阻断。确认后运行“提交并同步当前正式内容复核”，它再次执行同样门禁，只暂存该 Markdown，核对 index 与提交 tree 的 Git-clean blob 后以 `content: review <slug>` 提交并推送 `origin main`；并行草稿保持原状态。
 
 命令行等价操作如下：
 
@@ -83,7 +83,7 @@ npm run content:review -- content/projects/my-project.md --check-only --format j
 npm run content:review -- content/projects/my-project.md --push
 ```
 
-`--format json` 只允许和 check-only 组合；它在完整门通过后输出 `version: 3` 的 candidate/review/git/qualityGate 证据，质量门日志不会混入 stdout。candidate 必须是 `sha256`、64 位小写摘要且明确声明门前/门后稳定；git 段的 changed 除目标外只能是已修改 inbox，untracked 只能是 inbox 或支持格式的根图片，两者并集必须精确等于 deferred，staged 必须为空且 committable 只能是目标。原始 SHA-256 证明质量门实际读取的工作区字节未变；Git blob OID 则通过 `hash-object --path` 纳入 `.gitattributes`/行尾 clean filter，分别与 index 和 tree 核对。由于日期精度为一天，已经在当天复核过的内容不能再次声明新的复核；同日后续事实修正仍可用普通 Git 流程提交，但不要伪造第二次复核。全量门、HEAD 或候选漂移时文件保持未暂存；commit 前失败会取消目标暂存；hook 令提交 tree 漂移时会原子撤回该提交并保留工作区。若候选已验证而 push 失败，本地提交会保留，联网恢复后执行 `git push origin main`，不要重新运行复核命令制造重复提交。
+`--format json` 只允许和 check-only 组合；它在完整门通过后输出 `version: 3` 的 candidate/review/git/qualityGate 证据，质量门日志不会混入 stdout。candidate 必须是 `sha256`、64 位小写摘要且明确声明门前/门后稳定；git 段的 changed 除目标外只能是已修改 inbox，untracked 只能是 inbox 或支持格式的根图片，两者并集必须精确等于 deferred，staged 必须为空且 committable 只能是目标。原始 SHA-256 证明质量门实际读取的工作区字节未变；Git blob OID 则通过 `hash-object --path` 纳入 `.gitattributes`/行尾 clean filter，分别与 index 和 tree 核对。由于日期精度为一天，已经在当天复核过的内容不能再次声明新的复核；同日后续事实修正仍可用普通 Git 流程提交，但不要伪造第二次复核。全量门、HEAD、tracking 关系或候选漂移时文件保持未暂存；commit 前失败会取消目标暂存；hook 令提交 tree 漂移时会原子撤回该提交并保留工作区。若候选已验证而 push 失败，本地提交会保留；运行 `npm run content:review:status` 或 Obsidian“查看待同步正式内容复核”，确认 `PENDING / NOT ON TRACKING REF` 后按显示命令恢复，不要重新运行复核命令制造重复提交。报告不 fetch，origin/main 只代表最后一次本地观察。
 
 ## 迁移已公开 URL
 

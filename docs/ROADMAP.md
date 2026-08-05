@@ -8,11 +8,11 @@
 | 4. 作者自助写作 | done | `/studio` OAuth + editorial workflow PR、Obsidian Vault/模板/附件/真实 `--push` |
 | 5. Vercel 原生迁移 | production live | 原生 Next.js、无 Cloudflare 依赖、24 路由生产冒烟通过 |
 | 6. 所有者生产上线 | done | Git 自动 Production、稳定域名自动冒烟、双端发布、回滚与恢复均已验收 |
-| 7. 持续内容与作者体验 | in progress | Iteration 0056 完成候选 SHA-256、HEAD/index/tree 绑定、Proof v3 与异常提交回退 |
+| 7. 持续内容与作者体验 | in progress | Iteration 0057 完成待交付复核状态、精确提交识别、重复复核阻断与 Obsidian 恢复 rail |
 
 ## 当前唯一主线
 
-进入持续内容与作者体验阶段。Iteration 0056 已把 MyBlog Publisher 升到 1.7.0：门前固定 HEAD、原始字节 SHA-256 与 Git-clean blob；完整门后再次验证 HEAD/字节，push 再核对 index、提交父级、唯一 diff 与 tree。Proof v3 显示可人工比对的短指纹，hook 改写 tree 会在 push 前原子撤回异常提交；deferred 作者工作与严格阻断边界保持不变。下一主线处理“合法提交已创建但 push 未送达”的恢复体验：以只读证据说明本地/远端关系、待交付提交和安全恢复命令，并阻止重复复核。需要品牌域名时再绑定自定义域名，旧公开站继续只作为迁移历史证据。
+进入持续内容与作者体验阶段。Iteration 0057 已把 MyBlog Publisher 升到 1.8.0：只读状态报告区分 synchronized、精确 pending-review 与普通 ahead/behind/diverged/tracking-missing；只有单父级、唯一正式路径、严格 subject 和可读 tree/blob 的 ahead 1 提交得到固定恢复命令。Obsidian 用本地/最后观察 origin 的真实差距 rail 展示，所有非同步状态阻止新复核；报告不联网、不写 Git。下一主线增加独立恢复动作，再次验证精确待交付身份后只执行固定 push，并在成功后重新证明 synchronized；不自动 fetch/rebase/reset。需要品牌域名时再绑定自定义域名，旧公开站继续只作为迁移历史证据。
 
 ## 已知风险
 
@@ -32,7 +32,7 @@
 - slug 迁移已有构建验证的精确单跳 redirect 注册表，但仍是需要作者审阅的 Git 操作；不支持通配参数或自动推断，迁移必须同步处理内容、附件和引用；
 - Obsidian 已有全 inbox readiness 总览，但该报告有意只代表本地单篇写入事务，不替代正式发布的完整仓库门禁，也不进入看不到未跟踪草稿的 Actions；
 - Current record 已有 Studio 实时只读队列、每周 60/30 天 Actions 提醒和过期门；队列数据只随新 Production 接收内容变更，且仍不发送外部消息；若未来需要邮件/聊天通知，必须由所有者选择渠道后再接入；
-- Obsidian 维护/Author Proof 1.7.0 已验证两套版本化 JSON、活动 sourcePath、候选 SHA-256、deferred 差集和纯文本降级；真实主题组合、超长路径和大量记录仍需随使用观察。合法复核提交若因网络或远端拒绝而 push 失败会保留在本地，这是数据安全边界，但当前只有错误文本提示恢复命令，尚无独立的待交付状态视图；
+- Obsidian 维护/Author Proof/交付状态 1.8.0 已验证三套版本化 JSON、活动 sourcePath、候选 SHA-256、deferred 差集、待交付提交关系和各自纯文本降级；真实主题组合、超长 object id/path 和大量记录仍需随使用观察。当前交付状态只读，恢复命令仍需在终端执行；下一轮用同一窄识别器增加独立安全动作；
 - 内部链接支持内容页和严格标题锚点，行内/引用式/自引用共享实际渲染 slug 规则，详情页与公开知识地图共享 outgoing/backlinks；明确不支持 Obsidian 块引用，标题改名必须同步深链，当前双列 SVG 为小型内容库优化，内容规模增长后需要过滤/分组；
 - 正文普通 HTTPS 与结构化 repository/demo/canonical 已有统一确定性库存和受控实时报告；实时 DNS/网络结果有意不进 Actions，timeout/限流不能冒充内容错误；
 - 文章与项目已有完整 A4 打印版式，但 PDF 仍由读者通过浏览器打印生成，仓库不把二进制 PDF 当作发布源，也不提供服务端 PDF 缓存；后续版式变化仍需重新做真实 PDF 全页复核；

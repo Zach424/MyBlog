@@ -12,9 +12,10 @@
 
 维护已发布 Current 内容时，先从“查看已发布内容复核台账”打开正式笔记，按清单人工核对。无事实变化只把 `reviewedAt` 推进到当天；正文或元数据变化还要把 `updatedAt` 更新到当天。随后运行：
 
+- `MyBlog Publisher: 查看待同步正式内容复核`：只读比较本地 `main` 与最后观察到的 `origin/main`，识别 push 失败后保留的精确复核提交；不 fetch、不 push、不改历史；
 - `MyBlog Publisher: 检查当前正式内容复核`：执行完整仓库门，然后用只读 Author Proof 显示 HEAD/当前日期、事实变化、质量门、候选内容短指纹和唯一提交范围；不暂存、不提交；
 - `MyBlog Publisher: 提交并同步当前正式内容复核`：门禁通过后只提交当前正式 Markdown 并推送 `main`。
 
-该流程要求暂存区（包括 intent-to-add）为空，且同一天不能重复声明复核。可以同时保留稳定的 `content/inbox/<slug>.md` 草稿和未跟踪的根 `public/uploads/<图片>`；它们会在 Proof 中标为 deferred，不进入本次提交。已跟踪根附件修改、嵌套归档媒体、其他正式内容、代码或未知路径仍阻断。命令行等价入口为 `npm run content:review -- content/posts|projects/<slug>.md --check-only|--push`；机器可读证据在 check-only 后增加 `--format json`。Proof v3 的 SHA-256 绑定质量门前后原始字节，push 还核对 Git clean/filter 后的 index 与提交 tree；长检查期间修改目标或移动 HEAD 都会失败关闭。结构化证据异常时插件会重新执行纯文本检查，不会显示半可信的可提交状态。
+该流程要求暂存区（包括 intent-to-add）为空，且同一天不能重复声明复核。可以同时保留稳定的 `content/inbox/<slug>.md` 草稿和未跟踪的根 `public/uploads/<图片>`；它们会在 Proof 中标为 deferred，不进入本次提交。已跟踪根附件修改、嵌套归档媒体、其他正式内容、代码或未知路径仍阻断。命令行等价入口为 `npm run content:review -- content/posts|projects/<slug>.md --check-only|--push`；机器可读证据在 check-only 后增加 `--format json`。Proof v3 的 SHA-256 绑定质量门前后原始字节，push 还核对 Git clean/filter 后的 index 与提交 tree；长检查期间修改目标或移动 HEAD 都会失败关闭。push 失败后运行 `npm run content:review:status`；只有本地 main 正好领先本地 tracking ref 一个 `content: review <slug>`、父级/唯一路径/tree/blob 都匹配时才显示待交付，否则只要求检查 Git 状态。任何非 synchronized 状态都会阻止创建第二个复核提交。结构化证据异常时插件会重新执行纯文本检查，不会显示半可信的可提交状态。
 
 此 README 不参与博客构建。详细流程见 `docs/PUBLISHING.md`。

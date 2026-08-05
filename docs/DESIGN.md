@@ -119,7 +119,9 @@
 
 Obsidian 的维护入口服从宿主应用而不是复制网页皮肤。1.3.0 起提供的“已发布内容复核台账”使用原生 Modal、按钮和宿主 token，把同一版本化 JSON 画成 deadline ledger：顶部只说明 Git 事实源与报告边界，三格范围账本区分 Current/Historical/未公开，四段期限轨迹始终展示健康、进入复核窗口、即将到期与已过期的真实计数；逐条记录用左侧状态线、等宽日期/路径和文本状态表达期限，不使用通用卡片、颜色单独传意、渐变或动画。每条记录只有一个“打开笔记”主动作，且必须对应 Vault 中精确存在的 `content/posts|projects/<slug>.md`。结构版本、字段、日期计算、计数、阈值、顺序、路由或路径不可信时，插件重新运行纯文本报告并用 `setText` 显示只读证据。进度、完成、降级和失败继续使用原生 Notice，持续 Notice 必须在任一终态和插件卸载时消失。
 
-正式内容复核采用显式的两步动词，不把“打开笔记”或“点击同步”伪装成事实确认。1.7.0 只在正式文章/项目处于活动视图时显示“检查当前正式内容复核”和“提交并同步当前正式内容复核”；作者必须先手工核对清单并编辑日期。检查成功后打开原生只读 Author Proof：`AUTHOR PROOF / CHECKED`、真实标题/路径、HEAD 到当前日期的 review transition rail，以及规则线账本中的事实变化、updatedAt、质量门、main/index、唯一提交路径。Proof v3 在同一 ledger 增加一行 Verified 侧线的 `CANDIDATE / GATE-STABLE`，以 monospace 显示 `sha256:前12位…后8位`，完整 64 位值通过 title 与 aria-label 可用；它是“门前/门后字节一致”的证据，不是安全评分、成功徽章或复制控件。若并行草稿存在，同一账本用 Caution 侧线和 `DEFERRED / NOT IN COMMIT` 逐项列出 `MODIFIED`/`UNTRACKED` 路径；这是提交边界证据，不是第二组状态卡。迁移轨仍是唯一视觉签名，使用宿主 text/interface/monospace 字体及 Verified/Trace/Caution 颜色与文本双重语义，不使用卡片、渐变、动画或同步按钮。底部明确“仍需单独运行提交并同步”；结构、摘要或差集异常则退回纯文本 Proof。
+正式内容复核采用显式的两步动词，不把“打开笔记”或“点击同步”伪装成事实确认。1.8.0 只在正式文章/项目处于活动视图时显示“检查当前正式内容复核”和“提交并同步当前正式内容复核”；作者必须先手工核对清单并编辑日期。检查成功后打开原生只读 Author Proof：`AUTHOR PROOF / CHECKED`、真实标题/路径、HEAD 到当前日期的 review transition rail，以及规则线账本中的事实变化、updatedAt、质量门、main/index、唯一提交路径。Proof v3 在同一 ledger 增加一行 Verified 侧线的 `CANDIDATE / GATE-STABLE`，以 monospace 显示 `sha256:前12位…后8位`，完整 64 位值通过 title 与 aria-label 可用；它是“门前/门后字节一致”的证据，不是安全评分、成功徽章或复制控件。若并行草稿存在，同一账本用 Caution 侧线和 `DEFERRED / NOT IN COMMIT` 逐项列出 `MODIFIED`/`UNTRACKED` 路径；这是提交边界证据，不是第二组状态卡。迁移轨仍是唯一视觉签名，使用宿主 text/interface/monospace 字体及 Verified/Trace/Caution 颜色与文本双重语义，不使用卡片、渐变、动画或同步按钮。底部明确“仍需单独运行提交并同步”；结构、摘要或差集异常则退回纯文本 Proof。
+
+待交付复核使用一条真实提交差距作为界面骨架：`ORIGIN/MAIN · LAST OBSERVED ── +1 ── LOCAL MAIN`。它只在精确 pending-review 状态显示 `DELIVERY HOLD / LOCAL ONLY` 和 `PENDING / NOT ON TRACKING REF`，下方 ledger 列出正式路径、subject、完整 commit/tree/blob 与固定恢复命令；synchronized 使用同一轨迹显示 `+0`，其他关系只显示 INSPECT，不给 push 建议。边界文案明确本地 tracking ref 可能过期、没有 fetch/push/历史修改。Hold 使用 Caution，已对齐使用 Verified，路径和 object id 使用 monospace；没有绿色“安全”徽章、复制按钮、卡片、渐变或动画，窄屏仍保留两端引用关系并把 ledger 折为单列。
 
 ## 站点图标
 
