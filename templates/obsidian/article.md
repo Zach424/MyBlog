@@ -1,6 +1,5 @@
 ---
 title: ""
-slug: "{{title}}"
 description: ""
 type: article
 publishedAt: {{date:YYYY-MM-DD}}

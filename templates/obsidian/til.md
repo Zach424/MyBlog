@@ -1,6 +1,5 @@
 ---
 title: ""
-slug: "{{title}}"
 description: ""
 type: til
 publishedAt: {{date:YYYY-MM-DD}}

@@ -1,9 +1,9 @@
 {
   "id": "myblog-publisher",
   "name": "MyBlog Publisher",
-  "version": "1.19.0",
-  "minAppVersion": "1.5.0",
-  "description": "Create local MyBlog drafts from trusted templates, then observe, validate, serialize, and safely deliver publishing and review transactions.",
+  "version": "1.20.0",
+  "minAppVersion": "1.5.7",
+  "description": "Create filename-owned drafts, safely rename inbox drafts, then observe, validate, serialize, and deliver publishing and review transactions.",
   "author": "Zach424",
   "isDesktopOnly": true
 }

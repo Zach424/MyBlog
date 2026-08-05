@@ -1,5 +1,13 @@
 /* eslint-disable @typescript-eslint/no-require-imports */
-const { FileSystemAdapter, Modal, Notice, Plugin } = require("obsidian");
+const {
+  FileSystemAdapter,
+  getFrontMatterInfo,
+  Modal,
+  Notice,
+  parseYaml,
+  Plugin,
+  TFile,
+} = require("obsidian");
 const { spawn } = require("node:child_process");
 
 const MAX_CAPTURED_OUTPUT = 200_000;
@@ -12,10 +20,11 @@ const CONTENT_PUBLISH_DELIVERY_RECEIPT_VERSION = 1;
 const CONTENT_DELIVERY_TRIAGE_REPORT_VERSION = 1;
 const AUTHOR_DOCTOR_REPORT_VERSION = 1;
 const AUTHOR_DOCTOR_NODE_ENGINE = ">=22.13.0";
-const AUTHOR_DOCTOR_PLUGIN_VERSION = "1.19.0";
+const AUTHOR_DOCTOR_PLUGIN_VERSION = "1.20.0";
 const DRAFT_TITLE_MAX_LENGTH = 120;
 const DRAFT_SLUG_MAX_LENGTH = 80;
 const DRAFT_SLUG_PATTERN = /^[a-z0-9]+(?:-[a-z0-9]+)*$/u;
+const DRAFT_INBOX_PATH_PATTERN = /^content\/inbox\/([a-z0-9]+(?:-[a-z0-9]+)*)\.md$/u;
 const DRAFT_DATE_TOKEN = "{{date:YYYY-MM-DD}}";
 const DRAFT_CREATION_KINDS = Object.freeze({
   article: Object.freeze({
@@ -2176,7 +2185,7 @@ class DraftCreationModal extends Modal {
     slug.setAttr("type", "text");
     slugField.createEl("span", {
       cls: "myblog-draft-create__hint",
-      text: "仅限小写英文、数字和单个连字符；同时检查 inbox、posts 与 projects。",
+      text: "仅限小写英文、数字和单个连字符；文件名是草稿的唯一 slug 身份。",
     });
 
     const error = form.createEl("p", {
@@ -2237,6 +2246,137 @@ class DraftCreationModal extends Modal {
     });
 
     title.focus();
+  }
+}
+
+class DraftRenameModal extends Modal {
+  constructor(plugin, identity) {
+    super(plugin.app);
+    this.identity = identity;
+    this.plugin = plugin;
+    this.submitting = false;
+  }
+
+  onOpen() {
+    const { contentEl, identity } = this;
+    contentEl.empty();
+    contentEl.addClass("myblog-draft-rename");
+    contentEl.createEl("p", {
+      cls: "myblog-draft-rename__eyebrow",
+      text: "DRAFT IDENTITY / FILE OWNED",
+    });
+    contentEl.createEl("h2", {
+      cls: "myblog-draft-rename__title",
+      text: "重命名当前草稿",
+    });
+    contentEl.createEl("p", {
+      cls: "myblog-draft-rename__boundary",
+      text: "只改变 inbox 文件名；会按 Obsidian 设置更新内部链接；不会发布、提交或联网。",
+    });
+
+    const source = contentEl.createEl("p", {
+      cls: "myblog-draft-rename__source",
+    });
+    source.createEl("span", { text: "当前文件" });
+    source.createEl("code", { text: identity.sourcePath });
+
+    const transition = contentEl.createEl("div", {
+      cls: "myblog-draft-rename__transition",
+    });
+    const current = transition.createEl("div", {
+      cls: "myblog-draft-rename__node",
+    });
+    current.createEl("span", { text: "CURRENT" });
+    current.createEl("code", { text: identity.sourceSlug });
+    transition.createEl("span", {
+      cls: "myblog-draft-rename__arrow",
+      text: "→",
+    });
+    const target = transition.createEl("div", {
+      cls: "myblog-draft-rename__node myblog-draft-rename__node--target",
+    });
+    target.createEl("span", { text: "TARGET" });
+    const targetCode = target.createEl("code", { text: identity.sourceSlug });
+
+    const form = contentEl.createEl("div", {
+      cls: "myblog-draft-rename__form",
+    });
+    const field = form.createEl("label", {
+      cls: "myblog-draft-rename__field",
+    });
+    field.createEl("span", {
+      cls: "myblog-draft-rename__label",
+      text: "新的英文 slug",
+    });
+    const slug = field.createEl("input");
+    slug.setAttr("aria-label", "新的英文 slug");
+    slug.setAttr("autocapitalize", "none");
+    slug.setAttr("autocomplete", "off");
+    slug.setAttr("maxlength", String(DRAFT_SLUG_MAX_LENGTH));
+    slug.setAttr("spellcheck", "false");
+    slug.setAttr("type", "text");
+    slug.value = identity.sourceSlug;
+    field.createEl("span", {
+      cls: "myblog-draft-rename__hint",
+      text: "只接受小写英文、数字和单个连字符；正式内容中的同名身份也会阻断。",
+    });
+    slug.addEventListener("input", () => {
+      targetCode.setText(slug.value.trim() || "new-slug");
+    });
+
+    const error = form.createEl("p", {
+      cls: "myblog-draft-rename__error",
+    });
+    error.setAttr("aria-live", "polite");
+    error.setAttr("role", "alert");
+
+    const actions = form.createEl("div", {
+      cls: "modal-button-container myblog-draft-rename__actions",
+    });
+    const cancel = actions.createEl("button", { text: "取消" });
+    cancel.setAttr("type", "button");
+    const submit = actions.createEl("button", {
+      cls: "mod-cta",
+      text: "重命名草稿",
+    });
+    submit.setAttr("type", "button");
+
+    cancel.addEventListener("click", () => this.close());
+    submit.addEventListener("click", async () => {
+      if (this.submitting) return;
+      this.submitting = true;
+      error.setText("");
+      for (const control of [slug, cancel, submit]) control.disabled = true;
+      let completed = false;
+      try {
+        const result = await this.plugin.renameInboxDraft({
+          sourcePath: identity.sourcePath,
+          targetSlug: slug.value,
+        });
+        completed = true;
+        this.close();
+        if (result.status === "renamed") {
+          new Notice(`草稿已重命名：${result.targetPath}`, 5000);
+        } else {
+          new Notice(
+            `改名结果不确定：请检查 ${result.sourcePath} 与 ${result.targetPath}；不会自动重试。`,
+            15000,
+          );
+        }
+      } catch (renameError) {
+        const message = renameError instanceof Error
+          ? renameError.message
+          : "草稿改名前置检查失败。";
+        error.setText(message);
+      } finally {
+        if (!completed) {
+          this.submitting = false;
+          for (const control of [slug, cancel, submit]) control.disabled = false;
+        }
+      }
+    });
+
+    slug.focus();
   }
 }
 
@@ -3331,12 +3471,19 @@ module.exports = class MyBlogPublisher extends Plugin {
   onload() {
     this.activeRuns = new Map();
     this.authorTransactionLease = null;
+    this.draftRenameLease = null;
     this.lastAuthorTransactionReceipt = null;
 
     this.addCommand({
       id: "create-blog-draft",
       name: "新建博客草稿",
       checkCallback: (checking) => this.openDraftCreationWizard(checking),
+    });
+
+    this.addCommand({
+      id: "rename-current-inbox-draft",
+      name: "重命名当前草稿",
+      checkCallback: (checking) => this.renameCurrentInboxDraft(checking),
     });
 
     this.addCommand({
@@ -3421,6 +3568,7 @@ module.exports = class MyBlogPublisher extends Plugin {
   }
 
   onunload() {
+    this.draftRenameLease = null;
     const authorLease = this.authorTransactionLease;
     if (authorLease) {
       this.releaseAuthorTransactionLease(authorLease, null, "unloaded");
@@ -3467,6 +3615,27 @@ module.exports = class MyBlogPublisher extends Plugin {
     if (!this.isDesktopVault()) return false;
     if (checking) return true;
     new DraftCreationModal(this).open();
+    return true;
+  }
+
+  getActiveInboxDraftIdentity() {
+    const file = this.app.workspace.getActiveFile();
+    if (!(file instanceof TFile) || file.extension !== "md") return null;
+    const match = file.path.match(DRAFT_INBOX_PATH_PATTERN);
+    if (!match) return null;
+    return Object.freeze({
+      file,
+      sourcePath: file.path,
+      sourceSlug: match[1],
+    });
+  }
+
+  renameCurrentInboxDraft(checking) {
+    if (!this.isDesktopVault()) return false;
+    const identity = this.getActiveInboxDraftIdentity();
+    if (!identity) return false;
+    if (checking) return true;
+    new DraftRenameModal(this, identity).open();
     return true;
   }
 
@@ -3527,6 +3696,135 @@ module.exports = class MyBlogPublisher extends Plugin {
     }
   }
 
+  validateDraftRenameInput({ sourcePath, targetSlug } = {}) {
+    const sourceMatch = typeof sourcePath === "string"
+      ? sourcePath.match(DRAFT_INBOX_PATH_PATTERN)
+      : null;
+    if (!sourceMatch) {
+      throw new Error("来源草稿必须是 content/inbox 下以安全 slug 命名的 Markdown 文件。");
+    }
+    if (typeof targetSlug !== "string" || targetSlug.length === 0) {
+      throw new Error("新的英文 slug 不能为空。");
+    }
+    if (targetSlug.length > DRAFT_SLUG_MAX_LENGTH) {
+      throw new Error(`新的英文 slug 不能超过 ${DRAFT_SLUG_MAX_LENGTH} 个字符。`);
+    }
+    if (!DRAFT_SLUG_PATTERN.test(targetSlug)) {
+      throw new Error("新的英文 slug 仅支持小写英文、数字和单个连字符。");
+    }
+    if (targetSlug === sourceMatch[1]) {
+      throw new Error("新的 slug 必须与当前 slug 不同。");
+    }
+    return Object.freeze({
+      sourcePath,
+      sourceSlug: sourceMatch[1],
+      targetPath: `content/inbox/${targetSlug}.md`,
+      targetSlug,
+    });
+  }
+
+  assertFilenameOwnedDraft(content) {
+    let info;
+    try {
+      info = getFrontMatterInfo(content);
+    } catch {
+      throw new Error("草稿 frontmatter 无法识别；未执行改名。");
+    }
+    if (!info?.exists) {
+      throw new Error("草稿缺少 frontmatter；未执行改名。");
+    }
+
+    let frontmatter;
+    try {
+      frontmatter = parseYaml(info.frontmatter);
+    } catch {
+      throw new Error("草稿 frontmatter YAML 无法解析；未执行改名。");
+    }
+    if (
+      !frontmatter ||
+      typeof frontmatter !== "object" ||
+      Array.isArray(frontmatter)
+    ) {
+      throw new Error("草稿 frontmatter 必须是 YAML 映射；未执行改名。");
+    }
+    if (Object.prototype.hasOwnProperty.call(frontmatter, "slug")) {
+      throw new Error("该草稿仍包含旧式 frontmatter slug；为避免双字段迁移，未执行改名。");
+    }
+    if (frontmatter.draft !== true) {
+      throw new Error("只允许重命名 draft: true 的未发布草稿。");
+    }
+  }
+
+  async renameInboxDraft(input) {
+    if (!this.isDesktopVault()) {
+      throw new Error("重命名草稿只支持桌面 Vault。");
+    }
+    const draft = this.validateDraftRenameInput(input);
+    this.assertDraftPathsAvailable(draft.targetSlug);
+    if (this.draftRenameLease) {
+      throw new Error("另一个草稿改名正在进行；完成后重新打开命令。");
+    }
+
+    const lease = Object.freeze({
+      sourcePath: draft.sourcePath,
+      targetPath: draft.targetPath,
+    });
+    this.draftRenameLease = lease;
+    try {
+      const file = this.app.vault.getAbstractFileByPath(draft.sourcePath);
+      if (
+        !(file instanceof TFile) ||
+        file.path !== draft.sourcePath ||
+        file.extension !== "md"
+      ) {
+        throw new Error(`找不到来源草稿：${draft.sourcePath}。`);
+      }
+
+      let content;
+      try {
+        content = await this.app.vault.read(file);
+      } catch (error) {
+        throw new Error(`草稿读取失败：${draft.sourcePath} · ${error.message}`);
+      }
+      this.assertFilenameOwnedDraft(content);
+      this.assertDraftPathsAvailable(draft.targetSlug);
+      if (this.app.vault.getAbstractFileByPath(draft.sourcePath) !== file) {
+        throw new Error("来源草稿在检查期间已变化；未执行改名。");
+      }
+
+      try {
+        await this.app.fileManager.renameFile(file, draft.targetPath);
+      } catch {
+        return Object.freeze({
+          sourcePath: draft.sourcePath,
+          status: "uncertain",
+          targetPath: draft.targetPath,
+        });
+      }
+
+      const sourceAfter = this.app.vault.getAbstractFileByPath(draft.sourcePath);
+      const targetAfter = this.app.vault.getAbstractFileByPath(draft.targetPath);
+      if (
+        sourceAfter === null &&
+        targetAfter instanceof TFile &&
+        targetAfter.path === draft.targetPath
+      ) {
+        return Object.freeze({
+          sourcePath: draft.sourcePath,
+          status: "renamed",
+          targetPath: draft.targetPath,
+        });
+      }
+      return Object.freeze({
+        sourcePath: draft.sourcePath,
+        status: "uncertain",
+        targetPath: draft.targetPath,
+      });
+    } finally {
+      if (this.draftRenameLease === lease) this.draftRenameLease = null;
+    }
+  }
+
   renderDraftTemplate(template, draft, today) {
     if (typeof template !== "string") {
       throw new Error("受信模板内容无效。");
@@ -3537,7 +3835,6 @@ module.exports = class MyBlogPublisher extends Plugin {
     }
     const exactLines = [
       ['title: ""', 1],
-      ['slug: "{{title}}"', 1],
       ["draft: true", 1],
       ["featured: false", 1],
       ...draft.config.requiredLines.map((line) => [line, 1]),
@@ -3547,8 +3844,11 @@ module.exports = class MyBlogPublisher extends Plugin {
         throw new Error(`受信模板字段已漂移：${line}`);
       }
     }
+    if (/^slug\s*:/mu.test(source)) {
+      throw new Error("受信模板不能包含重复的 frontmatter slug；文件名是唯一身份。");
+    }
     const tokens = source.match(/\{\{[^{}\n]+\}\}/gu) ?? [];
-    const expectedTokens = ["{{title}}", DRAFT_DATE_TOKEN, DRAFT_DATE_TOKEN, DRAFT_DATE_TOKEN];
+    const expectedTokens = [DRAFT_DATE_TOKEN, DRAFT_DATE_TOKEN, DRAFT_DATE_TOKEN];
     if (
       tokens.length !== expectedTokens.length ||
       tokens.some((token, index) => token !== expectedTokens[index])
@@ -3558,7 +3858,6 @@ module.exports = class MyBlogPublisher extends Plugin {
     parseIsoDate(today, "草稿创建日期");
     const rendered = source
       .replace('title: ""', `title: ${JSON.stringify(draft.title)}`)
-      .replace('slug: "{{title}}"', `slug: ${draft.slug}`)
       .replaceAll(DRAFT_DATE_TOKEN, today);
     if (/\{\{[^{}\n]+\}\}/u.test(rendered)) {
       throw new Error("受信模板仍有未解析占位符。");

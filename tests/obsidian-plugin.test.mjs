@@ -2,6 +2,7 @@ import assert from "node:assert/strict";
 import { readFile } from "node:fs/promises";
 import test from "node:test";
 import vm from "node:vm";
+import { parse as parseYamlSource } from "yaml";
 
 const pluginUrl = new URL(
   "../.obsidian/plugins/myblog-publisher/main.js",
@@ -93,6 +94,8 @@ async function createPluginHarness({
   files = ["content/projects/myblog.md"],
   openFailure,
   platform = "win32",
+  renameFailure,
+  renamePostcondition = "exact",
   throwSpawnAt = [],
 } = {}) {
   const source = await readFile(pluginUrl, "utf8");
@@ -101,7 +104,9 @@ async function createPluginHarness({
   const notices = [];
   const openedFiles = [];
   const createdFiles = [];
+  const renameAttempts = [];
   const templateReads = [];
+  const vaultReads = [];
   let reconciliations = 0;
   const spawned = [];
   let spawnAttempts = 0;
@@ -113,6 +118,21 @@ async function createPluginHarness({
 
     reconcile() {
       reconciliations += 1;
+    }
+  }
+
+  class TFile {
+    constructor(path) {
+      this.setPath(path);
+    }
+
+    setPath(path) {
+      this.path = path;
+      this.name = path.split("/").at(-1) ?? path;
+      this.extension = this.name.includes(".") ? this.name.split(".").at(-1) : "";
+      this.basename = this.extension
+        ? this.name.slice(0, -(this.extension.length + 1))
+        : this.name;
     }
   }
 
@@ -177,10 +197,15 @@ async function createPluginHarness({
   };
 
   const contentMap = new Map(Object.entries(fileContents));
+  let activePath = activeFilePath;
   const fileMap = new Map(
-    [...new Set([...files, ...contentMap.keys()])].map((path) => [
+    [...new Set([
+      ...files,
+      ...contentMap.keys(),
+      ...(activeFilePath ? [activeFilePath] : []),
+    ])].map((path) => [
       path,
-      { extension: path.endsWith(".md") ? "md" : "", path },
+      new TFile(path),
     ]),
   );
   const adapter = desktop ? new FileSystemAdapter() : {};
@@ -194,10 +219,17 @@ async function createPluginHarness({
         }
         return contentMap.get(file.path);
       },
+      async read(file) {
+        vaultReads.push(file.path);
+        if (!contentMap.has(file.path)) {
+          throw new Error(`Missing fixture content: ${file.path}`);
+        }
+        return contentMap.get(file.path);
+      },
       async create(path, content) {
         if (createFailure) throw new Error(createFailure);
         if (fileMap.has(path)) throw new Error(`File already exists: ${path}`);
-        const file = { extension: "md", path };
+        const file = new TFile(path);
         fileMap.set(path, file);
         contentMap.set(path, content);
         createdFiles.push({ content, file, path });
@@ -207,14 +239,27 @@ async function createPluginHarness({
         return fileMap.get(path) ?? null;
       },
     },
+    fileManager: {
+      async renameFile(file, newPath) {
+        const sourcePath = file.path;
+        renameAttempts.push({ file, newPath, sourcePath });
+        if (renameFailure) throw new Error(renameFailure);
+        if (renamePostcondition !== "exact") return;
+        if (fileMap.get(sourcePath) !== file) {
+          throw new Error(`Source file changed: ${sourcePath}`);
+        }
+        if (fileMap.has(newPath)) throw new Error(`File already exists: ${newPath}`);
+        const content = contentMap.get(sourcePath);
+        fileMap.delete(sourcePath);
+        contentMap.delete(sourcePath);
+        file.setPath(newPath);
+        fileMap.set(newPath, file);
+        if (content !== undefined) contentMap.set(newPath, content);
+        if (activePath === sourcePath) activePath = newPath;
+      },
+    },
     workspace: {
-      getActiveFile: () =>
-        activeFilePath
-          ? {
-              extension: activeFilePath.endsWith(".md") ? "md" : "",
-              path: activeFilePath,
-            }
-          : undefined,
+      getActiveFile: () => activePath ? fileMap.get(activePath) : undefined,
       getLeaf: () => ({
         async openFile(file) {
           if (openFailure) throw new Error(openFailure);
@@ -228,7 +273,20 @@ async function createPluginHarness({
     process: { env: { ComSpec: "C:\\Windows\\System32\\cmd.exe" }, platform },
     require(specifier) {
       if (specifier === "obsidian") {
-        return { FileSystemAdapter, Modal, Notice, Plugin };
+        return {
+          FileSystemAdapter,
+          getFrontMatterInfo(content) {
+            const match = /^---\r?\n([\s\S]*?)\r?\n---(?:\r?\n|$)/u.exec(content);
+            return match
+              ? { exists: true, frontmatter: match[1] }
+              : { exists: false, frontmatter: "" };
+          },
+          Modal,
+          Notice,
+          parseYaml: parseYamlSource,
+          Plugin,
+          TFile,
+        };
       }
       if (specifier === "node:child_process") return { spawn };
       throw new Error(`Unexpected require: ${specifier}`);
@@ -242,6 +300,12 @@ async function createPluginHarness({
   return {
     commands,
     createdFiles,
+    getContent(path) {
+      return contentMap.get(path);
+    },
+    getFile(path) {
+      return fileMap.get(path) ?? null;
+    },
     get reconciliations() {
       return reconciliations;
     },
@@ -249,8 +313,10 @@ async function createPluginHarness({
     notices,
     openedFiles,
     plugin,
+    renameAttempts,
     spawned,
     templateReads,
+    vaultReads,
   };
 }
 
@@ -601,7 +667,7 @@ function authorDoctorReport() {
     ["workspace-dependencies", "workspace", "Workspace dependencies", "35/35 pinned packages", "all declared packages installed at pinned versions"],
     ["content-layout", "workspace", "Content layout", "5/5 required paths", "5 required authoring paths"],
     ["obsidian-vault", "vault", "Obsidian Vault", ".obsidian present", ".obsidian directory present"],
-    ["publisher-plugin", "vault", "MyBlog Publisher", "myblog-publisher@1.19.0 · desktop", "myblog-publisher 1.19.0 desktop plugin"],
+    ["publisher-plugin", "vault", "MyBlog Publisher", "myblog-publisher@1.20.0 · desktop", "myblog-publisher 1.20.0 desktop plugin"],
   ];
   const scripts = [
     "content:author:doctor",
@@ -648,7 +714,7 @@ function authorDoctorReport() {
           isDesktopOnly: true,
           mainPresent: true,
           stylesPresent: true,
-          version: "1.19.0",
+          version: "1.20.0",
         },
       },
       workspace: {
@@ -729,6 +795,29 @@ async function readObsidianTemplates() {
   );
 }
 
+function filenameOwnedDraft({
+  draft = true,
+  slugLine = "",
+  title = "可安全改名的草稿",
+} = {}) {
+  return `---
+title: "${title}"
+${slugLine}description: "验证 Obsidian 草稿以文件名作为唯一身份。"
+type: article
+publishedAt: 2026-08-06
+updatedAt: 2026-08-06
+freshness: historical
+reviewedAt: 2026-08-06
+tags: ["Personal Knowledge"]
+draft: ${draft}
+featured: false
+---
+
+## 正文
+
+草稿内容保持不变。\n`;
+}
+
 test("creates and opens one inbox draft from the focused native wizard", async () => {
   const harness = await createPluginHarness({
     fileContents: await readObsidianTemplates(),
@@ -775,7 +864,7 @@ test("creates and opens one inbox draft from the focused native wizard", async (
     harness.createdFiles[0].content,
     /title: "Quoted \\"Title\\" \\\\ path"/u,
   );
-  assert.match(harness.createdFiles[0].content, /^slug: safe-draft$/mu);
+  assert.doesNotMatch(harness.createdFiles[0].content, /^slug\s*:/mu);
   assert.equal(
     harness.createdFiles[0].content.match(/2026-08-06/gu)?.length,
     3,
@@ -815,6 +904,7 @@ test("maps article, TIL, and project to their exact trusted templates", async (t
       assert.match(harness.createdFiles[0].content, new RegExp(`^${marker}$`, "mu"));
       assert.match(harness.createdFiles[0].content, new RegExp(`^${freshness}$`, "mu"));
       assert.match(harness.createdFiles[0].content, /draft: true/u);
+      assert.doesNotMatch(harness.createdFiles[0].content, /^slug\s*:/mu);
     });
   }
 });
@@ -850,6 +940,12 @@ test("fails closed on template drift and every existing content namespace", asyn
     }],
     ["unknown token", {
       "templates/obsidian/article.md": `${templates["templates/obsidian/article.md"]}\n{{unknown}}\n`,
+    }],
+    ["redundant slug", {
+      "templates/obsidian/article.md": templates["templates/obsidian/article.md"].replace(
+        'title: ""',
+        'title: ""\nslug: redundant-identity',
+      ),
     }],
     ["wrong kind marker", {
       "templates/obsidian/article.md": templates["templates/obsidian/article.md"].replace("type: article", "type: til"),
@@ -936,6 +1032,185 @@ test("keeps atomic create and post-create open failures explicit", async () => {
   );
 });
 
+test("renames one filename-owned inbox draft through FileManager", async () => {
+  const sourcePath = "content/inbox/original-draft.md";
+  const content = filenameOwnedDraft();
+  const harness = await createPluginHarness({
+    activeFilePath: sourcePath,
+    fileContents: { [sourcePath]: content },
+    files: [],
+  });
+  const command = findCommand(harness, "rename-current-inbox-draft");
+  assert.equal(command.checkCallback(true), true);
+  assert.equal(command.checkCallback(false), true);
+  assert.equal(harness.modals.length, 1);
+  assert.equal(harness.spawned.length, 0);
+
+  const modal = harness.modals[0];
+  assert.equal(modal.contentEl.classes.has("myblog-draft-rename"), true);
+  assert.deepEqual(elementsByTag(modal, "h2").map((element) => element.text), [
+    "重命名当前草稿",
+  ]);
+  assert.match(
+    elementsByTag(modal, "p").map((element) => element.text).join(" "),
+    /只改变 inbox 文件名.*按 Obsidian 设置更新内部链接.*不会发布、提交或联网/u,
+  );
+  assert.ok(
+    elementsByTag(modal, "code").some((element) => element.text === sourcePath),
+  );
+
+  const [slug] = elementsByTag(modal, "input");
+  assert.equal(slug.value, "original-draft");
+  assert.equal(slug.focused, true);
+  slug.value = "renamed-draft";
+  await slug.trigger("input");
+  assert.ok(
+    elementsByTag(modal, "code").some((element) => element.text === "renamed-draft"),
+  );
+  const submit = elementsByTag(modal, "button").find(
+    (button) => button.text === "重命名草稿",
+  );
+  await Promise.all([submit.trigger("click"), submit.trigger("click")]);
+
+  assert.deepEqual(
+    harness.renameAttempts.map(({ newPath, sourcePath: source }) => ({ newPath, source })),
+    [{ newPath: "content/inbox/renamed-draft.md", source: sourcePath }],
+  );
+  assert.equal(harness.getFile(sourcePath), null);
+  assert.equal(harness.getFile("content/inbox/renamed-draft.md")?.path, "content/inbox/renamed-draft.md");
+  assert.equal(harness.getContent("content/inbox/renamed-draft.md"), content);
+  assert.deepEqual(harness.vaultReads, [sourcePath]);
+  assert.equal(modal.closed, true);
+  assert.match(harness.notices.at(-1).message, /草稿已重命名.*renamed-draft\.md/u);
+  assert.equal(harness.spawned.length, 0);
+});
+
+test("offers draft rename only for an exact desktop inbox Markdown path", async () => {
+  const cases = [
+    ["no active file", {}],
+    ["formal content", { activeFilePath: "content/posts/published.md" }],
+    ["unsafe source slug", { activeFilePath: "content/inbox/Unsafe Draft.md" }],
+    ["non-Markdown", { activeFilePath: "content/inbox/draft.txt" }],
+    ["mobile", { activeFilePath: "content/inbox/draft.md", desktop: false }],
+  ];
+  for (const [, options] of cases) {
+    const harness = await createPluginHarness(options);
+    const command = findCommand(harness, "rename-current-inbox-draft");
+    assert.equal(command.checkCallback(true), false);
+    assert.equal(harness.modals.length, 0);
+    assert.equal(harness.renameAttempts.length, 0);
+  }
+});
+
+test("rejects rename input and namespace collisions before reading the draft", async (t) => {
+  const sourcePath = "content/inbox/original-draft.md";
+  const cases = [
+    ["unchanged", "original-draft", [], /不同/u],
+    ["uppercase", "Unsafe", [], /slug/u],
+    ["path", "../unsafe", [], /slug/u],
+    ["too long", "a".repeat(81), [], /80/u],
+    ["inbox collision", "target", ["content/inbox/target.md"], /已存在/u],
+    ["post collision", "target", ["content/posts/target.md"], /已存在/u],
+    ["project collision", "target", ["content/projects/target.md"], /已存在/u],
+  ];
+  for (const [name, targetSlug, extraFiles, expected] of cases) {
+    await t.test(name, async () => {
+      const harness = await createPluginHarness({
+        activeFilePath: sourcePath,
+        fileContents: { [sourcePath]: filenameOwnedDraft() },
+        files: extraFiles,
+      });
+      await assert.rejects(
+        harness.plugin.renameInboxDraft({ sourcePath, targetSlug }),
+        expected,
+      );
+      assert.deepEqual(harness.vaultReads, []);
+      assert.deepEqual(harness.renameAttempts, []);
+      assert.ok(harness.getFile(sourcePath));
+    });
+  }
+});
+
+test("fails closed for a non-draft, invalid frontmatter, or legacy dual slug", async (t) => {
+  const sourcePath = "content/inbox/original-draft.md";
+  const cases = [
+    ["missing frontmatter", "# Draft\n", /frontmatter/u],
+    ["invalid YAML", "---\ntitle: [\ndraft: true\n---\n", /YAML/u],
+    ["published", filenameOwnedDraft({ draft: false }), /draft: true/u],
+    ["legacy slug", filenameOwnedDraft({ slugLine: "slug: original-draft\n" }), /旧式.*slug/u],
+  ];
+  for (const [name, content, expected] of cases) {
+    await t.test(name, async () => {
+      const harness = await createPluginHarness({
+        activeFilePath: sourcePath,
+        fileContents: { [sourcePath]: content },
+        files: [],
+      });
+      await assert.rejects(
+        harness.plugin.renameInboxDraft({ sourcePath, targetSlug: "renamed-draft" }),
+        expected,
+      );
+      assert.deepEqual(harness.vaultReads, [sourcePath]);
+      assert.deepEqual(harness.renameAttempts, []);
+      assert.ok(harness.getFile(sourcePath));
+    });
+  }
+});
+
+test("serializes rename modals and never retries an uncertain FileManager result", async () => {
+  const sourcePath = "content/inbox/original-draft.md";
+  const shared = await createPluginHarness({
+    activeFilePath: sourcePath,
+    fileContents: { [sourcePath]: filenameOwnedDraft() },
+    files: [],
+  });
+  const command = findCommand(shared, "rename-current-inbox-draft");
+  command.checkCallback(false);
+  command.checkCallback(false);
+  const [first, second] = shared.modals;
+  elementsByTag(first, "input")[0].value = "first-target";
+  elementsByTag(second, "input")[0].value = "second-target";
+  const firstSubmit = elementsByTag(first, "button").find(
+    (button) => button.text === "重命名草稿",
+  );
+  const secondSubmit = elementsByTag(second, "button").find(
+    (button) => button.text === "重命名草稿",
+  );
+  await Promise.all([firstSubmit.trigger("click"), secondSubmit.trigger("click")]);
+  assert.equal(shared.renameAttempts.length, 1);
+  assert.equal([first.closed, second.closed].filter(Boolean).length, 1);
+  const waitingModal = first.closed ? second : first;
+  const waitingError = allElements(waitingModal.contentEl).find(
+    (element) => element.classes.has("myblog-draft-rename__error"),
+  );
+  assert.match(waitingError.text, /另一个草稿改名正在进行/u);
+
+  for (const options of [
+    { renameFailure: "host rename rejected" },
+    { renamePostcondition: "unproven" },
+  ]) {
+    const harness = await createPluginHarness({
+      activeFilePath: sourcePath,
+      fileContents: { [sourcePath]: filenameOwnedDraft() },
+      files: [],
+      ...options,
+    });
+    findCommand(harness, "rename-current-inbox-draft").checkCallback(false);
+    const modal = harness.modals[0];
+    elementsByTag(modal, "input")[0].value = "uncertain-target";
+    const submit = elementsByTag(modal, "button").find(
+      (button) => button.text === "重命名草稿",
+    );
+    await submit.trigger("click");
+    assert.equal(harness.renameAttempts.length, 1);
+    assert.equal(modal.closed, true);
+    assert.match(
+      harness.notices.at(-1).message,
+      /改名结果不确定.*original-draft\.md.*uncertain-target\.md.*不会自动重试/su,
+    );
+  }
+});
+
 test("renders a versioned maintenance ledger and opens an exact Vault note", async () => {
   const [manifestSource, styles, harness] = await Promise.all([
     readFile(manifestUrl, "utf8"),
@@ -943,10 +1218,14 @@ test("renders a versioned maintenance ledger and opens an exact Vault note", asy
     createPluginHarness(),
   ]);
   const manifest = JSON.parse(manifestSource);
-  assert.equal(manifest.version, "1.19.0");
+  assert.equal(manifest.version, "1.20.0");
+  assert.equal(manifest.minAppVersion, "1.5.7");
   assert.equal(manifest.isDesktopOnly, true);
   assert.match(styles, /^\.myblog-draft-create \{/mu);
   assert.match(styles, /myblog-draft-create__error:empty/u);
+  assert.match(styles, /^\.myblog-draft-rename \{/mu);
+  assert.match(styles, /myblog-draft-rename__transition/u);
+  assert.match(styles, /myblog-draft-rename__error:empty/u);
   assert.match(styles, /^\.myblog-maintenance \{/mu);
   assert.match(styles, /\[data-status="overdue"\]/u);
   assert.match(styles, /font-family: var\(--font-interface\)/u);

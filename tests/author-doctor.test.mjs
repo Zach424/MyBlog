@@ -59,7 +59,7 @@ function healthyObservation() {
         isDesktopOnly: true,
         mainPresent: true,
         stylesPresent: true,
-        version: "1.19.0",
+        version: "1.20.0",
       },
     },
     workspace: {
@@ -181,7 +181,7 @@ async function createDoctorFixture() {
     ),
     writeFile(
       join(root, ".obsidian", "plugins", "myblog-publisher", "manifest.json"),
-      '{"id":"myblog-publisher","version":"1.19.0","isDesktopOnly":true}\n',
+      '{"id":"myblog-publisher","version":"1.20.0","isDesktopOnly":true}\n',
     ),
     writeFile(
       join(root, ".obsidian", "plugins", "myblog-publisher", "main.js"),

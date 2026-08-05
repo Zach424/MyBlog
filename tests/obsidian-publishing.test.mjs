@@ -149,6 +149,18 @@ test("prepares an Obsidian article for the existing content contract", () => {
   );
 });
 
+test("publishes a filename-owned Obsidian draft without redundant frontmatter slug", () => {
+  const filenameOwned = article.replace(/^slug: obsidian-publishing\r?\n/mu, "");
+  const result = prepareObsidianNote(
+    "content/inbox/obsidian-publishing.md",
+    filenameOwned,
+  );
+  assert.equal(result.slug, "obsidian-publishing");
+  assert.equal(result.targetPath, "content/posts/obsidian-publishing.md");
+  assert.doesNotMatch(result.content, /^slug\s*:/mu);
+  assert.match(result.content, /^draft: false$/mu);
+});
+
 test("infers and validates project drafts", () => {
   const result = prepareObsidianNote("content/inbox/obsidian-project.md", project);
   assert.equal(result.kind, "project");
@@ -537,11 +549,16 @@ test("ships a desktop Obsidian command without hidden shell interpolation", asyn
     readFile(new URL("../.obsidian/plugins/myblog-publisher/main.js", import.meta.url), "utf8"),
   ]);
   assert.equal(JSON.parse(manifest).isDesktopOnly, true);
-  assert.equal(JSON.parse(manifest).version, "1.19.0");
+  assert.equal(JSON.parse(manifest).version, "1.20.0");
+  assert.equal(JSON.parse(manifest).minAppVersion, "1.5.7");
   assert.match(plugin, /FileSystemAdapter/);
   assert.match(plugin, /create-blog-draft/);
   assert.match(plugin, /DraftCreationModal/);
   assert.match(plugin, /createDraftFromTemplate/);
+  assert.match(plugin, /rename-current-inbox-draft/);
+  assert.match(plugin, /DraftRenameModal/);
+  assert.match(plugin, /fileManager\.renameFile/);
+  assert.match(plugin, /getFrontMatterInfo/);
   assert.match(plugin, /vault\.cachedRead/);
   assert.match(plugin, /vault\.create/);
   assert.match(plugin, /InboxReadinessModal/);

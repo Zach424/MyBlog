@@ -1,6 +1,5 @@
 ---
 title: ""
-slug: "{{title}}"
 description: ""
 publishedAt: {{date:YYYY-MM-DD}}
 updatedAt: {{date:YYYY-MM-DD}}
