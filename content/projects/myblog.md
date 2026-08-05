@@ -18,7 +18,7 @@ demo: "https://blog-iota-five-59.vercel.app"
 
 ## 当前状态（2026-08-06）
 
-MyBlog 运行在 [Vercel](https://blog-iota-five-59.vercel.app)，使用 Next.js 16.3、React 19 与 TypeScript；GitHub `main` 自动交付 Production。Studio 和 Obsidian 均可自主发布；MyBlog Publisher 1.27.0 显示当前草稿的 COVER/BODY 来源行、逐次最终替代文本、媒体变换与链接 trace，并保留共享证据。
+MyBlog 运行在 [Vercel](https://blog-iota-five-59.vercel.app)，使用 Next.js 16.3、React 19 与 TypeScript；GitHub `main` 自动交付 Production。Studio 和 Obsidian 均可自主发布；MyBlog Publisher 1.28.0 显示当前草稿的 COVER/BODY 来源行、逐次最终替代文本及其作者来源、媒体变换与链接 trace，并保留共享证据。
 
 Cloudflare、Sites、Vinext、Vite Worker 和 Wrangler 仅属于 2026-07-18 至 2026-07-19 的首版与迁移历史，不再是当前运行依赖。旧公开站保留为迁移期回退证据，页面顶部的 Live demo 始终指向当前生产站。
 
@@ -60,7 +60,7 @@ Studio 内容复核页复用正式维护报告，而不是在浏览器重写日�
 
 Obsidian 插件用固定参数数组和 `shell: false` 在 Vault 根目录启动同一 `content:status`，把报告以 `setText` 写入原生只读 Modal；Windows 通过隐藏 `cmd.exe` 运行 npm，POSIX 直接运行 npm。发布、inbox 和维护命令共享活动进程账本与 200,000 字符输出边界，成功、错误、非零退出或插件卸载都会关闭持续 Notice；卸载在 Windows 以固定参数、无 shell 的 `taskkill.exe /T /F` 终止命令进程树，POSIX 直接终止子进程，并忽略迟到事件。报告不访问网络、不写内容，也不改变正式构建门。
 
-当前草稿意图复用正式解析，不在插件中解析 Markdown/YAML 或读取图片。version 4 把每次 COVER/BODY 使用的来源行和最终替代文本一一对应：正文 alt 在现有图片归一化回调生成最终 Markdown 时登记，cover alt 读取正式 Zod 解析结果。1.27.0 在原 `MEDIA TRACE` 显示 `ALT · L<n>`；空值保持可见并产生 blocker，插件双向核对文本与问题证据。报告只为当前来源派生媒体，同时保留全库共享/目标判断；证据或活动文件漂移时失败关闭。
+当前草稿意图复用正式解析，不在插件中另写 Markdown/YAML 规则或读取图片。version 5 将每次 COVER/BODY 的来源行、最终替代文本和 `authored|filename-fallback` 一一对应：Markdown alt、Wiki display 与正式 `coverAlt` 属于作者证据；无 display 或仅尺寸的 Wiki 图片保留文件名回退，但以 `FILENAME FALLBACK · WILL FAIL` 阻塞。1.28.0 在原媒体账本显示来源并双向核对 blocker；证据或活动文件漂移时失败关闭。
 
 视觉系统以 Commit Trace 为唯一主要识别元素，把日期、文章类型和项目里程碑连成一条工程轨迹。Evidence Rail 只显示可验证状态，不展示虚构的完成率。
 
@@ -104,7 +104,7 @@ Sites 首次生产发布后，首页与集合页返回 200，但没有任何内�
 
 ### Vercel 阶段（当前）
 
-Studio/Obsidian 双发布、内容维护、关系门与 Vercel 恢复均已验收。Iteration 0076 增加每个媒体使用点的最终替代文本，并让空值以可见证据阻塞草稿；完整门通过 335/335、45 页、19/19 与生产审计 0。生产站公开且不依赖 Cloudflare。
+Studio/Obsidian 双发布、内容维护、关系门与 Vercel 恢复均已验收。Iteration 0077 为每个媒体替代文本补充作者来源，并阻塞 Wiki 文件名回退；完整门通过 343/343、45 页、19/19 与生产审计 0。生产站公开且不依赖 Cloudflare。
 
 ## 复盘
 
@@ -112,4 +112,4 @@ Studio/Obsidian 双发布、内容维护、关系门与 Vercel 恢复均已验�
 
 ## 下一步
 
-下一轮区分 BODY alt 的 `AUTHORED / FILENAME FALLBACK` 来源并阻塞文件名回退，要求 Markdown alt 或 Wiki display 提供真实描述；不另写解析或自动文案，云 API 与发布边界保持范围外。
+下一轮让媒体 ALT 证据安全跳转到当前草稿的准确源行；跳转前重新核对冻结路径、活动文件和行号边界，只导航、不改文、不触发发布或联网。
