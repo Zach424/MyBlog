@@ -8,11 +8,11 @@
 | 4. 作者自助写作 | done | `/studio` OAuth + editorial workflow PR、Obsidian Vault/模板/附件/真实 `--push` |
 | 5. Vercel 原生迁移 | production live | 原生 Next.js、无 Cloudflare 依赖、24 路由生产冒烟通过 |
 | 6. 所有者生产上线 | done | Git 自动 Production、稳定域名自动冒烟、双端发布、回滚与恢复均已验收 |
-| 7. 持续内容与作者体验 | in progress | Iteration 0045 完成 Obsidian 兼容脚注、中文可访问回链、搜索/关系边界与生产 PDF 全页复核 |
+| 7. 持续内容与作者体验 | in progress | Iteration 0046 完成 Obsidian 数学公式、受限服务端 KaTeX/MathML、搜索/关系边界与五页 PDF 全页复核 |
 
 ## 当前唯一主线
 
-进入持续内容与作者体验阶段。Iteration 0045 已让作者直接使用 Obsidian/GitHub 兼容的 `[^id]` 脚注记录技术证据：网页服务端输出中文脚注区、每个引用位置的可访问回链和 Evidence Rail 视觉，目录/永久链接不受污染，搜索保留证据内容但移除作者标记，脚注内站内链接继续进入关系账本并确定性去重；320px、深色、无 JavaScript、键盘跳转和生产 A4 PDF 均已验收，且没有增加解析依赖或客户端 bundle。下一主线补齐技术写作中的行内/块级数学公式，在保持 Obsidian 语法、服务端渲染、可访问文本、移动端溢出与打印边界的同时不接入外部服务。需要品牌域名时再绑定自定义域名，旧公开站继续只作为迁移历史证据。
+进入持续内容与作者体验阶段。Iteration 0046 已让作者直接使用 Obsidian 兼容的 `$...$` 与 `$$...$$`：网页在服务端输出 KaTeX HTML + MathML，构建期用 `trust: false` 等受限选项验证公式；共享 AST 同时保护标题、关系、媒体与搜索边界，代码/货币不会被误判，公式源码可检索。长公式在 320px 只滚动自身，深色、键盘、无 JavaScript 与五页 A4 PDF 已验收，且没有外部 CDN、运行时服务或公式客户端脚本。下一主线补齐网页 Studio 的数学公式作者预览，使 Studio 与 Obsidian/生产阅读对同一公式语法给出一致反馈；需要品牌域名时再绑定自定义域名，旧公开站继续只作为迁移历史证据。
 
 ## 已知风险
 

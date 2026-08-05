@@ -50,6 +50,7 @@
 0043-markdown-heading-permalinks.md
 0044-print-ready-content.md
 0045-accessible-markdown-footnotes.md
+0046-obsidian-markdown-math.md
 ```
 
 ## 必填结构

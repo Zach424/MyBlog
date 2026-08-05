@@ -11,7 +11,7 @@ MyBlog 是 Git-first 个人技术博客。公开阅读不依赖数据库；网�
 | 界面 | React 19、Next.js 16 App Router | 页面、元数据、Route Handlers 与服务端渲染 |
 | 内容 | Markdown、YAML、Zod | 文章/项目解析、字段校验、草稿过滤与派生索引 |
 | 维护 | Node CLI、GitHub Actions | Current record 日龄、根媒体库存、外链库存、分级队列、摘要与过期门 |
-| 阅读 | react-markdown、remark-gfm、rehype | GFM、标题锚点、代码高亮与目录 |
+| 阅读 | react-markdown、remark-gfm、remark-math、rehype、KaTeX | GFM、标题锚点、代码高亮、脚注、数学公式与目录 |
 | 发现 | 本地搜索、RSS、Sitemap、robots、JSON-LD | 检索、订阅与搜索引擎发现 |
 | 发布 | Decap CMS、Obsidian、GitHub | 两个作者入口，共用同一内容事实源 |
 | 媒体 | Sharp、Markdown AST、`next/image`、Git `public/uploads` | 原图安全解码、WebP 优化、共享固有尺寸、响应式封面/正文图、引用所有权与附件版本化 |
@@ -47,6 +47,8 @@ lib/
     staging-media.ts                根暂存库存、inbox 引用、年龄证据与报告格式
   cms-oauth.ts                      签名 OAuth state 与 token 交换
   heading-permalink.ts              标题 fragment 与 Markdown 深度标记纯函数
+  markdown-math.ts                  KaTeX 安全选项与构建期公式解析门
+  search-index.ts                   服务端 Markdown AST 到搜索纯文本/文档索引
   media-policy.ts                   原图安全包络、WebP 优化与公开媒体预算的共享策略
   studio-media-manifest.ts          已归档媒体路径、字节数与 SHA-256 的确定性清单
   obsidian-publishing.ts            Obsidian 校验、附件与目标路径转换
@@ -95,6 +97,8 @@ H2/H3 由 `MarkdownHeading` 服务端组件接收 `rehype-slug` 已写入的真�
 文章和项目详情路由从同一已解析记录生成 canonical URL，并把它交给 `ContentViews.PrintSource` 服务端输出。来源节点在屏幕上隐藏，在打印媒体中显示，因此 PDF 不读取 `window.location`、不增加客户端脚本，也不会因浏览器 hydration 状态缺失出处。`@page` 固定 A4 和毫米页边距；全局打印作用域只重排详情页现有语义 DOM，隐藏站点框架与网页交互，保留正文资产。标题/后继内容、代码、图片、表格行和关系分组使用分页约束；代码在纸面改为 `pre-wrap`，表格取消屏幕最小宽度，外链与引用路径用 CSS 生成可辨来源。屏幕基础规则不被修改。
 
 脚注沿用已经安装的 `remark-gfm` 解析，不增加第二套 Markdown 解析器或客户端脚本。`MarkdownContent` 通过 `remarkRehypeOptions` 固定 `note-` DOM clobber 前缀、中文“注释与来源”标签和按引用位置生成的中文回链名称；自定义 anchor renderer 保留 rehype 生成的 `id`、`data-*`、`aria-*` 与 class，同时继续只为 HTTP(S) 外链设置新窗口策略。脚注标题绕开正文 `MarkdownHeading`，因此不进入 H2/H3 permalink 或目录。构建期内容关系仍从同一 GFM AST 读取脚注定义中的真实链接并去重；搜索纯文本只移除 `[^id]` 和定义标签，保留证据正文，避免作者语法污染摘要又不丢失可检索信息。
+
+数学公式沿用 Obsidian 的 `$...$` 与 `$$...$$`。`lib/content/markdown.ts` 把 GFM 与 `micromark-extension-math`/`mdast-util-math` 合并为共享服务端 AST，标题、关系、外链和媒体抽取都复用它，所以公式里的链接/图片外观文本不会变成真实引用，代码与未闭合的普通美元文本保持原义。`lib/markdown-math.ts` 使用本地 KaTeX 预解析每条公式，固定 `htmlAndMathml`、`strict: error`、`trust: false`、`maxSize: 20` 与 `maxExpand: 1000`；失败会带正文行号进入内容构建门。`MarkdownContent` 通过 `remark-math` 与 `rehype-katex` 在 Server Component 内输出可视 HTML、MathML 和 TeX annotation，不加载 CDN 或客户端公式脚本。块级公式得到可聚焦横向滚动区，打印取消滚动并避免跨页。`lib/search-index.ts` 只在服务端把同一 AST 转为索引文本，保留公式 TeX 值；`lib/search.ts` 继续只包含浏览器端排名逻辑，避免把解析器和 KaTeX带入搜索客户端岛。
 
 内容目录通过 Next.js output tracing 显式包含在部署中，既支持 Vercel Serverless，也不会依赖开发机器路径。
 
@@ -170,6 +174,7 @@ Vercel GitHub Integration 负责每个分支的 Preview 和 `main` 的 Productio
 - 同一 Studio file input 只有最新真实 change 可以报告最终状态、重放文件或提交账本；任何旧异步结果都不能清空或覆盖最新选择。
 - fenced code 的服务端 HTML 必须始终保留完整 pre/code；COPY 只在 hydration 后出现，复制源只能是当前 code textContent，inline code 不得获得控件。
 - Markdown H2/H3 永久链接必须直接使用 renderer 已拥有的 id；不得重新 slug、包裹标题 children、要求 JavaScript 或改变目录与内容关系抽取，触控点击区不得小于 44px，打印不得输出标记。
+- Obsidian 行内/块级公式必须在构建期通过受限 KaTeX 解析，并由服务端输出 HTML + MathML；公式源码不得制造链接/图片关系，长公式只能让自身滚动，不能增加 320px 页面根宽，打印不得裁切或依赖 JavaScript。
 - Markdown 图片 alt 不能为空；本地图使用共享固有尺寸与响应式候选，HTTPS 外图不能进入开放优化主机列表。
 - cover 必须是仓库内图片并同时声明 `coverAlt`；详情页尺寸只能来自已验证文件，文章/项目共享组件与社交元数据选择不能分叉。
 - `/studio` 与 OAuth 永远不缓存、不索引，并维持同源 state 验证；只有版本化 CMS 运行时可不可变缓存。
