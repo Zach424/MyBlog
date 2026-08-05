@@ -36,7 +36,7 @@ test("registers one idempotent formula preview template for posts and projects",
     },
   };
   const documentRef = { documentElement: { dataset: {} } };
-  const template = registerStudioMathPreview({
+  const templates = registerStudioMathPreview({
     CMS,
     createClass: (specification) => specification,
     documentRef,
@@ -47,11 +47,14 @@ test("registers one idempotent formula preview template for posts and projects",
     registrations.map(({ collection }) => collection),
     ["posts", "projects"],
   );
-  assert.ok(registrations.every((registration) => registration.template === template));
+  assert.equal(registrations[0].template, templates.posts);
+  assert.equal(registrations[1].template, templates.projects);
+  assert.notEqual(templates.posts, templates.projects);
+  assert.equal(documentRef.documentElement.dataset.entryPreflight, "registered");
   assert.equal(documentRef.documentElement.dataset.mathPreview, "registered");
   assert.equal(
     registerStudioMathPreview({ CMS, createClass: () => assert.fail(), documentRef, h }),
-    template,
+    templates,
   );
   assert.equal(registrations.length, 2);
 });
@@ -110,7 +113,8 @@ test("keeps plain Markdown on the native preview and exposes recoverable formula
 
   template.componentDidMount.call(context);
   assert.equal(context.state.status, "plain");
-  assert.equal(scheduled, undefined);
+  assert.equal(context.state.entryStatus, "checking");
+  assert.equal(typeof scheduled, "function");
   assert.match(textContent(template.render.call(context)), /普通 Markdown 预览.*原生正文/u);
 
   context.props = {
@@ -135,4 +139,69 @@ test("keeps plain Markdown on the native preview and exposes recoverable formula
   assert.equal(invalidTree.props["data-math-preview-state"], "invalid");
   assert.match(textContent(invalidTree), /公式尚不能发布.*第 7 行.*Expected/u);
   assert.equal(getStudioMathPreviewStatus({ status: "unavailable" }).label, "FORMULA / PREVIEW UNAVAILABLE");
+});
+
+test("keeps only the latest entry preflight and recovers from network failure", async () => {
+  const pending = [];
+  let failNext = false;
+  const template = createStudioMathPreviewTemplate({
+    abortControllerFactory: () => ({ abort() {}, signal: undefined }),
+    collection: "posts",
+    createClass: (specification) => specification,
+    fetcher: async () => {
+      if (failNext) throw new Error("offline");
+      return new Promise((resolve) => pending.push(resolve));
+    },
+    h,
+  });
+  const context = {
+    ...template,
+    props: {
+      entry: entry({ body: "正文", title: "快速编辑" }),
+      widgetFor: () => h("p", {}, "正文"),
+    },
+    setState(update) {
+      this.state = { ...this.state, ...update };
+    },
+    state: template.getInitialState(),
+  };
+
+  context.entryGeneration = 1;
+  const stale = template.loadEntryPreflight.call(context, { title: "旧标题" }, 1);
+  context.entryGeneration = 2;
+  const current = template.loadEntryPreflight.call(context, { title: "新标题" }, 2);
+  pending[1]({
+    json: async () => ({
+      facts: [{ label: "PATH", value: "/posts/new" }],
+      issueCount: 0,
+      issues: [],
+      note: "当前字段已通过",
+      ok: true,
+    }),
+    ok: true,
+    status: 200,
+  });
+  await current;
+  pending[0]({
+    json: async () => ({
+      facts: [],
+      issueCount: 1,
+      issues: [{ field: "title", message: "旧问题" }],
+      note: "旧结果",
+      ok: false,
+    }),
+    ok: false,
+    status: 422,
+  });
+  await stale;
+
+  assert.equal(context.state.entryStatus, "ready");
+  assert.equal(context.state.entryFacts[0].value, "/posts/new");
+  assert.doesNotMatch(textContent(template.render.call(context)), /旧问题/u);
+
+  failNext = true;
+  context.entryGeneration = 3;
+  await template.loadEntryPreflight.call(context, { title: "离线" }, 3);
+  assert.equal(context.state.entryStatus, "unavailable");
+  assert.match(textContent(template.render.call(context)), /发布清单暂不可用.*内容没有丢失/u);
 });

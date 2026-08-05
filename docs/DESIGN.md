@@ -113,6 +113,8 @@
 
 数学正文预览使用 `AUTHOR PROOF / GIT DRAFT` 头和一条证据状态带，不复制公开首页或增加通用卡片。普通 Markdown 标为 `STANDARD / MARKDOWN`；潜在公式依次显示 `FORMULA / CHECKING` 与 `FORMULA / VERIFIED`，语法错误显示 `FORMULA / NEEDS FIX` 和正文行号，服务不可用显示可恢复说明。公式继续使用公开正文的 calculation strip；错误/不可用时原 Markdown 仍在下方。320px 以 border-box 保持预览根宽，只有长公式 region 横向滚动并显示焦点；深色只复用 Paper/Ink/Signal/Trace Token。
 
+全字段预检扩展同一 Author Proof，而不是再叠一张后台卡片。`ENTRY CONTRACT` 使用一张横向 publication ledger：左侧状态规则标示 preparing/checking/ready/needs work，四格字段证据固定显示 PATH、VISIBILITY、CONTEXT、BODY，问题清单把中文字段名与可执行原因逐行对齐。前八项直接展开，其余给出计数，避免空白新条目把正文推到不可达位置。READY 文案明确限定为“当前条目字段已通过”，同时保留保存后仓库关系、媒体和完整构建说明；网络不可用保持草稿可见。窄屏把四格证据折成两列、问题改为单列，深色只替换既有 token，不依赖图标、阴影或动画表达状态。
+
 ## 站点图标
 
 `app/icon.png` 为 `256 × 256` PNG，只保留 Commit Trace 的节点、轨迹环与信号色半环，不包含文字、缩写或第二套标志。图标以社交分享卡为风格参考生成，再确定性缩放并纳入尺寸与体积测试；它用于小尺寸识别，不替代首页的工程轨迹签名。

@@ -29,6 +29,21 @@ async function postStudioMathPreview(body, headers = {}) {
   });
 }
 
+async function postStudioEntryPreflight(body, headers = {}) {
+  if (!process.env.TEST_BASE_URL) throw new Error("TEST_BASE_URL is required");
+  return fetch(new URL("/studio/entry-preflight", process.env.TEST_BASE_URL), {
+    body: typeof body === "string" ? body : JSON.stringify(body),
+    headers: {
+      "content-type": "application/json",
+      "x-forwarded-host": "blog.example.test",
+      "x-forwarded-proto": "https",
+      ...headers,
+    },
+    method: "POST",
+    redirect: "manual",
+  });
+}
+
 function visibleDocument(html) {
   const documentEnd = html.indexOf("</html>");
   return documentEnd >= 0 ? html.slice(0, documentEnd + 7) : html;
@@ -136,12 +151,13 @@ test("applies the production security and cache baseline", async () => {
 
 test("serves Studio and its media inventory through explicit Next.js routes", async () => {
   await assert.rejects(access(new URL("../public/studio", import.meta.url)));
-  const [studio, config, manifest, preflight, stableSlugWidget, mathPreviewModule, preview, katexStyles, runtime, unknown] = await Promise.all([
+  const [studio, config, manifest, preflight, stableSlugWidget, entryPreflightModule, mathPreviewModule, preview, katexStyles, runtime, unknown] = await Promise.all([
     request("/studio"),
     request("/studio/config.mjs"),
     request("/studio/media-manifest.json"),
     request("/studio/media-preflight.mjs"),
     request("/studio/stable-slug-widget.mjs"),
+    request("/studio/entry-preflight.mjs"),
     request("/studio/math-preview.mjs"),
     request("/studio/preview.css"),
     request("/studio/katex-0.16.47.css"),
@@ -174,6 +190,8 @@ test("serves Studio and its media inventory through explicit Next.js routes", as
   assert.equal(preflight.headers.get("cache-control"), "no-store");
   assert.match(await stableSlugWidget.text(), /registerStableSlugWidget/);
   assert.equal(stableSlugWidget.headers.get("cache-control"), "no-store");
+  assert.match(await entryPreflightModule.text(), /serializeStudioEntry/);
+  assert.equal(entryPreflightModule.headers.get("cache-control"), "no-store");
   assert.match(await mathPreviewModule.text(), /registerStudioMathPreview/);
   assert.equal(mathPreviewModule.headers.get("cache-control"), "no-store");
   const previewCss = await preview.text();
@@ -193,6 +211,58 @@ test("serves Studio and its media inventory through explicit Next.js routes", as
   assert.equal(runtime.headers.get("cache-control"), "public, max-age=31536000, immutable");
   assert.equal(unknown.status, 404);
   assert.match(unknown.headers.get("cache-control") ?? "", /no-store/);
+});
+
+test("preflights bounded Studio entries with the production content contract", async () => {
+  const validFields = {
+    body: "## 结论\n\n这是一段经过校验的正文。",
+    description: "说明这篇文章会给读者带来什么。",
+    draft: false,
+    featured: false,
+    freshness: "historical",
+    publishedAt: "2026-08-01",
+    reviewedAt: "2026-08-01",
+    slug: "author-proof",
+    tags: ["TypeScript", "Personal Knowledge"],
+    title: "Author Proof 发布清单",
+    type: "article",
+  };
+  const valid = await postStudioEntryPreflight({ collection: "posts", fields: validFields });
+  assert.equal(valid.status, 200);
+  assert.equal(valid.headers.get("cache-control"), "no-store");
+  assert.equal(valid.headers.get("x-robots-tag"), "noindex, nofollow");
+  const validPayload = await valid.json();
+  assert.equal(validPayload.ok, true);
+  assert.equal(validPayload.issueCount, 0);
+  assert.deepEqual(validPayload.facts.map((fact) => fact.label), ["PATH", "VISIBILITY", "CONTEXT", "BODY"]);
+
+  const invalid = await postStudioEntryPreflight({
+    collection: "posts",
+    fields: { ...validFields, body: "", draft: true, featured: true, slug: "Bad Slug" },
+  });
+  assert.equal(invalid.status, 422);
+  const invalidPayload = await invalid.json();
+  assert.equal(invalidPayload.ok, false);
+  assert.ok(invalidPayload.issues.some((issue) => issue.field === "body"));
+  assert.ok(invalidPayload.issues.some((issue) => issue.field === "featured"));
+  assert.ok(invalidPayload.issues.some((issue) => issue.field === "slug"));
+
+  const wrongOrigin = await postStudioEntryPreflight(
+    { collection: "posts", fields: validFields },
+    { origin: "https://attacker.example" },
+  );
+  assert.equal(wrongOrigin.status, 403);
+
+  const wrongType = await postStudioEntryPreflight("plain text", {
+    "content-type": "text/plain",
+  });
+  assert.equal(wrongType.status, 415);
+
+  const tooLarge = await postStudioEntryPreflight({
+    collection: "posts",
+    fields: { ...validFields, body: "x".repeat(128 * 1024) },
+  });
+  assert.equal(tooLarge.status, 413);
 });
 
 test("renders bounded Studio formula previews with the production Markdown pipeline", async () => {

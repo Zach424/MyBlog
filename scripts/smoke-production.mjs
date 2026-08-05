@@ -110,11 +110,12 @@ export async function runProductionSmoke(originInput, { expectOAuth = false } = 
   invariant(studioPolicy.includes("https://api.github.com"), "Studio CSP 缺少 GitHub API");
   invariant(studioPolicy.includes("frame-ancestors 'none'"), "Studio CSP 未禁止嵌入");
 
-  const [studioConfig, studioManifest, studioPreflight, stableSlugWidget, mathPreviewModule, studioPreview, katexStyles, studioRuntime, unknownStudioAsset] = await Promise.all([
+  const [studioConfig, studioManifest, studioPreflight, stableSlugWidget, entryPreflightModule, mathPreviewModule, studioPreview, katexStyles, studioRuntime, unknownStudioAsset] = await Promise.all([
     request(origin, "/studio/config.mjs", { accept: "text/javascript" }),
     request(origin, "/studio/media-manifest.json", { accept: "application/json" }),
     request(origin, "/studio/media-preflight.mjs", { accept: "text/javascript" }),
     request(origin, "/studio/stable-slug-widget.mjs", { accept: "text/javascript" }),
+    request(origin, "/studio/entry-preflight.mjs", { accept: "text/javascript" }),
     request(origin, "/studio/math-preview.mjs", { accept: "text/javascript" }),
     request(origin, "/studio/preview.css", { accept: "text/css" }),
     request(origin, "/studio/katex-0.16.47.css", { accept: "text/css" }),
@@ -172,6 +173,16 @@ export async function runProductionSmoke(originInput, { expectOAuth = false } = 
     "Studio 稳定 slug 控件类型不正确",
   );
   invariant(
+    entryPreflightModule.response.status === 200 &&
+      entryPreflightModule.body.includes("serializeStudioEntry") &&
+      entryPreflightModule.body.includes("/studio/entry-preflight"),
+    "Studio 条目预检模块不可用",
+  );
+  invariant(
+    entryPreflightModule.response.headers.get("content-type")?.startsWith("text/javascript"),
+    "Studio 条目预检模块类型不正确",
+  );
+  invariant(
     mathPreviewModule.response.status === 200 &&
       mathPreviewModule.body.includes("registerStudioMathPreview") &&
       mathPreviewModule.body.includes("/studio/math-preview"),
@@ -201,7 +212,7 @@ export async function runProductionSmoke(originInput, { expectOAuth = false } = 
       "public, max-age=31536000, immutable",
     "固定版本 Studio KaTeX 样式缓存不正确",
   );
-  for (const asset of [studioConfig, studioManifest, studioPreflight, stableSlugWidget, mathPreviewModule, studioPreview]) {
+  for (const asset of [studioConfig, studioManifest, studioPreflight, stableSlugWidget, entryPreflightModule, mathPreviewModule, studioPreview]) {
     invariant(asset.response.headers.get("cache-control") === "no-store", "Studio 子资源必须 no-store");
   }
   invariant(
@@ -247,6 +258,42 @@ export async function runProductionSmoke(originInput, { expectOAuth = false } = 
       mathPreviewPayload.html.includes('class="katex"') &&
       mathPreviewPayload.html.includes("<math"),
     "Studio 公式生产管线预览不可用",
+  );
+
+  const entryPreflight = await request(origin, "/studio/entry-preflight", {
+    accept: "application/json",
+    body: JSON.stringify({
+      collection: "posts",
+      fields: {
+        body: "## 结论\n\n这是一段经过校验的正文。",
+        description: "说明这篇文章会给读者带来什么。",
+        draft: false,
+        featured: false,
+        freshness: "historical",
+        publishedAt: "2026-08-01",
+        reviewedAt: "2026-08-01",
+        slug: "author-proof",
+        tags: ["TypeScript", "Personal Knowledge"],
+        title: "Author Proof 发布清单",
+        type: "article",
+      },
+    }),
+    headers: { "content-type": "application/json" },
+    method: "POST",
+  });
+  let entryPreflightPayload;
+  try {
+    entryPreflightPayload = JSON.parse(entryPreflight.body);
+  } catch {
+    throw new Error("Studio 条目预检响应不是有效 JSON");
+  }
+  invariant(
+    entryPreflight.response.status === 200 &&
+      entryPreflight.response.headers.get("cache-control") === "no-store" &&
+      entryPreflightPayload.ok === true &&
+      entryPreflightPayload.issueCount === 0 &&
+      entryPreflightPayload.facts.some((fact) => fact.value === "/posts/author-proof"),
+    "Studio 条目生产契约预检不可用",
   );
 
   const oauth = await request(

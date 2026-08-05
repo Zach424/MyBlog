@@ -121,6 +121,8 @@ Studio HTML、配置、预览样式、媒体预检、稳定 slug 控件和公式
 
 公式 preview template 对 posts/projects 幂等注册。正文无 `$` 时继续用 Decap 原生 widget 且零请求；潜在公式经过 240 ms 防抖后 POST 当前正文。timer、AbortController 与单调 generation 共同保证 latest-wins；无效公式、网络失败和组件卸载都保留原 Markdown。有效响应才插入服务器生成的 HTML + MathML。KaTeX CSS 在构建时读取固定 package 文件，只保留并内联 20 个 WOFF2，版本化 CSS immutable 缓存且只由 noindex 作者 iframe 加载。
 
+同一 Author Proof 还为 posts/projects 各创建带固定集合身份的条目预检模板。浏览器只从 Decap entry 取内容契约白名单字段，把 Date/Immutable 值归一为 JSON，空的可选字段不发送；其他编辑器状态、GitHub token 或未知字段不会离开浏览器。字段变化经 320 ms 防抖后 POST `/studio/entry-preflight`，独立 timer、AbortController 与 generation 保证快速输入时只有最新结果可见。端点限制同源 JSON 和 128 KiB，直接调用 `inspectContentDraft` 复用正式 frontmatter schema、跨字段日期/草稿/封面约束、标签注册表、正文公式门与 Current 180 天时效规则；200/422 都返回路径、公开状态、内容语境、字词/阅读时长和逐字段问题。该检查不读取仓库、不保存、不阻断编辑；跨文件 slug/专题连续性、媒体引用、站内关系与完整构建仍在 Git 保存后执行。
+
 Studio 的全局 `media_folder`/`public_folder` 保留为根暂存与媒体库兼容入口；posts/projects 集合各自覆盖为绝对仓库模板 `/public/uploads/{{fields.slug}}` 与公开模板 `/uploads/{{fields.slug}}`。编辑器因此在作者填写稳定 slug 后，把封面和 Markdown 正文图直接写入该内容的归档目录。slug 同时决定内容文件名、公开 URL 与附件命名空间，首次保存后不可修改。
 
 构建期 `lib/studio-media-manifest.ts` 递归读取 `public/uploads` 的普通文件，按仓库路径排序并计算字节数与 SHA-256；`/studio/media-manifest.json` 以静态、同源、`no-store`/`noindex` 响应提供这一不可写快照。浏览器预检在读取和解码同一份原始字节后计算摘要，按固定 Decap 3.14.1 的小写、去音调和 ASCII 文件名规则推导 `public/uploads/<slug>/<filename>`。不存在为 new；路径与摘要/字节相同为 same；同路径不同内容必须展示双方体积与摘要前缀，并由作者明确确认。稳定 slug 缺失、清单失败或清单结构异常时条目上传失败关闭；全局媒体库没有条目身份时只执行原媒体预算预检。文件通过后仍透传原始 `File`，不在浏览器内改写字节。
@@ -182,6 +184,7 @@ Vercel GitHub Integration 负责每个分支的 Preview 和 `main` 的 Productio
 - Markdown H2/H3 永久链接必须直接使用 renderer 已拥有的 id；不得重新 slug、包裹标题 children、要求 JavaScript 或改变目录与内容关系抽取，触控点击区不得小于 44px，打印不得输出标记。
 - Obsidian 行内/块级公式必须在构建期通过受限 KaTeX 解析，并由服务端输出 HTML + MathML；公式源码不得制造链接/图片关系，长公式只能让自身滚动，不能增加 320px 页面根宽，打印不得裁切或依赖 JavaScript。
 - Studio 公式预览必须复用生产 Markdown/KaTeX/安全 URL 规则；普通正文零请求，旧异步结果不得覆盖新正文，错误/网络失败不得删除 Markdown；端点只读、同源、限量、不缓存、不索引，长公式不得增加 320px Studio 根宽。
+- Studio 条目预检只能发送内容契约白名单字段并复用正式 schema/标签/时效/公式规则；快速输入只允许最新结果更新 Author Proof，网络失败不得删除或改写条目；READY 只能表示单条字段通过，不能替代仓库关系、媒体和完整构建门。
 - Markdown 图片 alt 不能为空；本地图使用共享固有尺寸与响应式候选，HTTPS 外图不能进入开放优化主机列表。
 - cover 必须是仓库内图片并同时声明 `coverAlt`；详情页尺寸只能来自已验证文件，文章/项目共享组件与社交元数据选择不能分叉。
 - `/studio` 与 OAuth 永远不缓存、不索引，并维持同源 state 验证；只有版本化 CMS 运行时可不可变缓存。

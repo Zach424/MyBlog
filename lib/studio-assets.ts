@@ -4,6 +4,7 @@ import path from "node:path";
 type StudioAssetName =
   | "index.html"
   | "config.mjs"
+  | "entry-preflight.mjs"
   | "math-preview.mjs"
   | "media-preflight.mjs"
   | "stable-slug-widget.mjs"
@@ -12,6 +13,7 @@ type StudioAssetName =
 const contentTypes: Record<StudioAssetName, string> = {
   "index.html": "text/html; charset=utf-8",
   "config.mjs": "text/javascript; charset=utf-8",
+  "entry-preflight.mjs": "text/javascript; charset=utf-8",
   "math-preview.mjs": "text/javascript; charset=utf-8",
   "media-preflight.mjs": "text/javascript; charset=utf-8",
   "stable-slug-widget.mjs": "text/javascript; charset=utf-8",

@@ -228,6 +228,17 @@ export interface ProjectRecord extends ProjectFrontmatter, ContentStats {
 
 export type ContentRecord = PostRecord | ProjectRecord;
 
+export type ContentDraftKind = "post" | "project";
+
+export interface ContentDraftIssue {
+  field: string;
+  message: string;
+}
+
+export type ContentDraftInspection =
+  | { issues: []; ok: true; record: ContentRecord }
+  | { issues: ContentDraftIssue[]; ok: false };
+
 export interface TagIndexEntry {
   name: string;
   slug: string;
@@ -400,6 +411,120 @@ export function parseProjectFile(sourcePath: string, raw: string): ProjectRecord
     sourcePath,
     body,
   };
+}
+
+function uniqueDraftIssues(issues: ContentDraftIssue[]) {
+  const seen = new Set<string>();
+  return issues.filter((issue) => {
+    const key = `${issue.field}\u0000${issue.message}`;
+    if (seen.has(key)) return false;
+    seen.add(key);
+    return true;
+  });
+}
+
+/**
+ * Validates one structured author draft with the same schemas used by Markdown
+ * files. Repository-wide relations, media references and series continuity are
+ * intentionally left to the full build, which remains the publishing authority.
+ */
+export function inspectContentDraft(
+  kind: ContentDraftKind,
+  input: unknown,
+  buildDate: string,
+): ContentDraftInspection {
+  if (!input || typeof input !== "object" || Array.isArray(input)) {
+    return {
+      issues: [{ field: "frontmatter", message: "条目字段必须是对象" }],
+      ok: false,
+    };
+  }
+
+  const { body: rawBody, ...frontmatter } = input as Record<string, unknown>;
+  const schema = kind === "post" ? postFrontmatterSchema : projectFrontmatterSchema;
+  const parsed = schema.safeParse(frontmatter);
+  const issues: ContentDraftIssue[] = parsed.success
+    ? []
+    : parsed.error.issues.map((issue) => ({
+        field: issue.path.join(".") || "frontmatter",
+        message: issue.message,
+      }));
+
+  const rawSlug = frontmatter.slug;
+  if (rawSlug === undefined || rawSlug === null || rawSlug === "") {
+    issues.push({ field: "slug", message: "Studio 条目必须填写稳定 slug" });
+  }
+
+  const body = typeof rawBody === "string" ? rawBody.trim() : "";
+  if (!body) {
+    issues.push({ field: "body", message: "正文不能为空" });
+  } else {
+    const mathIssue = getMarkdownMathIssue(body);
+    if (mathIssue) {
+      const location = mathIssue.line ? `第 ${mathIssue.line} 行` : "正文";
+      issues.push({
+        field: "body",
+        message: `${location}数学公式无法解析：${mathIssue.message}`,
+      });
+    }
+  }
+
+  if (Array.isArray(frontmatter.tags)) {
+    const normalizedTags: string[] = [];
+    for (const tag of frontmatter.tags) {
+      if (typeof tag !== "string") continue;
+      const registryEntry = tagAliasMap.get(tag.toLocaleLowerCase("en-US"));
+      if (!registryEntry) {
+        issues.push({
+          field: "tags",
+          message: `未知标签“${tag}”，请先在 TAG_REGISTRY 中登记`,
+        });
+      } else {
+        normalizedTags.push(registryEntry.name);
+      }
+    }
+    if (new Set(normalizedTags).size !== normalizedTags.length) {
+      issues.push({ field: "tags", message: "标签规范化后出现重复项" });
+    }
+  }
+
+  if (parsed.success && typeof rawSlug === "string" && SLUG_PATTERN.test(rawSlug)) {
+    const sourcePath = `content/${kind === "post" ? "posts" : "projects"}/${rawSlug}.md`;
+    const stats = measureContent(body);
+    const tags = parsed.data.tags
+      .map((tag) => tagAliasMap.get(tag.toLocaleLowerCase("en-US"))?.name)
+      .filter((tag): tag is (typeof TAG_REGISTRY)[number]["name"] => Boolean(tag));
+    const record = {
+      ...parsed.data,
+      ...stats,
+      body,
+      kind,
+      slug: rawSlug,
+      sourcePath,
+      tags,
+      url: `/${kind === "post" ? "posts" : "projects"}/${rawSlug}`,
+    } as ContentRecord;
+
+    try {
+      validateContentFreshness([record], buildDate);
+    } catch (error) {
+      issues.push({
+        field: "reviewedAt",
+        message:
+          error instanceof ContentValidationError
+            ? error.message.replace(/^\[content\] [^:]+:\s*/u, "")
+            : String(error),
+      });
+    }
+
+    const deduplicatedIssues = uniqueDraftIssues(issues);
+    if (deduplicatedIssues.length === 0) {
+      return { issues: [], ok: true, record };
+    }
+    return { issues: deduplicatedIssues, ok: false };
+  }
+
+  return { issues: uniqueDraftIssues(issues), ok: false };
 }
 
 export function isPublished(record: ContentRecord, now = new Date()) {

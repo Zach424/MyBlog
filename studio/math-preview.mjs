@@ -1,3 +1,13 @@
+import {
+  getStudioEntryPreflightStatus,
+  readStudioEntryField,
+  requestStudioEntryPreflight,
+  serializeStudioEntry,
+  studioEntryFieldLabel,
+  studioEntrySignature,
+  STUDIO_ENTRY_PREFLIGHT_DELAY_MS,
+} from "./entry-preflight.mjs";
+
 export const STUDIO_MATH_PREVIEW_ENDPOINT = "/studio/math-preview";
 export const STUDIO_MATH_PREVIEW_DELAY_MS = 240;
 
@@ -6,10 +16,6 @@ const COLLECTIONS = ["posts", "projects"];
 
 function textValue(value) {
   return typeof value === "string" ? value : "";
-}
-
-function readEntryField(props, field) {
-  return textValue(props?.entry?.getIn?.(["data", field]));
 }
 
 export function hasPotentialStudioMath(markdown) {
@@ -86,6 +92,7 @@ export function getStudioMathPreviewStatus(state) {
 export function createStudioMathPreviewTemplate({
   abortControllerFactory = () => new AbortController(),
   cancelSchedule = globalThis.clearTimeout,
+  collection = "posts",
   createClass,
   fetcher = globalThis.fetch,
   h,
@@ -100,6 +107,11 @@ export function createStudioMathPreviewTemplate({
 
     getInitialState() {
       return {
+        entryFacts: [],
+        entryIssueCount: 0,
+        entryIssues: [],
+        entryNote: "",
+        entryStatus: "preparing",
         formulaCount: 0,
         html: "",
         issue: undefined,
@@ -109,18 +121,23 @@ export function createStudioMathPreviewTemplate({
 
     componentDidMount() {
       this.previewDisposed = false;
-      this.scheduleMathPreview(readEntryField(this.props, "body"));
+      this.scheduleMathPreview(readStudioEntryField(this.props, "body"));
+      this.scheduleEntryPreflight(serializeStudioEntry(this.props, collection));
     },
 
     componentDidUpdate(previousProps) {
-      const previousBody = readEntryField(previousProps, "body");
-      const body = readEntryField(this.props, "body");
+      const previousBody = readStudioEntryField(previousProps, "body");
+      const body = readStudioEntryField(this.props, "body");
       if (previousBody !== body) this.scheduleMathPreview(body);
+      if (studioEntrySignature(previousProps, collection) !== studioEntrySignature(this.props, collection)) {
+        this.scheduleEntryPreflight(serializeStudioEntry(this.props, collection));
+      }
     },
 
     componentWillUnmount() {
       this.previewDisposed = true;
       this.cancelMathPreview();
+      this.cancelEntryPreflight();
     },
 
     cancelMathPreview() {
@@ -192,19 +209,77 @@ export function createStudioMathPreviewTemplate({
       }
     },
 
+    cancelEntryPreflight() {
+      if (this.entryTimer !== undefined && typeof cancelSchedule === "function") {
+        cancelSchedule(this.entryTimer);
+      }
+      this.entryTimer = undefined;
+      this.entryAbortController?.abort();
+      this.entryAbortController = undefined;
+    },
+
+    scheduleEntryPreflight(fields) {
+      this.cancelEntryPreflight();
+      this.entryGeneration = (this.entryGeneration || 0) + 1;
+      const generation = this.entryGeneration;
+      this.setState({ entryStatus: "checking" });
+      this.entryTimer = schedule(() => {
+        this.entryTimer = undefined;
+        void this.loadEntryPreflight(fields, generation);
+      }, STUDIO_ENTRY_PREFLIGHT_DELAY_MS);
+    },
+
+    async loadEntryPreflight(fields, generation) {
+      const controller = abortControllerFactory();
+      this.entryAbortController = controller;
+      try {
+        const result = await requestStudioEntryPreflight(collection, fields, {
+          fetcher,
+          signal: controller?.signal,
+        });
+        if (this.previewDisposed || generation !== this.entryGeneration) return;
+        this.setState({
+          entryFacts: result.facts,
+          entryIssueCount: result.issueCount,
+          entryIssues: result.issues,
+          entryNote: result.note,
+          entryStatus: result.ok ? "ready" : "invalid",
+        });
+      } catch (error) {
+        if (error?.name === "AbortError") return;
+        if (this.previewDisposed || generation !== this.entryGeneration) return;
+        this.setState({
+          entryFacts: [],
+          entryIssueCount: 0,
+          entryIssues: [],
+          entryNote: "",
+          entryStatus: "unavailable",
+        });
+      } finally {
+        if (generation === this.entryGeneration) this.entryAbortController = undefined;
+      }
+    },
+
     render() {
-      const title = readEntryField(this.props, "title") || "未命名草稿";
-      const description = readEntryField(this.props, "description");
+      const title = readStudioEntryField(this.props, "title") || "未命名草稿";
+      const description = readStudioEntryField(this.props, "description");
       const status = getStudioMathPreviewStatus(this.state);
+      const entryStatus = getStudioEntryPreflightStatus(this.state);
       const usesServerPreview = this.state.status === "ready";
       const fallback = this.props.widgetFor?.("body") ?? null;
       const statusRole = this.state.status === "invalid" ? "alert" : "status";
+      const entryStatusRole = this.state.entryStatus === "invalid" ? "alert" : "status";
+      const visibleIssues = this.state.entryIssues.slice(0, 8);
 
       return h(
         "article",
         {
-          "aria-busy": this.state.status === "loading" ? "true" : "false",
+          "aria-busy":
+            this.state.status === "loading" || this.state.entryStatus === "checking"
+              ? "true"
+              : "false",
           className: "studio-preview-shell",
+          "data-entry-preflight-state": this.state.entryStatus,
           "data-math-preview-state": this.state.status,
         },
         h(
@@ -213,6 +288,55 @@ export function createStudioMathPreviewTemplate({
           h("p", { className: "studio-preview-eyebrow" }, "AUTHOR PROOF / GIT DRAFT"),
           h("h1", {}, title),
           description ? h("p", { className: "studio-preview-description" }, description) : null,
+        ),
+        h(
+          "section",
+          {
+            "aria-live": "polite",
+            className: "studio-entry-ledger",
+            "data-state": this.state.entryStatus,
+            role: entryStatusRole,
+          },
+          h(
+            "div",
+            { className: "studio-entry-ledger-heading" },
+            h("p", { className: "studio-preview-status-label" }, entryStatus.label),
+            h("strong", {}, entryStatus.title),
+            h("span", {}, entryStatus.detail),
+          ),
+          this.state.entryFacts.length > 0
+            ? h(
+                "dl",
+                { className: "studio-entry-facts" },
+                ...this.state.entryFacts.flatMap((fact) => [
+                  h("div", { className: "studio-entry-fact", key: `${fact.label}-fact` },
+                    h("dt", {}, fact.label),
+                    h("dd", {}, fact.value),
+                  ),
+                ]),
+              )
+            : null,
+          visibleIssues.length > 0
+            ? h(
+                "ol",
+                { className: "studio-entry-issues" },
+                ...visibleIssues.map((issue, index) =>
+                  h(
+                    "li",
+                    { key: `${issue.field}-${index}` },
+                    h("span", {}, studioEntryFieldLabel(issue.field)),
+                    h("p", {}, issue.message),
+                  ),
+                ),
+              )
+            : null,
+          this.state.entryIssueCount > visibleIssues.length
+            ? h(
+                "p",
+                { className: "studio-entry-more" },
+                `另有 ${this.state.entryIssueCount - visibleIssues.length} 项；继续修改后会自动收敛。`,
+              )
+            : null,
         ),
         h(
           "div",
@@ -248,12 +372,17 @@ export function registerStudioMathPreview({
   }
   if (CMS[REGISTRATION_KEY]) return CMS[REGISTRATION_KEY];
 
-  const template = createStudioMathPreviewTemplate({ createClass, h });
+  const templates = {};
   for (const collection of COLLECTIONS) {
+    const template = createStudioMathPreviewTemplate({ collection, createClass, h });
+    templates[collection] = template;
     CMS.registerPreviewTemplate(collection, template);
   }
-  CMS[REGISTRATION_KEY] = template;
+  CMS[REGISTRATION_KEY] = templates;
   const dataset = documentRef?.documentElement?.dataset;
-  if (dataset) dataset.mathPreview = "registered";
-  return template;
+  if (dataset) {
+    dataset.entryPreflight = "registered";
+    dataset.mathPreview = "registered";
+  }
+  return templates;
 }
