@@ -89,7 +89,7 @@ vercel.json                         Vercel Next.js 框架声明
 
 `lib/content/staging-media.ts` 只扫描 `public/uploads` 根文件，并复用 Obsidian 发布器自己的 Wiki/Markdown/cover 附件解析语义，交叉建立 inbox 草稿引用账本。现存文件分为单草稿引用、多草稿共享和未引用；报告还列出缺失引用与无法审计的草稿。干净且已跟踪的文件以 Git 最后提交日计算年龄，本地修改或未跟踪文件以明确标注的 filesystem mtime 作为观察证据；默认 30 天进入陈旧复核，但任何发现都只产生建议和 Actions warning，不删除文件、不改变构建结果。`scripts/report-staging-media.mjs` 提供文本/JSON、固定日期/阈值与 GitHub 摘要，Quality Gate 每次运行和每周复核都会生成库存。
 
-`lib/content/inbox-readiness.ts` 在作者工作区逐篇隔离检查直接位于 `content/inbox` 的 Markdown：复用真实发布器完成类型/slug/frontmatter/站内链接与附件目标派生，再把每张附件交给同一媒体发布策略，在系统临时目录生成并校验实际候选产物。报告额外交叉检查正式目标、附件目标、Git 跟踪附件和多草稿共享源；一个坏草稿不会阻止其他草稿产生证据。状态分为现在可发布的 `ready`、可以提交但尚未到公开日的 `scheduled` 和需要处理诊断的 `blocked`。临时目录在成功和失败路径都删除，作者 Markdown 与附件不写入；`scripts/report-inbox-readiness.mjs` 提供文本/JSON，Obsidian 桌面插件 1.1.0 用只读 Modal 显示同一文本。它不接入 Actions，因为未跟踪本地草稿对 CI 天然不可见。
+`lib/content/inbox-readiness.ts` 在作者工作区逐篇隔离检查直接位于 `content/inbox` 的 Markdown：复用真实发布器完成类型/slug/frontmatter/站内链接与附件目标派生，再把每张附件交给同一媒体发布策略，在系统临时目录生成并校验实际候选产物。报告额外交叉检查正式目标、附件目标、Git 跟踪附件和多草稿共享源；一个坏草稿不会阻止其他草稿产生证据。状态分为现在可发布的 `ready`、可以提交但尚未到公开日的 `scheduled` 和需要处理诊断的 `blocked`。临时目录在成功和失败路径都删除，作者 Markdown 与附件不写入；`scripts/report-inbox-readiness.mjs` 提供文本/JSON，Obsidian 桌面插件 1.2.0 用只读 Modal 显示同一文本。它不接入 Actions，因为未跟踪本地草稿对 CI 天然不可见。
 
 `lib/content/external-links.ts` 用与正文渲染一致的 GFM AST 读取公开文章/项目正文，并从同一 `ContentRecord` 读取文章 canonical、项目 repository/demo。每个 occurrence 标明 `sourceField`；正文另保留相对行和可见标签，字段显示 `frontmatter.<field>`。URL 规范化后统一聚合，因此正文与结构化字段指向同一地址时只形成一个 link entry 和一次健康检查；图片、代码、站内链接、锚点、邮件链接和 `demo: null` 不参与。正文中的 HTTP、协议相对、无效 HTTPS 与含凭据 URL 进入本地 issue 且凭据不会写入报告；结构化字段继续由 schema 先保证 HTTPS。`scripts/report-external-links.mjs` 默认只输出确定性文本/JSON 库存并进入本地 `release:check`。只有显式 `--check` 才发送 HEAD：每跳限制 HTTPS/443/无凭据，拒绝本地命名空间和任一私网/回环/链路本地/保留 DNS 结果，再把连接固定到已验证公网地址以收窄 DNS rebinding；并发 1–8、超时 500–30000ms、重试 0–2、重定向 0–10。响应头到达后立即关闭，不下载或保存正文。404/410、其他确定 4xx、安全或重定向错误才计入 broken；403/429/HEAD 不支持、5xx、超时和网络错误保留为暂不可确认。实时检查不进入 Actions 或默认构建硬门。
 
@@ -140,7 +140,7 @@ posts/projects 的顶层 slug 使用项目自有 `stable-slug` custom widget，�
 
 Obsidian 草稿中的 Wiki 图片嵌入、指向 `public/uploads` 的 Markdown 图片和 frontmatter `cover` 会在发布前转换。文件进入 `public/uploads/<内容 slug>/<稳定文件名>`，正文或 cover 改写为对应 `/uploads/...` URL；文件名不稳定时使用可读 ASCII 名加路径哈希消除冲突。静态 PNG/JPEG/WebP 的公开文件名统一使用 `.webp`，相同 stem 的多种源格式因而会在修改工作区前被拒绝为目标冲突；GIF 和 AVIF 保持扩展名。cover 与正文附件登记到同一映射，所以共享源不会重复移动，且都受同一 staging、安装与回滚事务保护。
 
-发布前，作者可以从 Obsidian 命令面板运行“查看全部草稿发布就绪状态”。插件以参数数组和 `shell: false` 启动本地 `content:inbox`，把输出作为纯文本写入 Modal，避免诊断内容被解释为 HTML；blocked 是只读发现，不会触发发布动作。单篇“检查当前草稿”与“发布当前草稿并同步 GitHub”保持原语义，完整 `npm run check` 仍是最终权威门禁。
+发布前，作者可以从 Obsidian 命令面板运行“查看全部草稿发布就绪状态”；维护既有内容时运行“查看已发布内容复核队列”。插件 1.2.0 以固定参数数组和 `shell: false` 启动本地 `content:inbox` 或 `content:status`，Windows 通过隐藏 `cmd.exe` 执行 npm，POSIX 直接执行 npm；输出最多捕获 200,000 字符并用 `setText` 作为纯文本写入 Modal，避免诊断内容被解释为 HTML。所有命令共用活动进程账本：成功、非零退出、spawn error 都隐藏持续 Notice 并只结算一次，插件卸载会隐藏 Notice、终止仍活动的子进程并忽略随后到达的事件。两种报告都只读且零网络；单篇“检查当前草稿”与“发布当前草稿并同步 GitHub”保持原语义，完整 `npm run check` 仍是最终权威门禁。
 
 发布器先在仓库内 `node_modules/.cache/myblog-publish-*` 创建同盘 staging。每个静态 PNG/JPEG/WebP 都先自动校正 EXIF 方向，以固定 quality 82、alpha quality 100、effort 6 的 Sharp 参数生成 WebP，并在 staging 中重新执行公开预算检查；满足预算且重编码不会更小的已有 WebP 保持原字节。GIF、AVIF 和动画 WebP 不改变字节，但必须先满足公开预算。`--check-only` 完成同样的派生并报告源/产物差异，然后删除 staging，不修改工作区。
 
