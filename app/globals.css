@@ -1393,6 +1393,122 @@ input:focus-visible {
   text-decoration-color: var(--signal);
 }
 
+.markdown-content sup {
+  line-height: 0;
+}
+
+.markdown-content a[data-footnote-ref] {
+  position: relative;
+  top: -0.15em;
+  display: inline-flex;
+  width: 1.25rem;
+  min-width: 1.25rem;
+  height: 1.25rem;
+  align-items: center;
+  justify-content: center;
+  margin-inline: 0.15rem;
+  border: 0.0625rem solid var(--trace-dark);
+  border-top: 0.125rem solid var(--signal);
+  color: var(--ink);
+  font-family: var(--mono);
+  font-size: 0.625rem;
+  font-weight: 750;
+  line-height: 1;
+  text-decoration: none;
+  vertical-align: baseline;
+}
+
+.markdown-content a[data-footnote-ref]:hover,
+.markdown-content a[data-footnote-ref]:focus-visible {
+  border-color: var(--signal);
+  color: var(--signal);
+}
+
+.markdown-content section[data-footnotes] {
+  margin-top: 3.75rem;
+  padding-top: 1.25rem;
+  border-top: 0.125rem solid var(--ink);
+}
+
+.markdown-content .footnote-heading {
+  margin: 0;
+  padding: 0.75rem 0 1rem 1rem;
+  border-top: 0;
+  border-left: 0.1875rem solid var(--signal);
+  font-size: 1.5rem;
+}
+
+.markdown-content .footnote-heading::before {
+  position: static;
+  display: block;
+  width: auto;
+  height: auto;
+  margin-bottom: 0.35rem;
+  color: var(--faint);
+  background: none;
+  content: "ANNOTATION / EVIDENCE";
+  font-family: var(--mono);
+  font-size: 0.625rem;
+  font-weight: 500;
+  letter-spacing: 0.14em;
+  line-height: 1.2;
+}
+
+.markdown-content section[data-footnotes] > ol {
+  margin: 0;
+  padding-left: 2.75rem;
+  border-top: 0.0625rem solid var(--rule);
+}
+
+.markdown-content section[data-footnotes] > ol > li {
+  margin: 0;
+  padding: 1rem 0 1rem 0.25rem;
+  border-bottom: 0.0625rem solid var(--rule);
+  scroll-margin-top: 2rem;
+}
+
+.markdown-content section[data-footnotes] > ol > li::marker {
+  color: var(--trace-dark);
+  content: counter(list-item, decimal-leading-zero) " / ";
+  font-size: 0.6875rem;
+}
+
+.markdown-content section[data-footnotes] > ol > li:target {
+  padding-left: 0.75rem;
+  background: var(--paper);
+  box-shadow: inset 0.1875rem 0 var(--signal);
+}
+
+.markdown-content section[data-footnotes] p {
+  margin: 0;
+  color: var(--muted);
+  font-size: 0.875rem;
+  line-height: 1.75;
+}
+
+.markdown-content a[data-footnote-backref] {
+  display: inline-flex;
+  min-width: 1.75rem;
+  min-height: 1.75rem;
+  align-items: center;
+  justify-content: center;
+  margin-left: 0.35rem;
+  color: var(--trace-dark);
+  font-family: var(--mono);
+  font-size: 0.75rem;
+  text-decoration: none;
+}
+
+.markdown-content a[data-footnote-backref]:hover,
+.markdown-content a[data-footnote-backref]:focus-visible {
+  color: var(--signal);
+}
+
+.markdown-content a[data-footnote-backref] sup {
+  margin-left: 0.1rem;
+  font-size: 0.65em;
+}
+
 .markdown-content strong {
   color: var(--ink);
   font-weight: 750;
@@ -3477,6 +3593,62 @@ input:focus-visible {
     font-size: 0.72em;
     font-weight: 400;
     word-break: break-all;
+  }
+
+  .markdown-content a[data-footnote-ref] {
+    top: -0.1em;
+    width: auto;
+    min-width: 0;
+    height: auto;
+    margin-inline: 0.5mm;
+    padding-inline: 0.5mm;
+    border: 0;
+    border-bottom: 0.3mm solid var(--signal);
+    font-size: 0.65em;
+  }
+
+  .markdown-content section[data-footnotes] {
+    margin-top: 9mm;
+    padding-top: 4mm;
+    border-top-width: 0.5mm;
+  }
+
+  .markdown-content .footnote-heading {
+    margin: 0;
+    padding: 2mm 0 3mm 3mm;
+    border: 0;
+    border-left: 0.5mm solid var(--signal);
+    font-size: 16pt;
+  }
+
+  .markdown-content .footnote-heading::before {
+    position: static;
+    display: block;
+    width: auto;
+    height: auto;
+    margin-bottom: 1mm;
+    color: var(--faint);
+    background: none;
+    font-size: 6pt;
+  }
+
+  .markdown-content section[data-footnotes] > ol {
+    margin: 0;
+    padding-left: 9mm;
+  }
+
+  .markdown-content section[data-footnotes] > ol > li {
+    padding: 3mm 0 3mm 1mm;
+    break-inside: avoid-page;
+  }
+
+  .markdown-content section[data-footnotes] p {
+    font-size: 8pt;
+    line-height: 1.55;
+  }
+
+  .markdown-content a[data-footnote-backref] {
+    display: none;
   }
 
   .markdown-content blockquote,

@@ -8,6 +8,12 @@ import { CodeBlock } from "@/components/CodeBlock";
 import { MarkdownHeading } from "@/components/MarkdownHeading";
 import { getCodeLanguageLabel } from "@/lib/code-block";
 import {
+  getMarkdownFootnoteBackLabel,
+  MARKDOWN_FOOTNOTE_CLOBBER_PREFIX,
+  MARKDOWN_FOOTNOTE_HEADING_CLASS,
+  MARKDOWN_FOOTNOTE_LABEL,
+} from "@/lib/markdown-footnote";
+import {
   getMarkdownContentImages,
   type ContentImageDescriptor,
 } from "@/lib/content/media";
@@ -15,24 +21,46 @@ import {
 const CONTENT_IMAGE_SIZES =
   "(max-width: 42rem) calc(100vw - 2rem), (max-width: 55rem) 90vw, 48rem";
 
+const MARKDOWN_REHYPE_OPTIONS = {
+  clobberPrefix: MARKDOWN_FOOTNOTE_CLOBBER_PREFIX,
+  footnoteBackLabel: getMarkdownFootnoteBackLabel,
+  footnoteLabel: MARKDOWN_FOOTNOTE_LABEL,
+  footnoteLabelProperties: {
+    className: [MARKDOWN_FOOTNOTE_HEADING_CLASS],
+  },
+  footnoteLabelTagName: "h2",
+};
+
 function createMarkdownComponents(
   localImages: Record<string, ContentImageDescriptor>,
 ): Components {
   return {
-    a({ href, children, title }) {
+    a({ href, children, node, ...props }) {
+      void node;
       const external = href?.startsWith("https://") || href?.startsWith("http://");
       return (
         <a
+          {...props}
           href={href}
           rel={external ? "noreferrer" : undefined}
           target={external ? "_blank" : undefined}
-          title={title}
         >
           {children}
         </a>
       );
     },
-    h2({ children, id }) {
+    h2({ children, className, id, node, ...props }) {
+      void node;
+      if (
+        id === "footnote-label" &&
+        className?.split(/\s+/u).includes(MARKDOWN_FOOTNOTE_HEADING_CLASS)
+      ) {
+        return (
+          <h2 {...props} className={className} id={id}>
+            {children}
+          </h2>
+        );
+      }
       return (
         <MarkdownHeading id={id} level={2}>
           {children}
@@ -120,6 +148,7 @@ export async function MarkdownContent({
           rehypeSlug,
           [rehypeHighlight, { detect: false, ignoreMissing: true }],
         ]}
+        remarkRehypeOptions={MARKDOWN_REHYPE_OPTIONS}
         remarkPlugins={[remarkGfm]}
       >
         {source}

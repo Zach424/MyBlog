@@ -22,6 +22,8 @@ export function markdownToPlainText(markdown: string) {
     .replace(/^---[\s\S]*?---\s*/m, "")
     .replace(/```[^\n]*\n([\s\S]*?)```/g, "$1")
     .replace(/~~~[^\n]*\n([\s\S]*?)~~~/g, "$1")
+    .replace(/^\s{0,3}\[\^[^\]\r\n]+\]:[ \t]*/gm, "")
+    .replace(/\[\^[^\]\r\n]+\]/g, "")
     .replace(/!\[([^\]]*)\]\([^)]*\)/g, "$1")
     .replace(/\[([^\]]+)\]\([^)]*\)/g, "$1")
     .replace(/<[^>]+>/g, " ")

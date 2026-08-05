@@ -203,6 +203,23 @@ test("renders Markdown articles with metadata, anchors, code and navigation", as
     html.replaceAll("<!-- -->", ""),
     /<p class="print-source">Source \/ <a href="https:\/\/blog\.example\.test\/posts\/building-a-maintainable-blog">https:\/\/blog\.example\.test\/posts\/building-a-maintainable-blog<\/a><\/p>/,
   );
+  assert.equal((html.match(/data-footnote-ref="true"/g) ?? []).length, 2);
+  assert.match(html, /href="#note-fn-%E5%BD%93%E5%89%8D%E6%9E%B6%E6%9E%84"/);
+  assert.match(html, /id="note-fnref-%E5%BD%93%E5%89%8D%E6%9E%B6%E6%9E%84-2"/);
+  assert.match(
+    html,
+    /<section data-footnotes="true" class="footnotes"><h2 class="footnote-heading" id="footnote-label">注释与来源<\/h2>/,
+  );
+  assert.equal((html.match(/data-footnote-backref=""/g) ?? []).length, 2);
+  assert.match(html, /aria-label="返回正文中的注释 1（第 2 处）"/);
+  assert.match(
+    html,
+    /href="\/projects\/myblog#vercel-%E9%98%B6%E6%AE%B5%E5%BD%93%E5%89%8D"/,
+  );
+  assert.doesNotMatch(
+    html,
+    /id="footnote-label"[^<]*>注释与来源<a[^>]*class="heading-permalink"/,
+  );
 
   const isolatedResponse = await render("/posts/project-charter-before-homepage");
   assert.equal(isolatedResponse.status, 200);

@@ -56,6 +56,17 @@ const worker = true;
   );
 });
 
+test("keeps footnote evidence searchable without leaking authoring markers", () => {
+  const source = `判断[^当前架构]，再次引用[^当前架构]。
+
+[^当前架构]: 证据见 [项目复盘](/projects/myblog)，并包含 \`main\`。`;
+
+  assert.equal(
+    markdownToPlainText(source),
+    "判断，再次引用。 证据见 项目复盘，并包含 main。",
+  );
+});
+
 test("ranks title and tag matches above body-only matches", () => {
   const results = searchDocuments(documents, "cloudflare");
 
