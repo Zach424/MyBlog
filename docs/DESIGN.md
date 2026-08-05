@@ -125,6 +125,8 @@ Obsidian 的维护入口服从宿主应用而不是复制网页皮肤。1.3.0 �
 
 1.9.0 的执行入口与只读 rail 分开命名；成功后不是沿用 pending 弹窗改颜色，而是显示一张封存账本。唯一视觉签名为 `VERIFIED LOCAL COMMIT ── SEALED PUSH ── ORIGIN/MAIN · OBSERVED AFTER PUSH`，两端必须显示同一短 OID；下方逐行保留正式路径、完整 commit/tree/blob 和精确 refspec，再用 `HEAD STABLE / INDEX STABLE / WORKTREE STABLE` 说明本地表面未被交付动作改写。Verified 使用宿主绿色 token/fallback `#2f756f`，Trace `#486f78`、Caution `#c6683c`、Paper `#f4f3ef`，正文仍服从 Obsidian text/interface/monospace。回执没有分数、庆祝动画、复制/重试/再次 push 按钮；末行明确它只证明 Git 送达，Vercel Production 由独立检查确认。窄屏把稳定性三列折为单列，长 OID/refspec 仍按现有 ledger 换行。
 
+1.10.0 为新内容待交付建立独立视觉语义，不把复核的单路径 receipt 套在多路径事务上。顶部仍是真实 `ORIGIN/MAIN · LAST OBSERVED ── +1 ── LOCAL MAIN`，精确发布包使用 `PUBLICATION HOLD / ATOMIC BUNDLE`；主体唯一签名是带 Caution 左侧 spine 的 `COMMIT ENVELOPE / N PATHS`，并按作者认知顺序列出 `NOTE / ADDED`、`MEDIA nn / ADDED`、`INBOX / DELETED`，每行保留路径和对应 blob 短身份。下方 ledger 才列 title、subject、完整 commit/tree/target blob 与精确 OID 命令。这个视图只读，没有按钮、卡片、分数、渐变或动画；普通 ahead 只显示 INSPECT，不给 push 建议。Verified `#2f756f`、Trace `#486f78`、Caution `#c6683c`、Paper `#f4f3ef` 与宿主 text/interface/monospace 保持一致，窄屏把 manifest 和 ledger 折为单列。
+
 ## 站点图标
 
 `app/icon.png` 为 `256 × 256` PNG，只保留 Commit Trace 的节点、轨迹环与信号色半环，不包含文字、缩写或第二套标志。图标以社交分享卡为风格参考生成，再确定性缩放并纳入尺寸与体积测试；它用于小尺寸识别，不替代首页的工程轨迹签名。

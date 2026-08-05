@@ -6,9 +6,12 @@
 
 - `MyBlog Publisher: 查看全部草稿发布就绪状态`：在只读弹窗中列出 ready、scheduled、blocked、目标路径、附件派生和阻塞原因；
 - `MyBlog Publisher: 检查当前草稿`：只验证，不移动、不提交；
+- `MyBlog Publisher: 查看待同步新内容发布`：只读比较本地 `main` 与最后观察到的 `origin/main`，识别由正式笔记、可选 inbox 删除和归档媒体组成的精确原子发布包；
 - `MyBlog Publisher: 发布当前草稿并同步 GitHub`：关闭草稿、移动到正式内容目录、执行全量检查、提交并推送。
 
 命令行等价总览为 `npm run content:inbox`；JSON 证据使用 `npm run content:inbox -- --format json`。总览不会移动、改写、提交或推送作者文件。
+
+新内容 push 失败后不要恢复草稿或再次发布，先运行 `npm run content:publish:status` 或命令面板的“查看待同步新内容发布”。只有本地 main 精确领先一个 `content: publish <slug>`，且父级、正式新增 Markdown、可选已跟踪 inbox 删除、全部归档媒体和 blob 都匹配时，才会显示 `PENDING / ATOMIC BUNDLE` 与 `git push origin <verified-oid>:refs/heads/main`；当前版本只读展示，不代为执行。任何非 synchronized 状态都会在读取源草稿前阻止第二次 `--push`。报告不 fetch、不 push、不改历史，普通 ahead 不给恢复建议。
 
 维护已发布 Current 内容时，先从“查看已发布内容复核台账”打开正式笔记，按清单人工核对。无事实变化只把 `reviewedAt` 推进到当天；正文或元数据变化还要把 `updatedAt` 更新到当天。随后运行：
 
