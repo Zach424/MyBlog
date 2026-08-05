@@ -70,6 +70,8 @@ tests/                              单元、生产 HTTP 与质量审计
 vercel.json                         Vercel Next.js 框架声明
 ```
 
+三条工作流都运行在 GitHub-hosted `ubuntu-latest`，使用 `actions/checkout@v6` 与 `actions/setup-node@v6` 的 Node 24 action runtime，再由 setup-node 显式安装应用所需的 Node.js 22 并启用 npm lockfile 缓存。action 自身的 JavaScript runtime 与应用运行时是两层独立契约；`tests/github-actions-workflows.test.mjs` 结构化解析 YAML，锁定 action major、只读权限、触发器、并发策略、Node 版本、缓存、命令顺序与手动回滚边界。
+
 ## 4. 内容与构建
 
 `next.config.ts` 在开发和构建开始时冻结作者时区日期，并行执行内容、媒体文件、内容—媒体关系与永久重定向校验。内容校验器先验证全部 Markdown，再对已公开内容执行关系完整性与新鲜度检查；媒体校验器递归扫描 `public/uploads`，拒绝符号链接、非图片、损坏图片、扩展名伪装和预算超限；媒体关系校验器用标准 Markdown AST 读取正式 posts/projects 的 `cover`、行内图片与引用式图片，核对精确文件路径和 slug 所有权，再拒绝无人引用的已归档附件；重定向校验器交叉检查当前公开 HTML 路由、静态文件、运维命名空间与 `content/redirects.yml`。纯净 Git 检出尚无上传目录时等价于零张图片；目录一旦存在，所有文件和正式引用都必须通过校验。`lib/content/index.ts` 在构建/服务端从 `content/posts` 与 `content/projects` 读取文件，解析为统一记录，过滤草稿和未来内容，再派生专题、标签、搜索、RSS 与 Sitemap。
@@ -158,6 +160,8 @@ Obsidian 草稿中的 Wiki 图片嵌入、指向 `public/uploads` 的 Markdown �
 ## 7. 部署与回滚
 
 Vercel GitHub Integration 负责每个分支的 Preview 和 `main` 的 Production，不再维护重复的部署 Action。GitHub `deployment_status` 成功事件触发生产冒烟，检查代表页面、全 Sitemap、Studio/OAuth、Feed、安全头和 404。
+
+Quality、生产冒烟与回滚工作流均使用 Node 24 runtime 的 checkout/setup-node v6，但实际执行仓库脚本时仍固定 Node.js 22。显式 `cache: npm` 避免 setup-node major 的自动缓存探测改变现有行为；GitHub-hosted runner 由平台维护，不引入自托管 runner 版本责任。升级 action 时必须先更新结构契约测试，再同时验证 push、定时触发结构、deployment status 与手动回滚权限。
 
 紧急恢复使用 Vercel Instant Rollback。仓库内手动工作流调用固定版本 Vercel CLI，回滚后对稳定生产域名重跑同一冒烟；Git 历史随后通过 revert 或修复提交恢复一致性。
 

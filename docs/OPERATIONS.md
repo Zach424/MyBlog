@@ -5,6 +5,7 @@
 - 应用：原生 Next.js 16 / React 19；
 - 当前生产站：`https://blog-iota-five-59.vercel.app`，Vercel 项目 `czq1/blog`；
 - 生产交付：GitHub `main` 触发 Vercel 自动部署，GitHub deployment status 触发稳定生产域名冒烟；
+- 自动化运行时：GitHub-hosted `ubuntu-latest`，checkout/setup-node v6 使用 Node 24 action runtime，仓库命令仍在显式 Node.js 22 + npm cache 下运行；
 - 当前回退站：`https://zach424-engineering-notes.zhiqingchen792.chatgpt.site`；
 - 内容：GitHub 仓库中的 Markdown 与附件；
 - 作者入口：`/studio`、Obsidian、普通 Git；
@@ -52,6 +53,8 @@ npm run release:check
 ```
 
 该命令先输出内容维护队列、当前作者工作区的 inbox 发布就绪状态、根暂存媒体库存和离线外链库存，并覆盖内容契约、Studio 配置、Obsidian 发布器、TypeScript、原生 Next.js 构建、生产 HTTP、安全头、全站内部链接、体积预算和生产依赖审计。inbox blocked 与外链 issue 都不会阻断未涉及它们的既有生产版本，但发布对应草稿前必须处理；报告不会执行任何发布或网络健康检查动作。
+
+发布门还会结构化解析三份 GitHub workflow：它要求 checkout/setup-node 均为 v6，应用 Node 仍为 22，npm 缓存保持显式启用，并锁定 Quality 的 PR/main/每周/手动触发、production smoke 的 deployment-status/手动触发以及 rollback 的 manual-only 边界。若 GitHub 再提示 action runtime 弃用，先核对官方 action release 与 runner 要求，再升级 major；不要通过允许不安全 Node runtime 的环境变量压住 warning。
 
 ## 发布后检查
 

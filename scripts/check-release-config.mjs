@@ -48,4 +48,25 @@ for (const marker of ["vercel@56.3.2", "rollback", "VERCEL_TOKEN", "VERCEL_PRODU
   }
 }
 
+for (const [name, workflow] of [
+  ["quality", qualityWorkflow],
+  ["production smoke", smokeWorkflow],
+  ["rollback", rollbackWorkflow],
+]) {
+  for (const marker of [
+    "uses: actions/checkout@v6",
+    "uses: actions/setup-node@v6",
+    "node-version: 22",
+    "cache: npm",
+  ]) {
+    if (!workflow.includes(marker)) {
+      throw new Error(`${name} workflow is missing the current Actions runtime contract: ${marker}`);
+    }
+  }
+
+  if (/actions\/(?:checkout|setup-node)@v[1-5]\b/u.test(workflow)) {
+    throw new Error(`${name} workflow still references a pre-Node 24 action major.`);
+  }
+}
+
 console.log("Release configuration is complete.");

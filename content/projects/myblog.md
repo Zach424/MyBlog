@@ -18,7 +18,7 @@ demo: "https://blog-iota-five-59.vercel.app"
 
 ## 当前状态（2026-08-05）
 
-MyBlog 当前运行在 Vercel，稳定公开地址是 [blog-iota-five-59.vercel.app](https://blog-iota-five-59.vercel.app)。仓库使用原生 Next.js 16.3、React 19 和 TypeScript；GitHub `main` 自动触发 Production，质量门和独立线上冒烟共同验证交付。网页 Studio 与 Obsidian 都可以由作者独立发布，Obsidian 图片和笔记链接会在进入正式内容前转换，详情页从真实正文派生反向引用。
+MyBlog 当前运行在 Vercel，稳定公开地址是 [blog-iota-five-59.vercel.app](https://blog-iota-five-59.vercel.app)。仓库使用原生 Next.js 16.3、React 19 和 TypeScript；GitHub `main` 自动触发 Production，质量门和独立线上冒烟共同验证交付。三条 GitHub workflow 已使用 Node 24 runtime 的 checkout/setup-node v6，应用构建仍固定 Node.js 22。网页 Studio 与 Obsidian 都可以由作者独立发布，Obsidian 图片和笔记链接会在进入正式内容前转换，详情页从真实正文派生反向引用。
 
 Cloudflare、Sites、Vinext、Vite Worker 和 Wrangler 仅属于 2026-07-18 至 2026-07-19 的首版与迁移历史，不再是当前运行依赖。旧公开站保留为迁移期回退证据，页面顶部的 Live demo 始终指向当前生产站。
 
@@ -53,6 +53,8 @@ Cloudflare、Sites、Vinext、Vite Worker 和 Wrangler 仅属于 2026-07-18 至 
 站内搜索在构建时把公开正文转换成轻量索引，在浏览器本地按标题、标签、摘要和正文加权匹配，不上传查询词。RSS、Sitemap 和 robots 与页面共用同一个公开内容索引，并根据请求主机生成绝对 URL。
 
 文章与项目详情分别输出 `BlogPosting` 和 `SoftwareSourceCode` JSON-LD；根布局声明作者、规范 URL、RSS、Open Graph 和站点图标。`next.config.ts` 统一补充 CSP、HSTS、点击劫持防护、权限策略与 HTML 边缘缓存；Studio 和 OAuth 路由使用单独的 CSP、弹窗策略与 `no-store`。
+
+GitHub Actions 把 action 自身运行时和应用运行时分开管理：checkout/setup-node v6 在 Node 24 上执行，setup-node 再显式安装 Node.js 22 并使用 npm lockfile 缓存。结构化 YAML 测试同时锁定只读权限、触发器、并发、命令顺序、production deployment-status 条件与 manual-only 回滚，避免平台维护升级暗中改变交付语义。
 
 视觉系统以 Commit Trace 为唯一主要识别元素，把日期、文章类型和项目里程碑连成一条工程轨迹。Evidence Rail 只显示可验证状态，不展示虚构的完成率。
 
@@ -96,7 +98,7 @@ Sites 首次生产发布后，首页与集合页返回 200，但没有任何内�
 
 ### Vercel 阶段（当前）
 
-当前站点使用原生 Next.js、GitHub 自动 Production 和稳定域名冒烟；Studio GitHub OAuth、Obsidian 模板/附件/封面/链接发布、构建期内容关系、文章与项目反向引用、Vercel 回滚与恢复均已验收。Iteration 0028 的实现质量门通过 62 项单元测试、15 项生产 HTTP/质量测试和 33 个页面生成任务，生产依赖审计为 0；稳定域名冒烟覆盖 23 条路由并确认 OAuth 302，文章正文的本地响应式图片与外图降级边界已在线。项目保持 `maintained`，当前生产站面向公众访问且不依赖 Cloudflare。
+当前站点使用原生 Next.js、GitHub 自动 Production 和稳定域名冒烟；Studio GitHub OAuth、全字段发布预检、公式预览、媒体冲突保护，Obsidian 模板/附件/封面/链接发布，构建期内容关系、文章与项目反向引用、Vercel 回滚与恢复均已验收。Iteration 0049 的本地完整发布门通过 148 项单元测试、19 项生产 HTTP/质量测试和 42 个页面生成任务，生产依赖审计为 0；稳定域名冒烟覆盖 24 条 Sitemap 路由并确认 OAuth 302。项目保持 `maintained`，当前生产站面向公众访问且不依赖 Cloudflare。
 
 ## 复盘
 
@@ -104,4 +106,4 @@ Sites 首次生产发布后，首页与集合页返回 200，但没有任何内�
 
 ## 下一步
 
-下一轮优先实现 Studio 全字段只读“发布就绪预检”：让文章/项目当前 entry 复用现有内容契约，在 Author Proof 中集中展示跨字段问题，但第一版不阻断保存、不写仓库、不接外部服务，正式构建继续是最终权威。Studio 数学公式预览已经能用生产 remark/rehype/KaTeX 规则给出成功、正文行号错误与网络恢复反馈；之后继续按维护手册发布真实记录并观察构建体积，自定义域名、公开邮箱、评论与统计保持可选。
+下一轮优先补充 Studio 全库“内容维护队列”：复用现有 Current/Historical 与 180 天复核规则，在作者后台集中显示 healthy、review-soon、due-soon、overdue 及条目入口，但保持只读、不自动改日期、不发送外部提醒，正式构建仍是最终权威。之后继续按维护手册发布真实记录并观察构建体积，自定义域名、公开邮箱、评论与统计保持可选。
