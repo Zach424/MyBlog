@@ -12,7 +12,12 @@ const CONTENT_PUBLISH_DELIVERY_RECEIPT_VERSION = 1;
 const CONTENT_DELIVERY_TRIAGE_REPORT_VERSION = 1;
 const AUTHOR_DOCTOR_REPORT_VERSION = 1;
 const AUTHOR_DOCTOR_NODE_ENGINE = ">=22.13.0";
-const AUTHOR_DOCTOR_PLUGIN_VERSION = "1.15.0";
+const AUTHOR_DOCTOR_PLUGIN_VERSION = "1.16.0";
+const AUTHOR_TRANSACTION_PHASE_LABELS = Object.freeze({
+  preflight: "前置检查 · PREFLIGHT",
+  domain: "发布或复核 · DOMAIN",
+  diagnostic: "证据降级 · DIAGNOSTIC",
+});
 const AUTHOR_DOCTOR_REQUIRED_SCRIPTS = [
   "content:author:doctor",
   "content:delivery:status",
@@ -3190,6 +3195,12 @@ module.exports = class MyBlogPublisher extends Plugin {
     });
 
     this.addCommand({
+      id: "inspect-author-transaction",
+      name: "查看当前作者事务",
+      checkCallback: (checking) => this.inspectAuthorTransaction(checking),
+    });
+
+    this.addCommand({
       id: "inspect-delivery-triage",
       name: "查看 Git 交付恢复",
       checkCallback: (checking) => this.inspectDeliveryTriage(checking),
@@ -3257,6 +3268,77 @@ module.exports = class MyBlogPublisher extends Plugin {
 
   isDesktopVault() {
     return this.app.vault.adapter instanceof FileSystemAdapter;
+  }
+
+  getAuthorTransactionNow() {
+    return Date.now();
+  }
+
+  setAuthorTransactionPhase(lease, phase) {
+    if (!lease || this.authorTransactionLease !== lease) return false;
+    if (!Object.prototype.hasOwnProperty.call(AUTHOR_TRANSACTION_PHASE_LABELS, phase)) {
+      return false;
+    }
+    lease.phase = phase;
+    return true;
+  }
+
+  getAuthorTransactionSnapshot(lease = this.authorTransactionLease) {
+    if (!lease || this.authorTransactionLease !== lease) return null;
+    const observedAt = this.getAuthorTransactionNow();
+    const elapsedMs = Number.isFinite(observedAt)
+      ? Math.max(0, Math.floor(observedAt - lease.startedAt))
+      : 0;
+    return Object.freeze({
+      elapsedMs,
+      label: lease.transaction.label,
+      phase: lease.phase,
+      sourcePath: lease.transaction.sourcePath,
+      startedAt: lease.startedAt,
+    });
+  }
+
+  formatAuthorTransactionElapsed(elapsedMs) {
+    const totalSeconds = Math.floor(Math.max(0, elapsedMs) / 1000);
+    const hours = Math.floor(totalSeconds / 3600);
+    const minutes = Math.floor((totalSeconds % 3600) / 60);
+    const seconds = totalSeconds % 60;
+    if (hours > 0) {
+      return `${hours} 小时 ${String(minutes).padStart(2, "0")} 分 ${String(seconds).padStart(2, "0")} 秒`;
+    }
+    if (minutes > 0) {
+      return `${minutes} 分 ${String(seconds).padStart(2, "0")} 秒`;
+    }
+    return `${seconds} 秒`;
+  }
+
+  formatAuthorTransactionNotice(state, snapshot) {
+    return [
+      `AUTHOR TRANSACTION / ${state}`,
+      `操作：${snapshot.label}`,
+      `来源：${snapshot.sourcePath}`,
+      `阶段：${AUTHOR_TRANSACTION_PHASE_LABELS[snapshot.phase]}`,
+      `开始：${new Date(snapshot.startedAt).toISOString()}`,
+      `已运行：${this.formatAuthorTransactionElapsed(snapshot.elapsedMs)}`,
+      state === "BUSY"
+        ? "当前操作完成后再试。"
+        : "只读快照；不会取消、重试或排队。",
+    ].join("\n");
+  }
+
+  inspectAuthorTransaction(checking) {
+    if (!this.isDesktopVault()) return false;
+    if (checking) return true;
+    const snapshot = this.getAuthorTransactionSnapshot();
+    if (!snapshot) {
+      new Notice(
+        "AUTHOR TRANSACTION / IDLE\n当前没有运行中的作者事务。",
+        5000,
+      );
+      return true;
+    }
+    new Notice(this.formatAuthorTransactionNotice("ACTIVE", snapshot), 10000);
+    return true;
   }
 
   releaseAuthorTransactionLease(lease, child = null) {
@@ -3512,15 +3594,17 @@ module.exports = class MyBlogPublisher extends Plugin {
   preflightAuthorTransaction(transaction, onReady) {
     const activeLease = this.authorTransactionLease;
     if (activeLease) {
-      new Notice(
-        `AUTHOR TRANSACTION / BUSY\n${activeLease.transaction.label}\n${activeLease.transaction.sourcePath}\n当前操作完成后再试。`,
-        8000,
-      );
+      const snapshot = this.getAuthorTransactionSnapshot(activeLease);
+      if (snapshot) {
+        new Notice(this.formatAuthorTransactionNotice("BUSY", snapshot), 10000);
+      }
       return true;
     }
 
     const lease = {
       child: null,
+      phase: "preflight",
+      startedAt: this.getAuthorTransactionNow(),
       transaction: Object.freeze({ ...transaction }),
     };
     this.authorTransactionLease = lease;
@@ -3555,6 +3639,7 @@ module.exports = class MyBlogPublisher extends Plugin {
       const root = this.app.vault.adapter.getBasePath();
       report = parseAuthorDoctorReport(output, root);
     } catch (error) {
+      if (!this.setAuthorTransactionPhase(lease, "diagnostic")) return;
       new Notice(
         `结构化作者环境证据不可用：${error.message}。${transaction.label}未启动，正在重新读取本地纯文本证据…`,
         10000,
@@ -3572,6 +3657,7 @@ module.exports = class MyBlogPublisher extends Plugin {
       return;
     }
 
+    if (!this.setAuthorTransactionPhase(lease, "domain")) return;
     onReady(lease);
   }
 
@@ -3850,6 +3936,10 @@ module.exports = class MyBlogPublisher extends Plugin {
       new ContentReviewProofModal(this.app, proof).open();
       new Notice("正式内容 Author Proof 已生成；尚未提交或推送。", 8000);
     } catch (error) {
+      if (
+        authorLease &&
+        !this.setAuthorTransactionPhase(authorLease, "diagnostic")
+      ) return;
       new Notice(
         `结构化 Author Proof 不可用：${error.message}。正在重新读取纯文本证据…`,
         10000,

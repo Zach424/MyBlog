@@ -565,7 +565,7 @@ function authorDoctorReport() {
     ["workspace-dependencies", "workspace", "Workspace dependencies", "35/35 pinned packages", "all declared packages installed at pinned versions"],
     ["content-layout", "workspace", "Content layout", "5/5 required paths", "5 required authoring paths"],
     ["obsidian-vault", "vault", "Obsidian Vault", ".obsidian present", ".obsidian directory present"],
-    ["publisher-plugin", "vault", "MyBlog Publisher", "myblog-publisher@1.15.0 · desktop", "myblog-publisher 1.15.0 desktop plugin"],
+    ["publisher-plugin", "vault", "MyBlog Publisher", "myblog-publisher@1.16.0 · desktop", "myblog-publisher 1.16.0 desktop plugin"],
   ];
   const scripts = [
     "content:author:doctor",
@@ -612,7 +612,7 @@ function authorDoctorReport() {
           isDesktopOnly: true,
           mainPresent: true,
           stylesPresent: true,
-          version: "1.15.0",
+          version: "1.16.0",
         },
       },
       workspace: {
@@ -691,7 +691,7 @@ test("renders a versioned maintenance ledger and opens an exact Vault note", asy
     createPluginHarness(),
   ]);
   const manifest = JSON.parse(manifestSource);
-  assert.equal(manifest.version, "1.15.0");
+  assert.equal(manifest.version, "1.16.0");
   assert.equal(manifest.isDesktopOnly, true);
   assert.match(styles, /^\.myblog-maintenance \{/mu);
   assert.match(styles, /\[data-status="overdue"\]/u);
@@ -1209,6 +1209,108 @@ test("does not start an author transaction when its preflight command fails", as
   );
 });
 
+test("reports idle and active author transaction snapshots without spawning", async () => {
+  const sourcePath = "content/inbox/new-note.md";
+  const harness = await createPluginHarness({ activeFilePath: sourcePath });
+  const inspect = findCommand(harness, "inspect-author-transaction");
+
+  assert.equal(inspect.checkCallback(true), true);
+  assert.equal(inspect.checkCallback(false), true);
+  assert.equal(harness.spawned.length, 0);
+  assert.match(
+    harness.notices.at(-1).message,
+    /AUTHOR TRANSACTION \/ IDLE.*当前没有运行中的作者事务/su,
+  );
+
+  const startedAt = Date.parse("2026-08-06T00:00:00.000Z");
+  let now = startedAt;
+  harness.plugin.getAuthorTransactionNow = () => now;
+  findCommand(harness, "validate-current-note").checkCallback(false);
+
+  const lease = harness.plugin.authorTransactionLease;
+  assert.equal(lease.startedAt, startedAt);
+  assert.equal(lease.phase, "preflight");
+  const initialSnapshot = harness.plugin.getAuthorTransactionSnapshot();
+  assert.equal(Object.isFrozen(initialSnapshot), true);
+  assert.deepEqual(plain(initialSnapshot), {
+    elapsedMs: 0,
+    label: "检查当前草稿",
+    phase: "preflight",
+    sourcePath,
+    startedAt,
+  });
+
+  now += 65_000;
+  assert.equal(inspect.checkCallback(false), true);
+  assert.equal(harness.spawned.length, 1);
+  assert.match(
+    harness.notices.at(-1).message,
+    /AUTHOR TRANSACTION \/ ACTIVE.*操作：检查当前草稿.*来源：content\/inbox\/new-note\.md.*阶段：前置检查 · PREFLIGHT.*开始：2026-08-06T00:00:00\.000Z.*已运行：1 分 05 秒.*只读快照/su,
+  );
+
+  const mobile = await createPluginHarness({ desktop: false });
+  assert.equal(
+    findCommand(mobile, "inspect-author-transaction").checkCallback(true),
+    false,
+  );
+});
+
+test("uses one author snapshot across busy, domain, and diagnostic phases", async () => {
+  const sourcePath = "content/projects/myblog.md";
+  const harness = await createPluginHarness({ activeFilePath: sourcePath });
+  const transaction = findCommand(harness, "validate-current-published-note");
+  const inspect = findCommand(harness, "inspect-author-transaction");
+  const startedAt = Date.parse("2026-08-06T01:02:03.000Z");
+  let now = startedAt;
+  harness.plugin.getAuthorTransactionNow = () => now;
+
+  transaction.checkCallback(false);
+  const lease = harness.plugin.authorTransactionLease;
+  now += 2_000;
+  transaction.checkCallback(false);
+  assert.equal(harness.spawned.length, 1);
+  assert.match(
+    harness.notices.at(-1).message,
+    /AUTHOR TRANSACTION \/ BUSY.*检查当前正式内容复核.*阶段：前置检查 · PREFLIGHT.*开始：2026-08-06T01:02:03\.000Z.*已运行：2 秒.*当前操作完成后再试/su,
+  );
+
+  finishReadyAuthorPreflight(harness, 0);
+  assert.equal(lease.phase, "domain");
+  now = startedAt + 65_000;
+  transaction.checkCallback(false);
+  assert.equal(harness.spawned.length, 2);
+  assert.match(
+    harness.notices.at(-1).message,
+    /AUTHOR TRANSACTION \/ BUSY.*阶段：发布或复核 · DOMAIN.*已运行：1 分 05 秒/su,
+  );
+  inspect.checkCallback(false);
+  assert.match(
+    harness.notices.at(-1).message,
+    /AUTHOR TRANSACTION \/ ACTIVE.*阶段：发布或复核 · DOMAIN.*已运行：1 分 05 秒/su,
+  );
+
+  harness.spawned[1].child.stdout.emit("data", Buffer.from("not-json"));
+  harness.spawned[1].child.emit("close", 0);
+  assert.equal(harness.spawned.length, 3);
+  assert.equal(lease.phase, "diagnostic");
+  now = startedAt + 3_661_000;
+  transaction.checkCallback(false);
+  assert.equal(harness.spawned.length, 3);
+  assert.match(
+    harness.notices.at(-1).message,
+    /AUTHOR TRANSACTION \/ BUSY.*阶段：证据降级 · DIAGNOSTIC.*已运行：1 小时 01 分 01 秒/su,
+  );
+  inspect.checkCallback(false);
+  assert.match(
+    harness.notices.at(-1).message,
+    /AUTHOR TRANSACTION \/ ACTIVE.*阶段：证据降级 · DIAGNOSTIC.*已运行：1 小时 01 分 01 秒/su,
+  );
+
+  harness.spawned[2].child.emit("close", 0);
+  inspect.checkCallback(false);
+  assert.match(harness.notices.at(-1).message, /AUTHOR TRANSACTION \/ IDLE/su);
+});
+
 test("holds one author transaction lease through preflight and domain settlement", async () => {
   const sourcePath = "content/inbox/new-note.md";
   const harness = await createPluginHarness({ activeFilePath: sourcePath });
@@ -1231,6 +1333,7 @@ test("holds one author transaction lease through preflight and domain settlement
   finishReadyAuthorPreflight(harness, 0);
   assert.equal(harness.spawned.length, 2);
   assert.equal(harness.plugin.authorTransactionLease, lease);
+  assert.equal(lease.phase, "domain");
   assert.equal(lease.child, harness.spawned[1].child);
 
   command.checkCallback(false);
@@ -1271,6 +1374,7 @@ test("keeps the author lease across diagnostic fallback and releases every termi
     harness.spawned[0].child.emit("close", 0);
     assert.equal(harness.spawned.length, 2);
     assert.equal(harness.plugin.authorTransactionLease, lease);
+    assert.equal(lease.phase, "diagnostic");
     assert.equal(lease.child, harness.spawned[1].child);
     command.checkCallback(false);
     assert.equal(harness.spawned.length, 2);
