@@ -6,13 +6,16 @@
 
 - `MyBlog Publisher: 查看全部草稿发布就绪状态`：在只读弹窗中列出 ready、scheduled、blocked、目标路径、附件派生和阻塞原因；
 - `MyBlog Publisher: 检查当前草稿`：只验证，不移动、不提交；
+- `MyBlog Publisher: 查看 Git 交付恢复`：任何 push 失败后首先运行；它从同一份本地 Git 快照把现场分到复核、新内容发布或人工检查，只显示既有后续命令；
 - `MyBlog Publisher: 查看待同步新内容发布`：只读比较本地 `main` 与最后观察到的 `origin/main`，识别由正式笔记、可选 inbox 删除和归档媒体组成的精确原子发布包；
 - `MyBlog Publisher: 重新同步待交付新内容发布`：只对再次验证的精确发布 Commit Envelope 执行非强制 OID refspec push；成功后显示 sealed receipt，失败保留本地提交；
 - `MyBlog Publisher: 发布当前草稿并同步 GitHub`：关闭草稿、移动到正式内容目录、执行全量检查、提交并推送。
 
 命令行等价总览为 `npm run content:inbox`；JSON 证据使用 `npm run content:inbox -- --format json`。总览不会移动、改写、提交或推送作者文件。
 
-新内容 push 失败后不要恢复草稿或再次发布，先运行 `npm run content:publish:status` 或命令面板的“查看待同步新内容发布”。只有本地 main 精确领先一个 `content: publish <slug>`，且父级、正式新增 Markdown、可选已跟踪 inbox 删除、全部归档媒体和 blob 都匹配时，才会显示 `PENDING / ATOMIC BUNDLE` 与精确 OID refspec。确认后运行 `npm run content:publish:deliver -- --format json` 或“重新同步待交付新内容发布”；命令会再次验证 main、完整 manifest 和 index/worktree，只推送已验证 OID。服务器拒绝、远端抢先推进或状态漂移都会保留本地 envelope；只有引用对齐且 HEAD/index/worktree/manifest 稳定才显示可信回执。任何非 synchronized 状态都会在读取源草稿前阻止第二次 `--push`。状态报告不 fetch、不 push、不改历史；deliver 不 fetch/rebase/reset、不强推、不自动重试。
+任何发布或正式复核 push 失败后，统一先运行 `npm run content:delivery:status`，或命令面板的“查看 Git 交付恢复”。它只读取一次本地 `main`、最后观察到的 `origin/main` 和 HEAD，把现场严格分为 synchronized、exact pending-review、exact pending-publication 或 inspect；不会 fetch、push、运行 status/deliver，也不会修改历史或工作区。只有 exact route 才会列出对应的既有 status 与 deliver 命令；当前分支不是 `main` 时仍可识别类型，但会保持写入锁定。
+
+新内容 push 失败后不要恢复草稿或再次发布。统一分诊显示 `PUBLICATION / MATCHED` 后，再运行 `npm run content:publish:status` 或命令面板的“查看待同步新内容发布”。只有本地 main 精确领先一个 `content: publish <slug>`，且父级、正式新增 Markdown、可选已跟踪 inbox 删除、全部归档媒体和 blob 都匹配时，才会显示 `PENDING / ATOMIC BUNDLE` 与精确 OID refspec。确认后运行 `npm run content:publish:deliver -- --format json` 或“重新同步待交付新内容发布”；命令会再次验证 main、完整 manifest 和 index/worktree，只推送已验证 OID。服务器拒绝、远端抢先推进或状态漂移都会保留本地 envelope；只有引用对齐且 HEAD/index/worktree/manifest 稳定才显示可信回执。任何非 synchronized 状态都会在读取源草稿前阻止第二次 `--push`。状态报告不 fetch、不 push、不改历史；deliver 不 fetch/rebase/reset、不强推、不自动重试。
 
 维护已发布 Current 内容时，先从“查看已发布内容复核台账”打开正式笔记，按清单人工核对。无事实变化只把 `reviewedAt` 推进到当天；正文或元数据变化还要把 `updatedAt` 更新到当天。随后运行：
 
@@ -21,6 +24,6 @@
 - `MyBlog Publisher: 检查当前正式内容复核`：执行完整仓库门，然后用只读 Author Proof 显示 HEAD/当前日期、事实变化、质量门、候选内容短指纹和唯一提交范围；不暂存、不提交；
 - `MyBlog Publisher: 提交并同步当前正式内容复核`：门禁通过后只提交当前正式 Markdown 并推送 `main`。
 
-该流程要求暂存区（包括 intent-to-add）为空，且同一天不能重复声明复核。可以同时保留稳定的 `content/inbox/<slug>.md` 草稿和未跟踪的根 `public/uploads/<图片>`；它们会在 Proof 中标为 deferred，不进入本次提交。已跟踪根附件修改、嵌套归档媒体、其他正式内容、代码或未知路径仍阻断。命令行等价入口为 `npm run content:review -- content/posts|projects/<slug>.md --check-only|--push`；机器可读证据在 check-only 后增加 `--format json`。Proof v3 的 SHA-256 绑定质量门前后原始字节，push 还核对 Git clean/filter 后的 index 与提交 tree；长检查期间修改目标或移动 HEAD 都会失败关闭。push 失败后先运行 `npm run content:review:status`；只有本地 main 正好领先本地 tracking ref 一个 `content: review <slug>`、父级/唯一路径/tree/blob 都匹配时才允许 `npm run content:review:deliver -- --format json`。恢复命令使用 `git push origin <verified-oid>:refs/heads/main`，不 fetch/rebase/reset；服务器拒绝、分支或状态漂移都不会覆盖本地提交。任何非 synchronized 状态都会阻止创建第二个复核提交。结构化证据或成功回执异常时插件不会自动重试，也不会显示半可信的已交付状态。
+该流程要求暂存区（包括 intent-to-add）为空，且同一天不能重复声明复核。可以同时保留稳定的 `content/inbox/<slug>.md` 草稿和未跟踪的根 `public/uploads/<图片>`；它们会在 Proof 中标为 deferred，不进入本次提交。已跟踪根附件修改、嵌套归档媒体、其他正式内容、代码或未知路径仍阻断。命令行等价入口为 `npm run content:review -- content/posts|projects/<slug>.md --check-only|--push`；机器可读证据在 check-only 后增加 `--format json`。Proof v3 的 SHA-256 绑定质量门前后原始字节，push 还核对 Git clean/filter 后的 index 与提交 tree；长检查期间修改目标或移动 HEAD 都会失败关闭。push 失败后由统一分诊确认 `REVIEW / MATCHED`，再运行 `npm run content:review:status`；只有本地 main 正好领先本地 tracking ref 一个 `content: review <slug>`、父级/唯一路径/tree/blob 都匹配时才允许 `npm run content:review:deliver -- --format json`。恢复命令使用 `git push origin <verified-oid>:refs/heads/main`，不 fetch/rebase/reset；服务器拒绝、分支或状态漂移都不会覆盖本地提交。任何非 synchronized 状态都会阻止创建第二个复核提交。结构化证据或成功回执异常时插件不会自动重试，也不会显示半可信的已交付状态。
 
 此 README 不参与博客构建。详细流程见 `docs/PUBLISHING.md`。

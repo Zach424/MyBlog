@@ -129,6 +129,8 @@ Obsidian 的维护入口服从宿主应用而不是复制网页皮肤。1.3.0 �
 
 1.11.0 的发布成功视图保留 Commit Envelope 作为多路径身份，不退化成泛化成功卡。顶部为 `PUBLICATION RECEIPT / SEALED ENVELOPE`，唯一轨迹是 `VERIFIED COMMIT ENVELOPE ── SEALED PUSH ── ORIGIN/MAIN · OBSERVED AFTER PUSH`；中段把同一 manifest spine 从 Caution 切为 Verified，并明确 `DELIVERED ENVELOPE / N PATHS`，NOTE、MEDIA、INBOX 的顺序、路径和 blob 身份保持不变。底部 ledger 列 commit/tree/target blob/精确 refspec，四列 `HEAD / INDEX / WORKTREE / MANIFEST STABLE` 证明本地与多路径清单未漂移。回执与执行命令分离，没有重试、复制、庆祝动画、分数或“安全”徽章；末行继续说明 Git 送达不等于 Production 完成。窄屏将四项稳定性折为单列。
 
+1.12.0 把 push 失败后的第一步设计成 Git switchyard，而不是恢复仪表盘。顶部以 `DELIVERY TRIAGE / READ ONLY` 固定证据边界，一个 `OBSERVED LOCAL MAIN` 节点向下分出 `REVIEW`、`PUBLICATION`、`INSPECT` 三条轨道；同一时刻只有一条显示 `MATCHED`，其余保持 `STANDBY`。下方 ledger 才列 relation、branch、完整领域身份及既有 status/deliver 命令；错误分支保留类型识别但显示写入锁。synchronized 用 Verified，其余匹配用 Caution，Trace 标记观察事实，OID/path/命令使用 monospace。视图没有按钮、卡片、自动跳转、分数、渐变或动画，末行明确分诊不会执行 status/deliver，tracking ref 只是最后本地观察；窄屏把三条分支和账本都折为单列。
+
 ## 站点图标
 
 `app/icon.png` 为 `256 × 256` PNG，只保留 Commit Trace 的节点、轨迹环与信号色半环，不包含文字、缩写或第二套标志。图标以社交分享卡为风格参考生成，再确定性缩放并纳入尺寸与体积测试；它用于小尺寸识别，不替代首页的工程轨迹签名。
