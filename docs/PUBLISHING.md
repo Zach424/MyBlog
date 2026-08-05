@@ -33,7 +33,7 @@
 
 1. 在 Obsidian 选择“打开文件夹作为仓库”，打开项目根目录；
 2. 打开命令面板运行“MyBlog Publisher: 新建博客草稿”，选择 Article、TIL 或 Project，填写标题和稳定 slug；
-3. 插件从对应的 `templates/obsidian/*.md` 创建 `content/inbox/<slug>.md` 并打开；手工创建时仍必须保持文件名与 frontmatter slug 相同；
+3. 插件从对应的 `templates/obsidian/*.md` 创建 `content/inbox/<slug>.md` 并打开；文件名是唯一 slug 身份，frontmatter 不再重复保存 `slug`。写作中途确需改名时保存笔记，再运行“重命名当前草稿”；
 4. 图片可直接粘贴到 Obsidian；默认先进入 `public/uploads`，发布器会移动到 `public/uploads/<slug>/`、规范化带空格或中文的文件名，并重写 Wiki/Markdown 图片链接；需要封面时取消模板中 `cover`/`coverAlt` 的注释，cover 指向同一附件目录中的图片；静态 PNG/JPEG/WebP 自动优化为 WebP，GIF/AVIF 和动画 WebP 保持原文件；
 5. 链接已有文章或项目时可以写 `[[note]]`、`[[note#标题|别名]]`、`[[projects/slug]]` 或相对 Markdown 链接；发布器会转换为稳定 `/posts/...`、`/projects/...` URL 和标题锚点，并在预检时确认目标标题真实存在；
 6. 需要为判断补充证据时使用 Obsidian/GitHub 兼容脚注：正文写 `这个判断[^来源]`，文末写 `[^来源]: 证据说明与链接`；标识符只负责关联，不决定网页显示编号，同一脚注可以在正文引用多次；
@@ -46,9 +46,15 @@
 
 ### 用受信模板新建一个 inbox 草稿
 
-MyBlog Publisher 1.19.0 的新建命令只接受 `article / til / project`、1–120 字符单行标题和 1–80 字符小写 ASCII slug。它从固定 Vault 路径读取模板，验证唯一标题/slug 占位符、三个日期占位符、draft/featured 和类型特征，再用 YAML 安全双引号标题、明文稳定 slug 与 `Asia/Shanghai` 当天渲染。写入前会两次检查 `content/inbox|posts|projects/<slug>.md`，最终由一次 `vault.create` 排他创建；不会覆盖任何已存在内容。
+MyBlog Publisher 1.20.0 的新建命令只接受 `article / til / project`、1–120 字符单行标题和 1–80 字符小写 ASCII slug。它从固定 Vault 路径读取模板，验证唯一空标题、三个日期占位符、draft/featured、类型特征，并拒绝任何重复的 frontmatter `slug` 或未知占位符；再用 YAML 安全双引号标题与 `Asia/Shanghai` 当天渲染。写入前会两次检查 `content/inbox|posts|projects/<slug>.md`，最终由一次 `vault.create` 排他创建；不会覆盖任何已存在内容。
 
 Modal 同步锁定提交按钮，因此双击只触发一次；另一个 Modal 或同步程序抢先创建时，后到请求显示错误且不改文件。输入或模板问题保留 Modal 供修改。文件创建成功后才尝试打开：若打开失败，文件仍保留，Notice 会给出精确路径；不要再次创建同 slug。该入口不启动 npm/doctor，不移动附件、不发布、不暂存、不提交、不推送、不访问网络。完成正文后仍按步骤 8 运行 inbox 总览和当前草稿检查。
+
+### 安全重命名一个未发布草稿
+
+保存当前笔记后运行“MyBlog Publisher: 重命名当前草稿”。命令只在桌面端活动文件精确匹配 `content/inbox/<lowercase-ascii>.md` 时可用。Modal 用 `CURRENT → TARGET` 展示身份变化；新 slug 必须不同、最多 80 字符且符合小写 kebab-case。插件在任何磁盘读取前检查 inbox/posts/projects 三命名空间，随后用 Vault `read` 读取直接内容、解析 frontmatter 并要求 `draft: true`、不存在顶层 `slug`；执行前再次检查路径与来源文件身份。
+
+通过后插件只调用一次 Obsidian `FileManager.renameFile`，不改正文。Obsidian 是否同步更新内部链接取决于作者的链接设置。多个改名 Modal 由独立 lease 串行化，同一 Modal 的重复点击也只进入一次。若旧式草稿仍有 frontmatter `slug`，先人工核对它与文件名，再删除该字段；插件不做隐式双字段迁移。宿主拒绝改名或返回后无法同时证明旧路径消失、新路径精确存在时，结果标为不确定，并提示检查两个路径；不要立即重试，也不要手工复制出第二份文件。该入口不运行子进程、Git、发布或网络。
 
 命令行等价操作：
 
@@ -68,11 +74,11 @@ npm run content:delivery:status
 npm run content:delivery:status -- --format json
 ```
 
-MyBlog Publisher 1.19.0 只读取一次当前分支、本地 main、最后观察到的 origin/main 和 ahead/behind，再用同一观察验证复核与新内容发布身份。`DELIVERY SWITCHYARD` 只会命中 `REVIEW`、`PUBLICATION`、`INSPECT` 三条轨道之一；synchronized 则不提供后续命令。exact route 会列出对应的既有 status 和 deliver 命令，但分诊不会自动执行它们，也没有动作按钮。非 main 保留类型证据但锁定 deliver；任何不一致或不可信 JSON 都只降级为纯文本，不 fetch、push、rebase、reset 或改写工作区。
+MyBlog Publisher 1.20.0 只读取一次当前分支、本地 main、最后观察到的 origin/main 和 ahead/behind，再用同一观察验证复核与新内容发布身份。`DELIVERY SWITCHYARD` 只会命中 `REVIEW`、`PUBLICATION`、`INSPECT` 三条轨道之一；synchronized 则不提供后续命令。exact route 会列出对应的既有 status 和 deliver 命令，但分诊不会自动执行它们，也没有动作按钮。非 main 保留类型证据但锁定 deliver；任何不一致或不可信 JSON 都只降级为纯文本，不 fetch、push、rebase、reset 或改写工作区。
 
 ### 在 Obsidian 查看待同步新内容发布
 
-如果 `--push` 已创建 `content: publish <slug>` 但提示 push 失败，不要恢复 inbox、复制草稿或再次运行发布。统一分诊显示 `PUBLICATION / MATCHED` 后，再运行“MyBlog Publisher: 查看待同步新内容发布”，命令行等价为 `npm run content:publish:status`；JSON 证据增加 `-- --format json`。MyBlog Publisher 1.19.0 只读取本地 main、最后观察到的 origin/main 和 HEAD commit，不 fetch、不 push、不写文件。只有 ahead 1 / behind 0、单父级等于 tracking head、subject 与 slug 一致，且 commit 变更精确等于一个新增正式 Markdown、可选同 slug inbox 删除和零到多个同 slug 归档媒体新增，才显示 `PUBLICATION HOLD / ATOMIC BUNDLE`。
+如果 `--push` 已创建 `content: publish <slug>` 但提示 push 失败，不要恢复 inbox、复制草稿或再次运行发布。统一分诊显示 `PUBLICATION / MATCHED` 后，再运行“MyBlog Publisher: 查看待同步新内容发布”，命令行等价为 `npm run content:publish:status`；JSON 证据增加 `-- --format json`。MyBlog Publisher 1.20.0 只读取本地 main、最后观察到的 origin/main 和 HEAD commit，不 fetch、不 push、不写文件。只有 ahead 1 / behind 0、单父级等于 tracking head、subject 与 slug 一致，且 commit 变更精确等于一个新增正式 Markdown、可选同 slug inbox 删除和零到多个同 slug 归档媒体新增，才显示 `PUBLICATION HOLD / ATOMIC BUNDLE`。
 
 结构化 Modal 用 `COMMIT ENVELOPE / N PATHS` 依次列出 `NOTE / ADDED`、`MEDIA nn / ADDED`、`INBOX / DELETED`，并保留 commit/tree/target blob 和 `git push origin <verified-oid>:refs/heads/main`。只读证据确认无误后，单独运行“MyBlog Publisher: 重新同步待交付新内容发布”；命令行等价如下：
 
@@ -95,15 +101,15 @@ npm run content:inbox -- --date 2026-08-05
 
 ### 在 Obsidian 查看已发布内容复核台账
 
-打开命令面板并运行“查看已发布内容复核台账”。MyBlog Publisher 1.19.0 会在仓库根目录隐藏运行 `npm --silent run content:status -- --format json`，验证版本化报告后，用原生 deadline ledger 显示报告日期、Current/Historical/未公开数量、healthy/review-soon/due-soon/overdue 四档计数、源笔记路径、review-by、剩余天数和复核清单。每条记录的“打开笔记”只打开 Vault 中精确存在的 `content/posts|projects/<slug>.md`。该命令不读取网络、不修改 `reviewedAt`、不保存文件、不提交也不推送；它和 Studio 队列、每周 Actions 复用同一维护规则。
+打开命令面板并运行“查看已发布内容复核台账”。MyBlog Publisher 1.20.0 会在仓库根目录隐藏运行 `npm --silent run content:status -- --format json`，验证版本化报告后，用原生 deadline ledger 显示报告日期、Current/Historical/未公开数量、healthy/review-soon/due-soon/overdue 四档计数、源笔记路径、review-by、剩余天数和复核清单。每条记录的“打开笔记”只打开 Vault 中精确存在的 `content/posts|projects/<slug>.md`。该命令不读取网络、不修改 `reviewedAt`、不保存文件、不提交也不推送；它和 Studio 队列、每周 Actions 复用同一维护规则。
 
-检查期间的持续 Notice 会在成功、降级、失败或插件卸载时关闭。维护 CLI 用退出码 1 表达“存在逾期内容”时，插件仍会展示通过 schema 的结构化报告；JSON、schema、安全路径或 UI 渲染不可信时，插件自动再读一次纯文本报告，而不是打开半可信交互。命令无法启动时仍只显示诊断；可在仓库终端运行 `npm run content:status` 取得完整输出。仓库更新了插件版本而 Obsidian 已经打开时，需要重启 Obsidian，或先关闭再启用 MyBlog Publisher，才能加载 1.19.0 代码。
+检查期间的持续 Notice 会在成功、降级、失败或插件卸载时关闭。维护 CLI 用退出码 1 表达“存在逾期内容”时，插件仍会展示通过 schema 的结构化报告；JSON、schema、安全路径或 UI 渲染不可信时，插件自动再读一次纯文本报告，而不是打开半可信交互。命令无法启动时仍只显示诊断；可在仓库终端运行 `npm run content:status` 取得完整输出。仓库更新了插件版本而 Obsidian 已经打开时，需要重启 Obsidian，或先关闭再启用 MyBlog Publisher，才能加载 1.20.0 代码。
 
 ### 在 Obsidian 完成正式内容复核
 
 复核不是自动更新时间戳。先从台账打开正式文章或项目，逐项核对正文中的版本、架构、项目状态、命令和链接：无事实变化时只把 `reviewedAt` 改为上海当天；有正文或元数据变化时，同时把 `updatedAt` 和 `reviewedAt` 改为当天。不要改变 `publishedAt`，Historical、draft 或未来内容不进入该流程。
 
-保存笔记后运行“MyBlog Publisher: 检查当前正式内容复核”。MyBlog Publisher 1.19.0 会先自动运行 author doctor；只有 ready 才要求 `main`、本地 main 与最后观察到的 origin/main synchronized、目标已被 Git 跟踪且暂存区完全为空。工作区除目标外，可以保留稳定的 inbox 草稿和未跟踪根图片。完整 `npm run check` 前后使用同一个 impact classifier 重算，并要求 HEAD、tracking 关系与目标原始字节的 SHA-256 不变。成功 Proof 会显示 `CANDIDATE / GATE-STABLE` 短指纹，把并行工作列为 `DEFERRED / NOT IN COMMIT`，并继续显示日期迁移、事实变化、updatedAt、质量门和唯一可提交路径。已跟踪根媒体、嵌套归档媒体、其他正式内容、代码或未知路径不会 deferred，而会直接阻断。确认后运行“提交并同步当前正式内容复核”，它再次先运行 doctor，再执行同样门禁；只暂存该 Markdown，核对 index 与提交 tree 的 Git-clean blob 后以 `content: review <slug>` 提交并推送 `origin main`，并行草稿保持原状态。
+保存笔记后运行“MyBlog Publisher: 检查当前正式内容复核”。MyBlog Publisher 1.20.0 会先自动运行 author doctor；只有 ready 才要求 `main`、本地 main 与最后观察到的 origin/main synchronized、目标已被 Git 跟踪且暂存区完全为空。工作区除目标外，可以保留稳定的 inbox 草稿和未跟踪根图片。完整 `npm run check` 前后使用同一个 impact classifier 重算，并要求 HEAD、tracking 关系与目标原始字节的 SHA-256 不变。成功 Proof 会显示 `CANDIDATE / GATE-STABLE` 短指纹，把并行工作列为 `DEFERRED / NOT IN COMMIT`，并继续显示日期迁移、事实变化、updatedAt、质量门和唯一可提交路径。已跟踪根媒体、嵌套归档媒体、其他正式内容、代码或未知路径不会 deferred，而会直接阻断。确认后运行“提交并同步当前正式内容复核”，它再次先运行 doctor，再执行同样门禁；只暂存该 Markdown，核对 index 与提交 tree 的 Git-clean blob 后以 `content: review <slug>` 提交并推送 `origin main`，并行草稿保持原状态。
 
 如果最后一步提示 push 失败，不要再次提交复核。先由统一分诊确认 `REVIEW / MATCHED`，再运行“查看待同步正式内容复核”；只有 rail 仍证明同一个精确 pending-review 时，才运行“重新同步待交付正式内容复核”。该命令调用 `content:review:deliver`，以已验证 commit OID 作为 push 源，不接受路径或分支参数。服务器拒绝、远端抢先推进、错误分支和本地状态漂移都会失败并保留提交；成功后弹出的 sealed receipt 必须同时列出相同的 local/tracking OID、commit/tree/blob、精确 refspec 与 HEAD/INDEX/WORKTREE STABLE。回执只证明 Git 交付，Production 仍看 GitHub/Vercel 检查；回执解析失败时不会自动再推一次。
 
@@ -187,7 +193,7 @@ npm run content:author:doctor
 npm run content:author:doctor -- --format json
 ```
 
-MyBlog Publisher 1.19.0 把 13 项固定检查画成 `RUNTIME → GIT → WORKSPACE → VAULT → AUTHOR READY/HOLD` 的只读 preflight circuit。四个新事务——检查/发布当前草稿、检查/提交当前正式内容复核——都会自动先运行同一 JSON doctor：ready 无中间弹窗并进入原命令；attention 显示 `TRANSACTION INTERLOCK / HELD`、被冻结的操作/来源路径与修复证据，且不启动领域命令；不可信 JSON 降级纯文本后失败关闭。
+MyBlog Publisher 1.20.0 把 13 项固定检查画成 `RUNTIME → GIT → WORKSPACE → VAULT → AUTHOR READY/HOLD` 的只读 preflight circuit。四个新事务——检查/发布当前草稿、检查/提交当前正式内容复核——都会自动先运行同一 JSON doctor：ready 无中间弹窗并进入原命令；attention 显示 `TRANSACTION INTERLOCK / HELD`、被冻结的操作/来源路径与修复证据，且不启动领域命令；不可信 JSON 降级纯文本后失败关闭。
 
 四个事务由同一个 single-flight lease 串行化。租约覆盖 doctor、领域命令以及 author/review 纯文本降级，并记录 `preflight / domain / diagnostic` phase、不可重置的 startedAt、phaseEnteredAt 与 owning child 的 lastOutputAt。运行“查看当前作者事务”会在 ACTIVE 时显示 operation、sourcePath、阶段进入/用时、最近 stdout/stderr/静默时长和总开始/用时；占用期间再次调用新事务用完全相同的快照显示 `AUTHOR TRANSACTION / BUSY`，不排队、不启动第二条命令链。换阶段或换 child 会清空前一阶段的输出活动；只有当前 lease + child 能更新时间，旧进程的迟到输出不会污染新阶段，正文达到捕获上限后 activity 仍记录。快照按查询时钟派生且冻结，duration 遇时钟回拨钳制到零，不持续刷新；静默不分类为 healthy/stuck，不触发 timeout、watchdog、取消或重试。
 
@@ -227,7 +233,7 @@ MyBlog Publisher 1.19.0 把 13 项固定检查画成 `RUNTIME → GIT → WORKSP
 - Studio 显示“图片未进入草稿”：按 Evidence Rail 的格式、尺寸、帧数、体积、slug、文件名、媒体清单或目标冲突说明修复后重新选择；同名不同内容只在确实要改变公开图片时确认，文件名含无法稳定转换的非 ASCII 字符时先重命名；PNG/JPEG 想自动生成 WebP 时改用 Obsidian，不能关闭浏览器预检后强行上传。
 - 构建提示图片不存在或大小写不一致：核对 Markdown/cover 的 `/uploads/...` 与仓库文件名；不要依赖 Windows 的大小写不敏感行为。
 - 构建提示图片仍在根暂存区：Studio 中先确认 slug 正确，再删除该字段中的旧引用并重新选择图片；Obsidian 草稿则运行发布器完成归档。不要手工让正式内容长期引用 `/uploads/<文件名>`。
-- 修改 slug 后图片目录不一致：恢复首次保存时的 slug；若内容尚未发布且确实必须改名，先移除旧图片和引用，再用新 slug 重新上传，避免留下孤儿附件。
+- inbox 草稿需要改 slug：先保存并运行“重命名当前草稿”；若仍有旧式 frontmatter `slug`，人工核对后删除该字段再重试。已归档 `public/uploads/<slug>/` 媒体不属于这个文件名事务，存在时先移除旧图片和引用，再以新 slug 重新发布，避免孤儿附件。
 - Studio 的 slug 显示 locked：这是已有条目的身份保护，不是权限故障。不要用浏览器开发工具解除；确需迁移时在 Git 中同时处理 Markdown 文件名、frontmatter、附件目录、全部引用和永久重定向。
 - 构建提示归档附件无人引用：删除无用文件，或从同 slug 内容的正文/cover 正确引用；代码块中的示例不算引用。
 - 构建提示正文图片替代文本为空：在 `![这里填写图片内容](地址)` 的方括号内描述读者无法看到图片时需要知道的信息。

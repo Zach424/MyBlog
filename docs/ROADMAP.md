@@ -8,11 +8,11 @@
 | 4. 作者自助写作 | done | `/studio` OAuth + editorial workflow PR、Obsidian Vault/模板/附件/真实 `--push` |
 | 5. Vercel 原生迁移 | production live | 原生 Next.js、无 Cloudflare 依赖、24 路由生产冒烟通过 |
 | 6. 所有者生产上线 | done | Git 自动 Production、稳定域名自动冒烟、双端发布、回滚与恢复均已验收 |
-| 7. 持续内容与作者体验 | in progress | Iteration 0068 完成 Obsidian 模板驱动的新建草稿入口 |
+| 7. 持续内容与作者体验 | in progress | Iteration 0069 完成文件名唯一的 Obsidian 未发布草稿安全改名 |
 
 ## 当前唯一主线
 
-进入持续内容与作者体验阶段。Iteration 0068 已把 MyBlog Publisher 升到 1.19.0：命令面板的“新建博客草稿”用一个聚焦的原生 Modal 收集 `article / til / project`、标题和稳定 slug，只从精确的 Vault 模板生成一个 inbox Markdown。输入、模板漂移与全内容命名空间碰撞均在写入前失败；`vault.create` 承担最终排他边界，双击不会重复写入，创建后无法打开也不会删除新文件。该入口不启动子进程、不发布、不提交、不联网，既有 doctor、事务回执与交付恢复保持不变。下一主线评估未发布草稿的安全 slug 改名：只有能够同时固定 source/frontmatter/目标碰撞和失败恢复边界时才实现；需要品牌域名时再绑定自定义域名，旧公开站继续只作为迁移历史证据。
+进入持续内容与作者体验阶段。Iteration 0069 已把 MyBlog Publisher 升到 1.20.0：inbox 文件名成为草稿唯一 slug 身份，新模板不再复制 frontmatter 字段；“重命名当前草稿”只对桌面活动的安全 inbox Markdown 开放，读取前后验证目标命名空间和磁盘 `draft: true`，再用 Obsidian FileManager 执行一次改名。正文不改，内部链接更新服从宿主设置；多个 Modal 串行，旧式双 slug 草稿失败关闭，宿主结果不确定时只列出两个路径且不自动重试。该入口不启动子进程、不发布、不提交、不联网，既有 doctor、事务回执与交付恢复保持不变。下一主线评估旧式草稿的只读身份迁移诊断；需要品牌域名时再绑定自定义域名，旧公开站继续只作为迁移历史证据。
 
 ## 已知风险
 
@@ -32,7 +32,7 @@
 - slug 迁移已有构建验证的精确单跳 redirect 注册表，但仍是需要作者审阅的 Git 操作；不支持通配参数或自动推断，迁移必须同步处理内容、附件和引用；
 - Obsidian 已有全 inbox readiness 总览，但该报告有意只代表本地单篇写入事务，不替代正式发布的完整仓库门禁，也不进入看不到未跟踪草稿的 Actions；
 - Current record 已有 Studio 实时只读队列、每周 60/30 天 Actions 提醒和过期门；队列数据只随新 Production 接收内容变更，且仍不发送外部消息；若未来需要邮件/聊天通知，必须由所有者选择渠道后再接入；
-- Obsidian 维护/Author Proof/交付状态与回执 1.19.0 保留四事务 owner-checked single-flight lease、phase/output activity pulse、会话内 terminal receipt、统一分诊及六套版本化 JSON；模板驱动向导已消除手工复制模板与替换标题/日期的重复操作，并用全命名空间预检和 Vault 排他创建防止覆盖。尚未解决的是草稿写作中途改变 slug 的安全迁移：直接手工改文件名/frontmatter 仍可能产生不一致，下一轮先冻结仅限未发布 inbox 的双字段一致性、三命名空间碰撞、并发与回滚合同，再决定是否实现。新内容 Commit Envelope 的真实主题组合、超长 object id/path 和大量媒体仍需随使用观察；tracking ref 明确只是最后本地观察，inspect 路由不会猜测修复；
+- Obsidian 维护/Author Proof/交付状态与回执 1.20.0 保留四事务 owner-checked single-flight lease、phase/output activity pulse、会话内 terminal receipt、统一分诊及六套版本化 JSON；模板驱动向导已消除手工复制模板与替换标题/日期，文件名唯一身份与 FileManager 改名消除了新草稿的双字段漂移。旧式仍含 frontmatter `slug` 的草稿有意失败关闭；下一轮先交付只读身份诊断，再决定是否提供可证明恢复的一次性清理。新内容 Commit Envelope 的真实主题组合、超长 object id/path 和大量媒体仍需随使用观察；tracking ref 明确只是最后本地观察，inspect 路由不会猜测修复；
 - 内部链接支持内容页和严格标题锚点，行内/引用式/自引用共享实际渲染 slug 规则，详情页与公开知识地图共享 outgoing/backlinks；明确不支持 Obsidian 块引用，标题改名必须同步深链，当前双列 SVG 为小型内容库优化，内容规模增长后需要过滤/分组；
 - 正文普通 HTTPS 与结构化 repository/demo/canonical 已有统一确定性库存和受控实时报告；实时 DNS/网络结果有意不进 Actions，timeout/限流不能冒充内容错误；
 - 文章与项目已有完整 A4 打印版式，但 PDF 仍由读者通过浏览器打印生成，仓库不把二进制 PDF 当作发布源，也不提供服务端 PDF 缓存；后续版式变化仍需重新做真实 PDF 全页复核；

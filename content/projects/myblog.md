@@ -18,7 +18,7 @@ demo: "https://blog-iota-five-59.vercel.app"
 
 ## 当前状态（2026-08-06）
 
-MyBlog 当前运行在 Vercel，稳定公开地址是 [blog-iota-five-59.vercel.app](https://blog-iota-five-59.vercel.app)。仓库使用原生 Next.js 16.3、React 19 和 TypeScript；GitHub `main` 自动触发 Production，质量门和独立线上冒烟共同验证交付。网页 Studio 与 Obsidian 都可以由作者独立发布；MyBlog Publisher 1.19.0 还能从 Article、TIL、Project 三类受信模板安全创建并打开本地 inbox 草稿，同时保留 13 项本机 author doctor、四事务 single-flight lease、活动脉冲和会话内终态回执。
+MyBlog 当前运行在 Vercel，稳定公开地址是 [blog-iota-five-59.vercel.app](https://blog-iota-five-59.vercel.app)。仓库使用原生 Next.js 16.3、React 19 和 TypeScript；GitHub `main` 自动触发 Production，质量门和独立线上冒烟共同验证交付。网页 Studio 与 Obsidian 都可由作者独立发布；MyBlog Publisher 1.20.0 支持文件名唯一的本地草稿创建与发布前安全改名。
 
 Cloudflare、Sites、Vinext、Vite Worker 和 Wrangler 仅属于 2026-07-18 至 2026-07-19 的首版与迁移历史，不再是当前运行依赖。旧公开站保留为迁移期回退证据，页面顶部的 Live demo 始终指向当前生产站。
 
@@ -102,7 +102,7 @@ Sites 首次生产发布后，首页与集合页返回 200，但没有任何内�
 
 ### Vercel 阶段（当前）
 
-当前站使用原生 Next.js、GitHub 自动 Production 和稳定域名冒烟；Studio/Obsidian 双发布、内容维护、关系门与 Vercel 恢复均已验收。Iteration 0068 的完整门通过 259 项单元与集成测试、19 项生产测试和 45 个页面生成任务；新建向导严格映射三类模板，安全转义标题、写入上海当天日期，并在 inbox/posts/projects 全命名空间碰撞、模板漂移、重复提交和创建竞态下失败关闭。创建成功但自动打开失败时保留新文件并显示精确路径。真实仓库 doctor 为 13/13 ready、32/32 固定依赖匹配；功能提交的 Quality Gate、Vercel Production 验证与部署状态 3/3 success。项目保持 `maintained`，生产站公开且不依赖 Cloudflare。
+当前站的 Studio/Obsidian 双发布、内容维护、关系门与 Vercel 恢复均已验收。Iteration 0069 用文件名统一 inbox 草稿身份，并以原生 FileManager 提供发布前安全改名；定向回归 111/111，完整门的 277 项单元与集成、45 页构建和远端 3/3 检查均通过。项目保持 `maintained`，生产站公开且不依赖 Cloudflare。
 
 ## 复盘
 
@@ -110,4 +110,4 @@ Sites 首次生产发布后，首页与集合页返回 200，但没有任何内�
 
 ## 下一步
 
-下一轮继续增强只读作者事务证据：记录 phaseEnteredAt 与最近子进程输出时间，让状态快照显示阶段用时和静默时长。时间只作为观察，不推断健康、不自动终止；取消、重试、持久历史、云 API、自定义域名、公开邮箱、评论与统计保持范围外。
+下一轮评估旧式 inbox 草稿的只读身份迁移诊断；证明不了单文件原子修改与恢复时，不增加自动清理。云 API、自定义域名、公开邮箱、评论与统计保持范围外。
