@@ -8,15 +8,16 @@
 | 4. 作者自助写作 | done | `/studio` OAuth + editorial workflow PR、Obsidian Vault/模板/附件/真实 `--push` |
 | 5. Vercel 原生迁移 | production live | 原生 Next.js、无 Cloudflare 依赖、24 路由生产冒烟通过 |
 | 6. 所有者生产上线 | done | Git 自动 Production、稳定域名自动冒烟、双端发布、回滚与恢复均已验收 |
-| 7. 持续内容与作者体验 | in progress | Iteration 0048 完成 Studio 全字段内容契约发布清单、latest-wins、最小披露与真实响应式验证 |
+| 7. 持续内容与作者体验 | in progress | Iteration 0049 完成 Actions Node 24 runtime 升级、workflow 结构契约与公开项目证据同步 |
 
 ## 当前唯一主线
 
-进入持续内容与作者体验阶段。Iteration 0048 已让 Studio 的 Author Proof 通过字段 allowlist 与同源只读端点复用正式 Zod/标签/日期时效/正文公式契约，集中显示 PATH、VISIBILITY、CONTEXT、BODY 和逐字段问题；快速输入使用独立 Abort + generation 保持 latest-wins，128 KiB/同源/最小披露/网络恢复/320px 深色与桌面均已验证。READY 只代表单条字段通过，完整仓库门仍是权威。下一主线是处理 GitHub Actions 已连续出现的 Node 20 action runtime 弃用 warning，在不改变应用 Node 22、workflow 权限/触发器/缓存/命令和 Vercel 交付的前提下升级 checkout/setup-node action major；需要品牌域名时再绑定自定义域名，旧公开站继续只作为迁移历史证据。
+进入持续内容与作者体验阶段。Iteration 0049 已把 Quality、production smoke 与 rollback 的 checkout/setup-node 升到官方 v6 Node 24 action runtime，同时继续用 Node.js 22 执行应用命令；YAML 结构测试锁住只读权限、触发器、并发、npm cache、命令与 manual-only 回滚，真实 push Quality 和 Vercel deployment-status smoke 均成功，公开项目页也同步到当前证据。下一主线是在 Studio 增加全库只读内容维护队列，让作者无需打开 Actions 即可看到 Current 内容的复核优先级；需要品牌域名时再绑定自定义域名，旧公开站继续只作为迁移历史证据。
 
 ## 已知风险
 
 - Studio 依赖 GitHub OAuth App，回调 origin 变更后必须同步修改设置并重新部署；
+- checkout/setup-node v6 已消除 Node 20 runtime warning，但官方 major tag 会移动；本轮保留 tag 指针证据，若以后要求更强供应链固定，应独立评估 immutable SHA 与自动更新策略；
 - Studio 运行时约 5 MB，已固定 3.14.1、同源提供并使用不可变缓存；升级时必须同步修改版本化 URL、SRI、依赖和测试；
 - `decap-cms` 开发依赖树仍包含上游未提供修复的审计项；当前只向已授权作者提供固定浏览器包，后续需单独评估新版或替代编辑器；
 - Decap GitHub backend 的 OAuth scope 对公开仓库仍较宽，账号应启用 2FA 并定期撤销不用的授权；

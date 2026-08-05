@@ -18,7 +18,7 @@ MyBlog 是 Zach424 的个人技术知识库与公开工程日志。它把学习�
 | Obsidian 写作 | done | Vault、模板、桌面发布插件、带目标标题校验的 `--check-only`、`--push` |
 | Inbox 发布就绪 | done | 全草稿 ready/scheduled/blocked、真实媒体候选、目标/共享附件诊断、CLI 与 Obsidian 只读弹窗 |
 | 附件发布 | done | Wiki/Markdown 图片转换、按内容隔离、稳定命名、越界保护、失败回滚 |
-| 自动交付 | done | GitHub `main` → Vercel Production → 稳定域名冒烟 |
+| 自动交付 | done | GitHub `main` → Vercel Production → 稳定域名冒烟；checkout/setup-node v6 Node 24 action runtime，应用 Node 22 与 workflow 语义有结构测试 |
 | 恢复能力 | done | Vercel 显式目标回滚、当前版本恢复、再次冒烟 |
 | 内容知识网络 | done | GFM 行内/引用式/自引用链接、页面与标题锚点构建门、文章与项目双向引用账本 |
 | 公开知识地图 | done | `/knowledge` 服务端 SVG 信号场、HTML 关系账本、孤立记录、主导航与 Sitemap，Markdown 链接为唯一事实源 |
@@ -43,21 +43,21 @@ MyBlog 是 Zach424 的个人技术知识库与公开工程日志。它把学习�
 - 路由：严格 YAML + Zod 永久重定向注册表、Next `redirects()` 308、构建期现行路由与静态文件交叉校验；
 - 知识图：纯函数派生有向节点/边、语义 SVG + HTML 账本、零客户端布局依赖与 320px 明确降级；
 - 托管：Vercel 原生 Next.js，当前链路不依赖 Cloudflare；
-- 质量：ESLint、Node test、TypeScript、Next build、真实生产服务器 HTTP 测试、npm audit、线上冒烟。
+- 质量：ESLint、Node test、TypeScript、Next build、真实生产服务器 HTTP 测试、npm audit、YAML workflow 契约与线上冒烟。
 
 ## 当前运行状态
 
 - 仓库：<https://github.com/Zach424/MyBlog>，生产分支 `main`；
 - 生产站：<https://blog-iota-five-59.vercel.app>；
-- 本轮实现提交：`5e67ef2e6c51c398c679b2aacf2cb320a252ed0b`（Studio 全字段 allowlist、共享内容契约检查、发布证据账本、latest-wins/失败恢复与生产烟测）；
-- 自动交付：实现 Quality Gate `30976979365`、实现 Vercel 验证 `30977018054`、归档 Quality Gate `30977164727` 与归档 Vercel 验证 `30977194265` 均成功；稳定域名 24 条路由、OAuth 302、条目预检/公式/模块/媒体/安全头增强烟测通过；Quality Gate 当前有 checkout/setup-node v4 的 Node 20 action runtime 弃用 warning，下一轮独立升级；
-- 最新完成迭代：0048 Studio 全字段发布就绪预检；
+- 本轮实现提交：`b581724556851239378f6ee64bfa808b69614d5c`（三条 workflow checkout/setup-node v6、结构契约、发布前门禁、架构/运维与公开项目证据同步）；
+- 自动交付：实现 Quality Gate `30978159621`（#81）与 Vercel Production 验证 `30978189378`（#74）均成功；稳定域名本地复测通过 24 条 Sitemap 路由与 OAuth 302；v6 action 使用 Node 24 runtime，仓库命令仍在 Node.js 22 与显式 npm cache 下执行；
+- 最新完成迭代：0049 GitHub Actions Node 24 运行时维护；
 - Obsidian 状态：仓库根目录就是 Vault，`docs/STATUS.md` 与 `docs/iterations/*.md` 可直接阅读和维护；
 - 手动外部接入：自定义域名、统计、评论、公开邮箱均暂缓，不阻塞当前开发。
 
 ## 本轮新增能力
 
-作者在网页 Studio 编辑文章或项目时，Author Proof 现在会把正式内容契约集中成 `ENTRY CONTRACT` 发布清单。浏览器只发送 allowlist 字段；同源端点复用 Zod schema、标签、日期/Current 时效、草稿/精选、封面/alt、专题/状态/技术栈、HTTPS URL、正文和公式规则，并返回 PATH、VISIBILITY、CONTEXT、BODY 证据与逐字段问题。320 ms 防抖、AbortController 与 generation 保证快速输入 latest-wins，断网不删除正文；READY 明确只代表单条字段通过，仓库关系、媒体和完整构建仍在保存后验证。完整发布门为 144/144 单元、42 条构建页面、19/19 生产应用测试与 audit 0；真实深色 320px facts 两列/issues 单列且无根溢出，1280px 恢复四列/双列，console 0 error。公开客户端 JS 仍为 609,752 B。
+自动交付现已把 action 自身运行时与博客应用运行时明确分层：Quality、production smoke 和 rollback 使用 checkout/setup-node v6 的 Node 24 runtime，再显式安装 Node.js 22 并启用 npm lockfile cache。新增 YAML 结构测试锁住 GitHub-hosted runner、`contents: read`、push/PR/cron/manual/deployment-status 触发器、并发、命令顺序、稳定域名优先级和 manual-only rollback；发布前配置检查拒绝 v1–v5 回归。真实 Quality #81 与 Vercel smoke #74 成功，本地完整门为 148/148 单元、42 条构建页面、19/19 生产应用测试与 audit 0。公开项目案例已同步当前能力，公开客户端 JS 仍为 609,752 B。
 
 ## 风险与下一步
 
@@ -71,5 +71,6 @@ MyBlog 是 Zach424 的个人技术知识库与公开工程日志。它把学习�
 8. Studio OAuth origin、GitHub 凭据、Vercel deployment URL 保护和 Hobby 回滚范围仍需按运行手册维护；
 9. 统计、评论和自定义域名需要所有者最终选择，现阶段不主动接入；
 10. `decap-cms` 的开发依赖树仍有上游无修复的高危审计项；它不进入公开服务端生产依赖，但其浏览器编辑器包仅对已授权作者开放，后续应单独评估升级或替代方案。
+11. checkout/setup-node v6 的官方 major tag 会移动；当前策略延续既有 major 更新方式并记录本轮 tag 指针，若以后提高供应链固定强度，应单独设计 immutable SHA 与自动更新流程，而不是在功能轮静默切换。
 
-下一轮唯一主任务：升级 GitHub Actions 中仍使用 Node 20 runtime 的 checkout/setup-node action major，消除现有弃用 warning；保持应用 Node 22、workflow 权限/触发器/缓存/命令和 Vercel 交付语义不变，并验证 Quality、cron、production smoke 与 rollback。
+下一轮唯一主任务：实现 Studio 全库只读内容维护队列，复用 Current/Historical、60/30/0 天与 180 天构建规则，展示状态、review-by、剩余天数和稳定条目入口；保持 public-only、同源、no-store/noindex、不自动改日期、不发送外部提醒，并验证固定日期边界、网络恢复、320px/深色/键盘和生产烟测。
