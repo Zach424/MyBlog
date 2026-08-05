@@ -14,7 +14,7 @@ MyBlog 是 Zach424 的个人技术知识库与公开工程日志。它把学习�
 | 公开阅读 | done | 首页、文章、项目、专题、标签、搜索、关于、响应式、深色模式与详情页封面 |
 | Markdown | done | GFM、代码高亮、语言标签、渐进增强的一键复制、与实际渲染一致的 H1–H6 heading id、H2/H3 目录与原生永久链接、Obsidian 兼容脚注/尾注与行内/块级数学公式、A4 打印/PDF 版式、阅读时间、相邻文章与响应式正文图片 |
 | 内容发现 | done | SEO、内容级 OG/Twitter 封面、JSON-LD、RSS、Sitemap、robots、本地全文搜索 |
-| 网页写作 | done | `/studio`、GitHub OAuth、Decap workflow、PR、按 slug 归档媒体、稳定 slug 锁定、双层 SHA-256 冲突预检、快速重选 latest-wins 与生产规则公式作者预览 |
+| 网页写作 | done | `/studio`、GitHub OAuth、Decap workflow、PR、按 slug 归档媒体、稳定 slug 锁定、双层 SHA-256 冲突预检、快速重选 latest-wins、生产规则公式预览与全字段只读发布清单 |
 | Obsidian 写作 | done | Vault、模板、桌面发布插件、带目标标题校验的 `--check-only`、`--push` |
 | Inbox 发布就绪 | done | 全草稿 ready/scheduled/blocked、真实媒体候选、目标/共享附件诊断、CLI 与 Obsidian 只读弹窗 |
 | 附件发布 | done | Wiki/Markdown 图片转换、按内容隔离、稳定命名、越界保护、失败回滚 |
@@ -37,7 +37,7 @@ MyBlog 是 Zach424 的个人技术知识库与公开工程日志。它把学习�
 - 运行时：Next.js 16.3.0、React 19.2.6、TypeScript 5、Node.js 22+；
 - 内容：仓库内 Markdown、YAML、Zod，GitHub 是唯一事实源；
 - 阅读：react-markdown、remark-gfm、remark-math、rehype-slug、rehype-highlight、rehype-katex 与 KaTeX；服务端 Markdown、中文脚注语义与回链、HTML + MathML 数学公式、MarkdownHeading 永久链接与 PrintSource 可信来源，最小 CodeBlock 客户端岛、Clipboard API 与 aria-live；GFM + math 共享 mdast 继续复现标题、链接、媒体和搜索语义，生产阅读与 Studio 共享 remark/rehype/KaTeX/安全 URL 规则，构建期公式使用 `trust: false`/严格资源上限；A4 `@page` 与 scoped print CSS 只重排既有语义 DOM；
-- 发布：Decap CMS 3.14.1、GitHub OAuth、stable slug 自定义控件、同源媒体清单、内存会话账本、per-input generation 与 SHA-256 冲突确认、官方 preview template、同源只读公式预览端点、Obsidian 自有插件 1.1.0、inbox readiness CLI 与 Node 发布脚本；
+- 发布：Decap CMS 3.14.1、GitHub OAuth、stable slug 自定义控件、同源媒体清单、内存会话账本、per-input generation 与 SHA-256 冲突确认、官方 preview template、同源只读公式/全字段预检端点、内容字段 allowlist、Obsidian 自有插件 1.1.0、inbox readiness CLI 与 Node 发布脚本；
 - 媒体：Sharp 0.35.3、浏览器 magic/帧结构解析、`createImageBitmap` 与 Web Crypto、构建期确定性摘要清单、mdast-util-from-markdown 2.0.3、`next/image`、固有尺寸、WebP 优化、引用所有权与 Git 附件跟踪；
 - 维护：内容新鲜度、根暂存媒体与正文/结构化端点外链的 CLI；确定性库存进入本地发布候选，时间/DNS 敏感的外链 HEAD 只显式运行；
 - 路由：严格 YAML + Zod 永久重定向注册表、Next `redirects()` 308、构建期现行路由与静态文件交叉校验；
@@ -49,19 +49,19 @@ MyBlog 是 Zach424 的个人技术知识库与公开工程日志。它把学习�
 
 - 仓库：<https://github.com/Zach424/MyBlog>，生产分支 `main`；
 - 生产站：<https://blog-iota-five-59.vercel.app>；
-- 本轮实现提交：`138865b1c5a6e4b994b1b04ad30e1e233fa926c9`（共享 Markdown/KaTeX/安全 URL 管线、Studio 作者预览、状态/竞态/错误恢复、版本化内联字体与生产烟测）；
-- 自动交付：实现 Quality Gate `30974890088`、归档 Quality run `30975219196`（job `92207712432`）与 Verify Vercel production `30975244464` 均已成功；稳定域名 24 条路由、OAuth 302、公式 POST/模块/内联字体烟测通过，生产 Chromium 的 Studio/项目页在 1280/320px 均无根溢出或 console error/warning；Quality Gate 当前有一条 checkout/setup-node v4 的 Node 20 action runtime 弃用 warning，留待独立维护轮升级；
-- 最新完成迭代：0047 Studio 数学公式作者预览；
+- 本轮实现提交：`5e67ef2e6c51c398c679b2aacf2cb320a252ed0b`（Studio 全字段 allowlist、共享内容契约检查、发布证据账本、latest-wins/失败恢复与生产烟测）；
+- 自动交付：实现已推送 `main`，GitHub Quality Gate 与 Vercel Production 正在等待本轮归档后的最终验收；上一轮自动交付与稳定域名冒烟均成功；Quality Gate 当前有 checkout/setup-node v4 的 Node 20 action runtime 弃用 warning，下一轮独立升级；
+- 最新完成迭代：0048 Studio 全字段发布就绪预检；
 - Obsidian 状态：仓库根目录就是 Vault，`docs/STATUS.md` 与 `docs/iterations/*.md` 可直接阅读和维护；
 - 手动外部接入：自定义域名、统计、评论、公开邮箱均暂缓，不阻塞当前开发。
 
 ## 本轮新增能力
 
-作者现在也能在网页 Studio 中预览 `$...$` 与 `$$...$$`。普通 Markdown 继续走 Decap 原生预览且零请求；检测到公式后，官方 custom preview template 把当前正文发送到同源只读端点，由生产页面共享的 remark/rehype/KaTeX 与安全 URL 规则渲染。界面用 AUTHOR PROOF 状态条区分检查、验证成功、带正文行号的语法错误和服务不可用；防抖、AbortController 与 generation 阻止旧响应覆盖新草稿，失败始终保留原 Markdown。KaTeX CSS 与 20 个 WOFF2 在构建期内联为版本化作者资产，不依赖 CDN；公开客户端 JS 保持 609,752 B。完整发布门为 137/137 单元、40 条构建路由、18/18 HTTP 与 production audit 0。真实 Chromium 证明桌面根宽 `1280=1280`、移动深色根宽 `320=320`、公式区 `333>288` 且方向键使 `scrollLeft 0→40`；实际 `/studio` 注册两个作者控件且 console 0 error/0 warning。
+作者在网页 Studio 编辑文章或项目时，Author Proof 现在会把正式内容契约集中成 `ENTRY CONTRACT` 发布清单。浏览器只发送 allowlist 字段；同源端点复用 Zod schema、标签、日期/Current 时效、草稿/精选、封面/alt、专题/状态/技术栈、HTTPS URL、正文和公式规则，并返回 PATH、VISIBILITY、CONTEXT、BODY 证据与逐字段问题。320 ms 防抖、AbortController 与 generation 保证快速输入 latest-wins，断网不删除正文；READY 明确只代表单条字段通过，仓库关系、媒体和完整构建仍在保存后验证。完整发布门为 144/144 单元、42 条构建页面、19/19 生产应用测试与 audit 0；真实深色 320px facts 两列/issues 单列且无根溢出，1280px 恢复四列/双列，console 0 error。公开客户端 JS 仍为 609,752 B。
 
 ## 风险与下一步
 
-1. Studio 已完成真实格式/预算、生产/会话摘要、快速重选竞态和数学公式作者预览，但有意不自动缩放或转 WebP；下一直接缺口是跨字段发布问题仍分散在各表单控件和最终构建中。下一轮应提供只读全字段 Author Proof，复用现有内容契约集中显示问题，但不在第一版阻断保存；
+1. Studio 已完成真实格式/预算、生产/会话摘要、快速重选竞态、数学公式作者预览和全字段只读 Author Proof，但有意不自动缩放/转 WebP，也不在第一版阻断保存；跨文章 slug/专题连续性、媒体引用和站内关系仍由完整仓库门验证；
 2. 首次保存后的 slug 已在 Studio 控件层锁定；真正迁移仍只能通过 Git 同步修改内容文件、正文引用、附件目录和 `content/redirects.yml`。注册表不自动推断迁移且有意只支持精确单跳路径；该控件依赖固定 Decap 3.14.1 bundle 的 `entry/newRecord` 契约，升级时必须重审；
 3. inbox readiness 已覆盖全部本地草稿，但有意不进入 Actions：未跟踪草稿和附件天然不在 CI 检出中；当前真实 inbox 为空，正向/阻塞路径由临时 Git/媒体夹具验证，首次实际多草稿使用时仍应按 Modal 逐项复核；
 4. Current record 已有每周分级报告，但提醒只存在于本地输出和 GitHub Actions 摘要/注解，不发送外部消息；这是当前有意的无服务边界；
@@ -72,4 +72,4 @@ MyBlog 是 Zach424 的个人技术知识库与公开工程日志。它把学习�
 9. 统计、评论和自定义域名需要所有者最终选择，现阶段不主动接入；
 10. `decap-cms` 的开发依赖树仍有上游无修复的高危审计项；它不进入公开服务端生产依赖，但其浏览器编辑器包仅对已授权作者开放，后续应单独评估升级或替代方案。
 
-下一轮唯一主任务：实现 Studio 全字段“发布就绪预检”（只读 Author Proof）。对 posts/projects 当前 entry 复用现有内容契约，集中显示跨字段问题；不替代 Decap required fields，不在第一版接入 preSave 阻断，不写仓库、不接外部服务，完整构建仍是最终权威。
+下一轮唯一主任务：升级 GitHub Actions 中仍使用 Node 20 runtime 的 checkout/setup-node action major，消除现有弃用 warning；保持应用 Node 22、workflow 权限/触发器/缓存/命令和 Vercel 交付语义不变，并验证 Quality、cron、production smoke 与 rollback。

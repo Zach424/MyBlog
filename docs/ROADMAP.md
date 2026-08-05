@@ -8,11 +8,11 @@
 | 4. 作者自助写作 | done | `/studio` OAuth + editorial workflow PR、Obsidian Vault/模板/附件/真实 `--push` |
 | 5. Vercel 原生迁移 | production live | 原生 Next.js、无 Cloudflare 依赖、24 路由生产冒烟通过 |
 | 6. 所有者生产上线 | done | Git 自动 Production、稳定域名自动冒烟、双端发布、回滚与恢复均已验收 |
-| 7. 持续内容与作者体验 | in progress | Iteration 0047 完成 Studio 生产规则公式作者预览、可恢复错误、竞态/安全边界与真实响应式验证 |
+| 7. 持续内容与作者体验 | in progress | Iteration 0048 完成 Studio 全字段内容契约发布清单、latest-wins、最小披露与真实响应式验证 |
 
 ## 当前唯一主线
 
-进入持续内容与作者体验阶段。Iteration 0047 已让 Studio 通过官方 custom preview template 与同源只读端点重放生产 remark/rehype/KaTeX 规则：普通正文零请求，公式有检查/验证/行号错误/不可用状态，快速输入使用 Abort + generation 保持 latest-wins，危险 URL、100 KB 上限、320px、深色、键盘与 console 均已验证；字体本地内联且公开页面不增加公式客户端脚本。下一主线是 Studio 全字段只读发布就绪预检，把现有内容契约的跨字段问题集中成 Author Proof，但不在第一版阻断保存；需要品牌域名时再绑定自定义域名，旧公开站继续只作为迁移历史证据。
+进入持续内容与作者体验阶段。Iteration 0048 已让 Studio 的 Author Proof 通过字段 allowlist 与同源只读端点复用正式 Zod/标签/日期时效/正文公式契约，集中显示 PATH、VISIBILITY、CONTEXT、BODY 和逐字段问题；快速输入使用独立 Abort + generation 保持 latest-wins，128 KiB/同源/最小披露/网络恢复/320px 深色与桌面均已验证。READY 只代表单条字段通过，完整仓库门仍是权威。下一主线是处理 GitHub Actions 已连续出现的 Node 20 action runtime 弃用 warning，在不改变应用 Node 22、workflow 权限/触发器/缓存/命令和 Vercel 交付的前提下升级 checkout/setup-node action major；需要品牌域名时再绑定自定义域名，旧公开站继续只作为迁移历史证据。
 
 ## 已知风险
 

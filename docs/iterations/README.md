@@ -52,6 +52,7 @@
 0045-accessible-markdown-footnotes.md
 0046-obsidian-markdown-math.md
 0047-studio-math-preview.md
+0048-studio-entry-preflight.md
 ```
 
 ## 必填结构
