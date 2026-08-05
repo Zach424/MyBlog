@@ -155,6 +155,8 @@ Obsidian 的维护入口服从宿主应用而不是复制网页皮肤。1.3.0 �
 
 1.24.0 在原 ledger 下增加同一视觉语法的 `LINK TRACE / n VERIFIED`。每行按首次出现顺序显示 `POST / PROJECT / SELF`、精确公开路径（含原 fragment）、`L<n>` 源码位置和重复时的 `×n`；路径是 `<code>` 文本，不是可点击导航。trace 复用宿主字体、颜色 token、规则线和移动端单列降级，不新增卡片、色板、阴影、动画或操作按钮。作者看到的是“来源行 → 已验证公开目标”的审计轨迹，而不是第二个链接管理器。
 
+1.25.0 在同一作者意图页、`LINK TRACE` 之前增加 `MEDIA TRACE / n ATTACHMENT(S)`。每项用 transformation tape 表达 `source → REPOSITORY target → PUBLIC URL`，再以输入/输出双列规格显示格式、宽高、帧数与字节；状态只取 `OPTIMIZED / SAVED|ADDED`、`PRESERVED / BYTE-STABLE` 或 `UNPROVEN / MEDIA ENVELOPE UNAVAILABLE`。它继续复用宿主字体、既有 trace 色和垂直规则线，窄屏把输入/输出折为单列；没有新色板、卡片、渐变、阴影、动画、点击、上传、修复或发布动作。作者看到的是发布器已经证明的媒体变换，不是第二个资产管理器。
+
 ## 站点图标
 
 `app/icon.png` 为 `256 × 256` PNG，只保留 Commit Trace 的节点、轨迹环与信号色半环，不包含文字、缩写或第二套标志。图标以社交分享卡为风格参考生成，再确定性缩放并纳入尺寸与体积测试；它用于小尺寸识别，不替代首页的工程轨迹签名。
