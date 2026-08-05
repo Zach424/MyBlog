@@ -50,7 +50,7 @@ MyBlog 是 Zach424 的个人技术知识库与公开工程日志。它把学习�
 - 仓库：<https://github.com/Zach424/MyBlog>，生产分支 `main`；
 - 生产站：<https://blog-iota-five-59.vercel.app>；
 - 本轮实现提交：`138865b1c5a6e4b994b1b04ad30e1e233fa926c9`（共享 Markdown/KaTeX/安全 URL 管线、Studio 作者预览、状态/竞态/错误恢复、版本化内联字体与生产烟测）；
-- 自动交付：实现提交的 Quality Gate `30974890088` 已成功；归档提交、Vercel Verify 和稳定域名公式预览烟测待本轮生产证据补记；Quality Gate 当前有一条 checkout/setup-node v4 的 Node 20 action runtime 弃用 warning，留待独立维护轮升级；
+- 自动交付：实现 Quality Gate `30974890088`、归档 Quality run `30975219196`（job `92207712432`）与 Verify Vercel production `30975244464` 均已成功；稳定域名 24 条路由、OAuth 302、公式 POST/模块/内联字体烟测通过，生产 Chromium 的 Studio/项目页在 1280/320px 均无根溢出或 console error/warning；Quality Gate 当前有一条 checkout/setup-node v4 的 Node 20 action runtime 弃用 warning，留待独立维护轮升级；
 - 最新完成迭代：0047 Studio 数学公式作者预览；
 - Obsidian 状态：仓库根目录就是 Vault，`docs/STATUS.md` 与 `docs/iterations/*.md` 可直接阅读和维护；
 - 手动外部接入：自定义域名、统计、评论、公开邮箱均暂缓，不阻塞当前开发。

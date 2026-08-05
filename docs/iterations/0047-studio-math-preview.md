@@ -77,7 +77,8 @@ KaTeX 原 CSS 引用多个字体文件，不能依赖 `node_modules` 路径在 S
 - 真实 Chromium 320px 深色最终结果：根宽 `320=320`、2 个 MathML、display `scrollWidth=333 > clientWidth=288`、`tabIndex=0`，聚焦后方向键使 `scrollLeft 0→40`；
 - 无效公式视觉：HTTP 422、正文第 5 行错误、`data-math-preview-state=invalid`、0 个 KaTeX 节点、根宽 `900=900`，alert 清晰且原 Markdown 仍存在；
 - 本机没有配置可用于自动化的 Studio 登录会话，因此没有声称真实点击已登录的新建/编辑字段；替代证据是实际 Decap 运行时完成 template 注册、状态机单元覆盖、真实 endpoint/render 浏览器测试。首次作者登录后的字段级验收仍保留为运维观察项，不阻塞本轮公开 renderer 与端点上线；
-- 实现提交 `138865b1c5a6e4b994b1b04ad30e1e233fa926c9` 已推送 `main`；Quality Gate `30974890088` completed/success（1m15s）。该 run 另报告 `actions/checkout@v4` 与 `actions/setup-node@v4` 的 Node 20 action runtime 弃用 warning，不影响本轮测试结论，但应在独立维护轮升级并复验 workflow。归档提交、Vercel Verify 与稳定域名烟测将在本轮生产证据提交中补记。
+- 实现提交 `138865b1c5a6e4b994b1b04ad30e1e233fa926c9` 已推送 `main`，Quality Gate `30974890088` completed/success（1m15s）；归档提交 `7b02787bbea12746d2dda5c3835bb453f91c1eff` 的 Quality job `92207712432` succeeded（1m03s），对应 run `30975219196` 的未登录汇总页一度仍显示缓存中的 in-progress；Verify Vercel production `30975244464` completed/success（36s）。这些 run 均报告 `actions/checkout@v4` 与 `actions/setup-node@v4` 的 Node 20 action runtime 弃用 warning，不影响本轮测试结论，但应在独立维护轮升级并复验 workflow；
+- 稳定域名增强烟测通过 24 条路由与 OAuth 302，并真实 POST 公式、读取模块及内联字体 CSS；生产 Chromium `/studio` 在 1280px 证明 math preview/stable slug 均 registered、根宽 `1280=1280`、console 0 error/0 warning，同源 `$x$` POST 返回 200、1 formula、1 KaTeX、1 MathML 和 production-pipeline；320px 重新加载后根宽 `320=320`、两控件仍 registered、console 0/0。生产项目页已包含归档后的“Studio 全字段只读”文本、2 个 MathML，320px 根宽 `320=320`、console 0/0。
 
 ## 8. 经验与教训
 
