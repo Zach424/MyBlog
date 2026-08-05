@@ -19,6 +19,13 @@ export interface PreparedAttachment {
   sourcePath: string;
   targetPath: string;
   publicUrl: string;
+  usages: PreparedAttachmentUsage[];
+}
+
+export interface PreparedAttachmentUsage {
+  occurrences: number;
+  role: "body" | "cover";
+  sourceLines: number[];
 }
 
 export interface ObsidianLinkTarget {
@@ -123,6 +130,23 @@ function stableAttachmentName(sourcePath: string) {
   return `${normalizedBase || "asset"}-${digest}.${publishedExtension}`;
 }
 
+function sourceLineResolver(markdown: string) {
+  const lineStarts = [0];
+  for (let index = 0; index < markdown.length; index += 1) {
+    if (markdown[index] === "\n") lineStarts.push(index + 1);
+  }
+  return (offset: number) => {
+    let low = 0;
+    let high = lineStarts.length;
+    while (low < high) {
+      const middle = Math.floor((low + high) / 2);
+      if (lineStarts[middle] <= offset) low = middle + 1;
+      else high = middle;
+    }
+    return Math.max(1, low);
+  };
+}
+
 function normalizeAttachmentLinks(
   markdown: string,
   slug: string,
@@ -131,7 +155,12 @@ function normalizeAttachmentLinks(
   const attachments = new Map<string, PreparedAttachment>();
   const targetSources = new Map<string, string>();
 
-  function register(reference: string, allowBareName: boolean) {
+  function register(
+    reference: string,
+    allowBareName: boolean,
+    role: PreparedAttachmentUsage["role"],
+    sourceLine: number,
+  ) {
     let sourcePath: string | undefined;
     try {
       sourcePath = sourceAttachmentPath(reference, allowBareName);
@@ -150,44 +179,73 @@ function normalizeAttachmentLinks(
       onIssue(message);
     }
     if (!existingSource) targetSources.set(targetPath, sourcePath);
-    attachments.set(sourcePath, {
-      sourcePath,
-      targetPath,
-      publicUrl: targetPath.replace(/^public/u, ""),
-    });
-    return attachments.get(sourcePath);
+    let attachment = attachments.get(sourcePath);
+    if (!attachment) {
+      attachment = {
+        sourcePath,
+        targetPath,
+        publicUrl: targetPath.replace(/^public/u, ""),
+        usages: [],
+      };
+      attachments.set(sourcePath, attachment);
+    }
+    const usage = attachment.usages.find((candidate) => candidate.role === role);
+    if (usage) {
+      usage.occurrences += 1;
+      usage.sourceLines.push(sourceLine);
+    } else {
+      attachment.usages.push({ occurrences: 1, role, sourceLines: [sourceLine] });
+    }
+    return attachment;
   }
 
+  const originalSourceLine = sourceLineResolver(markdown);
   const withNormalizedCover = markdown.replace(
     /(^|\r?\n)cover:\s*(["']?)([^"'\r\n]+)\2\s*(?=\r?\n)/u,
-    (match, prefix: string, _quote: string, reference: string) => {
-      const attachment = register(reference, false);
+    (match, prefix: string, _quote: string, reference: string, offset: number) => {
+      const attachment = register(
+        reference,
+        false,
+        "cover",
+        originalSourceLine(offset + prefix.length),
+      );
       return attachment ? `${prefix}cover: "${attachment.publicUrl}"` : match;
     },
   );
 
-  const content = transformMarkdownProse(withNormalizedCover, (segment) => {
-    const withMarkdownEmbeds = segment.replace(
-      /!\[([^\]]*)\]\(([^\s)]+)(?:\s+["'][^"']*["'])?\)/gu,
-      (match, altText: string, reference: string) => {
-        const attachment = register(reference, false);
-        return attachment ? `![${altText}](${attachment.publicUrl})` : match;
-      },
-    );
-
-    return withMarkdownEmbeds.replace(
-      /!\[\[([^|\]]+?)(?:\|([^\]]+))?\]\]/gu,
-      (match, reference: string, display?: string) => {
-        const attachment = register(reference, true);
+  const normalizedSourceLine = sourceLineResolver(withNormalizedCover);
+  const content = transformMarkdownProse(
+    withNormalizedCover,
+    (segment, segmentOffset) => segment.replace(
+      /!\[([^\]]*)\]\(([^\s)]+)(?:\s+["'][^"']*["'])?\)|!\[\[([^|\]]+?)(?:\|([^\]]+))?\]\]/gu,
+      (
+        match,
+        markdownAlt: string | undefined,
+        markdownReference: string | undefined,
+        wikiReference: string | undefined,
+        wikiDisplay: string | undefined,
+        matchOffset: number,
+      ) => {
+        const reference = markdownReference ?? wikiReference;
+        if (!reference) return match;
+        const attachment = register(
+          reference,
+          wikiReference !== undefined,
+          "body",
+          normalizedSourceLine(segmentOffset + matchOffset),
+        );
         if (!attachment) return match;
-        const requestedDisplay = display?.trim();
+        if (markdownReference !== undefined) {
+          return `![${markdownAlt ?? ""}](${attachment.publicUrl})`;
+        }
+        const requestedDisplay = wikiDisplay?.trim();
         const isDimensions = /^\d+(?:x\d+)?$/u.test(requestedDisplay ?? "");
         const fallbackAlt = reference.split("/").at(-1) ?? "image";
         const altText = requestedDisplay && !isDimensions ? requestedDisplay : fallbackAlt;
         return `![${altText}](${attachment.publicUrl})`;
       },
-    );
-  });
+    ),
+  );
 
   return {
     content,

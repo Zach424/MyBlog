@@ -141,6 +141,13 @@ test("prepares an Obsidian article for the existing content contract", () => {
       sourcePath: "public/uploads/obsidian-evidence.png",
       targetPath: "public/uploads/obsidian-publishing/obsidian-evidence.webp",
       publicUrl: "/uploads/obsidian-publishing/obsidian-evidence.webp",
+      usages: [
+        {
+          occurrences: 1,
+          role: "body",
+          sourceLines: [16],
+        },
+      ],
     },
   ]);
   assert.match(
@@ -187,11 +194,25 @@ test("normalizes Obsidian attachment links into public blog URLs", () => {
       sourcePath: "public/uploads/obsidian-evidence.png",
       targetPath: "public/uploads/obsidian-publishing/obsidian-evidence.webp",
       publicUrl: "/uploads/obsidian-publishing/obsidian-evidence.webp",
+      usages: [
+        {
+          occurrences: 1,
+          role: "body",
+          sourceLines: [16],
+        },
+      ],
     },
     {
       sourcePath: "public/uploads/second-image.webp",
       targetPath: "public/uploads/obsidian-publishing/second-image.webp",
       publicUrl: "/uploads/obsidian-publishing/second-image.webp",
+      usages: [
+        {
+          occurrences: 1,
+          role: "body",
+          sourceLines: [18],
+        },
+      ],
     },
   ]);
 });
@@ -217,8 +238,60 @@ test("archives and rewrites an Obsidian cover with the same media transaction", 
       sourcePath: "public/uploads/obsidian-evidence.png",
       targetPath: "public/uploads/obsidian-publishing/obsidian-evidence.webp",
       publicUrl: "/uploads/obsidian-publishing/obsidian-evidence.webp",
+      usages: [
+        {
+          occurrences: 1,
+          role: "cover",
+          sourceLines: [12],
+        },
+      ],
     },
   ]);
+});
+
+test("records exact cover and repeated body media usages in one normalization pass", () => {
+  const withRepeatedMedia = article
+    .replace(
+      "featured: false",
+      'featured: false\ncover: "/uploads/obsidian-evidence.png"\ncoverAlt: "构建结果截图"',
+    )
+    .replace(
+      "正文图片 ![evidence](/uploads/obsidian-evidence.png)。",
+      "正文图片 ![evidence](/uploads/obsidian-evidence.png) 与 ![again](/uploads/obsidian-evidence.png)。\n\n再次 ![[obsidian-evidence.png|运行证据]]。",
+    );
+  const sourceLines = withRepeatedMedia.split(/\r?\n/u);
+  const coverLine = sourceLines.findIndex((line) => line.startsWith("cover:")) + 1;
+  const firstBodyLine = sourceLines.findIndex((line) => line.includes("![evidence]")) + 1;
+  const secondBodyLine = sourceLines.findIndex((line) => line.includes("![[obsidian-evidence")) + 1;
+
+  const result = prepareObsidianNote(
+    "content/inbox/obsidian-publishing.md",
+    withRepeatedMedia,
+  );
+
+  assert.deepEqual(result.attachments, [
+    {
+      sourcePath: "public/uploads/obsidian-evidence.png",
+      targetPath: "public/uploads/obsidian-publishing/obsidian-evidence.webp",
+      publicUrl: "/uploads/obsidian-publishing/obsidian-evidence.webp",
+      usages: [
+        {
+          occurrences: 1,
+          role: "cover",
+          sourceLines: [coverLine],
+        },
+        {
+          occurrences: 3,
+          role: "body",
+          sourceLines: [firstBodyLine, firstBodyLine, secondBodyLine],
+        },
+      ],
+    },
+  ]);
+  assert.equal(
+    result.content.match(/\/uploads\/obsidian-publishing\/obsidian-evidence\.webp/gu)?.length,
+    4,
+  );
 });
 
 test("scopes and stabilizes Obsidian pasted-image filenames", () => {
@@ -253,7 +326,7 @@ test("leaves attachment examples inside fenced code untouched", () => {
 ![example](/uploads/example-only.png)
 \`\`\`
 
-![[real-image.png|真实图片]]`,
+行内示例 \`![[inline-only.png|示例]]\`，真实图片 ![[real-image.png|真实图片]]`,
   );
   const result = prepareObsidianNote(
     "content/inbox/obsidian-publishing.md",
@@ -262,12 +335,23 @@ test("leaves attachment examples inside fenced code untouched", () => {
 
   assert.match(result.content, /!\[\[example-only\.png\|示例\]\]/u);
   assert.match(result.content, /!\[example\]\(\/uploads\/example-only\.png\)/u);
+  assert.match(result.content, /!\[\[inline-only\.png\|示例\]\]/u);
   assert.match(
     result.content,
     /!\[真实图片\]\(\/uploads\/obsidian-publishing\/real-image\.webp\)/u,
   );
   assert.deepEqual(result.attachments.map((attachment) => attachment.sourcePath), [
     "public/uploads/real-image.png",
+  ]);
+  const realImageLine = withCodeExamples
+    .split(/\r?\n/u)
+    .findIndex((line) => line.includes("真实图片 ![[real-image.png")) + 1;
+  assert.deepEqual(result.attachments[0].usages, [
+    {
+      occurrences: 1,
+      role: "body",
+      sourceLines: [realImageLine],
+    },
   ]);
 });
 
@@ -578,7 +662,7 @@ test("ships a desktop Obsidian command without hidden shell interpolation", asyn
     readFile(new URL("../.obsidian/plugins/myblog-publisher/main.js", import.meta.url), "utf8"),
   ]);
   assert.equal(JSON.parse(manifest).isDesktopOnly, true);
-  assert.equal(JSON.parse(manifest).version, "1.25.0");
+  assert.equal(JSON.parse(manifest).version, "1.26.0");
   assert.equal(JSON.parse(manifest).minAppVersion, "1.5.7");
   assert.match(plugin, /FileSystemAdapter/);
   assert.match(plugin, /create-blog-draft/);

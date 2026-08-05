@@ -135,22 +135,27 @@ function internalReferenceFromUrl(
 
 function transformOutsideInlineCode(
   markdown: string,
-  transform: (segment: string) => string,
+  sourceOffset: number,
+  transform: (segment: string, sourceOffset: number) => string,
 ) {
   let output = "";
   let cursor = 0;
 
   while (cursor < markdown.length) {
     const openingIndex = markdown.indexOf("`", cursor);
-    if (openingIndex < 0) return output + transform(markdown.slice(cursor));
+    if (openingIndex < 0) {
+      return output + transform(markdown.slice(cursor), sourceOffset + cursor);
+    }
 
     let markerLength = 1;
     while (markdown[openingIndex + markerLength] === "`") markerLength += 1;
     const marker = "`".repeat(markerLength);
     const closingIndex = markdown.indexOf(marker, openingIndex + markerLength);
-    if (closingIndex < 0) return output + transform(markdown.slice(cursor));
+    if (closingIndex < 0) {
+      return output + transform(markdown.slice(cursor), sourceOffset + cursor);
+    }
 
-    output += transform(markdown.slice(cursor, openingIndex));
+    output += transform(markdown.slice(cursor, openingIndex), sourceOffset + cursor);
     output += markdown.slice(openingIndex, closingIndex + markerLength);
     cursor = closingIndex + markerLength;
   }
@@ -160,10 +165,12 @@ function transformOutsideInlineCode(
 
 export function transformMarkdownProse(
   markdown: string,
-  transform: (segment: string) => string,
+  transform: (segment: string, sourceOffset: number) => string,
 ) {
   let output = "";
   let prose = "";
+  let proseOffset = 0;
+  let sourceOffset = 0;
   let fenceCharacter = "";
   let fenceLength = 0;
 
@@ -172,8 +179,10 @@ export function transformMarkdownProse(
     const fence = /^\s*(`{3,}|~{3,})/u.exec(line);
 
     if (!fenceCharacter && fence) {
-      output += transformOutsideInlineCode(prose, transform) + line;
+      output += transformOutsideInlineCode(prose, proseOffset, transform) + line;
       prose = "";
+      sourceOffset += line.length;
+      proseOffset = sourceOffset;
       fenceCharacter = fence[1][0];
       fenceLength = fence[1].length;
       continue;
@@ -181,6 +190,8 @@ export function transformMarkdownProse(
 
     if (fenceCharacter) {
       output += line;
+      sourceOffset += line.length;
+      proseOffset = sourceOffset;
       const closingFence = /^\s*(`{3,}|~{3,})\s*$/u.exec(line.trimEnd());
       if (
         closingFence &&
@@ -193,10 +204,12 @@ export function transformMarkdownProse(
       continue;
     }
 
+    if (!prose) proseOffset = sourceOffset;
     prose += line;
+    sourceOffset += line.length;
   }
 
-  return output + transformOutsideInlineCode(prose, transform);
+  return output + transformOutsideInlineCode(prose, proseOffset, transform);
 }
 
 export function markdownHeadingAnchor(value: string) {

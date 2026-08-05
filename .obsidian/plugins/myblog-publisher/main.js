@@ -19,9 +19,9 @@ const CONTENT_PUBLISH_DELIVERY_REPORT_VERSION = 1;
 const CONTENT_PUBLISH_DELIVERY_RECEIPT_VERSION = 1;
 const CONTENT_DELIVERY_TRIAGE_REPORT_VERSION = 1;
 const AUTHOR_DOCTOR_REPORT_VERSION = 1;
-const INBOX_READINESS_REPORT_VERSION = 2;
+const INBOX_READINESS_REPORT_VERSION = 3;
 const AUTHOR_DOCTOR_NODE_ENGINE = ">=22.13.0";
-const AUTHOR_DOCTOR_PLUGIN_VERSION = "1.25.0";
+const AUTHOR_DOCTOR_PLUGIN_VERSION = "1.26.0";
 const DRAFT_TITLE_MAX_LENGTH = 120;
 const DRAFT_SLUG_MAX_LENGTH = 80;
 const DRAFT_SLUG_PATTERN = /^[a-z0-9]+(?:-[a-z0-9]+)*$/u;
@@ -406,6 +406,7 @@ function parseInboxReadinessReport(output, expectedSourcePath) {
     }
     const attachmentSources = new Set();
     const attachmentTargets = new Set();
+    const mediaUsageRoleOrder = new Map([["cover", 0], ["body", 1]]);
     const unpreparedAttachmentSources = new Set();
     for (const [attachmentIndex, attachment] of entry.attachments.entries()) {
       const attachmentLabel = `${entryLabel}.attachments[${attachmentIndex}]`;
@@ -413,9 +414,45 @@ function parseInboxReadinessReport(output, expectedSourcePath) {
       const hasPreparation = Object.prototype.hasOwnProperty.call(attachment, "preparation");
       assertExactKeys(
         attachment,
-        ["publicUrl", "sourcePath", "targetPath", ...(hasPreparation ? ["preparation"] : [])],
+        ["publicUrl", "sourcePath", "targetPath", "usages", ...(hasPreparation ? ["preparation"] : [])],
         attachmentLabel,
       );
+      if (!Array.isArray(attachment.usages) || attachment.usages.length === 0) {
+        valueError(`${attachmentLabel}.usages`, "必须包含至少一个 cover 或 body 来源");
+      }
+      let previousRoleOrder = -1;
+      for (const [usageIndex, usage] of attachment.usages.entries()) {
+        const usageLabel = `${attachmentLabel}.usages[${usageIndex}]`;
+        assertPlainObject(usage, usageLabel);
+        assertExactKeys(
+          usage,
+          ["occurrences", "role", "sourceLines"],
+          usageLabel,
+        );
+        const roleOrder = mediaUsageRoleOrder.get(usage.role);
+        if (roleOrder === undefined) {
+          valueError(`${usageLabel}.role`, "必须是 cover 或 body");
+        }
+        if (roleOrder <= previousRoleOrder) {
+          valueError(`${attachmentLabel}.usages`, "角色必须按 cover、body 排列且不能重复");
+        }
+        previousRoleOrder = roleOrder;
+        assertInteger(usage.occurrences, `${usageLabel}.occurrences`, 1);
+        if (usage.role === "cover" && usage.occurrences !== 1) {
+          valueError(`${usageLabel}.occurrences`, "cover 必须精确出现一次");
+        }
+        if (!Array.isArray(usage.sourceLines) || usage.sourceLines.length !== usage.occurrences) {
+          valueError(`${usageLabel}.sourceLines`, "必须逐次记录每个媒体引用的源码行号");
+        }
+        let previousLine = 0;
+        for (const [lineIndex, line] of usage.sourceLines.entries()) {
+          assertInteger(line, `${usageLabel}.sourceLines[${lineIndex}]`, 1);
+          if (line < previousLine) {
+            valueError(`${usageLabel}.sourceLines`, "必须按源码顺序排列");
+          }
+          previousLine = line;
+        }
+      }
       for (const field of ["sourcePath", "targetPath"]) {
         if (
           typeof attachment[field] !== "string" ||
@@ -3029,6 +3066,14 @@ class DraftIntentModal extends Modal {
             ? formatDraftMediaChange(attachment.preparation)
             : "MEDIA ENVELOPE UNAVAILABLE",
         });
+        const usages = item.createDiv({ cls: "myblog-draft-intent__media-usages" });
+        for (const usage of attachment.usages) {
+          const usageRow = usages.createDiv({ cls: "myblog-draft-intent__media-usage" });
+          usageRow.createEl("span", { text: usage.role.toUpperCase() });
+          usageRow.createEl("span", {
+            text: `${usage.sourceLines.map((line) => `L${line}`).join(", ")}${usage.occurrences > 1 ? ` · ×${usage.occurrences}` : ""}`,
+          });
+        }
         const mapping = item.createDiv({ cls: "myblog-draft-intent__media-mapping" });
         mapping.createEl("code", { text: attachment.sourcePath });
         mapping.createEl("strong", { text: "→ REPOSITORY" });

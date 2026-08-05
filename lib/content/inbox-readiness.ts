@@ -28,7 +28,7 @@ const ISO_DATE_PATTERN = /^\d{4}-\d{2}-\d{2}$/u;
 const INBOX_SOURCE_PREFIX = "content/inbox/";
 const SLUG_PATTERN = /^[a-z0-9]+(?:-[a-z0-9]+)*$/u;
 
-export const INBOX_READINESS_REPORT_VERSION = 2 as const;
+export const INBOX_READINESS_REPORT_VERSION = 3 as const;
 
 export const INBOX_READINESS_STATES = ["blocked", "scheduled", "ready"] as const;
 export type InboxReadinessState = (typeof INBOX_READINESS_STATES)[number];
@@ -509,6 +509,11 @@ export function formatInboxReadinessText(report: InboxReadinessReport) {
       lines.push(
         `[inbox]   附件 ${attachment.sourcePath} -> ${attachment.targetPath}${attachment.preparation ? ` · ${formatMediaPreparation(attachment.preparation)}` : " · 未完成媒体派生"}`,
       );
+      for (const usage of attachment.usages) {
+        lines.push(
+          `[inbox]   附件来源 [${usage.role}] ${usage.sourceLines.map((line) => `L${line}`).join(", ")}${usage.occurrences > 1 ? ` · ×${usage.occurrences}` : ""}`,
+        );
+      }
     }
     for (const link of entry.internalLinks) {
       lines.push(

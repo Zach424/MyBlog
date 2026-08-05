@@ -99,6 +99,9 @@ test("reports ready and scheduled drafts with real media derivation", async () =
     const internalLinkLine = readyDraft
       .split(/\r?\n/u)
       .findIndex((line) => line.includes("[[#方法|回看方法]]")) + 1;
+    const imageLine = readyDraft
+      .split(/\r?\n/u)
+      .findIndex((line) => line.includes("![[evidence.png|示例图]]")) + 1;
     const image = await sharp({
       create: {
         width: 1200,
@@ -124,7 +127,7 @@ test("reports ready and scheduled drafts with real media derivation", async () =
     const report = await inspectInboxReadiness(root, "2026-08-05", { stagingParent });
     const byPath = Object.fromEntries(report.entries.map((entry) => [entry.sourcePath, entry]));
 
-    assert.equal(report.version, 2);
+    assert.equal(report.version, 3);
     assert.equal(report.mode, "read-only");
     assert.deepEqual(report.safety, {
       authorFilesChanged: false,
@@ -157,6 +160,13 @@ test("reports ready and scheduled drafts with real media derivation", async () =
     assert.equal(attachment.sourcePath, "public/uploads/evidence.png");
     assert.equal(attachment.targetPath, "public/uploads/ready-note/evidence.webp");
     assert.equal(attachment.publicUrl, "/uploads/ready-note/evidence.webp");
+    assert.deepEqual(attachment.usages, [
+      {
+        occurrences: 1,
+        role: "body",
+        sourceLines: [imageLine],
+      },
+    ]);
     assert.equal(attachment.preparation.optimized, true);
     assert.deepEqual(
       {
@@ -385,6 +395,7 @@ test("formats an actionable text report without treating blocked findings as a s
     const output = formatInboxReadinessText(report);
     assert.match(output, /草稿 1 · ready 0 · scheduled 0 · blocked 1/u);
     assert.match(output, /BLOCKED.*blocked-note\.md/u);
+    assert.match(output, /附件来源 \[body\] L16/u);
     assert.match(output, /\[attachment-missing\]/u);
     assert.match(output, /不会移动、改写、提交或推送/u);
   } finally {
@@ -415,7 +426,7 @@ test("runs the real JSON CLI and leaves the repository byte-for-byte untouched",
     );
     assert.equal(result.status, 0, `${result.stdout}\n${result.stderr}`);
     const report = JSON.parse(result.stdout);
-    assert.equal(report.version, 2);
+    assert.equal(report.version, 3);
     assert.equal(report.mode, "read-only");
     assert.equal(report.counts.ready, 1);
     assert.equal(report.counts.drafts, 1);
