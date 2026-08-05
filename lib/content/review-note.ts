@@ -5,10 +5,14 @@ import {
   parseProjectFile,
   type ContentRecord,
 } from "./contract.ts";
+import {
+  classifyContentReviewWorktree,
+  type ContentReviewWorktreeImpact,
+} from "./review-worktree.ts";
 
 export const PUBLISHED_NOTE_PATTERN =
   /^content\/(posts|projects)\/([a-z0-9]+(?:-[a-z0-9]+)*)\.md$/u;
-export const CONTENT_REVIEW_PROOF_VERSION = 1;
+export const CONTENT_REVIEW_PROOF_VERSION = 2;
 
 type ContentReviewInput = {
   currentContent: string;
@@ -30,7 +34,7 @@ export type ContentReviewInspection = {
 };
 
 export type ContentReviewProof = {
-  version: 1;
+  version: 2;
   mode: "check-only";
   review: {
     kind: ContentRecord["kind"];
@@ -45,10 +49,11 @@ export type ContentReviewProof = {
   };
   git: {
     branch: "main";
-    changedPaths: [string];
+    changedPaths: string[];
     committablePaths: [string];
+    deferredPaths: string[];
     stagedPaths: [];
-    untrackedPaths: [];
+    untrackedPaths: string[];
   };
   qualityGate: {
     command: "npm run check";
@@ -153,7 +158,23 @@ export function inspectContentReview({
 
 export function createContentReviewProof(
   inspection: ContentReviewInspection,
+  impact: ContentReviewWorktreeImpact,
 ): ContentReviewProof {
+  const verifiedImpact = classifyContentReviewWorktree({
+    changedPaths: impact.changedPaths,
+    sourcePath: inspection.sourcePath,
+    stagedPaths: impact.stagedPaths,
+    untrackedPaths: impact.untrackedPaths,
+  });
+  if (
+    !verifiedImpact.targetChanged ||
+    verifiedImpact.blockingPaths.length > 0 ||
+    verifiedImpact.stagedPaths.length > 0 ||
+    verifiedImpact.committablePaths.length !== 1 ||
+    verifiedImpact.committablePaths[0] !== inspection.sourcePath
+  ) {
+    throw new Error("工作区影响尚未满足正式内容单文件复核边界");
+  }
   return {
     version: CONTENT_REVIEW_PROOF_VERSION,
     mode: "check-only",
@@ -170,10 +191,11 @@ export function createContentReviewProof(
     },
     git: {
       branch: "main",
-      changedPaths: [inspection.sourcePath],
+      changedPaths: [...verifiedImpact.changedPaths],
       committablePaths: [inspection.sourcePath],
+      deferredPaths: [...verifiedImpact.deferredPaths],
       stagedPaths: [],
-      untrackedPaths: [],
+      untrackedPaths: [...verifiedImpact.untrackedPaths],
     },
     qualityGate: {
       command: "npm run check",

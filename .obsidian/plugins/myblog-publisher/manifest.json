@@ -1,9 +1,9 @@
 {
   "id": "myblog-publisher",
   "name": "MyBlog Publisher",
-  "version": "1.5.0",
+  "version": "1.6.0",
   "minAppVersion": "1.5.0",
-  "description": "Generate review proofs and safely sync published content, inspect maintenance and inbox readiness, and publish MyBlog notes through the repository quality gate.",
+  "description": "Generate review proofs with isolated draft evidence, safely sync published content, inspect maintenance and inbox readiness, and publish MyBlog notes through the repository quality gate.",
   "author": "Zach424",
   "isDesktopOnly": true
 }

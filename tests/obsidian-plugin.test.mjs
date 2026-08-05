@@ -279,9 +279,16 @@ function maintenanceReport({ records = [maintenanceRecord()], version = 1 } = {}
 }
 
 function contentReviewProof({
+  deferredPaths = [],
   sourcePath = "content/projects/myblog.md",
-  version = 1,
+  untrackedPaths = [],
+  version = 2,
 } = {}) {
+  const untrackedSet = new Set(untrackedPaths);
+  const changedPaths = [
+    sourcePath,
+    ...deferredPaths.filter((path) => !untrackedSet.has(path)),
+  ].sort((left, right) => left.localeCompare(right, "en"));
   return {
     version,
     mode: "check-only",
@@ -298,10 +305,11 @@ function contentReviewProof({
     },
     git: {
       branch: "main",
-      changedPaths: [sourcePath],
+      changedPaths,
       committablePaths: [sourcePath],
+      deferredPaths,
       stagedPaths: [],
-      untrackedPaths: [],
+      untrackedPaths,
     },
     qualityGate: {
       command: "npm run check",
@@ -323,13 +331,14 @@ test("renders a versioned maintenance ledger and opens an exact Vault note", asy
     createPluginHarness(),
   ]);
   const manifest = JSON.parse(manifestSource);
-  assert.equal(manifest.version, "1.5.0");
+  assert.equal(manifest.version, "1.6.0");
   assert.equal(manifest.isDesktopOnly, true);
   assert.match(styles, /^\.myblog-maintenance \{/mu);
   assert.match(styles, /\[data-status="overdue"\]/u);
   assert.match(styles, /font-family: var\(--font-interface\)/u);
   assert.match(styles, /^\.myblog-review-proof \{/mu);
   assert.match(styles, /myblog-review-proof__transition/u);
+  assert.match(styles, /myblog-review-proof__deferred/u);
   assert.doesNotMatch(styles, /(?:linear-gradient|@keyframes|animation:)/u);
 
   const command = findCommand(harness, "inspect-published-maintenance");
@@ -579,9 +588,16 @@ test("checks or syncs only the active formal content note", async () => {
     "--format",
     "json",
   ]);
+  const proof = contentReviewProof({
+    deferredPaths: [
+      "content/inbox/parallel-draft.md",
+      "public/uploads/Pasted image 20260805.png",
+    ],
+    untrackedPaths: ["public/uploads/Pasted image 20260805.png"],
+  });
   harness.spawned[0].child.stdout.emit(
     "data",
-    Buffer.from(JSON.stringify(contentReviewProof())),
+    Buffer.from(JSON.stringify(proof)),
   );
   harness.spawned[0].child.emit("close", 0);
   assert.equal(harness.reconciliations, 0);
@@ -606,6 +622,19 @@ test("checks or syncs only the active formal content note", async () => {
       (element) => element.text === activeFilePath,
     ),
   );
+  assert.match(
+    allElements(harness.modals[0].contentEl)
+      .map((element) => element.text)
+      .join(" "),
+    /DEFERRED \/ NOT IN COMMIT.*2 条.*MODIFIED.*UNTRACKED/su,
+  );
+  for (const deferredPath of proof.git.deferredPaths) {
+    assert.ok(
+      elementsByTag(harness.modals[0], "code").some(
+        (element) => element.text === deferredPath,
+      ),
+    );
+  }
 
   sync.checkCallback(false);
   assert.deepEqual(plain(harness.spawned[1].args), [
@@ -644,6 +673,15 @@ test("falls back to plain review evidence for invalid or mismatched proof JSON",
   const activeFilePath = "content/projects/myblog.md";
   const inconsistentUpdate = contentReviewProof();
   inconsistentUpdate.review.updatedAt = "2026-08-04";
+  const unsafeDeferred = contentReviewProof({
+    deferredPaths: ["scripts/unsafe.mjs"],
+  });
+  const missingDeferred = contentReviewProof({
+    untrackedPaths: ["content/inbox/new-draft.md"],
+  });
+  const modifiedRootMedia = contentReviewProof({
+    deferredPaths: ["public/uploads/tracked.png"],
+  });
   const cases = [
     ["invalid JSON", "not-json"],
     [
@@ -652,8 +690,11 @@ test("falls back to plain review evidence for invalid or mismatched proof JSON",
         contentReviewProof({ sourcePath: "content/projects/other.md" }),
       ),
     ],
-    ["unsupported version", JSON.stringify(contentReviewProof({ version: 2 }))],
+    ["unsupported version", JSON.stringify(contentReviewProof({ version: 3 }))],
     ["inconsistent update evidence", JSON.stringify(inconsistentUpdate)],
+    ["unsafe deferred path", JSON.stringify(unsafeDeferred)],
+    ["untracked path missing from deferred", JSON.stringify(missingDeferred)],
+    ["modified root media", JSON.stringify(modifiedRootMedia)],
   ];
 
   for (const [name, output] of cases) {

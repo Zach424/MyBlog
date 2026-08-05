@@ -8,6 +8,7 @@ import {
   inspectContentReview,
   PUBLISHED_NOTE_PATTERN,
 } from "../lib/content/review-note.ts";
+import { classifyContentReviewWorktree } from "../lib/content/review-worktree.ts";
 
 function fail(message) {
   console.error(`[review] ${message}`);
@@ -52,35 +53,69 @@ function capturedGit(args, options = {}) {
   return runGit(args, { ...options, capture: true });
 }
 
-function assertSingleReviewChange(sourcePath) {
+function inspectReviewWorktree(sourcePath) {
   const branch = capturedGit(["branch", "--show-current"]).stdout.trim();
   if (branch !== "main") {
-    fail(`正式内容复核只能在 main 分支执行；当前分支：${branch || "detached HEAD"}`);
+    throw new Error(
+      `正式内容复核只能在 main 分支执行；当前分支：${branch || "detached HEAD"}`,
+    );
   }
   if (
     capturedGit(["ls-files", "--error-unmatch", "--", sourcePath], {
       allowFailure: true,
     }).status !== 0
   ) {
-    fail(`正式内容必须已被 Git 跟踪：${sourcePath}`);
+    throw new Error(`正式内容必须已被 Git 跟踪：${sourcePath}`);
   }
 
-  const staged = nulPaths(
-    capturedGit(["diff", "--cached", "--name-only", "-z"]).stdout,
+  const stagedPaths = nulPaths(
+    capturedGit([
+      "diff",
+      "--cached",
+      "--name-only",
+      "--ita-visible-in-index",
+      "-z",
+    ]).stdout,
   );
-  if (staged.length > 0) {
-    fail(`暂存区必须为空；发现：${staged.join("、")}`);
-  }
-  const untracked = nulPaths(
+  const untrackedPaths = nulPaths(
     capturedGit(["ls-files", "--others", "--exclude-standard", "-z"]).stdout,
   );
-  if (untracked.length > 0) {
-    fail(`存在未跟踪文件；复核前请先处理：${untracked.join("、")}`);
+  const changedPaths = nulPaths(
+    capturedGit(["diff", "--name-only", "-z"]).stdout,
+  );
+  const impact = classifyContentReviewWorktree({
+    changedPaths,
+    sourcePath,
+    stagedPaths,
+    untrackedPaths,
+  });
+  if (impact.stagedPaths.length > 0) {
+    throw new Error(`暂存区必须为空；发现：${impact.stagedPaths.join("、")}`);
   }
-  const changed = nulPaths(capturedGit(["diff", "--name-only", "-z"]).stdout);
-  if (changed.length !== 1 || changed[0] !== sourcePath) {
-    const evidence = changed.length === 0 ? "没有工作区修改" : changed.join("、");
-    fail(`工作区只能修改当前正式笔记 ${sourcePath}；发现：${evidence}`);
+  if (!impact.targetChanged) {
+    throw new Error(`当前正式笔记必须有未暂存修改：${sourcePath}`);
+  }
+  if (impact.blockingPaths.length > 0) {
+    throw new Error(
+      `工作区包含会影响正式内容复核的阻断路径：${impact.blockingPaths.join("、")}；只允许并行保留稳定 inbox 草稿和未跟踪的根暂存图片`,
+    );
+  }
+  if (
+    impact.committablePaths.length !== 1 ||
+    impact.committablePaths[0] !== sourcePath
+  ) {
+    throw new Error(`工作区无法证明唯一可提交路径：${sourcePath}`);
+  }
+  return impact;
+}
+
+function printDeferredEvidence(impact) {
+  console.log(
+    `[review] 隔离作者工作（不进入本次提交）：${impact.deferredPaths.length}`,
+  );
+  const untracked = new Set(impact.untrackedPaths);
+  for (const path of impact.deferredPaths) {
+    console.log(`[review] - ${untracked.has(path) ? "untracked" : "modified"} · ${path}`);
   }
 }
 
@@ -119,8 +154,9 @@ const absoluteSource = resolve(process.cwd(), sourcePath);
 if (!existsSync(absoluteSource)) fail(`找不到正式内容：${sourcePath}`);
 
 let inspection;
+let impact;
 try {
-  assertSingleReviewChange(sourcePath);
+  impact = inspectReviewWorktree(sourcePath);
   const previousContent = capturedGit(["show", `HEAD:${sourcePath}`]).stdout;
   inspection = inspectContentReview({
     currentContent: readFileSync(absoluteSource, "utf8"),
@@ -156,15 +192,16 @@ try {
   } else {
     runNpm(["run", "check"]);
   }
-  assertSingleReviewChange(sourcePath);
+  impact = inspectReviewWorktree(sourcePath);
 } catch (error) {
   fail(`全量检查失败；文件保持未暂存。${error instanceof Error ? ` ${error.message}` : ""}`);
 }
 
 if (checkOnly) {
   if (format === "json") {
-    console.log(JSON.stringify(createContentReviewProof(inspection), null, 2));
+    console.log(JSON.stringify(createContentReviewProof(inspection, impact), null, 2));
   } else {
+    printDeferredEvidence(impact);
     console.log("[review] 正式内容复核检查通过；未暂存、未提交、未推送。");
   }
   process.exit(0);
@@ -172,9 +209,16 @@ if (checkOnly) {
 
 let committed = false;
 try {
+  printDeferredEvidence(impact);
   runGit(["add", "--", sourcePath]);
   const staged = nulPaths(
-    capturedGit(["diff", "--cached", "--name-only", "-z"]).stdout,
+    capturedGit([
+      "diff",
+      "--cached",
+      "--name-only",
+      "--ita-visible-in-index",
+      "-z",
+    ]).stdout,
   );
   if (staged.length !== 1 || staged[0] !== sourcePath) {
     throw new Error(`暂存结果不唯一：${staged.join("、") || "空"}`);

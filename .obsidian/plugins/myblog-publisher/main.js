@@ -4,7 +4,7 @@ const { spawn } = require("node:child_process");
 
 const MAX_CAPTURED_OUTPUT = 200_000;
 const MAINTENANCE_REPORT_VERSION = 1;
-const CONTENT_REVIEW_PROOF_VERSION = 1;
+const CONTENT_REVIEW_PROOF_VERSION = 2;
 const MAINTENANCE_STATUSES = [
   "healthy",
   "review-soon",
@@ -398,6 +398,7 @@ function parseContentReviewProof(output, expectedSourcePath) {
       "branch",
       "changedPaths",
       "committablePaths",
+      "deferredPaths",
       "stagedPaths",
       "untrackedPaths",
     ],
@@ -406,22 +407,101 @@ function parseContentReviewProof(output, expectedSourcePath) {
   if (proof.git.branch !== "main") {
     valueError("正式内容复核证据 git.branch", "必须是 main");
   }
-  for (const field of ["changedPaths", "committablePaths"]) {
-    if (
-      !Array.isArray(proof.git[field]) ||
-      proof.git[field].length !== 1 ||
-      proof.git[field][0] !== expectedSourcePath
-    ) {
-      valueError(
-        `正式内容复核证据 git.${field}`,
-        `必须只包含 ${expectedSourcePath}`,
-      );
+  for (const field of [
+    "changedPaths",
+    "committablePaths",
+    "deferredPaths",
+    "stagedPaths",
+    "untrackedPaths",
+  ]) {
+    const paths = proof.git[field];
+    if (!Array.isArray(paths)) {
+      valueError(`正式内容复核证据 git.${field}`, "必须是数组");
+    }
+    for (const path of paths) {
+      if (
+        typeof path !== "string" ||
+        path.length === 0 ||
+        path.trim() !== path ||
+        path.startsWith("/") ||
+        path.includes("\\") ||
+        path.includes("//")
+      ) {
+        valueError(`正式内容复核证据 git.${field}`, "包含不安全的仓库路径");
+      }
+    }
+    if (new Set(paths).size !== paths.length) {
+      valueError(`正式内容复核证据 git.${field}`, "不能包含重复路径");
+    }
+    const sorted = [...paths].sort((left, right) =>
+      left.localeCompare(right, "en"),
+    );
+    if (paths.some((path, index) => path !== sorted[index])) {
+      valueError(`正式内容复核证据 git.${field}`, "必须按路径确定性排序");
     }
   }
-  for (const field of ["stagedPaths", "untrackedPaths"]) {
-    if (!Array.isArray(proof.git[field]) || proof.git[field].length !== 0) {
-      valueError(`正式内容复核证据 git.${field}`, "必须是空数组");
-    }
+  if (
+    proof.git.committablePaths.length !== 1 ||
+    proof.git.committablePaths[0] !== expectedSourcePath
+  ) {
+    valueError(
+      "正式内容复核证据 git.committablePaths",
+      `必须只包含 ${expectedSourcePath}`,
+    );
+  }
+  if (proof.git.stagedPaths.length !== 0) {
+    valueError("正式内容复核证据 git.stagedPaths", "必须是空数组");
+  }
+  if (!proof.git.changedPaths.includes(expectedSourcePath)) {
+    valueError(
+      "正式内容复核证据 git.changedPaths",
+      `必须包含 ${expectedSourcePath}`,
+    );
+  }
+  const modifiedDeferred = proof.git.changedPaths.filter(
+    (path) => path !== expectedSourcePath,
+  );
+  if (
+    modifiedDeferred.some(
+      (path) => !/^content\/inbox\/[a-z0-9]+(?:-[a-z0-9]+)*\.md$/u.test(path),
+    )
+  ) {
+    valueError(
+      "正式内容复核证据 git.changedPaths",
+      "除目标外只能包含稳定 inbox 草稿",
+    );
+  }
+  if (
+    proof.git.untrackedPaths.some(
+      (path) =>
+        !/^content\/inbox\/[a-z0-9]+(?:-[a-z0-9]+)*\.md$/u.test(path) &&
+        !/^public\/uploads\/[^/\u0000-\u001f\u007f]+\.(?:avif|gif|jpe?g|png|webp)$/iu.test(
+          path,
+        ),
+    )
+  ) {
+    valueError(
+      "正式内容复核证据 git.untrackedPaths",
+      "只能包含稳定 inbox 草稿或未跟踪的根暂存图片",
+    );
+  }
+  const untrackedSet = new Set(proof.git.untrackedPaths);
+  if (modifiedDeferred.some((path) => untrackedSet.has(path))) {
+    valueError("正式内容复核证据 git", "changed 与 untracked 路径不能重叠");
+  }
+  const expectedDeferred = [...modifiedDeferred, ...proof.git.untrackedPaths].sort(
+    (left, right) => left.localeCompare(right, "en"),
+  );
+  if (
+    proof.git.deferredPaths.length !== expectedDeferred.length ||
+    proof.git.deferredPaths.some(
+      (path, index) => path !== expectedDeferred[index],
+    )
+  ) {
+    valueError(
+      "正式内容复核证据 git.deferredPaths",
+      "必须精确等于已修改 inbox 与安全未跟踪作者工作的并集",
+    );
   }
 
   assertPlainObject(proof.qualityGate, "正式内容复核证据 qualityGate");
@@ -467,6 +547,40 @@ function createProofRow(container, label, value, options = {}) {
   const detail = row.createEl("dd");
   if (options.code) detail.createEl("code", { text: String(value) });
   else detail.setText(String(value));
+  return row;
+}
+
+function createDeferredProofRow(container, git) {
+  const row = container.createEl("div", {
+    cls: "myblog-review-proof__row myblog-review-proof__deferred",
+  });
+  row.setAttr("data-state", "deferred");
+  row.createEl("dt", { text: "隔离作者工作" });
+  const detail = row.createEl("dd");
+  detail.createEl("p", {
+    cls: "myblog-review-proof__deferred-label",
+    text: "DEFERRED / NOT IN COMMIT",
+  });
+  detail.createEl("p", {
+    cls: "myblog-review-proof__deferred-summary",
+    text: git.deferredPaths.length
+      ? `${git.deferredPaths.length} 条 · 保留在本地，不进入本次提交`
+      : "0 条 · 没有并行作者工作",
+  });
+  if (git.deferredPaths.length === 0) return row;
+
+  const untracked = new Set(git.untrackedPaths);
+  const list = detail.createEl("ul", {
+    cls: "myblog-review-proof__path-list",
+  });
+  for (const path of git.deferredPaths) {
+    const item = list.createEl("li");
+    item.createEl("span", {
+      cls: "myblog-review-proof__path-state",
+      text: untracked.has(path) ? "UNTRACKED" : "MODIFIED",
+    });
+    item.createEl("code", { text: path });
+  }
   return row;
 }
 
@@ -595,7 +709,12 @@ class ContentReviewProofModal extends Modal {
     createProofRow(ledger, "质量门", "npm run check · passed", {
       state: "passed",
     });
-    createProofRow(ledger, "分支与工作区", "main · index 0 · untracked 0");
+    createProofRow(
+      ledger,
+      "分支与工作区",
+      `main · index 0 · deferred ${proof.git.deferredPaths.length}`,
+    );
+    createDeferredProofRow(ledger, proof.git);
     createProofRow(
       ledger,
       "唯一可提交路径",

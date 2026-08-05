@@ -16,6 +16,7 @@ import {
   createContentReviewProof,
   inspectContentReview,
 } from "../lib/content/review-note.ts";
+import { classifyContentReviewWorktree } from "../lib/content/review-worktree.ts";
 
 const reviewerScriptPath = fileURLToPath(
   new URL("../scripts/review-note.mjs", import.meta.url),
@@ -82,7 +83,11 @@ function runReviewer(root, ...args) {
   );
 }
 
-async function createReviewFixture(checkExitCode = 0, qualityOutputBytes = 0) {
+async function createReviewFixture(
+  checkExitCode = 0,
+  qualityOutputBytes = 0,
+  qualityMutation = "",
+) {
   const root = await mkdtemp(join(tmpdir(), "myblog-review-"));
   const remote = await mkdtemp(join(tmpdir(), "myblog-review-remote-"));
   const reviewDate = resolveContentBuildDate();
@@ -99,7 +104,11 @@ async function createReviewFixture(checkExitCode = 0, qualityOutputBytes = 0) {
     updatedAt: previousDate,
   });
 
-  await mkdir(join(root, "content", "posts"), { recursive: true });
+  await Promise.all([
+    mkdir(join(root, "content", "inbox"), { recursive: true }),
+    mkdir(join(root, "content", "posts"), { recursive: true }),
+    mkdir(join(root, "public", "uploads"), { recursive: true }),
+  ]);
   await Promise.all([
     writeFile(
       join(root, "package.json"),
@@ -107,9 +116,11 @@ async function createReviewFixture(checkExitCode = 0, qualityOutputBytes = 0) {
     ),
     writeFile(
       join(root, "quality.cjs"),
-      `process.stdout.write("q".repeat(${qualityOutputBytes}));\nprocess.exit(${checkExitCode});\n`,
+      `process.stdout.write("q".repeat(${qualityOutputBytes}));\n${qualityMutation}\nprocess.exit(${checkExitCode});\n`,
     ),
+    writeFile(join(root, "content", "inbox", "parallel-draft.md"), "# Draft\n"),
     writeFile(join(root, ...sourcePath.split("/")), baseContent),
+    writeFile(join(root, "public", "uploads", "tracked.png"), "tracked base\n"),
   ]);
   git(root, "init", "-b", "main");
   git(root, "config", "user.name", "Review Test");
@@ -174,6 +185,69 @@ test("accepts an explicit review-only date advance", () => {
       title: "Review workflow",
       updatedAt: previousDate,
     },
+  );
+});
+
+test("classifies only isolated author drafts as deferred review work", () => {
+  assert.deepEqual(
+    classifyContentReviewWorktree({
+      changedPaths: [sourcePath, "content/inbox/parallel-draft.md"],
+      sourcePath,
+      stagedPaths: [],
+      untrackedPaths: [
+        "public/uploads/Pasted image 20260805.png",
+        "content/inbox/new-draft.md",
+      ],
+    }),
+    {
+      blockingPaths: [],
+      changedPaths: ["content/inbox/parallel-draft.md", sourcePath],
+      committablePaths: [sourcePath],
+      deferredPaths: [
+        "content/inbox/new-draft.md",
+        "content/inbox/parallel-draft.md",
+        "public/uploads/Pasted image 20260805.png",
+      ],
+      stagedPaths: [],
+      targetChanged: true,
+      untrackedPaths: [
+        "content/inbox/new-draft.md",
+        "public/uploads/Pasted image 20260805.png",
+      ],
+    },
+  );
+
+  const blocked = classifyContentReviewWorktree({
+    changedPaths: [
+      sourcePath,
+      "content/projects/other.md",
+      "public/uploads/tracked.png",
+    ],
+    sourcePath,
+    stagedPaths: ["content/inbox/staged-draft.md"],
+    untrackedPaths: [
+      "content/inbox/Bad Draft.md",
+      "public/uploads/reviewed-note/nested.png",
+      "scripts/unknown.mjs",
+    ],
+  });
+  assert.deepEqual(blocked.committablePaths, []);
+  assert.deepEqual(blocked.deferredPaths, []);
+  assert.deepEqual(blocked.blockingPaths, [
+    "content/inbox/Bad Draft.md",
+    "content/projects/other.md",
+    "public/uploads/reviewed-note/nested.png",
+    "public/uploads/tracked.png",
+    "scripts/unknown.mjs",
+  ]);
+  assert.deepEqual(
+    classifyContentReviewWorktree({
+      changedPaths: [sourcePath],
+      sourcePath,
+      stagedPaths: [],
+      untrackedPaths: ["public/uploads/control\nname.png"],
+    }).blockingPaths,
+    ["public/uploads/control\nname.png"],
   );
 });
 
@@ -280,7 +354,7 @@ test("checks one reviewed note without changing Git state", async () => {
     assert.equal(result.status, 0, `${result.stdout}\n${result.stderr}`);
     const proof = JSON.parse(result.stdout);
     assert.deepEqual(proof, {
-      version: 1,
+      version: 2,
       mode: "check-only",
       review: {
         kind: "post",
@@ -297,6 +371,7 @@ test("checks one reviewed note without changing Git state", async () => {
         branch: "main",
         changedPaths: [sourcePath],
         committablePaths: [sourcePath],
+        deferredPaths: [],
         stagedPaths: [],
         untrackedPaths: [],
       },
@@ -305,7 +380,14 @@ test("checks one reviewed note without changing Git state", async () => {
         status: "passed",
       },
     });
-    assert.deepEqual(createContentReviewProof(proof.review), proof);
+    assert.deepEqual(
+      createContentReviewProof(proof.review, {
+        blockingPaths: [],
+        ...proof.git,
+        targetChanged: true,
+      }),
+      proof,
+    );
     assert.doesNotMatch(result.stdout, /> .* check/u);
     assert.ok(result.stdout.length < 5_000, "quality output leaked into JSON stdout");
     assert.equal(git(fixture.root, "rev-parse", "HEAD"), fixture.baseHead);
@@ -322,7 +404,56 @@ test("blocks unrelated worktree files before the quality gate", async () => {
     await writeFile(join(fixture.root, "unrelated.txt"), "unrelated\n");
     const result = runReviewer(fixture.root, "--check-only");
     assert.equal(result.status, 1, `${result.stdout}\n${result.stderr}`);
-    assert.match(`${result.stdout}\n${result.stderr}`, /存在未跟踪文件.*unrelated\.txt/su);
+    assert.match(`${result.stdout}\n${result.stderr}`, /阻断路径.*unrelated\.txt/su);
+    assert.equal(git(fixture.root, "rev-parse", "HEAD"), fixture.baseHead);
+    assert.equal(git(fixture.root, "diff", "--cached", "--name-only"), "");
+  } finally {
+    await removeFixture(fixture);
+  }
+});
+
+test("blocks modified root media and nested archive paths", async () => {
+  const fixture = await createReviewFixture();
+  try {
+    await writeFile(
+      join(fixture.root, "public", "uploads", "tracked.png"),
+      "tracked worktree change\n",
+    );
+    let result = runReviewer(fixture.root, "--check-only");
+    assert.equal(result.status, 1, `${result.stdout}\n${result.stderr}`);
+    assert.match(
+      `${result.stdout}\n${result.stderr}`,
+      /阻断路径.*public\/uploads\/tracked\.png/su,
+    );
+
+    git(fixture.root, "restore", "--", "public/uploads/tracked.png");
+    await mkdir(join(fixture.root, "public", "uploads", "reviewed-note"));
+    await writeFile(
+      join(fixture.root, "public", "uploads", "reviewed-note", "nested.png"),
+      "nested\n",
+    );
+    result = runReviewer(fixture.root, "--check-only");
+    assert.equal(result.status, 1, `${result.stdout}\n${result.stderr}`);
+    assert.match(
+      `${result.stdout}\n${result.stderr}`,
+      /阻断路径.*public\/uploads\/reviewed-note\/nested\.png/su,
+    );
+  } finally {
+    await removeFixture(fixture);
+  }
+});
+
+test("reclassifies worktree impact after the quality gate", async () => {
+  const fixture = await createReviewFixture(
+    0,
+    0,
+    'require("node:fs").writeFileSync("late-unsafe.txt", "late\\n");',
+  );
+  try {
+    const result = runReviewer(fixture.root, "--check-only");
+    assert.equal(result.status, 1, `${result.stdout}\n${result.stderr}`);
+    assert.match(`${result.stdout}\n${result.stderr}`, /全量检查失败/u);
+    assert.match(`${result.stdout}\n${result.stderr}`, /阻断路径.*late-unsafe\.txt/su);
     assert.equal(git(fixture.root, "rev-parse", "HEAD"), fixture.baseHead);
     assert.equal(git(fixture.root, "diff", "--cached", "--name-only"), "");
   } finally {
@@ -347,6 +478,22 @@ test("rejects pre-staged content and non-main branches", async () => {
     assert.equal(staged.status, 1, `${staged.stdout}\n${staged.stderr}`);
     assert.match(`${staged.stdout}\n${staged.stderr}`, /暂存区必须为空/u);
     git(fixture.root, "restore", "--staged", "--", sourcePath);
+
+    const intentPath = "content/inbox/intent-draft.md";
+    await writeFile(join(fixture.root, ...intentPath.split("/")), "# Intent\n");
+    git(fixture.root, "add", "-N", "--", intentPath);
+    const intentToAdd = runReviewer(fixture.root, "--check-only");
+    assert.equal(
+      intentToAdd.status,
+      1,
+      `${intentToAdd.stdout}\n${intentToAdd.stderr}`,
+    );
+    assert.match(
+      `${intentToAdd.stdout}\n${intentToAdd.stderr}`,
+      /暂存区必须为空.*content\/inbox\/intent-draft\.md/su,
+    );
+    git(fixture.root, "reset", "--", intentPath);
+    await rm(join(fixture.root, ...intentPath.split("/")));
 
     git(fixture.root, "switch", "-c", "review-work");
     const branch = runReviewer(fixture.root, "--check-only");
@@ -375,6 +522,20 @@ test("leaves a failed review unstaged and uncommitted", async () => {
 test("commits and pushes exactly the reviewed note", async () => {
   const fixture = await createReviewFixture();
   try {
+    await Promise.all([
+      writeFile(
+        join(fixture.root, "content", "inbox", "parallel-draft.md"),
+        "# Draft changed\n",
+      ),
+      writeFile(
+        join(fixture.root, "content", "inbox", "new-draft.md"),
+        "# New draft\n",
+      ),
+      writeFile(
+        join(fixture.root, "public", "uploads", "Pasted image 20260805.png"),
+        "new image\n",
+      ),
+    ]);
     const result = runReviewer(fixture.root, "--push");
     assert.equal(result.status, 0, `${result.stdout}\n${result.stderr}`);
     assert.match(result.stdout, /已提交并同步正式内容复核/u);
@@ -386,7 +547,23 @@ test("commits and pushes exactly the reviewed note", async () => {
       sourcePath,
     );
     assert.equal(git(fixture.remote, "rev-parse", "refs/heads/main"), head);
-    assert.equal(git(fixture.root, "status", "--porcelain"), "");
+    assert.equal(
+      git(fixture.root, "diff", "--name-only"),
+      "content/inbox/parallel-draft.md",
+    );
+    assert.deepEqual(
+      git(
+        fixture.root,
+        "ls-files",
+        "--others",
+        "--exclude-standard",
+      ).split("\n"),
+      [
+        "content/inbox/new-draft.md",
+        "public/uploads/Pasted image 20260805.png",
+      ],
+    );
+    assert.match(result.stdout, /隔离作者工作（不进入本次提交）：3/u);
     assert.equal(
       await readFile(join(fixture.root, ...sourcePath.split("/")), "utf8"),
       fixture.reviewedContent,
