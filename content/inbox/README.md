@@ -12,9 +12,9 @@
 
 维护已发布 Current 内容时，先从“查看已发布内容复核台账”打开正式笔记，按清单人工核对。无事实变化只把 `reviewedAt` 推进到当天；正文或元数据变化还要把 `updatedAt` 更新到当天。随后运行：
 
-- `MyBlog Publisher: 检查当前正式内容复核`：执行完整仓库门，不暂存、不提交；
+- `MyBlog Publisher: 检查当前正式内容复核`：执行完整仓库门，然后用只读 Author Proof 显示 HEAD/当前日期、事实变化、质量门和唯一提交范围；不暂存、不提交；
 - `MyBlog Publisher: 提交并同步当前正式内容复核`：门禁通过后只提交当前正式 Markdown 并推送 `main`。
 
-该流程要求暂存区为空、没有未跟踪或其他已修改文件，且同一天不能重复声明复核。命令行等价入口为 `npm run content:review -- content/posts|projects/<slug>.md --check-only|--push`。
+该流程要求暂存区为空、没有未跟踪或其他已修改文件，且同一天不能重复声明复核。命令行等价入口为 `npm run content:review -- content/posts|projects/<slug>.md --check-only|--push`；机器可读证据在 check-only 后增加 `--format json`。结构化证据异常时插件会重新执行纯文本检查，不会显示半可信的可提交状态。
 
 此 README 不参与博客构建。详细流程见 `docs/PUBLISHING.md`。
