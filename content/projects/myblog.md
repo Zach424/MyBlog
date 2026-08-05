@@ -18,7 +18,7 @@ demo: "https://blog-iota-five-59.vercel.app"
 
 ## 当前状态（2026-08-06）
 
-MyBlog 当前运行在 Vercel，稳定公开地址是 [blog-iota-five-59.vercel.app](https://blog-iota-five-59.vercel.app)。仓库使用原生 Next.js 16.3、React 19 和 TypeScript；GitHub `main` 自动触发 Production，质量门和独立线上冒烟共同验证交付。网页 Studio 与 Obsidian 都可以由作者独立发布；MyBlog Publisher 1.15.0 会在四个新发布/复核命令启动前运行 13 项本机 author doctor，并用 single-flight lease 保证同一时间只有一个新作者事务跨越前检与领域命令。
+MyBlog 当前运行在 Vercel，稳定公开地址是 [blog-iota-five-59.vercel.app](https://blog-iota-five-59.vercel.app)。仓库使用原生 Next.js 16.3、React 19 和 TypeScript；GitHub `main` 自动触发 Production，质量门和独立线上冒烟共同验证交付。网页 Studio 与 Obsidian 都可以由作者独立发布；MyBlog Publisher 1.16.0 会在四个新发布/复核命令启动前运行 13 项本机 author doctor，用 single-flight lease 保证同一时间只有一个新作者事务，并以只读快照显示阶段、开始时间和已运行时长。
 
 Cloudflare、Sites、Vinext、Vite Worker 和 Wrangler 仅属于 2026-07-18 至 2026-07-19 的首版与迁移历史，不再是当前运行依赖。旧公开站保留为迁移期回退证据，页面顶部的 Live demo 始终指向当前生产站。
 
@@ -102,7 +102,7 @@ Sites 首次生产发布后，首页与集合页返回 200，但没有任何内�
 
 ### Vercel 阶段（当前）
 
-当前站使用原生 Next.js、GitHub 自动 Production 和稳定域名冒烟；Studio/Obsidian 双发布、内容维护、关系门与 Vercel 恢复均已验收。Iteration 0064 的完整门通过 234 项单元与集成测试、19 项生产测试和 45 个页面生成任务；租约覆盖 preflight、领域命令、两级诊断降级、成功/失败/spawn error、卸载与迟到事件，真实仓库 doctor 为 13/13 ready、32/32 固定依赖匹配。项目保持 `maintained`，生产站公开且不依赖 Cloudflare。
+当前站使用原生 Next.js、GitHub 自动 Production 和稳定域名冒烟；Studio/Obsidian 双发布、内容维护、关系门与 Vercel 恢复均已验收。Iteration 0065 的完整门通过 236 项单元与集成测试、19 项生产测试和 45 个页面生成任务；活动作者事务在 `preflight / domain / diagnostic` 三阶段共享同一冻结 operation/sourcePath/startedAt 快照，BUSY 与独立状态命令按调用时钟派生 elapsed，idle 不启动任何子进程。真实仓库 doctor 为 13/13 ready、32/32 固定依赖匹配。项目保持 `maintained`，生产站公开且不依赖 Cloudflare。
 
 ## 复盘
 
@@ -110,4 +110,4 @@ Sites 首次生产发布后，首页与集合页返回 200，但没有任何内�
 
 ## 下一步
 
-下一轮为 Obsidian 增加只读作者事务可观测性：记录当前租约的 `preflight / domain / diagnostic` phase、开始时间与已运行时长，并让 BUSY 提示和一个独立状态命令使用同一快照。它不提供取消按钮，不猜测进度，不阻断报告或恢复；自定义域名、公开邮箱、评论与统计保持可选。
+下一轮继续增强只读作者事务证据：记录 phaseEnteredAt 与最近子进程输出时间，让状态快照显示阶段用时和静默时长。时间只作为观察，不推断健康、不自动终止；取消、重试、持久历史、云 API、自定义域名、公开邮箱、评论与统计保持范围外。

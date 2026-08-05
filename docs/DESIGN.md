@@ -137,6 +137,8 @@ Obsidian 的维护入口服从宿主应用而不是复制网页皮肤。1.3.0 �
 
 1.15.0 把并发状态表达成短暂的系统占用，而不是新的错误页面。第二个新作者事务只收到一条 monospace 开头的 `AUTHOR TRANSACTION / BUSY` Notice，随后列出正在运行的原始操作、冻结 sourcePath 和“完成后再试”；它不打开 Modal、不复制 preflight circuit、不增加 CSS、按钮、进度条或虚构百分比。视觉层继续把 attention 留给可修复环境缺口，把 busy 留给暂时的串行化事实。
 
+1.16.0 把同一条 BUSY Notice 扩展为活动证据快照，并增加“查看当前作者事务”命令。ACTIVE 与 BUSY 都以同样顺序显示操作、来源、阶段、ISO 开始时间和已运行时长；IDLE 只说明当前没有事务。阶段同时使用中文动词与 `PREFLIGHT / DOMAIN / DIAGNOSTIC` monospace 标识，使证据可扫读又不虚构完成率。界面仍只使用 Obsidian 原生 Notice，不新增 Modal、CSS、颜色、图标、动画、按钮或常驻面板；这次设计的克制点是让时间成为证据，而不是进度条。
+
 ## 站点图标
 
 `app/icon.png` 为 `256 × 256` PNG，只保留 Commit Trace 的节点、轨迹环与信号色半环，不包含文字、缩写或第二套标志。图标以社交分享卡为风格参考生成，再确定性缩放并纳入尺寸与体积测试；它用于小尺寸识别，不替代首页的工程轨迹签名。

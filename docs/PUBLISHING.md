@@ -62,11 +62,11 @@ npm run content:delivery:status
 npm run content:delivery:status -- --format json
 ```
 
-MyBlog Publisher 1.15.0 只读取一次当前分支、本地 main、最后观察到的 origin/main 和 ahead/behind，再用同一观察验证复核与新内容发布身份。`DELIVERY SWITCHYARD` 只会命中 `REVIEW`、`PUBLICATION`、`INSPECT` 三条轨道之一；synchronized 则不提供后续命令。exact route 会列出对应的既有 status 和 deliver 命令，但分诊不会自动执行它们，也没有动作按钮。非 main 保留类型证据但锁定 deliver；任何不一致或不可信 JSON 都只降级为纯文本，不 fetch、push、rebase、reset 或改写工作区。
+MyBlog Publisher 1.16.0 只读取一次当前分支、本地 main、最后观察到的 origin/main 和 ahead/behind，再用同一观察验证复核与新内容发布身份。`DELIVERY SWITCHYARD` 只会命中 `REVIEW`、`PUBLICATION`、`INSPECT` 三条轨道之一；synchronized 则不提供后续命令。exact route 会列出对应的既有 status 和 deliver 命令，但分诊不会自动执行它们，也没有动作按钮。非 main 保留类型证据但锁定 deliver；任何不一致或不可信 JSON 都只降级为纯文本，不 fetch、push、rebase、reset 或改写工作区。
 
 ### 在 Obsidian 查看待同步新内容发布
 
-如果 `--push` 已创建 `content: publish <slug>` 但提示 push 失败，不要恢复 inbox、复制草稿或再次运行发布。统一分诊显示 `PUBLICATION / MATCHED` 后，再运行“MyBlog Publisher: 查看待同步新内容发布”，命令行等价为 `npm run content:publish:status`；JSON 证据增加 `-- --format json`。MyBlog Publisher 1.15.0 只读取本地 main、最后观察到的 origin/main 和 HEAD commit，不 fetch、不 push、不写文件。只有 ahead 1 / behind 0、单父级等于 tracking head、subject 与 slug 一致，且 commit 变更精确等于一个新增正式 Markdown、可选同 slug inbox 删除和零到多个同 slug 归档媒体新增，才显示 `PUBLICATION HOLD / ATOMIC BUNDLE`。
+如果 `--push` 已创建 `content: publish <slug>` 但提示 push 失败，不要恢复 inbox、复制草稿或再次运行发布。统一分诊显示 `PUBLICATION / MATCHED` 后，再运行“MyBlog Publisher: 查看待同步新内容发布”，命令行等价为 `npm run content:publish:status`；JSON 证据增加 `-- --format json`。MyBlog Publisher 1.16.0 只读取本地 main、最后观察到的 origin/main 和 HEAD commit，不 fetch、不 push、不写文件。只有 ahead 1 / behind 0、单父级等于 tracking head、subject 与 slug 一致，且 commit 变更精确等于一个新增正式 Markdown、可选同 slug inbox 删除和零到多个同 slug 归档媒体新增，才显示 `PUBLICATION HOLD / ATOMIC BUNDLE`。
 
 结构化 Modal 用 `COMMIT ENVELOPE / N PATHS` 依次列出 `NOTE / ADDED`、`MEDIA nn / ADDED`、`INBOX / DELETED`，并保留 commit/tree/target blob 和 `git push origin <verified-oid>:refs/heads/main`。只读证据确认无误后，单独运行“MyBlog Publisher: 重新同步待交付新内容发布”；命令行等价如下：
 
@@ -89,15 +89,15 @@ npm run content:inbox -- --date 2026-08-05
 
 ### 在 Obsidian 查看已发布内容复核台账
 
-打开命令面板并运行“查看已发布内容复核台账”。MyBlog Publisher 1.15.0 会在仓库根目录隐藏运行 `npm --silent run content:status -- --format json`，验证版本化报告后，用原生 deadline ledger 显示报告日期、Current/Historical/未公开数量、healthy/review-soon/due-soon/overdue 四档计数、源笔记路径、review-by、剩余天数和复核清单。每条记录的“打开笔记”只打开 Vault 中精确存在的 `content/posts|projects/<slug>.md`。该命令不读取网络、不修改 `reviewedAt`、不保存文件、不提交也不推送；它和 Studio 队列、每周 Actions 复用同一维护规则。
+打开命令面板并运行“查看已发布内容复核台账”。MyBlog Publisher 1.16.0 会在仓库根目录隐藏运行 `npm --silent run content:status -- --format json`，验证版本化报告后，用原生 deadline ledger 显示报告日期、Current/Historical/未公开数量、healthy/review-soon/due-soon/overdue 四档计数、源笔记路径、review-by、剩余天数和复核清单。每条记录的“打开笔记”只打开 Vault 中精确存在的 `content/posts|projects/<slug>.md`。该命令不读取网络、不修改 `reviewedAt`、不保存文件、不提交也不推送；它和 Studio 队列、每周 Actions 复用同一维护规则。
 
-检查期间的持续 Notice 会在成功、降级、失败或插件卸载时关闭。维护 CLI 用退出码 1 表达“存在逾期内容”时，插件仍会展示通过 schema 的结构化报告；JSON、schema、安全路径或 UI 渲染不可信时，插件自动再读一次纯文本报告，而不是打开半可信交互。命令无法启动时仍只显示诊断；可在仓库终端运行 `npm run content:status` 取得完整输出。仓库更新了插件版本而 Obsidian 已经打开时，需要重启 Obsidian，或先关闭再启用 MyBlog Publisher，才能加载 1.15.0 代码。
+检查期间的持续 Notice 会在成功、降级、失败或插件卸载时关闭。维护 CLI 用退出码 1 表达“存在逾期内容”时，插件仍会展示通过 schema 的结构化报告；JSON、schema、安全路径或 UI 渲染不可信时，插件自动再读一次纯文本报告，而不是打开半可信交互。命令无法启动时仍只显示诊断；可在仓库终端运行 `npm run content:status` 取得完整输出。仓库更新了插件版本而 Obsidian 已经打开时，需要重启 Obsidian，或先关闭再启用 MyBlog Publisher，才能加载 1.16.0 代码。
 
 ### 在 Obsidian 完成正式内容复核
 
 复核不是自动更新时间戳。先从台账打开正式文章或项目，逐项核对正文中的版本、架构、项目状态、命令和链接：无事实变化时只把 `reviewedAt` 改为上海当天；有正文或元数据变化时，同时把 `updatedAt` 和 `reviewedAt` 改为当天。不要改变 `publishedAt`，Historical、draft 或未来内容不进入该流程。
 
-保存笔记后运行“MyBlog Publisher: 检查当前正式内容复核”。MyBlog Publisher 1.15.0 会先自动运行 author doctor；只有 ready 才要求 `main`、本地 main 与最后观察到的 origin/main synchronized、目标已被 Git 跟踪且暂存区完全为空。工作区除目标外，可以保留稳定的 inbox 草稿和未跟踪根图片。完整 `npm run check` 前后使用同一个 impact classifier 重算，并要求 HEAD、tracking 关系与目标原始字节的 SHA-256 不变。成功 Proof 会显示 `CANDIDATE / GATE-STABLE` 短指纹，把并行工作列为 `DEFERRED / NOT IN COMMIT`，并继续显示日期迁移、事实变化、updatedAt、质量门和唯一可提交路径。已跟踪根媒体、嵌套归档媒体、其他正式内容、代码或未知路径不会 deferred，而会直接阻断。确认后运行“提交并同步当前正式内容复核”，它再次先运行 doctor，再执行同样门禁；只暂存该 Markdown，核对 index 与提交 tree 的 Git-clean blob 后以 `content: review <slug>` 提交并推送 `origin main`，并行草稿保持原状态。
+保存笔记后运行“MyBlog Publisher: 检查当前正式内容复核”。MyBlog Publisher 1.16.0 会先自动运行 author doctor；只有 ready 才要求 `main`、本地 main 与最后观察到的 origin/main synchronized、目标已被 Git 跟踪且暂存区完全为空。工作区除目标外，可以保留稳定的 inbox 草稿和未跟踪根图片。完整 `npm run check` 前后使用同一个 impact classifier 重算，并要求 HEAD、tracking 关系与目标原始字节的 SHA-256 不变。成功 Proof 会显示 `CANDIDATE / GATE-STABLE` 短指纹，把并行工作列为 `DEFERRED / NOT IN COMMIT`，并继续显示日期迁移、事实变化、updatedAt、质量门和唯一可提交路径。已跟踪根媒体、嵌套归档媒体、其他正式内容、代码或未知路径不会 deferred，而会直接阻断。确认后运行“提交并同步当前正式内容复核”，它再次先运行 doctor，再执行同样门禁；只暂存该 Markdown，核对 index 与提交 tree 的 Git-clean blob 后以 `content: review <slug>` 提交并推送 `origin main`，并行草稿保持原状态。
 
 如果最后一步提示 push 失败，不要再次提交复核。先由统一分诊确认 `REVIEW / MATCHED`，再运行“查看待同步正式内容复核”；只有 rail 仍证明同一个精确 pending-review 时，才运行“重新同步待交付正式内容复核”。该命令调用 `content:review:deliver`，以已验证 commit OID 作为 push 源，不接受路径或分支参数。服务器拒绝、远端抢先推进、错误分支和本地状态漂移都会失败并保留提交；成功后弹出的 sealed receipt 必须同时列出相同的 local/tracking OID、commit/tree/blob、精确 refspec 与 HEAD/INDEX/WORKTREE STABLE。回执只证明 Git 交付，Production 仍看 GitHub/Vercel 检查；回执解析失败时不会自动再推一次。
 
@@ -181,9 +181,9 @@ npm run content:author:doctor
 npm run content:author:doctor -- --format json
 ```
 
-MyBlog Publisher 1.15.0 把 13 项固定检查画成 `RUNTIME → GIT → WORKSPACE → VAULT → AUTHOR READY/HOLD` 的只读 preflight circuit。四个新事务——检查/发布当前草稿、检查/提交当前正式内容复核——都会自动先运行同一 JSON doctor：ready 无中间弹窗并进入原命令；attention 显示 `TRANSACTION INTERLOCK / HELD`、被冻结的操作/来源路径与修复证据，且不启动领域命令；不可信 JSON 降级纯文本后失败关闭。
+MyBlog Publisher 1.16.0 把 13 项固定检查画成 `RUNTIME → GIT → WORKSPACE → VAULT → AUTHOR READY/HOLD` 的只读 preflight circuit。四个新事务——检查/发布当前草稿、检查/提交当前正式内容复核——都会自动先运行同一 JSON doctor：ready 无中间弹窗并进入原命令；attention 显示 `TRANSACTION INTERLOCK / HELD`、被冻结的操作/来源路径与修复证据，且不启动领域命令；不可信 JSON 降级纯文本后失败关闭。
 
-四个事务由同一个 single-flight lease 串行化。租约覆盖 doctor、领域命令以及 author/review 纯文本降级；占用期间再次调用只显示 `AUTHOR TRANSACTION / BUSY`、原操作与来源路径，不排队、不启动第二条命令链。成功、失败、spawn error 和插件卸载都结算或作废租约，旧 child 的迟到 close/error 不能影响新 owner。Git identity 仍只显示 name/email 是否配置，不显示值；命令不会安装依赖、改配置、读凭据、访问网络或要求工作区为空。显式 doctor、只读报告、统一分诊、状态检查与两类待交付 deliver 有意绕过租约，确保作者仍可诊断和恢复。
+四个事务由同一个 single-flight lease 串行化。租约覆盖 doctor、领域命令以及 author/review 纯文本降级，并记录 `preflight / domain / diagnostic` phase 与不可重置的 startedAt。运行“查看当前作者事务”会在 ACTIVE/IDLE 两态显示 operation、sourcePath、阶段、UTC ISO 开始时间和当前 elapsed；占用期间再次调用新事务用完全相同的快照显示 `AUTHOR TRANSACTION / BUSY`，不排队、不启动第二条命令链。快照按查询时钟派生且冻结，不持续刷新、不保存历史；状态命令不取消、不重试、不猜百分比。成功、失败、spawn error 和插件卸载都结算或作废租约，旧 child 的迟到 close/error 不能影响新 owner。Git identity 仍只显示 name/email 是否配置，不显示值；命令不会安装依赖、改配置、读凭据、访问网络或要求工作区为空。显式 doctor、只读报告、统一分诊、状态检查与两类待交付 deliver 有意绕过租约，确保作者仍可诊断和恢复。
 
 - slug 是小写 ASCII、数字和连字符，首次发布后不修改；
 - 标题和摘要能独立说明读者所得；

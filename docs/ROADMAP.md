@@ -8,11 +8,11 @@
 | 4. 作者自助写作 | done | `/studio` OAuth + editorial workflow PR、Obsidian Vault/模板/附件/真实 `--push` |
 | 5. Vercel 原生迁移 | production live | 原生 Next.js、无 Cloudflare 依赖、24 路由生产冒烟通过 |
 | 6. 所有者生产上线 | done | Git 自动 Production、稳定域名自动冒烟、双端发布、回滚与恢复均已验收 |
-| 7. 持续内容与作者体验 | in progress | Iteration 0064 完成四个 Obsidian 作者事务的 single-flight lease |
+| 7. 持续内容与作者体验 | in progress | Iteration 0065 完成 Obsidian 作者事务只读活动快照 |
 
 ## 当前唯一主线
 
-进入持续内容与作者体验阶段。Iteration 0064 已把 MyBlog Publisher 升到 1.15.0：检查/发布当前草稿、检查/提交当前正式内容复核四个事务共享一个 single-flight lease，从 doctor spawn 前跨越领域命令和两级纯文本诊断降级；只有 owner child 能结算，旧事件不能清除后来租约。并发调用只显示 `AUTHOR TRANSACTION / BUSY`、当前操作与冻结路径，不排队、不启动第二条重型链路。所有显式 doctor、只读报告、统一分诊、领域状态与两类 deliver 继续绕过租约。下一主线增加 phase/elapsed 的只读事务可观测性；需要品牌域名时再绑定自定义域名，旧公开站继续只作为迁移历史证据。
+进入持续内容与作者体验阶段。Iteration 0065 已把 MyBlog Publisher 升到 1.16.0：single-flight lease 现在记录 `preflight / domain / diagnostic` phase 与 startedAt；“查看当前作者事务”的 ACTIVE/IDLE 和并发调用的 BUSY 都从同一冻结快照显示 operation、sourcePath、阶段、UTC ISO 开始时间与动态 elapsed。查询不启动子进程，不取消、重试、排队或持久化历史；所有显式 doctor、只读报告、统一分诊、领域状态与两类 deliver 继续绕过租约。下一主线增加 phaseEnteredAt/最近输出时间的只读活动脉冲；需要品牌域名时再绑定自定义域名，旧公开站继续只作为迁移历史证据。
 
 ## 已知风险
 
@@ -32,7 +32,7 @@
 - slug 迁移已有构建验证的精确单跳 redirect 注册表，但仍是需要作者审阅的 Git 操作；不支持通配参数或自动推断，迁移必须同步处理内容、附件和引用；
 - Obsidian 已有全 inbox readiness 总览，但该报告有意只代表本地单篇写入事务，不替代正式发布的完整仓库门禁，也不进入看不到未跟踪草稿的 Actions；
 - Current record 已有 Studio 实时只读队列、每周 60/30 天 Actions 提醒和过期门；队列数据只随新 Production 接收内容变更，且仍不发送外部消息；若未来需要邮件/聊天通知，必须由所有者选择渠道后再接入；
-- Obsidian 维护/Author Proof/交付状态与回执 1.15.0 已为四个新发布/复核事务增加 owner-checked single-flight lease，并保留统一分诊及原有六套版本化 JSON、活动 sourcePath、候选 SHA-256、deferred 差集、复核与发布两种待交付关系、精确 OID refspec、各自安全重送和不自动重试的回执；当前 lease 只记录 operation/sourcePath/owning child，长事务的 phase、开始时间和 elapsed 尚不可查询，BUSY Notice 也不能区分 preflight、domain 与 diagnostic。新内容 Commit Envelope 的真实主题组合、超长 object id/path 和大量媒体仍需随使用观察；tracking ref 明确只是最后本地观察，inspect 路由不会猜测修复；
+- Obsidian 维护/Author Proof/交付状态与回执 1.16.0 已为四个新发布/复核事务增加 owner-checked single-flight lease 与 active/idle 快照，并保留统一分诊及原有六套版本化 JSON、活动 sourcePath、候选 SHA-256、deferred 差集、复核与发布两种待交付关系、精确 OID refspec、各自安全重送和不自动重试的回执；当前快照能显示总 elapsed 和 phase，但还没有 phaseEnteredAt、阶段用时或最近 stdout/stderr 活动，长任务只能知道“在哪一阶段”，不能知道“该阶段何时进入、多久没有输出”。这些时间只能作为观察，不能直接触发自动终止。新内容 Commit Envelope 的真实主题组合、超长 object id/path 和大量媒体仍需随使用观察；tracking ref 明确只是最后本地观察，inspect 路由不会猜测修复；
 - 内部链接支持内容页和严格标题锚点，行内/引用式/自引用共享实际渲染 slug 规则，详情页与公开知识地图共享 outgoing/backlinks；明确不支持 Obsidian 块引用，标题改名必须同步深链，当前双列 SVG 为小型内容库优化，内容规模增长后需要过滤/分组；
 - 正文普通 HTTPS 与结构化 repository/demo/canonical 已有统一确定性库存和受控实时报告；实时 DNS/网络结果有意不进 Actions，timeout/限流不能冒充内容错误；
 - 文章与项目已有完整 A4 打印版式，但 PDF 仍由读者通过浏览器打印生成，仓库不把二进制 PDF 当作发布源，也不提供服务端 PDF 缓存；后续版式变化仍需重新做真实 PDF 全页复核；
