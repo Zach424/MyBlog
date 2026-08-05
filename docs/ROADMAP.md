@@ -8,11 +8,11 @@
 | 4. 作者自助写作 | done | `/studio` OAuth + editorial workflow PR、Obsidian Vault/模板/附件/真实 `--push` |
 | 5. Vercel 原生迁移 | production live | 原生 Next.js、无 Cloudflare 依赖、24 路由生产冒烟通过 |
 | 6. 所有者生产上线 | done | Git 自动 Production、稳定域名自动冒烟、双端发布、回滚与恢复均已验收 |
-| 7. 持续内容与作者体验 | in progress | Iteration 0074 完成当前草稿精确媒体变换 trace |
+| 7. 持续内容与作者体验 | in progress | Iteration 0075 完成当前草稿媒体 COVER/BODY 来源 trace |
 
 ## 当前唯一主线
 
-进入持续内容与作者体验阶段。Iteration 0074 已把 MyBlog Publisher 升到 1.25.0：`MEDIA TRACE` 直接消费 version 2 inbox report 已验证的 source/target/public URL 与输入/输出媒体包络，逐项显示 optimized、preserved 或 unproven 变换。插件用路径、格式、尺寸、帧数和字节关系严格失败关闭，不重新读取图片或复制媒体策略；既有 `LINK TRACE` 与公开关系语义不变。下一主线为媒体补充 COVER/BODY、出现次数与源码行；需要品牌域名时再绑定自定义域名，旧公开站继续只作为迁移历史证据。
+进入持续内容与作者体验阶段。Iteration 0075 已把 MyBlog Publisher 升到 1.26.0：`MEDIA TRACE` 直接消费 version 3 inbox report，在每个既有变换轨迹前显示 COVER/BODY、出现次数和全部源码行。证据由现有 cover/正文附件归一化过程产出；插件严格验证角色、顺序、次数与行号，不重新读取图片或复制媒体解析。下一主线为每个媒体使用点补充最终替代文本证据；需要品牌域名时再绑定自定义域名，旧公开站继续只作为迁移历史证据。
 
 ## 已知风险
 
@@ -32,7 +32,7 @@
 - slug 迁移已有构建验证的精确单跳 redirect 注册表，但仍是需要作者审阅的 Git 操作；不支持通配参数或自动推断，迁移必须同步处理内容、附件和引用；
 - Obsidian 已有全 inbox readiness 总览，但该报告有意只代表本地单篇写入事务，不替代正式发布的完整仓库门禁，也不进入看不到未跟踪草稿的 Actions；
 - Current record 已有 Studio 实时只读队列、每周 60/30 天 Actions 提醒和过期门；队列数据只随新 Production 接收内容变更，且仍不发送外部消息；若未来需要邮件/聊天通知，必须由所有者选择渠道后再接入；
-- Obsidian 维护/Author Proof/交付状态与回执 1.25.0 保留四事务 owner-checked single-flight lease、phase/output activity pulse、会话内 terminal receipt、统一分诊及版本化 JSON；当前草稿作者意图使用 source-scoped version 2 inbox JSON，显示精确媒体变换与链接 trace，并仍只为当前附件生成真实候选、轻量解析全草稿和读取已发布链接目标以保留全局正确性。模板驱动向导、文件名唯一身份、FileManager 改名与 `Vault.process` 严格旧字段清理已闭合新旧草稿身份。媒体尚未暴露 COVER/BODY 角色与来源行；带注释、引号、anchor/tag、缩进、重复键或不匹配值的旧 slug 保持只读，真实 Obsidian 主题下的 Modal 版式仍需首次使用观察。新内容 Commit Envelope 的真实主题组合、超长 object id/path 和大量媒体仍需随使用观察；tracking ref 明确只是最后本地观察，inspect 路由不会猜测修复；
+- Obsidian 维护/Author Proof/交付状态与回执 1.26.0 保留四事务 owner-checked single-flight lease、phase/output activity pulse、会话内 terminal receipt、统一分诊及版本化 JSON；当前草稿作者意图使用 source-scoped version 3 inbox JSON，显示媒体 COVER/BODY、出现次数/来源行、精确变换与链接 trace，并仍只为当前附件生成真实候选、轻量解析全草稿和读取已发布链接目标以保留全局正确性。模板驱动向导、文件名唯一身份、FileManager 改名与 `Vault.process` 严格旧字段清理已闭合新旧草稿身份。替代文本尚未逐使用点暴露；源码行依赖现有保持换行的归一化路径，真实 Obsidian 主题下的 Modal 版式仍需首次使用观察。带注释、引号、anchor/tag、缩进、重复键或不匹配值的旧 slug 保持只读；新内容 Commit Envelope 的真实主题组合、超长 object id/path 和大量媒体仍需随使用观察；tracking ref 明确只是最后本地观察，inspect 路由不会猜测修复；
 - 内部链接支持内容页和严格标题锚点，行内/引用式/自引用共享实际渲染 slug 规则，详情页与公开知识地图共享 outgoing/backlinks；明确不支持 Obsidian 块引用，标题改名必须同步深链，当前双列 SVG 为小型内容库优化，内容规模增长后需要过滤/分组；
 - 正文普通 HTTPS 与结构化 repository/demo/canonical 已有统一确定性库存和受控实时报告；实时 DNS/网络结果有意不进 Actions，timeout/限流不能冒充内容错误；
 - 文章与项目已有完整 A4 打印版式，但 PDF 仍由读者通过浏览器打印生成，仓库不把二进制 PDF 当作发布源，也不提供服务端 PDF 缓存；后续版式变化仍需重新做真实 PDF 全页复核；

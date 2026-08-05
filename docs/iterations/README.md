@@ -79,6 +79,7 @@
 0072-source-scoped-draft-media-evidence.md
 0073-exact-draft-link-targets.md
 0074-draft-media-transformation-trace.md
+0075-draft-media-source-usages.md
 ```
 
 ## 必填结构

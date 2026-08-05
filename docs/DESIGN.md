@@ -157,6 +157,8 @@ Obsidian 的维护入口服从宿主应用而不是复制网页皮肤。1.3.0 �
 
 1.25.0 在同一作者意图页、`LINK TRACE` 之前增加 `MEDIA TRACE / n ATTACHMENT(S)`。每项用 transformation tape 表达 `source → REPOSITORY target → PUBLIC URL`，再以输入/输出双列规格显示格式、宽高、帧数与字节；状态只取 `OPTIMIZED / SAVED|ADDED`、`PRESERVED / BYTE-STABLE` 或 `UNPROVEN / MEDIA ENVELOPE UNAVAILABLE`。它继续复用宿主字体、既有 trace 色和垂直规则线，窄屏把输入/输出折为单列；没有新色板、卡片、渐变、阴影、动画、点击、上传、修复或发布动作。作者看到的是发布器已经证明的媒体变换，不是第二个资产管理器。
 
+1.26.0 在每条既有 transformation tape 前插入紧凑的来源账本：`COVER / BODY`、`L<n>` 行号与重复时的 `×n`。同一附件可同时拥有两个用途，顺序固定为封面后正文；窄屏来源账本折为单列。它延续 Evidence Rail 的事实密度、宿主等宽字体和现有边界，不新增卡片、颜色、动作、导航或动画。作者先确认“这张图在草稿哪里、如何使用”，再确认“它将如何变换”。
+
 ## 站点图标
 
 `app/icon.png` 为 `256 × 256` PNG，只保留 Commit Trace 的节点、轨迹环与信号色半环，不包含文字、缩写或第二套标志。图标以社交分享卡为风格参考生成，再确定性缩放并纳入尺寸与体积测试；它用于小尺寸识别，不替代首页的工程轨迹签名。
