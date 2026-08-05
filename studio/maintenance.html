@@ -1,0 +1,80 @@
+<!doctype html>
+<html lang="zh-CN" data-maintenance-state="loading">
+  <head>
+    <meta charset="utf-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1" />
+    <meta name="robots" content="noindex, nofollow" />
+    <link rel="icon" href="/icon.png" />
+    <link rel="stylesheet" href="/studio/maintenance.css" />
+    <title>内容维护队列 · Zach424 Engineering Notes</title>
+    <script type="module" src="/studio/maintenance.mjs"></script>
+  </head>
+  <body>
+    <a class="skip-link" href="#main-content">跳到维护队列</a>
+    <header class="maintenance-header">
+      <nav aria-label="作者工具">
+        <a href="/studio">← 返回发布后台</a>
+        <a href="/">查看公开站</a>
+      </nav>
+      <p class="maintenance-eyebrow">Author review / Deployed evidence</p>
+      <h1>
+        <span>让仍在生效的技术判断，</span>
+        <span>在过期前回到视野。</span>
+      </h1>
+      <p class="maintenance-intro">
+        这里只读取当前部署中已经公开的 Current 内容。队列不会修改复核日期，也不会替代保存后的完整构建门。
+      </p>
+    </header>
+
+    <main id="main-content" class="maintenance-layout" tabindex="-1">
+      <aside class="maintenance-overview" aria-labelledby="overview-title">
+        <div class="maintenance-overview-heading">
+          <p>REVIEW HORIZON</p>
+          <h2 id="overview-title">180 天证据窗口</h2>
+          <span>报告日 <time data-report-date>读取中</time></span>
+        </div>
+
+        <div class="maintenance-horizon" aria-label="内容复核阈值：剩余 60 天进入复核窗口，30 天即将到期，0 天为最后有效日">
+          <div class="horizon-segment horizon-healthy"><span>180</span></div>
+          <div class="horizon-segment horizon-review"><span>60</span></div>
+          <div class="horizon-segment horizon-due"><span>30</span></div>
+          <div class="horizon-marker"><span>0</span></div>
+        </div>
+
+        <dl class="maintenance-counts">
+          <div><dt>健康</dt><dd data-count="healthy">—</dd></div>
+          <div><dt>进入窗口</dt><dd data-count="review-soon">—</dd></div>
+          <div><dt>即将到期</dt><dd data-count="due-soon">—</dd></div>
+          <div><dt>已过期</dt><dd data-count="overdue">—</dd></div>
+        </dl>
+
+        <p class="maintenance-context">
+          Current <strong data-current-count>—</strong> 条 · Historical
+          <strong data-historical-count>—</strong> 条
+        </p>
+      </aside>
+
+      <section class="maintenance-queue" aria-labelledby="queue-title">
+        <div class="maintenance-queue-heading">
+          <p>QUEUE / URGENCY FIRST</p>
+          <h2 id="queue-title">内容维护队列</h2>
+          <div class="maintenance-status" aria-live="polite" role="status">
+            <span data-maintenance-summary>正在读取当前部署的公开内容复核证据…</span>
+            <button type="button" data-maintenance-retry hidden>重新读取</button>
+          </div>
+        </div>
+        <ol class="maintenance-records" data-maintenance-records></ol>
+      </section>
+
+      <section class="maintenance-checklist" aria-labelledby="checklist-title">
+        <p>REVIEW PROTOCOL</p>
+        <h2 id="checklist-title">每次更新 reviewedAt 之前</h2>
+        <ol data-maintenance-checklist></ol>
+      </section>
+    </main>
+
+    <footer class="maintenance-footer">
+      <p>Git 是唯一事实源 · 页面只读 · 完整命令：<code>npm run content:status</code></p>
+    </footer>
+  </body>
+</html>

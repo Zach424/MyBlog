@@ -108,6 +108,36 @@
         border-left-color: #b9431f;
       }
       .stable-slug-lifecycle[data-state="editable"] strong { color: #b9431f; }
+      .studio-maintenance-link {
+        position: fixed;
+        z-index: 2147483646;
+        left: 1rem;
+        bottom: 1rem;
+        display: grid;
+        gap: 0.12rem;
+        padding: 0.65rem 0.8rem 0.65rem 0.65rem;
+        border: 1px solid #486f78;
+        border-left: 3px solid #b9431f;
+        color: #18263d;
+        background: #f2f6f7;
+        text-decoration: none;
+      }
+      .studio-maintenance-link span {
+        color: #566d77;
+        font: 0.58rem/1.2 "Cascadia Code", Consolas, monospace;
+        letter-spacing: 0.08em;
+        text-transform: uppercase;
+      }
+      .studio-maintenance-link strong { font-size: 0.78rem; }
+      .studio-maintenance-link:hover { border-left-color: #2f756f; }
+      .studio-maintenance-link:focus-visible {
+        outline: 3px solid #b9431f;
+        outline-offset: 3px;
+      }
+      @media (max-width: 42rem) {
+        .studio-maintenance-link { padding: 0.55rem 0.7rem 0.55rem 0.6rem; }
+        .studio-maintenance-link span { display: none; }
+      }
       @media (prefers-color-scheme: dark) {
         body { color: #edf4f5; background: #101820; }
         .loading-shell p, .loading-shell span { color: #a8b9be; }
@@ -131,6 +161,13 @@
           border-left-color: #ff7851;
         }
         .stable-slug-lifecycle[data-state="editable"] strong { color: #ff7851; }
+        .studio-maintenance-link {
+          color: #edf4f5;
+          background: #101820;
+          border-color: #5f8f99;
+          border-left-color: #ff7851;
+        }
+        .studio-maintenance-link span { color: #a8b9be; }
       }
     </style>
     <script>window.CMS_MANUAL_INIT = true;</script>
@@ -169,6 +206,10 @@
     </script>
   </head>
   <body>
+    <a class="studio-maintenance-link" href="/studio/maintenance">
+      <span>Content review</span>
+      <strong>复核队列</strong>
+    </a>
     <main class="loading-shell">
       <div>
         <p>Publishing studio / Git-backed</p>

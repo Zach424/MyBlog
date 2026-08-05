@@ -23,7 +23,7 @@ MyBlog 是 Git-first 个人技术博客。公开阅读不依赖数据库；网�
 ```text
 app/
   api/cms/{auth,callback}/route.ts  GitHub OAuth 同源端点
-  studio/                           Studio HTML、配置、媒体清单/预检、slug 控件、公式预览与版本化 CMS 运行时路由
+  studio/                           Studio HTML、内容复核队列、配置、媒体清单/预检、slug 控件、公式预览与版本化 CMS 运行时路由
   posts/ projects/ series/ tags/   集合与详情页
   knowledge/ search/ about/         知识地图、搜索和关于页
   rss.xml/ sitemap.xml/ robots.txt/ 发现端点
@@ -50,6 +50,7 @@ lib/
   markdown-math.ts                  KaTeX 安全选项与构建期公式解析门
   markdown-pipeline.ts              生产阅读与 Studio 共享的 remark/rehype/安全 URL 配置
   studio-math-preview.ts            同源作者预览的公式校验、HTML 输出与无障碍语义
+  studio-maintenance.ts             公开 Current 内容到最小维护队列快照的适配层
   search-index.ts                   服务端 Markdown AST 到搜索纯文本/文档索引
   media-policy.ts                   原图安全包络、WebP 优化与公开媒体预算的共享策略
   studio-media-manifest.ts          已归档媒体路径、字节数与 SHA-256 的确定性清单
@@ -83,6 +84,8 @@ vercel.json                         Vercel Next.js 框架声明
 每条正式内容声明 `freshness` 和 `reviewedAt`。`historical` 是保留当时决策的快照，不随时间失效；`current` 承诺与现行系统一致，公开后最多 180 天必须复核。复核日期不能早于内容更新日期、不能晚于构建日期。详情页服务端渲染 Context 与 Reviewed；结构化数据的 `dateModified` 使用复核日期。
 
 `lib/content/maintenance.ts` 复用构建硬门的 UTC 完整日计算，把公开 Current record 派生为 healthy、review-soon、due-soon、overdue。60 天进入复核窗口，30 天进入紧急队列，第 180 天仍是最后有效日，第 181 天过期。`scripts/report-content-maintenance.mjs` 提供文本/JSON、固定日期演练、GitHub Markdown 摘要和源文件注解；Historical、草稿与未来记录不参与队列。Quality Gate 在 push、PR、手动运行和每周一 01:00 UTC 执行报告，只有 overdue 返回非零，预警不改变原 180 天契约。
+
+`lib/studio-maintenance.ts` 在同一维护报告之上生成版本化的最小作者快照，只保留标题、kind/slug、公开 URL、稳定 Studio 条目 URL、复核日期、最后有效日、剩余天数和状态；正文、源文件路径、草稿、未来记录与 Historical 快照都不会进入响应。`/studio/maintenance.json` 是 Node.js 动态 Route Handler：内容集合仍按本次部署冻结，报告日则按请求时的 `Asia/Shanghai` 日期计算，因此同一个部署会随自然日推进队列而不扩大公开内容。响应使用 `no-store` 与 `noindex`；浏览器只从同源读取并严格核对版本、计数、日期、状态和 URL，异常时失败关闭且保留重试入口。
 
 `lib/content/staging-media.ts` 只扫描 `public/uploads` 根文件，并复用 Obsidian 发布器自己的 Wiki/Markdown/cover 附件解析语义，交叉建立 inbox 草稿引用账本。现存文件分为单草稿引用、多草稿共享和未引用；报告还列出缺失引用与无法审计的草稿。干净且已跟踪的文件以 Git 最后提交日计算年龄，本地修改或未跟踪文件以明确标注的 filesystem mtime 作为观察证据；默认 30 天进入陈旧复核，但任何发现都只产生建议和 Actions warning，不删除文件、不改变构建结果。`scripts/report-staging-media.mjs` 提供文本/JSON、固定日期/阈值与 GitHub 摘要，Quality Gate 每次运行和每周复核都会生成库存。
 
@@ -119,7 +122,7 @@ Obsidian ─────┘                                      │
 
 Studio 在浏览器中用当前 origin 生成 `base_url`。`/api/cms/auth` 创建十分钟有效、HMAC 签名且绑定 origin 的 state；`/api/cms/callback` 交换 GitHub token，并且只向发起授权的同源窗口发送结果。未设置 `GITHUB_OAUTH_ID` 或 `GITHUB_OAUTH_SECRET` 时返回 503，发布入口安全关闭。
 
-Studio HTML、配置、预览样式、媒体预检、稳定 slug 控件和公式 preview template 保留在仓库根 `studio`；完整 `decap-cms@3.14.1` 浏览器包作为构建期依赖。上述资源、构建期媒体清单、版本化内联 WOFF2 的 KaTeX CSS 与动态公式预览均由显式 Route Handler 同源返回。未知子资源返回真实 404。资源不进入 `public`，以便统一应用专用 CSP、`X-Robots-Tag` 与 OAuth 弹窗策略。
+Studio HTML、内容复核页面、配置、预览样式、媒体预检、稳定 slug 控件和公式 preview template 保留在仓库根 `studio`；完整 `decap-cms@3.14.1` 浏览器包作为构建期依赖。上述资源、构建期媒体清单、版本化内联 WOFF2 的 KaTeX CSS、动态公式预览与维护快照均由显式 Route Handler 同源返回。未知子资源返回真实 404。资源不进入 `public`，以便统一应用专用 CSP、`X-Robots-Tag` 与 OAuth 弹窗策略。维护页是独立、语义化的作者视图，Studio shell 左下角固定链接位于 Decap 的 `#nc-root` 之外，不依赖其未公开的侧栏 DOM。
 
 公式 preview template 对 posts/projects 幂等注册。正文无 `$` 时继续用 Decap 原生 widget 且零请求；潜在公式经过 240 ms 防抖后 POST 当前正文。timer、AbortController 与单调 generation 共同保证 latest-wins；无效公式、网络失败和组件卸载都保留原 Markdown。有效响应才插入服务器生成的 HTML + MathML。KaTeX CSS 在构建时读取固定 package 文件，只保留并内联 20 个 WOFF2，版本化 CSS immutable 缓存且只由 noindex 作者 iframe 加载。
 

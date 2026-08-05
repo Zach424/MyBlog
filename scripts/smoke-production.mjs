@@ -110,7 +110,11 @@ export async function runProductionSmoke(originInput, { expectOAuth = false } = 
   invariant(studioPolicy.includes("https://api.github.com"), "Studio CSP 缺少 GitHub API");
   invariant(studioPolicy.includes("frame-ancestors 'none'"), "Studio CSP 未禁止嵌入");
 
-  const [studioConfig, studioManifest, studioPreflight, stableSlugWidget, entryPreflightModule, mathPreviewModule, studioPreview, katexStyles, studioRuntime, unknownStudioAsset] = await Promise.all([
+  const [studioMaintenancePage, studioMaintenanceModule, studioMaintenanceStyles, studioMaintenanceResponse, studioConfig, studioManifest, studioPreflight, stableSlugWidget, entryPreflightModule, mathPreviewModule, studioPreview, katexStyles, studioRuntime, unknownStudioAsset] = await Promise.all([
+    request(origin, "/studio/maintenance"),
+    request(origin, "/studio/maintenance.mjs", { accept: "text/javascript" }),
+    request(origin, "/studio/maintenance.css", { accept: "text/css" }),
+    request(origin, "/studio/maintenance.json", { accept: "application/json" }),
     request(origin, "/studio/config.mjs", { accept: "text/javascript" }),
     request(origin, "/studio/media-manifest.json", { accept: "application/json" }),
     request(origin, "/studio/media-preflight.mjs", { accept: "text/javascript" }),
@@ -122,6 +126,46 @@ export async function runProductionSmoke(originInput, { expectOAuth = false } = 
     request(origin, "/studio/editor-runtime-3.14.1.js", { accept: "text/javascript" }),
     request(origin, "/studio/definitely-missing", { redirect: "manual" }),
   ]);
+  invariant(
+    studioMaintenancePage.response.status === 200 &&
+      studioMaintenancePage.body.includes("REVIEW HORIZON") &&
+      studioMaintenancePage.body.includes("/studio/maintenance.mjs"),
+    "Studio 内容维护页不可用",
+  );
+  invariant(
+    studioMaintenanceModule.response.status === 200 &&
+      studioMaintenanceModule.body.includes("requestStudioMaintenance") &&
+      studioMaintenanceModule.body.includes("/studio/maintenance.json"),
+    "Studio 内容维护模块不可用",
+  );
+  invariant(
+    studioMaintenanceStyles.response.status === 200 &&
+      studioMaintenanceStyles.body.includes("grid-template-columns: minmax(0, 14rem)") &&
+      studioMaintenanceStyles.body.includes("prefers-color-scheme: dark"),
+    "Studio 内容维护样式不可用",
+  );
+  let maintenanceSnapshot;
+  try {
+    maintenanceSnapshot = JSON.parse(studioMaintenanceResponse.body);
+  } catch {
+    throw new Error("Studio 内容维护队列不是有效 JSON");
+  }
+  invariant(
+    studioMaintenanceResponse.response.status === 200 &&
+      studioMaintenanceResponse.response.headers.get("cache-control") === "no-store" &&
+      studioMaintenanceResponse.response.headers.get("x-robots-tag") === "noindex, nofollow" &&
+      maintenanceSnapshot.version === 1 &&
+      /^\d{4}-\d{2}-\d{2}$/u.test(maintenanceSnapshot.reportDate) &&
+      maintenanceSnapshot.currentCount === maintenanceSnapshot.records.length &&
+      maintenanceSnapshot.records.every((record) =>
+        ["healthy", "review-soon", "due-soon", "overdue"].includes(record.status) &&
+        record.editUrl.startsWith("/studio/#/collections/") &&
+        record.publicUrl.startsWith("/") &&
+        !("body" in record) &&
+        !("sourcePath" in record)
+      ),
+    "Studio 内容维护数据不可用",
+  );
   invariant(
     studioConfig.response.status === 200 && studioConfig.body.includes('repo: "Zach424/MyBlog"'),
     "Studio 配置模块不可用",
@@ -212,7 +256,7 @@ export async function runProductionSmoke(originInput, { expectOAuth = false } = 
       "public, max-age=31536000, immutable",
     "固定版本 Studio KaTeX 样式缓存不正确",
   );
-  for (const asset of [studioConfig, studioManifest, studioPreflight, stableSlugWidget, entryPreflightModule, mathPreviewModule, studioPreview]) {
+  for (const asset of [studioMaintenancePage, studioMaintenanceModule, studioMaintenanceStyles, studioMaintenanceResponse, studioConfig, studioManifest, studioPreflight, stableSlugWidget, entryPreflightModule, mathPreviewModule, studioPreview]) {
     invariant(asset.response.headers.get("cache-control") === "no-store", "Studio 子资源必须 no-store");
   }
   invariant(

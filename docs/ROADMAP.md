@@ -8,11 +8,11 @@
 | 4. 作者自助写作 | done | `/studio` OAuth + editorial workflow PR、Obsidian Vault/模板/附件/真实 `--push` |
 | 5. Vercel 原生迁移 | production live | 原生 Next.js、无 Cloudflare 依赖、24 路由生产冒烟通过 |
 | 6. 所有者生产上线 | done | Git 自动 Production、稳定域名自动冒烟、双端发布、回滚与恢复均已验收 |
-| 7. 持续内容与作者体验 | in progress | Iteration 0049 完成 Actions Node 24 runtime 升级、workflow 结构契约与公开项目证据同步 |
+| 7. 持续内容与作者体验 | in progress | Iteration 0050 完成 Studio 全库只读内容复核队列、动态报告日与真实响应式验收 |
 
 ## 当前唯一主线
 
-进入持续内容与作者体验阶段。Iteration 0049 已把 Quality、production smoke 与 rollback 的 checkout/setup-node 升到官方 v6 Node 24 action runtime，同时继续用 Node.js 22 执行应用命令；YAML 结构测试锁住只读权限、触发器、并发、npm cache、命令与 manual-only 回滚，真实 push Quality 和 Vercel deployment-status smoke 均成功，公开项目页也同步到当前证据。下一主线是在 Studio 增加全库只读内容维护队列，让作者无需打开 Actions 即可看到 Current 内容的复核优先级；需要品牌域名时再绑定自定义域名，旧公开站继续只作为迁移历史证据。
+进入持续内容与作者体验阶段。Iteration 0050 已让 Studio 独立显示全库只读内容维护队列：服务端复用 Current/Historical 与 180 天规则，公开内容集合随部署冻结而报告日按 `Asia/Shanghai` 请求日推进；浏览器只接收最小元数据，并以 Review Horizon、分级账本、稳定编辑/公开链接和可恢复失败态呈现。1280px 深色、320px 单栏、键盘焦点、Studio 固定入口与生产 HTTP 均已本地验收。下一主线把同一维护报告接入现有 Obsidian 插件的只读 Modal，让两个作者入口都能直接看到已发布内容复核优先级；需要品牌域名时再绑定自定义域名，旧公开站继续只作为迁移历史证据。
 
 ## 已知风险
 
@@ -31,7 +31,7 @@
 - root `public/uploads` 已有确定性库存和 warning，但有意不自动删除；未跟踪附件只存在于作者工作区，GitHub Actions 无法看到，仍需本地运行报告后人工确认；
 - slug 迁移已有构建验证的精确单跳 redirect 注册表，但仍是需要作者审阅的 Git 操作；不支持通配参数或自动推断，迁移必须同步处理内容、附件和引用；
 - Obsidian 已有全 inbox readiness 总览，但该报告有意只代表本地单篇写入事务，不替代正式发布的完整仓库门禁，也不进入看不到未跟踪草稿的 Actions；
-- Current record 已有每周 60/30 天 Actions 提醒和过期门；若未来需要邮件/聊天通知，必须由所有者选择渠道后再接入；
+- Current record 已有 Studio 实时只读队列、每周 60/30 天 Actions 提醒和过期门；队列数据只随新 Production 接收内容变更，且仍不发送外部消息；若未来需要邮件/聊天通知，必须由所有者选择渠道后再接入；
 - 内部链接支持内容页和严格标题锚点，行内/引用式/自引用共享实际渲染 slug 规则，详情页与公开知识地图共享 outgoing/backlinks；明确不支持 Obsidian 块引用，标题改名必须同步深链，当前双列 SVG 为小型内容库优化，内容规模增长后需要过滤/分组；
 - 正文普通 HTTPS 与结构化 repository/demo/canonical 已有统一确定性库存和受控实时报告；实时 DNS/网络结果有意不进 Actions，timeout/限流不能冒充内容错误；
 - 文章与项目已有完整 A4 打印版式，但 PDF 仍由读者通过浏览器打印生成，仓库不把二进制 PDF 当作发布源，也不提供服务端 PDF 缓存；后续版式变化仍需重新做真实 PDF 全页复核；

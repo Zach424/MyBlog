@@ -18,6 +18,17 @@
 
 不要在正文、字段或截图中保存 OAuth token。若后台显示未配置，检查 Vercel Production 的 `GITHUB_OAUTH_ID` 与 `GITHUB_OAUTH_SECRET`，不要把值复制到聊天。
 
+### 在 Studio 查看内容复核队列
+
+打开 `/studio/maintenance`，或点击 Studio 左下角的 `Content review / 复核队列`。页面只列出这个部署已经公开的 Current 内容：
+
+- `HEALTHY`：距离最后有效日超过 60 天；
+- `REVIEW SOON`：剩余 60 天以内，应该安排复核；
+- `DUE SOON`：剩余 30 天以内，应该优先处理；
+- `OVERDUE`：已经越过最后有效日，正式构建也会失败。
+
+每条记录的 `Edit entry` 回到该 slug 的 Studio 条目，`Open evidence` 打开当前公开页面。复核页不会修改 `reviewedAt`、创建提交或发送提醒；编辑并发布后，要等新提交进入 Production，队列才会反映新内容。若队列暂时无法读取，使用页面内 `Retry`，或运行下方的 `npm run content:status` 取得同一规则的本地证据。
+
 ## 方式二：Obsidian
 
 1. 在 Obsidian 选择“打开文件夹作为仓库”，打开项目根目录；

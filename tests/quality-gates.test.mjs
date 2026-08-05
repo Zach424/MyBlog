@@ -149,10 +149,14 @@ test("applies the production security and cache baseline", async () => {
   );
 });
 
-test("serves Studio and its media inventory through explicit Next.js routes", async () => {
+test("serves Studio, its maintenance queue, and media inventory through explicit Next.js routes", async () => {
   await assert.rejects(access(new URL("../public/studio", import.meta.url)));
-  const [studio, config, manifest, preflight, stableSlugWidget, entryPreflightModule, mathPreviewModule, preview, katexStyles, runtime, unknown] = await Promise.all([
+  const [studio, maintenancePage, maintenanceModule, maintenanceStyles, maintenanceResponse, config, manifest, preflight, stableSlugWidget, entryPreflightModule, mathPreviewModule, preview, katexStyles, runtime, unknown] = await Promise.all([
     request("/studio"),
+    request("/studio/maintenance"),
+    request("/studio/maintenance.mjs"),
+    request("/studio/maintenance.css"),
+    request("/studio/maintenance.json"),
     request("/studio/config.mjs"),
     request("/studio/media-manifest.json"),
     request("/studio/media-preflight.mjs"),
@@ -166,6 +170,27 @@ test("serves Studio and its media inventory through explicit Next.js routes", as
   ]);
   assert.equal(studio.status, 200);
   assert.match(await studio.text(), /Publishing studio \/ Git-backed/);
+  assert.equal(maintenancePage.status, 200);
+  assert.match(await maintenancePage.text(), /REVIEW HORIZON/u);
+  assert.equal(maintenancePage.headers.get("cache-control"), "no-store");
+  assert.match(await maintenanceModule.text(), /requestStudioMaintenance/u);
+  assert.equal(maintenanceModule.headers.get("cache-control"), "no-store");
+  assert.match(await maintenanceStyles.text(), /grid-template-columns:\s*minmax\(0,\s*14rem\)/u);
+  assert.equal(maintenanceStyles.headers.get("cache-control"), "no-store");
+  assert.equal(maintenanceResponse.status, 200);
+  assert.equal(maintenanceResponse.headers.get("cache-control"), "no-store");
+  assert.equal(maintenanceResponse.headers.get("x-robots-tag"), "noindex, nofollow");
+  const maintenance = await maintenanceResponse.json();
+  assert.equal(maintenance.version, 1);
+  assert.match(maintenance.reportDate, /^\d{4}-\d{2}-\d{2}$/u);
+  assert.equal(maintenance.currentCount, 1);
+  assert.equal(maintenance.historicalCount, 3);
+  assert.deepEqual(maintenance.records.map((record) => record.slug), ["myblog"]);
+  assert.equal(maintenance.records[0].editUrl, "/studio/#/collections/projects/entries/myblog");
+  assert.equal(maintenance.records[0].publicUrl, "/projects/myblog");
+  assert.equal(maintenance.records[0].status, "healthy");
+  assert.ok(!("body" in maintenance.records[0]));
+  assert.ok(!("sourcePath" in maintenance.records[0]));
   assert.match(await config.text(), /repo: "Zach424\/MyBlog"/);
   assert.equal(manifest.status, 200);
   assert.match(manifest.headers.get("content-type") ?? "", /^application\/json/u);

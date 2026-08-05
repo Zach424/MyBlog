@@ -8,7 +8,7 @@
 - 自动化运行时：GitHub-hosted `ubuntu-latest`，checkout/setup-node v6 使用 Node 24 action runtime，仓库命令仍在显式 Node.js 22 + npm cache 下运行；
 - 当前回退站：`https://zach424-engineering-notes.zhiqingchen792.chatgpt.site`；
 - 内容：GitHub 仓库中的 Markdown 与附件；
-- 作者入口：`/studio`、Obsidian、普通 Git；
+- 作者入口：`/studio`、`/studio/maintenance` 只读复核队列、Obsidian、普通 Git；
 - 数据库：无。
 
 ## 一次性生产配置
@@ -41,6 +41,8 @@ Secret 只保存在 Vercel/GitHub 的加密设置中，不进入 `.env.example`�
 Current record 至少每 180 天逐项复核一次架构、版本、状态、外链和操作步骤；有事实变化时同步更新正文与 `updatedAt`，无变化时只更新 `reviewedAt`。Historical snapshot 不要求持续追新，但正文必须说明记录时间与当前去向。
 
 每周 Quality Gate 会在周一 09:00（Asia/Shanghai）生成维护摘要；也可随时运行 `npm run content:status`。剩余 60/30 天分别进入“准备复核/即将到期”，warning 不阻断构建；越过最后有效日才失败。处理提醒时按报告清单逐项验证，不要只更新日期。
+
+日常可先打开 `/studio/maintenance` 查看 Review Horizon 和全库优先级，再从 `Edit entry` 进入稳定条目。该页面的内容集合来自当前部署、日期按请求时的 `Asia/Shanghai` 当天推进；因此修改只有在新 Production 上线后可见，但无需为了日期变化重新部署。接口只返回已公开 Current 内容的最小元数据，不返回正文、源路径、草稿或 Historical。页面失败时先点 `Retry`，仍失败再运行 `npm run content:status` 并检查 `/studio/maintenance.json` 的 HTTP 状态；不要用手工改日期或缓存快照替代复核。
 
 外部链接使用 `npm run links:external` 做本地确定性库存；命令默认不访问网络并随 `release:check` 输出。需要现场证据时运行 `npm run links:external -- --check`，但 403/429、HEAD 不支持、5xx、超时和网络错误只进入人工复核，不能直接作为生产事故或默认构建失败。检查器不下载正文、不访问私网、不改写链接；若显式 `--fail-on-broken` 返回失败，先在普通浏览器复核确定 4xx 或坏重定向再修改内容。
 

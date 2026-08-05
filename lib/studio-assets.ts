@@ -5,6 +5,9 @@ type StudioAssetName =
   | "index.html"
   | "config.mjs"
   | "entry-preflight.mjs"
+  | "maintenance.html"
+  | "maintenance.mjs"
+  | "maintenance.css"
   | "math-preview.mjs"
   | "media-preflight.mjs"
   | "stable-slug-widget.mjs"
@@ -14,6 +17,9 @@ const contentTypes: Record<StudioAssetName, string> = {
   "index.html": "text/html; charset=utf-8",
   "config.mjs": "text/javascript; charset=utf-8",
   "entry-preflight.mjs": "text/javascript; charset=utf-8",
+  "maintenance.html": "text/html; charset=utf-8",
+  "maintenance.mjs": "text/javascript; charset=utf-8",
+  "maintenance.css": "text/css; charset=utf-8",
   "math-preview.mjs": "text/javascript; charset=utf-8",
   "media-preflight.mjs": "text/javascript; charset=utf-8",
   "stable-slug-widget.mjs": "text/javascript; charset=utf-8",

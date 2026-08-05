@@ -46,6 +46,8 @@ test("connects Vercel verification, maintenance reporting, rollback, and Studio 
   assert.match(smoke, /\/studio\/stable-slug-widget\.mjs/);
   assert.match(smoke, /\/studio\/entry-preflight\.mjs/);
   assert.match(smoke, /\/studio\/entry-preflight/);
+  assert.match(smoke, /\/studio\/maintenance\.mjs/);
+  assert.match(smoke, /\/studio\/maintenance\.json/);
   assert.match(smoke, /\/studio\/math-preview\.mjs/);
   assert.match(smoke, /\/studio\/math-preview/);
   assert.match(smoke, /\/studio\/katex-0\.16\.47\.css/);
