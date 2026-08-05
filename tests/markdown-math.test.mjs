@@ -84,29 +84,43 @@ test("fails the content contract on invalid KaTeX with a body line", () => {
 });
 
 test("pins a server-rendered, accessible and bounded KaTeX integration", async () => {
-  const [component, mathModule, packageJson, styles] = await Promise.all([
+  const [component, pipeline, mathModule, studioRenderer, packageJson, styles] = await Promise.all([
     readFile(new URL("../components/MarkdownContent.tsx", import.meta.url), "utf8"),
+    readFile(new URL("../lib/markdown-pipeline.ts", import.meta.url), "utf8"),
     readFile(new URL("../lib/markdown-math.ts", import.meta.url), "utf8"),
+    readFile(new URL("../lib/studio-math-preview.ts", import.meta.url), "utf8"),
     readFile(new URL("../package.json", import.meta.url), "utf8"),
     readFile(new URL("../app/globals.css", import.meta.url), "utf8"),
   ]);
 
   assert.doesNotMatch(component, /["']use client["']/u);
-  assert.match(component, /rehypeKatex/u);
-  assert.match(component, /remarkMath/u);
+  assert.match(component, /MARKDOWN_REHYPE_PLUGINS/u);
+  assert.match(component, /MARKDOWN_REMARK_PLUGINS/u);
   assert.match(component, /katex\/dist\/katex\.min\.css/u);
   assert.match(component, /aria-label="数学公式，可横向滚动"/u);
   assert.match(mathModule, /output: "htmlAndMathml"/u);
+  assert.match(pipeline, /rehypeKatex/u);
+  assert.match(pipeline, /remarkMath/u);
   assert.match(mathModule, /strict: "error"/u);
   assert.match(mathModule, /trust: false/u);
   assert.match(mathModule, /maxSize: 20/u);
   assert.match(mathModule, /maxExpand: 1_000/u);
+  assert.doesNotMatch(studioRenderer, /react-dom\/server/u);
+  assert.match(studioRenderer, /getMarkdownMathIssue/u);
+  assert.match(studioRenderer, /\.use\(MARKDOWN_REMARK_PLUGINS\)/u);
+  assert.match(studioRenderer, /\.use\(MARKDOWN_REHYPE_PLUGINS\)/u);
+  assert.match(studioRenderer, /\.use\(sanitizeStudioPreviewUrls\)/u);
+  assert.match(component, /urlTransform=\{transformMarkdownUrl\}/u);
   for (const dependency of [
     /"katex": "0\.16\.47"/u,
     /"mdast-util-math": "3\.0\.0"/u,
     /"micromark-extension-math": "3\.1\.0"/u,
     /"rehype-katex": "7\.0\.1"/u,
+    /"rehype-stringify": "10\.0\.1"/u,
     /"remark-math": "6\.0\.0"/u,
+    /"remark-parse": "11\.0\.0"/u,
+    /"remark-rehype": "11\.1\.2"/u,
+    /"unified": "11\.0\.5"/u,
   ]) {
     assert.match(packageJson, dependency);
   }

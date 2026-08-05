@@ -1,39 +1,26 @@
 import Image from "next/image";
-import rehypeKatex from "rehype-katex";
-import rehypeHighlight from "rehype-highlight";
-import rehypeSlug from "rehype-slug";
 import ReactMarkdown, { type Components } from "react-markdown";
-import remarkGfm from "remark-gfm";
-import remarkMath from "remark-math";
 import "katex/dist/katex.min.css";
 import { Children, isValidElement } from "react";
 import { CodeBlock } from "@/components/CodeBlock";
 import { MarkdownHeading } from "@/components/MarkdownHeading";
 import { getCodeLanguageLabel } from "@/lib/code-block";
 import {
-  getMarkdownFootnoteBackLabel,
-  MARKDOWN_FOOTNOTE_CLOBBER_PREFIX,
   MARKDOWN_FOOTNOTE_HEADING_CLASS,
-  MARKDOWN_FOOTNOTE_LABEL,
 } from "@/lib/markdown-footnote";
+import {
+  MARKDOWN_REHYPE_OPTIONS,
+  MARKDOWN_REHYPE_PLUGINS,
+  MARKDOWN_REMARK_PLUGINS,
+  transformMarkdownUrl,
+} from "@/lib/markdown-pipeline";
 import {
   getMarkdownContentImages,
   type ContentImageDescriptor,
 } from "@/lib/content/media";
-import { MARKDOWN_MATH_KATEX_OPTIONS } from "@/lib/markdown-math";
 
 const CONTENT_IMAGE_SIZES =
   "(max-width: 42rem) calc(100vw - 2rem), (max-width: 55rem) 90vw, 48rem";
-
-const MARKDOWN_REHYPE_OPTIONS = {
-  clobberPrefix: MARKDOWN_FOOTNOTE_CLOBBER_PREFIX,
-  footnoteBackLabel: getMarkdownFootnoteBackLabel,
-  footnoteLabel: MARKDOWN_FOOTNOTE_LABEL,
-  footnoteLabelProperties: {
-    className: [MARKDOWN_FOOTNOTE_HEADING_CLASS],
-  },
-  footnoteLabelTagName: "h2",
-};
 
 function createMarkdownComponents(
   localImages: Record<string, ContentImageDescriptor>,
@@ -169,16 +156,10 @@ export async function MarkdownContent({
     <div className="markdown-content">
       <ReactMarkdown
         components={createMarkdownComponents(localImages)}
-        rehypePlugins={[
-          rehypeSlug,
-          [rehypeKatex, MARKDOWN_MATH_KATEX_OPTIONS],
-          [rehypeHighlight, { detect: false, ignoreMissing: true }],
-        ]}
+        rehypePlugins={MARKDOWN_REHYPE_PLUGINS}
         remarkRehypeOptions={MARKDOWN_REHYPE_OPTIONS}
-        remarkPlugins={[
-          remarkGfm,
-          [remarkMath, { singleDollarTextMath: true }],
-        ]}
+        remarkPlugins={MARKDOWN_REMARK_PLUGINS}
+        urlTransform={transformMarkdownUrl}
       >
         {source}
       </ReactMarkdown>

@@ -10,6 +10,7 @@
 2. 点击 GitHub 登录，仅在 GitHub 官方页面授权；
 3. 选择“文章与 TIL”或“项目复盘”，创建条目；
 4. 先填写稳定 slug，再上传封面或在正文插图；首次保存后该字段会显示 `Identity state / locked` 并变为只读。复制已有条目时必须在第一次保存前换成新的 slug。Studio 会在本地先检查真实格式、体积、宽高与动图总像素，再按目标路径和 SHA-256 对照已发布媒体清单以及本页面成功重放过的目标：新增文件直接通过，同路径同内容标为已发布/本次会话复用，同路径不同内容展示双方体积/摘要并要求明确确认。清单或 slug 不可信时图片不会进入草稿；取消或重放失败不会污染会话基线。快速连续选择时只有最后一次选择可以更新 Evidence Rail、进入草稿和登记会话摘要，旧检查晚到会静默丢弃，不会清空新文件。通过后才把原文件交给 Git 草稿，并显示格式/尺寸/帧数/体积/目标路径。图片直接保存到 `public/uploads/<slug>/`，正文写入 `/uploads/<slug>/...`；然后填写标题、摘要、内容语境、复核日期、标签和正文，历史记录选择 Historical，持续维护说明选择 Current；需要封面时同时填写不重复标题的“封面替代文本”；
+   正文中的行内公式写成 `$...$`，独立公式用单独成行的 `$$` 包围；需要精确编辑定界符时切换到 raw Markdown 模式。普通正文继续使用 Studio 原生预览且不会请求公式接口；检测到公式后，`AUTHOR PROOF` 会显示 `FORMULA / CHECKING`，随后以生产站同一套 Markdown/KaTeX 规则给出 `FORMULA / VERIFIED`。语法错误会显示正文行号和 `FORMULA / NEEDS FIX`，同时保留原始 Markdown；预览网络不可用时也不会丢失正文或阻止保存草稿，最终发布仍由完整质量门判定。
 5. 草稿阶段保持 `draft: true`，通过 editorial workflow 保存；
 6. 预览并把状态推进到 Ready；
 7. 发布后确认 GitHub 提交/PR、Quality Gate、Vercel Production 和在线文章全部成功。
@@ -132,6 +133,7 @@ Quality Gate 每次提交和每周维护都会把同一库存写入 Actions summ
 
 ## 常见问题
 
+- Studio 显示 `FORMULA / NEEDS FIX`：按提示的正文行号检查 `$`/`$$` 是否成对、命令是否受 KaTeX 支持；若显示 `FORMULA / PREVIEW UNAVAILABLE`，先重试预览，也可以转到 Obsidian 继续编辑。两种情况都不会删除正文，正式构建仍会重新校验公式。
 - `/studio` 返回 503：生产 OAuth 环境变量未配置或未重新部署。
 - GitHub 登录回调失败：OAuth App 的 Homepage/Callback 与当前生产 origin 不一致。
 - 内容未上线：确认 PR 已进入 `main`、Vercel Production 成功，并检查 `draft` 和日期。

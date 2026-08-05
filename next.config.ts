@@ -75,6 +75,8 @@ export default async function createNextConfig(): Promise<NextConfig> {
         "./content/**/*.md",
         "./studio/**/*",
         "./node_modules/decap-cms/dist/decap-cms.js",
+        "./node_modules/katex/dist/katex.min.css",
+        "./node_modules/katex/dist/fonts/*.woff2",
       ],
     },
     async redirects() {
@@ -99,6 +101,15 @@ export default async function createNextConfig(): Promise<NextConfig> {
         },
         {
           source: "/studio/editor-runtime-3.14.1.js",
+          headers: [
+            {
+              key: "Cache-Control",
+              value: "public, max-age=31536000, immutable",
+            },
+          ],
+        },
+        {
+          source: "/studio/katex-0.16.47.css",
           headers: [
             {
               key: "Cache-Control",

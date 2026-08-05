@@ -38,8 +38,13 @@ export function extractSitemapUrls(xml) {
 
 async function request(origin, pathname, options = {}) {
   const response = await fetchWithRetry(new URL(pathname, origin), {
+    body: options.body,
+    method: options.method,
     redirect: options.redirect ?? "follow",
-    headers: { accept: options.accept ?? "text/html" },
+    headers: {
+      accept: options.accept ?? "text/html",
+      ...options.headers,
+    },
   });
   const body = await response.text();
   return { response, body };
@@ -105,12 +110,14 @@ export async function runProductionSmoke(originInput, { expectOAuth = false } = 
   invariant(studioPolicy.includes("https://api.github.com"), "Studio CSP 缺少 GitHub API");
   invariant(studioPolicy.includes("frame-ancestors 'none'"), "Studio CSP 未禁止嵌入");
 
-  const [studioConfig, studioManifest, studioPreflight, stableSlugWidget, studioPreview, studioRuntime, unknownStudioAsset] = await Promise.all([
+  const [studioConfig, studioManifest, studioPreflight, stableSlugWidget, mathPreviewModule, studioPreview, katexStyles, studioRuntime, unknownStudioAsset] = await Promise.all([
     request(origin, "/studio/config.mjs", { accept: "text/javascript" }),
     request(origin, "/studio/media-manifest.json", { accept: "application/json" }),
     request(origin, "/studio/media-preflight.mjs", { accept: "text/javascript" }),
     request(origin, "/studio/stable-slug-widget.mjs", { accept: "text/javascript" }),
+    request(origin, "/studio/math-preview.mjs", { accept: "text/javascript" }),
     request(origin, "/studio/preview.css", { accept: "text/css" }),
+    request(origin, "/studio/katex-0.16.47.css", { accept: "text/css" }),
     request(origin, "/studio/editor-runtime-3.14.1.js", { accept: "text/javascript" }),
     request(origin, "/studio/definitely-missing", { redirect: "manual" }),
   ]);
@@ -165,6 +172,16 @@ export async function runProductionSmoke(originInput, { expectOAuth = false } = 
     "Studio 稳定 slug 控件类型不正确",
   );
   invariant(
+    mathPreviewModule.response.status === 200 &&
+      mathPreviewModule.body.includes("registerStudioMathPreview") &&
+      mathPreviewModule.body.includes("/studio/math-preview"),
+    "Studio 公式预览模块不可用",
+  );
+  invariant(
+    mathPreviewModule.response.headers.get("content-type")?.startsWith("text/javascript"),
+    "Studio 公式预览模块类型不正确",
+  );
+  invariant(
     studioPreview.response.status === 200 && studioPreview.body.includes("--canvas:"),
     "Studio 预览样式不可用",
   );
@@ -172,7 +189,19 @@ export async function runProductionSmoke(originInput, { expectOAuth = false } = 
     studioPreview.response.headers.get("content-type")?.startsWith("text/css"),
     "Studio 预览样式类型不正确",
   );
-  for (const asset of [studioConfig, studioManifest, studioPreflight, stableSlugWidget, studioPreview]) {
+  invariant(
+    katexStyles.response.status === 200 &&
+      katexStyles.body.includes("data:font/woff2;base64,") &&
+      katexStyles.body.includes('content:"0.16.47"') &&
+      !katexStyles.body.includes("url(fonts/"),
+    "Studio KaTeX 样式不可用",
+  );
+  invariant(
+    katexStyles.response.headers.get("cache-control") ===
+      "public, max-age=31536000, immutable",
+    "固定版本 Studio KaTeX 样式缓存不正确",
+  );
+  for (const asset of [studioConfig, studioManifest, studioPreflight, stableSlugWidget, mathPreviewModule, studioPreview]) {
     invariant(asset.response.headers.get("cache-control") === "no-store", "Studio 子资源必须 no-store");
   }
   invariant(
@@ -194,6 +223,30 @@ export async function runProductionSmoke(originInput, { expectOAuth = false } = 
     unknownStudioAsset.response.status === 404 &&
       (unknownStudioAsset.response.headers.get("cache-control") ?? "").includes("no-store"),
     "未知 Studio 子资源必须返回 404/no-store",
+  );
+
+  const mathPreview = await request(origin, "/studio/math-preview", {
+    accept: "application/json",
+    body: JSON.stringify({
+      markdown: "行内 $E = mc^2$。\n\n$$\nB = \\sum_i B_i\n$$",
+    }),
+    headers: { "content-type": "application/json" },
+    method: "POST",
+  });
+  let mathPreviewPayload;
+  try {
+    mathPreviewPayload = JSON.parse(mathPreview.body);
+  } catch {
+    throw new Error("Studio 公式预览响应不是有效 JSON");
+  }
+  invariant(
+    mathPreview.response.status === 200 &&
+      mathPreview.response.headers.get("cache-control") === "no-store" &&
+      mathPreviewPayload.ok === true &&
+      mathPreviewPayload.formulaCount === 2 &&
+      mathPreviewPayload.html.includes('class="katex"') &&
+      mathPreviewPayload.html.includes("<math"),
+    "Studio 公式生产管线预览不可用",
   );
 
   const oauth = await request(

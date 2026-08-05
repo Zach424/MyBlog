@@ -1,3 +1,5 @@
+@import url("/studio/katex-0.16.47.css");
+
 :root {
   --canvas: #f2f6f7;
   --paper: #f8fafa;
@@ -5,6 +7,12 @@
   --muted: #566d77;
   --signal: #b9431f;
   --rule: #d7e4e7;
+}
+
+*,
+*::before,
+*::after {
+  box-sizing: border-box;
 }
 
 html,
@@ -41,6 +49,159 @@ img { max-width: 100%; height: auto; }
 table { width: 100%; border-collapse: collapse; }
 th, td { padding: 0.6rem; border: 1px solid var(--rule); text-align: left; }
 
+.studio-preview-shell {
+  min-width: 0;
+}
+
+.studio-preview-header {
+  margin-bottom: 1.5rem;
+  padding-bottom: 1.5rem;
+  border-bottom: 1px solid var(--rule);
+}
+
+.studio-preview-header h1 {
+  margin: 0;
+}
+
+.studio-preview-eyebrow,
+.studio-preview-status-label {
+  margin: 0 0 0.55rem;
+  color: var(--muted);
+  font: 0.68rem/1.45 "Cascadia Code", Consolas, monospace;
+  letter-spacing: 0.09em;
+}
+
+.studio-preview-description {
+  max-width: 38rem;
+  margin: 1rem 0 0;
+  color: var(--muted);
+}
+
+.studio-preview-status {
+  position: relative;
+  margin: 0 0 2rem;
+  padding: 0.85rem 1rem 0.9rem 1.15rem;
+  border: 1px solid var(--rule);
+  border-left: 0.22rem solid var(--muted);
+  background: color-mix(in srgb, var(--paper) 88%, var(--canvas));
+}
+
+.studio-preview-status::after {
+  position: absolute;
+  top: 0.55rem;
+  right: 0.65rem;
+  width: 0.42rem;
+  height: 0.42rem;
+  border-radius: 50%;
+  background: var(--muted);
+  content: "";
+}
+
+.studio-preview-status[data-state="ready"] {
+  border-left-color: #2f756f;
+}
+
+.studio-preview-status[data-state="ready"]::after {
+  background: #2f756f;
+}
+
+.studio-preview-status[data-state="invalid"] {
+  border-left-color: var(--signal);
+}
+
+.studio-preview-status[data-state="invalid"]::after {
+  background: var(--signal);
+}
+
+.studio-preview-status strong,
+.studio-preview-status span {
+  display: block;
+}
+
+.studio-preview-status strong {
+  margin-right: 1rem;
+  font-size: 0.95rem;
+}
+
+.studio-preview-status span {
+  margin-top: 0.2rem;
+  color: var(--muted);
+  font-size: 0.8rem;
+  line-height: 1.55;
+  overflow-wrap: anywhere;
+}
+
+.studio-preview-rendered,
+.studio-preview-fallback,
+.markdown-content {
+  min-width: 0;
+}
+
+.markdown-content .katex-display {
+  position: relative;
+  width: 100%;
+  max-width: 100%;
+  margin: 2rem 0;
+  padding: 2.2rem 1rem 1.15rem;
+  overflow-x: auto;
+  overflow-y: hidden;
+  border-block: 1px solid var(--rule);
+  outline: none;
+  text-align: left;
+  scrollbar-width: thin;
+}
+
+.markdown-content .katex-display::before {
+  position: absolute;
+  top: 0.55rem;
+  left: 0;
+  color: var(--muted);
+  font: 0.64rem/1.4 "Cascadia Code", Consolas, monospace;
+  letter-spacing: 0.09em;
+  content: "CALCULATION / AUTHOR PROOF";
+}
+
+.markdown-content .katex-display > .katex {
+  width: max-content;
+  min-width: 100%;
+  text-align: center;
+}
+
+.markdown-content .katex-display:focus-visible,
+.table-scroll:focus-visible {
+  outline: 2px solid var(--signal);
+  outline-offset: 0.2rem;
+}
+
+.table-scroll {
+  max-width: 100%;
+  overflow-x: auto;
+}
+
+.markdown-content .footnotes {
+  margin-top: 3rem;
+  padding-top: 1rem;
+  border-top: 1px solid var(--rule);
+}
+
+@media (max-width: 32rem) {
+  body {
+    padding: 2rem 1rem;
+  }
+
+  .markdown-content .katex-display {
+    padding-inline: 0.65rem;
+  }
+}
+
 @media (prefers-color-scheme: dark) {
   :root { --canvas: #101820; --paper: #17232d; --ink: #edf4f5; --muted: #a8b9be; --signal: #ff7851; --rule: #294049; }
+
+  .studio-preview-status[data-state="ready"] {
+    border-left-color: #72b4ab;
+  }
+
+  .studio-preview-status[data-state="ready"]::after {
+    background: #72b4ab;
+  }
 }

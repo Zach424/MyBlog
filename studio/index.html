@@ -4,6 +4,7 @@
     <meta charset="utf-8" />
     <meta name="viewport" content="width=device-width, initial-scale=1" />
     <meta name="robots" content="noindex, nofollow" />
+    <link rel="icon" href="/icon.png" />
     <title>发布后台 · Zach424 Engineering Notes</title>
     <style>
       :root { color-scheme: light dark; }
@@ -141,6 +142,7 @@
     ></script>
     <script type="module">
       import { createStudioConfig } from "/studio/config.mjs";
+      import { registerStudioMathPreview } from "/studio/math-preview.mjs";
       import { installStudioMediaPreflight } from "/studio/media-preflight.mjs";
       import { registerStableSlugWidget } from "/studio/stable-slug-widget.mjs";
 
@@ -154,9 +156,10 @@
         }
         try {
           registerStableSlugWidget();
+          registerStudioMathPreview();
         } catch (error) {
           document.querySelector(".loading-shell span").textContent =
-            "稳定 slug 控件加载失败。请刷新页面；若持续失败，请改用 Obsidian 或 Git。";
+            "Studio 作者控件加载失败。请刷新页面；若持续失败，请改用 Obsidian 或 Git。";
           console.error(error);
           return;
         }

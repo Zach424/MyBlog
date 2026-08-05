@@ -4,6 +4,7 @@ import path from "node:path";
 type StudioAssetName =
   | "index.html"
   | "config.mjs"
+  | "math-preview.mjs"
   | "media-preflight.mjs"
   | "stable-slug-widget.mjs"
   | "preview.css";
@@ -11,6 +12,7 @@ type StudioAssetName =
 const contentTypes: Record<StudioAssetName, string> = {
   "index.html": "text/html; charset=utf-8",
   "config.mjs": "text/javascript; charset=utf-8",
+  "math-preview.mjs": "text/javascript; charset=utf-8",
   "media-preflight.mjs": "text/javascript; charset=utf-8",
   "stable-slug-widget.mjs": "text/javascript; charset=utf-8",
   "preview.css": "text/css; charset=utf-8",
@@ -42,6 +44,41 @@ export async function studioCmsScriptResponse() {
     headers: {
       "cache-control": "public, max-age=31536000, immutable",
       "content-type": "text/javascript; charset=utf-8",
+    },
+  });
+}
+
+const katexWoff2Source =
+  /src:url\(fonts\/([^()]+\.woff2)\) format\("woff2"\),url\(fonts\/[^()]+\.woff\) format\("woff"\),url\(fonts\/[^()]+\.ttf\) format\("truetype"\)/gu;
+
+export async function studioKatexCssResponse() {
+  const katexDirectory = path.join(process.cwd(), "node_modules", "katex", "dist");
+  let css = await readFile(path.join(katexDirectory, "katex.min.css"), "utf8");
+  const fontNames = [
+    ...new Set([...css.matchAll(katexWoff2Source)].map((match) => match[1])),
+  ];
+  const fonts = new Map(
+    await Promise.all(
+      fontNames.map(async (fontName) => [
+        fontName,
+        (await readFile(path.join(katexDirectory, "fonts", fontName))).toString("base64"),
+      ] as const),
+    ),
+  );
+
+  css = css.replace(katexWoff2Source, (_source, fontName: string) => {
+    const font = fonts.get(fontName);
+    if (!font) throw new Error(`KaTeX preview font is missing: ${fontName}`);
+    return `src:url(data:font/woff2;base64,${font}) format("woff2")`;
+  });
+  if (css.includes("url(fonts/")) {
+    throw new Error("KaTeX preview CSS contains an unresolved font URL.");
+  }
+
+  return new Response(css, {
+    headers: {
+      "cache-control": "public, max-age=31536000, immutable",
+      "content-type": "text/css; charset=utf-8",
     },
   });
 }

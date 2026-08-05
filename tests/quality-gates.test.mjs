@@ -14,6 +14,21 @@ async function request(pathname = "/") {
   });
 }
 
+async function postStudioMathPreview(body, headers = {}) {
+  if (!process.env.TEST_BASE_URL) throw new Error("TEST_BASE_URL is required");
+  return fetch(new URL("/studio/math-preview", process.env.TEST_BASE_URL), {
+    body: typeof body === "string" ? body : JSON.stringify(body),
+    headers: {
+      "content-type": "application/json",
+      "x-forwarded-host": "blog.example.test",
+      "x-forwarded-proto": "https",
+      ...headers,
+    },
+    method: "POST",
+    redirect: "manual",
+  });
+}
+
 function visibleDocument(html) {
   const documentEnd = html.indexOf("</html>");
   return documentEnd >= 0 ? html.slice(0, documentEnd + 7) : html;
@@ -121,13 +136,15 @@ test("applies the production security and cache baseline", async () => {
 
 test("serves Studio and its media inventory through explicit Next.js routes", async () => {
   await assert.rejects(access(new URL("../public/studio", import.meta.url)));
-  const [studio, config, manifest, preflight, stableSlugWidget, preview, runtime, unknown] = await Promise.all([
+  const [studio, config, manifest, preflight, stableSlugWidget, mathPreviewModule, preview, katexStyles, runtime, unknown] = await Promise.all([
     request("/studio"),
     request("/studio/config.mjs"),
     request("/studio/media-manifest.json"),
     request("/studio/media-preflight.mjs"),
     request("/studio/stable-slug-widget.mjs"),
+    request("/studio/math-preview.mjs"),
     request("/studio/preview.css"),
+    request("/studio/katex-0.16.47.css"),
     request("/studio/editor-runtime-3.14.1.js"),
     request("/studio/definitely-missing"),
   ]);
@@ -157,11 +174,67 @@ test("serves Studio and its media inventory through explicit Next.js routes", as
   assert.equal(preflight.headers.get("cache-control"), "no-store");
   assert.match(await stableSlugWidget.text(), /registerStableSlugWidget/);
   assert.equal(stableSlugWidget.headers.get("cache-control"), "no-store");
-  assert.match(await preview.text(), /--canvas:/);
+  assert.match(await mathPreviewModule.text(), /registerStudioMathPreview/);
+  assert.equal(mathPreviewModule.headers.get("cache-control"), "no-store");
+  const previewCss = await preview.text();
+  assert.match(previewCss, /--canvas:/);
+  assert.match(previewCss, /\*::before,[\s\S]*?box-sizing: border-box/u);
+  const katexCss = await katexStyles.text();
+  assert.equal(katexStyles.status, 200);
+  assert.equal(
+    katexStyles.headers.get("cache-control"),
+    "public, max-age=31536000, immutable",
+  );
+  assert.match(katexCss, /data:font\/woff2;base64,/u);
+  assert.match(katexCss, /\.katex-version:after\{content:"0\.16\.47"\}/u);
+  assert.doesNotMatch(katexCss, /url\(fonts\//u);
+  assert.ok(katexCss.length > 250_000 && katexCss.length < 500_000);
   assert.match(await runtime.text(), /decap-cms 3\.14\.1/);
   assert.equal(runtime.headers.get("cache-control"), "public, max-age=31536000, immutable");
   assert.equal(unknown.status, 404);
   assert.match(unknown.headers.get("cache-control") ?? "", /no-store/);
+});
+
+test("renders bounded Studio formula previews with the production Markdown pipeline", async () => {
+  const valid = await postStudioMathPreview({
+    markdown: "行内 $E = mc^2$。\n\n$$\nB = \\sum_i B_i\n$$",
+  });
+  assert.equal(valid.status, 200);
+  assert.equal(valid.headers.get("cache-control"), "no-store");
+  assert.equal(valid.headers.get("x-robots-tag"), "noindex, nofollow");
+  const validPayload = await valid.json();
+  assert.equal(validPayload.ok, true);
+  assert.equal(validPayload.formulaCount, 2);
+  assert.match(validPayload.html, /data-studio-renderer="production-pipeline"/u);
+  assert.match(validPayload.html, /class="katex"/u);
+  assert.match(validPayload.html, /<math/u);
+  assert.doesNotMatch(validPayload.html, /<script/u);
+
+  const unsafeLink = await postStudioMathPreview({
+    markdown: "[unsafe](javascript:alert(1)) $x$",
+  });
+  assert.equal(unsafeLink.status, 200);
+  assert.doesNotMatch(await unsafeLink.text(), /href=\\?"javascript:/u);
+
+  const invalid = await postStudioMathPreview({
+    markdown: "before\n\n$\\frac{1}{$",
+  });
+  assert.equal(invalid.status, 422);
+  const invalidPayload = await invalid.json();
+  assert.equal(invalidPayload.ok, false);
+  assert.equal(invalidPayload.issue.line, 3);
+  assert.match(invalidPayload.issue.message, /Expected|end of input/u);
+
+  const wrongOrigin = await postStudioMathPreview(
+    { markdown: "$x$" },
+    { origin: "https://attacker.example" },
+  );
+  assert.equal(wrongOrigin.status, 403);
+
+  const tooLarge = await postStudioMathPreview({
+    markdown: "x".repeat(100_001),
+  });
+  assert.equal(tooLarge.status, 413);
 });
 
 test("keeps key HTML routes structurally valid and uniquely identified", async () => {

@@ -20,8 +20,9 @@ const fixture = `## 结论
 [^当前架构]: 证据见 [项目复盘](/projects/myblog#vercel-阶段当前)，并包含 \`main\`。`;
 
 test("localizes footnote semantics without adding another parser", async () => {
-  const [component, packageJson] = await Promise.all([
+  const [component, pipeline, packageJson] = await Promise.all([
     readFile(new URL("../components/MarkdownContent.tsx", import.meta.url), "utf8"),
+    readFile(new URL("../lib/markdown-pipeline.ts", import.meta.url), "utf8"),
     readFile(new URL("../package.json", import.meta.url), "utf8"),
   ]);
 
@@ -33,8 +34,9 @@ test("localizes footnote semantics without adding another parser", async () => {
     "返回正文中的注释 1（第 2 处）",
   );
   assert.doesNotMatch(component, /["']use client["']/u);
-  assert.match(component, /remarkPlugins=\{\[/u);
-  assert.match(component, /remarkGfm/u);
+  assert.match(component, /remarkPlugins=\{MARKDOWN_REMARK_PLUGINS\}/u);
+  assert.match(pipeline, /remarkGfm/u);
+  assert.match(pipeline, /footnoteBackLabel: getMarkdownFootnoteBackLabel/u);
   assert.match(component, /remarkRehypeOptions=\{MARKDOWN_REHYPE_OPTIONS\}/u);
   assert.match(component, /<a\s+\{\.\.\.props\}/u);
   assert.match(component, /id === "footnote-label"/u);
