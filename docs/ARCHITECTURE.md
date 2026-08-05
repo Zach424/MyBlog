@@ -94,6 +94,8 @@ H2/H3 由 `MarkdownHeading` 服务端组件接收 `rehype-slug` 已写入的真�
 
 文章和项目详情路由从同一已解析记录生成 canonical URL，并把它交给 `ContentViews.PrintSource` 服务端输出。来源节点在屏幕上隐藏，在打印媒体中显示，因此 PDF 不读取 `window.location`、不增加客户端脚本，也不会因浏览器 hydration 状态缺失出处。`@page` 固定 A4 和毫米页边距；全局打印作用域只重排详情页现有语义 DOM，隐藏站点框架与网页交互，保留正文资产。标题/后继内容、代码、图片、表格行和关系分组使用分页约束；代码在纸面改为 `pre-wrap`，表格取消屏幕最小宽度，外链与引用路径用 CSS 生成可辨来源。屏幕基础规则不被修改。
 
+脚注沿用已经安装的 `remark-gfm` 解析，不增加第二套 Markdown 解析器或客户端脚本。`MarkdownContent` 通过 `remarkRehypeOptions` 固定 `note-` DOM clobber 前缀、中文“注释与来源”标签和按引用位置生成的中文回链名称；自定义 anchor renderer 保留 rehype 生成的 `id`、`data-*`、`aria-*` 与 class，同时继续只为 HTTP(S) 外链设置新窗口策略。脚注标题绕开正文 `MarkdownHeading`，因此不进入 H2/H3 permalink 或目录。构建期内容关系仍从同一 GFM AST 读取脚注定义中的真实链接并去重；搜索纯文本只移除 `[^id]` 和定义标签，保留证据正文，避免作者语法污染摘要又不丢失可检索信息。
+
 内容目录通过 Next.js output tracing 显式包含在部署中，既支持 Vercel Serverless，也不会依赖开发机器路径。
 
 ## 5. 作者发布链路
