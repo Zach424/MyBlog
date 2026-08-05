@@ -6,7 +6,7 @@
 npm run check
 ```
 
-顺序为 ESLint → 134 项内容/维护/inbox/暂存媒体/关系/标题锚点与永久链接/脚注/数学公式/打印版式/知识图/外链库存与检查/搜索/OAuth/Studio/Obsidian/媒体/重定向/代码复制/交付单元测试 → Next 路由类型生成与 TypeScript → 原生 Next.js 生产构建（37 个页面）→ 17 项真实生产 HTTP 与质量审计。任何一步失败都阻止合并和生产部署。
+顺序为 ESLint → 137 项内容/维护/inbox/暂存媒体/关系/标题锚点与永久链接/脚注/数学公式/打印版式/知识图/外链库存与检查/搜索/OAuth/Studio/Obsidian/媒体/重定向/代码复制/交付单元测试 → Next 路由类型生成与 TypeScript → 原生 Next.js 生产构建（40 条路由）→ 18 项真实生产 HTTP 与质量审计。任何一步失败都阻止合并和生产部署。
 
 发布候选额外执行：
 
@@ -66,7 +66,7 @@ npm run links:external -- --check --timeout-ms 5000 --concurrency 4 --retries 1
 npm run production:smoke -- https://example.vercel.app --expect-oauth
 ```
 
-检查代表内容、搜索、Studio HTML/配置/媒体清单/媒体预检/稳定 slug 控件/预览/同源 CMS 运行时、OAuth、RSS、robots、全 Sitemap、永久重定向、安全头、缓存与随机 404。媒体清单必须是 `version: 1`、根为 `public/uploads`，每项包含安全路径、正整数节数与 64 位 SHA-256，并保持 `no-store`。永久重定向检查要求 `/blog` 返回 308、同源 `Location` 直达 `/posts`，且目标只需一次请求即返回 200。`--expect-oauth` 只用于已配置 GitHub OAuth 的生产环境；本地和 Preview 允许 OAuth 以 503 安全关闭。
+检查代表内容、搜索、Studio HTML/配置/媒体清单/媒体预检/稳定 slug 控件/公式预览模块/版本化 KaTeX CSS/同源 CMS 运行时、OAuth、RSS、robots、全 Sitemap、永久重定向、安全头、缓存与随机 404。线上公式 POST 必须返回两条公式、KaTeX、MathML 与生产管线标记，CSS 必须内联 WOFF2 且不残留 package 相对字体路径。媒体清单必须是 `version: 1`、根为 `public/uploads`，每项包含安全路径、正整数节数与 64 位 SHA-256，并保持 `no-store`。永久重定向检查要求 `/blog` 返回 308、同源 `Location` 直达 `/posts`，且目标只需一次请求即返回 200。`--expect-oauth` 只用于已配置 GitHub OAuth 的生产环境；本地和 Preview 允许 OAuth 以 503 安全关闭。
 
 ## 永久重定向质量门
 
@@ -99,6 +99,7 @@ npm run production:smoke -- https://example.vercel.app --expect-oauth
 - 文章与项目详情必须服务端输出可信 canonical 打印来源；A4 print media 隐藏站点框架、目录、邻接和交互控件，保留标题、五列事实、正文、媒体、代码、表格和必要引用。测试锁定分页、代码换行、纸面 URL 与关系账本边界；发布候选还必须在真实 Chromium 中生成 PDF、渲染全部页面并目视复核，不以 DOM/CSS 断言代替纸面结果。
 - Markdown 脚注必须服务端输出语义编号、中文脚注区标题和可返回每个引用位置的原生链接；中文 id、同一脚注多次引用、脚注内链接/代码、无 JavaScript、键盘名称、`:target`、深浅色、320px 和 A4 都要有契约。脚注标题不得进入目录或 permalink，作者标记不得进入搜索纯文本，脚注内真实站内链接仍须进入引用完整性与关系去重；打印必须隐藏回链但保留证据正文。
 - Markdown 数学公式必须覆盖 Obsidian `$...$`/`$$...$$`、代码/货币边界、构建期无效公式行号、HTML + MathML + TeX annotation、标题 id、搜索源码、关系/图片伪引用排除和依赖安全选项。生产 HTML 不得增加公式客户端脚本；桌面、深色、320px、键盘横向滚动、无 JavaScript 与 A4 PDF 必须分别验收，根页面宽度不得被公式内容撑开。
+- Studio 公式作者预览必须覆盖 posts/projects 幂等注册、普通正文零请求、240 ms 防抖、Abort/generation latest-wins、有效/无效/不可用状态、卸载清理与原 Markdown 回退。真实端点必须覆盖 200/422/400/403/413/415、100,000 B 上限、`no-store`/`noindex`、危险 URL 清空、KaTeX/MathML 与版本化内联字体；实际浏览器必须验证控件注册、console、深浅色、320px 根宽、公式独立滚动和键盘。
 
 ## 体积预算
 

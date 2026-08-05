@@ -23,7 +23,7 @@ MyBlog 是 Git-first 个人技术博客。公开阅读不依赖数据库；网�
 ```text
 app/
   api/cms/{auth,callback}/route.ts  GitHub OAuth 同源端点
-  studio/                           Studio HTML、配置、媒体清单、预检、slug 控件和版本化 CMS 运行时路由
+  studio/                           Studio HTML、配置、媒体清单/预检、slug 控件、公式预览与版本化 CMS 运行时路由
   posts/ projects/ series/ tags/   集合与详情页
   knowledge/ search/ about/         知识地图、搜索和关于页
   rss.xml/ sitemap.xml/ robots.txt/ 发现端点
@@ -48,13 +48,15 @@ lib/
   cms-oauth.ts                      签名 OAuth state 与 token 交换
   heading-permalink.ts              标题 fragment 与 Markdown 深度标记纯函数
   markdown-math.ts                  KaTeX 安全选项与构建期公式解析门
+  markdown-pipeline.ts              生产阅读与 Studio 共享的 remark/rehype/安全 URL 配置
+  studio-math-preview.ts            同源作者预览的公式校验、HTML 输出与无障碍语义
   search-index.ts                   服务端 Markdown AST 到搜索纯文本/文档索引
   media-policy.ts                   原图安全包络、WebP 优化与公开媒体预算的共享策略
   studio-media-manifest.ts          已归档媒体路径、字节数与 SHA-256 的确定性清单
   obsidian-publishing.ts            Obsidian 校验、附件与目标路径转换
   redirects.ts                      重定向 schema、路径不变量与 Next 规则转换
   studio-assets.ts                  构建期 Studio 资源响应
-studio/                             Decap CMS、浏览器媒体预检与稳定 slug 控件源文件（不放入 public）
+studio/                             Decap CMS、浏览器媒体预检、稳定 slug 与公式 preview template 源文件（不放入 public）
 templates/obsidian/                 文章、TIL、项目模板
 scripts/                            发布、inbox/内容/暂存媒体/外链报告、冒烟、迁移和生产测试器
 build/validate-media.ts             构建前递归扫描全部公开上传图片
@@ -100,6 +102,8 @@ H2/H3 由 `MarkdownHeading` 服务端组件接收 `rehype-slug` 已写入的真�
 
 数学公式沿用 Obsidian 的 `$...$` 与 `$$...$$`。`lib/content/markdown.ts` 把 GFM 与 `micromark-extension-math`/`mdast-util-math` 合并为共享服务端 AST，标题、关系、外链和媒体抽取都复用它，所以公式里的链接/图片外观文本不会变成真实引用，代码与未闭合的普通美元文本保持原义。`lib/markdown-math.ts` 使用本地 KaTeX 预解析每条公式，固定 `htmlAndMathml`、`strict: error`、`trust: false`、`maxSize: 20` 与 `maxExpand: 1000`；失败会带正文行号进入内容构建门。`MarkdownContent` 通过 `remark-math` 与 `rehype-katex` 在 Server Component 内输出可视 HTML、MathML 和 TeX annotation，不加载 CDN 或客户端公式脚本。块级公式得到可聚焦横向滚动区，打印取消滚动并避免跨页。`lib/search-index.ts` 只在服务端把同一 AST 转为索引文本，保留公式 TeX 值；`lib/search.ts` 继续只包含浏览器端排名逻辑，避免把解析器和 KaTeX带入搜索客户端岛。
 
+`lib/markdown-pipeline.ts` 进一步把生产阅读的 remark/rehype 插件、脚注选项、受限 KaTeX 和 URL protocol transform 集中成共享配置。`/studio/math-preview` 先调用同一构建期公式门，再用 pinned unified/remark/rehype/stringify 重放共享管线；raw HTML 保持关闭，`href`/`src` 再应用同一安全 URL 规则。端点只接受同源 JSON，限制声明与实际正文为 100,000 B，返回 `no-store`/`noindex` 的 200 或带行号 422；其他协议/类型/体积错误分别失败。它只生成作者预览，不保存 Git 或替代完整构建门。
+
 内容目录通过 Next.js output tracing 显式包含在部署中，既支持 Vercel Serverless，也不会依赖开发机器路径。
 
 ## 5. 作者发布链路
@@ -113,7 +117,9 @@ Obsidian ─────┘                                      │
 
 Studio 在浏览器中用当前 origin 生成 `base_url`。`/api/cms/auth` 创建十分钟有效、HMAC 签名且绑定 origin 的 state；`/api/cms/callback` 交换 GitHub token，并且只向发起授权的同源窗口发送结果。未设置 `GITHUB_OAUTH_ID` 或 `GITHUB_OAUTH_SECRET` 时返回 503，发布入口安全关闭。
 
-Studio HTML、配置、预览样式、媒体预检和稳定 slug 控件保留在仓库根 `studio`；完整 `decap-cms@3.14.1` 浏览器包作为构建期依赖。上述资源与构建期媒体清单共七类端点，全部由显式 Route Handler 同源返回。未知子资源返回真实 404。资源不进入 `public`，以便统一应用专用 CSP、`X-Robots-Tag` 与 OAuth 弹窗策略。
+Studio HTML、配置、预览样式、媒体预检、稳定 slug 控件和公式 preview template 保留在仓库根 `studio`；完整 `decap-cms@3.14.1` 浏览器包作为构建期依赖。上述资源、构建期媒体清单、版本化内联 WOFF2 的 KaTeX CSS 与动态公式预览均由显式 Route Handler 同源返回。未知子资源返回真实 404。资源不进入 `public`，以便统一应用专用 CSP、`X-Robots-Tag` 与 OAuth 弹窗策略。
+
+公式 preview template 对 posts/projects 幂等注册。正文无 `$` 时继续用 Decap 原生 widget 且零请求；潜在公式经过 240 ms 防抖后 POST 当前正文。timer、AbortController 与单调 generation 共同保证 latest-wins；无效公式、网络失败和组件卸载都保留原 Markdown。有效响应才插入服务器生成的 HTML + MathML。KaTeX CSS 在构建时读取固定 package 文件，只保留并内联 20 个 WOFF2，版本化 CSS immutable 缓存且只由 noindex 作者 iframe 加载。
 
 Studio 的全局 `media_folder`/`public_folder` 保留为根暂存与媒体库兼容入口；posts/projects 集合各自覆盖为绝对仓库模板 `/public/uploads/{{fields.slug}}` 与公开模板 `/uploads/{{fields.slug}}`。编辑器因此在作者填写稳定 slug 后，把封面和 Markdown 正文图直接写入该内容的归档目录。slug 同时决定内容文件名、公开 URL 与附件命名空间，首次保存后不可修改。
 
@@ -175,6 +181,7 @@ Vercel GitHub Integration 负责每个分支的 Preview 和 `main` 的 Productio
 - fenced code 的服务端 HTML 必须始终保留完整 pre/code；COPY 只在 hydration 后出现，复制源只能是当前 code textContent，inline code 不得获得控件。
 - Markdown H2/H3 永久链接必须直接使用 renderer 已拥有的 id；不得重新 slug、包裹标题 children、要求 JavaScript 或改变目录与内容关系抽取，触控点击区不得小于 44px，打印不得输出标记。
 - Obsidian 行内/块级公式必须在构建期通过受限 KaTeX 解析，并由服务端输出 HTML + MathML；公式源码不得制造链接/图片关系，长公式只能让自身滚动，不能增加 320px 页面根宽，打印不得裁切或依赖 JavaScript。
+- Studio 公式预览必须复用生产 Markdown/KaTeX/安全 URL 规则；普通正文零请求，旧异步结果不得覆盖新正文，错误/网络失败不得删除 Markdown；端点只读、同源、限量、不缓存、不索引，长公式不得增加 320px Studio 根宽。
 - Markdown 图片 alt 不能为空；本地图使用共享固有尺寸与响应式候选，HTTPS 外图不能进入开放优化主机列表。
 - cover 必须是仓库内图片并同时声明 `coverAlt`；详情页尺寸只能来自已验证文件，文章/项目共享组件与社交元数据选择不能分叉。
 - `/studio` 与 OAuth 永远不缓存、不索引，并维持同源 state 验证；只有版本化 CMS 运行时可不可变缓存。

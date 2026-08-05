@@ -111,6 +111,8 @@
 
 稳定 slug 字段把内容身份作为事实而不是普通文本。输入下方只有一条 `Identity state / editable|locked` 等宽说明：首次保存前用 Signal 左规则提示作者仍可决定 URL；已有条目用 Trace 规则说明内容文件、公开 URL 和附件目录已经共享同一锁。locked input 保持可聚焦和复制，不使用 disabled 灰化或弹窗；确需迁移时引导作者使用 Git 完成显式原子变更。
 
+数学正文预览使用 `AUTHOR PROOF / GIT DRAFT` 头和一条证据状态带，不复制公开首页或增加通用卡片。普通 Markdown 标为 `STANDARD / MARKDOWN`；潜在公式依次显示 `FORMULA / CHECKING` 与 `FORMULA / VERIFIED`，语法错误显示 `FORMULA / NEEDS FIX` 和正文行号，服务不可用显示可恢复说明。公式继续使用公开正文的 calculation strip；错误/不可用时原 Markdown 仍在下方。320px 以 border-box 保持预览根宽，只有长公式 region 横向滚动并显示焦点；深色只复用 Paper/Ink/Signal/Trace Token。
+
 ## 站点图标
 
 `app/icon.png` 为 `256 × 256` PNG，只保留 Commit Trace 的节点、轨迹环与信号色半环，不包含文字、缩写或第二套标志。图标以社交分享卡为风格参考生成，再确定性缩放并纳入尺寸与体积测试；它用于小尺寸识别，不替代首页的工程轨迹签名。
