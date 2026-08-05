@@ -65,9 +65,24 @@ npm run content:inbox -- --date 2026-08-05
 
 ### 在 Obsidian 查看已发布内容复核台账
 
-打开命令面板并运行“查看已发布内容复核台账”。MyBlog Publisher 1.3.0 会在仓库根目录隐藏运行 `npm --silent run content:status -- --format json`，验证版本化报告后，用原生 deadline ledger 显示报告日期、Current/Historical/未公开数量、healthy/review-soon/due-soon/overdue 四档计数、源笔记路径、review-by、剩余天数和复核清单。每条记录的“打开笔记”只打开 Vault 中精确存在的 `content/posts|projects/<slug>.md`。该命令不读取网络、不修改 `reviewedAt`、不保存文件、不提交也不推送；它和 Studio 队列、每周 Actions 复用同一维护规则。
+打开命令面板并运行“查看已发布内容复核台账”。MyBlog Publisher 1.4.0 会在仓库根目录隐藏运行 `npm --silent run content:status -- --format json`，验证版本化报告后，用原生 deadline ledger 显示报告日期、Current/Historical/未公开数量、healthy/review-soon/due-soon/overdue 四档计数、源笔记路径、review-by、剩余天数和复核清单。每条记录的“打开笔记”只打开 Vault 中精确存在的 `content/posts|projects/<slug>.md`。该命令不读取网络、不修改 `reviewedAt`、不保存文件、不提交也不推送；它和 Studio 队列、每周 Actions 复用同一维护规则。
 
-检查期间的持续 Notice 会在成功、降级、失败或插件卸载时关闭。维护 CLI 用退出码 1 表达“存在逾期内容”时，插件仍会展示通过 schema 的结构化报告；JSON、schema、安全路径或 UI 渲染不可信时，插件自动再读一次纯文本报告，而不是打开半可信交互。命令无法启动时仍只显示诊断；可在仓库终端运行 `npm run content:status` 取得完整输出。仓库更新了插件版本而 Obsidian 已经打开时，需要重启 Obsidian，或先关闭再启用 MyBlog Publisher，才能加载 1.3.0 代码。
+检查期间的持续 Notice 会在成功、降级、失败或插件卸载时关闭。维护 CLI 用退出码 1 表达“存在逾期内容”时，插件仍会展示通过 schema 的结构化报告；JSON、schema、安全路径或 UI 渲染不可信时，插件自动再读一次纯文本报告，而不是打开半可信交互。命令无法启动时仍只显示诊断；可在仓库终端运行 `npm run content:status` 取得完整输出。仓库更新了插件版本而 Obsidian 已经打开时，需要重启 Obsidian，或先关闭再启用 MyBlog Publisher，才能加载 1.4.0 代码。
+
+### 在 Obsidian 完成正式内容复核
+
+复核不是自动更新时间戳。先从台账打开正式文章或项目，逐项核对正文中的版本、架构、项目状态、命令和链接：无事实变化时只把 `reviewedAt` 改为上海当天；有正文或元数据变化时，同时把 `updatedAt` 和 `reviewedAt` 改为当天。不要改变 `publishedAt`，Historical、draft 或未来内容不进入该流程。
+
+保存笔记后先运行“MyBlog Publisher: 检查当前正式内容复核”。MyBlog Publisher 1.4.0 会要求当前分支为 `main`、文件已被 Git 跟踪、暂存区为空、没有未跟踪文件，且唯一工作区修改就是当前 `content/posts|projects/<slug>.md`；随后复算 HEAD 与当前 frontmatter/正文差异并执行完整 `npm run check`。成功只显示检查 Notice，不暂存、不提交、不推送。确认后运行“提交并同步当前正式内容复核”，它再次执行同样的前置条件和门禁，只暂存该 Markdown，以 `content: review <slug>` 提交并推送 `origin main`。
+
+命令行等价操作如下：
+
+```bash
+npm run content:review -- content/projects/my-project.md --check-only
+npm run content:review -- content/projects/my-project.md --push
+```
+
+由于日期精度为一天，已经在当天复核过的内容不能再次声明新的复核；同日后续事实修正仍可用普通 Git 流程提交，但不要伪造第二次复核。全量门失败时文件保持未暂存；commit 前失败会取消暂存。若 commit 成功而 push 失败，本地提交会保留，联网恢复后执行 `git push origin main`，不要重新运行复核命令制造重复提交。
 
 ## 迁移已公开 URL
 

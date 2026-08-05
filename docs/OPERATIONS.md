@@ -26,7 +26,7 @@ Secret 只保存在 Vercel/GitHub 的加密设置中，不进入 `.env.example`�
 1. 在 `/studio` 或 Obsidian 新建内容；
 2. 保持稳定 ASCII slug，填写摘要、日期、`freshness`、`reviewedAt`、标签和正文；
 3. 草稿阶段保持 `draft: true`；需要定时发布时再设置未来 `publishedAt`；
-4. Obsidian 中可先运行“查看已发布内容复核台账”（结构化命令为 `npm run content:status -- --format json`）处理已有 Current 内容；发布新草稿时运行“查看全部草稿发布就绪状态”（命令行为 `npm run content:inbox`），处理 blocked 并确认 scheduled 日期，再运行 `npm run content:publish -- <note> --check-only`；
+4. Obsidian 中可先运行“查看已发布内容复核台账”处理已有 Current 内容；打开正式笔记并人工更新事实与复核日期后，依次运行“检查当前正式内容复核”和“提交并同步当前正式内容复核”。发布新草稿时运行“查看全部草稿发布就绪状态”，处理 blocked 并确认 scheduled 日期，再运行 `npm run content:publish -- <note> --check-only`；
 5. 逐张确认实际格式、宽高、帧数和体积后，使用 Obsidian 的“发布当前草稿并同步 GitHub”或命令行 `--push`。`--push` 会把 `draft` 改为 `false` 后运行完整质量门、提交并推送；网页方式使用 editorial workflow；
 6. 让质量门通过，再把提交合并到 `main`；
 7. Vercel 自动创建生产部署，deployment status 工作流检查稳定公开生产域名；
@@ -44,7 +44,9 @@ Current record 至少每 180 天逐项复核一次架构、版本、状态、外
 
 日常可先打开 `/studio/maintenance` 查看 Review Horizon 和全库优先级，再从 `Edit entry` 进入稳定条目。该页面的内容集合来自当前部署、日期按请求时的 `Asia/Shanghai` 当天推进；因此修改只有在新 Production 上线后可见，但无需为了日期变化重新部署。接口只返回已公开 Current 内容的最小元数据，不返回正文、源路径、草稿或 Historical。页面失败时先点 `Retry`，仍失败再运行 `npm run content:status` 并检查 `/studio/maintenance.json` 的 HTTP 状态；不要用手工改日期或缓存快照替代复核。
 
-在本机 Vault 中也可从命令面板运行“查看已发布内容复核台账”。插件 1.3.0 先启动本地 `content:status --format json`，严格核对版本、计数、日期计算、状态阈值、排序、公开路由和精确来源路径，再显示四档期限轨迹与逐条记录；“打开笔记”只接受 Vault 中真实存在的 `content/posts|projects/<slug>.md`。报告命令因已过期内容返回退出码 1 时仍会解析并展示有效 JSON；JSON、schema、路径或 Modal 渲染异常时，插件会再运行纯文本 `content:status` 并以安全文本节点显示证据。两条路径都零网络、零日期/文件写入。Windows 报告子进程隐藏运行且不插入动态 shell 字符串，插件卸载时以固定 `taskkill.exe /T /F` 参数清理整棵命令进程树，POSIX 直接终止子进程。持续 Notice 若没有在命令终态消失，或插件关闭后仍存在 npm 进程，视为插件生命周期故障；笔记不存在时先确认文件已同步且路径大小写正确，再在终端运行 `npm run content:status` 取证。插件文件更新后，已打开的 Obsidian 需要重启或重新启用插件才能加载新版本。
+在本机 Vault 中也可从命令面板运行“查看已发布内容复核台账”。插件 1.4.0 先启动本地 `content:status --format json`，严格核对版本、计数、日期计算、状态阈值、排序、公开路由和精确来源路径，再显示四档期限轨迹与逐条记录；“打开笔记”只接受 Vault 中真实存在的 `content/posts|projects/<slug>.md`。报告命令因已过期内容返回退出码 1 时仍会解析并展示有效 JSON；JSON、schema、路径或 Modal 渲染异常时，插件会再运行纯文本 `content:status` 并以安全文本节点显示证据。两条路径都零网络、零日期/文件写入。Windows 报告子进程隐藏运行且不插入动态 shell 字符串，插件卸载时以固定 `taskkill.exe /T /F` 参数清理整棵命令进程树，POSIX 直接终止子进程。持续 Notice 若没有在命令终态消失，或插件关闭后仍存在 npm 进程，视为插件生命周期故障；笔记不存在时先确认文件已同步且路径大小写正确，再在终端运行 `npm run content:status` 取证。插件文件更新后，已打开的 Obsidian 需要重启或重新启用插件才能加载新版本。
+
+正式内容复核使用 `npm run content:review -- content/posts|projects/<slug>.md --check-only`，确认后把最后一个参数改为 `--push`。命令只接受 `main` 上已经公开的 Current 文件：`publishedAt` 不得改变，`reviewedAt` 必须从 HEAD 中的旧日期推进到 `Asia/Shanghai` 当天；仅推进复核日时 `updatedAt` 保持原值，正文或元数据有事实变化时 `updatedAt` 必须也是当天。执行前暂存区必须为空，且工作区除当前文件外不能有已修改或未跟踪文件。两种模式都运行完整 `npm run check`；check-only 不触碰 Git，push 只暂存/提交当前文件并推送 `origin main`。门失败时文件保持未暂存；commit 前失败会自动取消暂存；push 失败时合法本地提交会保留，修复连接后运行 `git push origin main`，不要重做日期或强制重置。
 
 外部链接使用 `npm run links:external` 做本地确定性库存；命令默认不访问网络并随 `release:check` 输出。需要现场证据时运行 `npm run links:external -- --check`，但 403/429、HEAD 不支持、5xx、超时和网络错误只进入人工复核，不能直接作为生产事故或默认构建失败。检查器不下载正文、不访问私网、不改写链接；若显式 `--fail-on-broken` 返回失败，先在普通浏览器复核确定 4xx 或坏重定向再修改内容。
 

@@ -18,7 +18,7 @@ demo: "https://blog-iota-five-59.vercel.app"
 
 ## 当前状态（2026-08-05）
 
-MyBlog 当前运行在 Vercel，稳定公开地址是 [blog-iota-five-59.vercel.app](https://blog-iota-five-59.vercel.app)。仓库使用原生 Next.js 16.3、React 19 和 TypeScript；GitHub `main` 自动触发 Production，质量门和独立线上冒烟共同验证交付。三条 GitHub workflow 已使用 Node 24 runtime 的 checkout/setup-node v6，应用构建仍固定 Node.js 22。网页 Studio 与 Obsidian 都可以由作者独立发布，Obsidian 图片和笔记链接会在进入正式内容前转换，详情页从真实正文派生反向引用。Studio 和 MyBlog Publisher 1.2.0 都能显示全库只读内容复核队列，作者无需打开 Actions 或终端即可看到 Current 内容的 180 / 60 / 30 / 0 天优先级。
+MyBlog 当前运行在 Vercel，稳定公开地址是 [blog-iota-five-59.vercel.app](https://blog-iota-five-59.vercel.app)。仓库使用原生 Next.js 16.3、React 19 和 TypeScript；GitHub `main` 自动触发 Production，质量门和独立线上冒烟共同验证交付。网页 Studio 与 Obsidian 都可以由作者独立发布，MyBlog Publisher 1.4.0 还能显示 Current 内容的四档复核台账，并在作者人工核对和更新日期后检查、精确提交与同步当前正式笔记。
 
 Cloudflare、Sites、Vinext、Vite Worker 和 Wrangler 仅属于 2026-07-18 至 2026-07-19 的首版与迁移历史，不再是当前运行依赖。旧公开站保留为迁移期回退证据，页面顶部的 Live demo 始终指向当前生产站。
 
@@ -102,7 +102,7 @@ Sites 首次生产发布后，首页与集合页返回 200，但没有任何内�
 
 ### Vercel 阶段（当前）
 
-当前站使用原生 Next.js、GitHub 自动 Production 和稳定域名冒烟；Studio/Obsidian 双发布、内容维护、关系门与 Vercel 恢复均已验收。Iteration 0052 的完整门通过 162 项单元测试、19 项生产测试、45 个页面生成任务和零生产依赖漏洞；MyBlog Publisher 1.3.0 已提供受校验的四档复核台账、安全打开笔记与纯文本降级。项目保持 `maintained`，生产站公开且不依赖 Cloudflare。
+当前站使用原生 Next.js、GitHub 自动 Production 和稳定域名冒烟；Studio/Obsidian 双发布、内容维护、关系门与 Vercel 恢复均已验收。Iteration 0053 的完整门通过 171 项单元测试、19 项生产测试、45 个页面生成任务和零生产依赖漏洞；正式复核的失败回滚与单文件推送由临时 Git 仓库和本地裸远端验证。项目保持 `maintained`，生产站公开且不依赖 Cloudflare。
 
 ## 复盘
 
@@ -110,4 +110,4 @@ Sites 首次生产发布后，首页与集合页返回 200，但没有任何内�
 
 ## 下一步
 
-下一轮让作者在 Obsidian 中对当前正式笔记执行完整检查与精确提交/推送；事实核对和 `updatedAt`/`reviewedAt` 仍必须人工完成，且不能绕过 Git 门。自定义域名、公开邮箱、评论与统计保持可选。
+下一轮把正式内容 check-only 的日期、事实变化、质量门与唯一提交范围显示为结构化 Author Proof；同步仍是独立显式动作。自定义域名、公开邮箱、评论与统计保持可选。

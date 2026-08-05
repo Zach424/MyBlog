@@ -8,11 +8,11 @@
 | 4. 作者自助写作 | done | `/studio` OAuth + editorial workflow PR、Obsidian Vault/模板/附件/真实 `--push` |
 | 5. Vercel 原生迁移 | production live | 原生 Next.js、无 Cloudflare 依赖、24 路由生产冒烟通过 |
 | 6. 所有者生产上线 | done | Git 自动 Production、稳定域名自动冒烟、双端发布、回滚与恢复均已验收 |
-| 7. 持续内容与作者体验 | in progress | Iteration 0052 完成 Obsidian 版本化复核台账、四档期限轨迹、安全打开笔记与纯文本降级 |
+| 7. 持续内容与作者体验 | in progress | Iteration 0053 完成 Obsidian 正式内容人工复核、完整检查、精确单文件提交与推送 |
 
 ## 当前唯一主线
 
-进入持续内容与作者体验阶段。Iteration 0052 已把 MyBlog Publisher 升到 1.3.0：命令面板以 `content:status --format json` 读取版本化 Current 报告，严格验证日期/计数/阈值/排序/路由/路径后显示原生 deadline ledger，并只为 Vault 中精确存在的 Markdown 来源提供“打开笔记”；逾期报告的领域退出码 1 不再被误判为命令故障，结构或 UI 异常会执行第二条纯文本证据路径。下一主线补齐“打开后如何安全完成复核”：作者显式修改正文、`updatedAt`/`reviewedAt` 后，可在 Obsidian 对当前正式文章/项目执行完整检查，并在无无关工作区改动时原子提交与推送精确文件；不得自动伪造复核日期或绕过 Git 门。需要品牌域名时再绑定自定义域名，旧公开站继续只作为迁移历史证据。
+进入持续内容与作者体验阶段。Iteration 0053 已把 MyBlog Publisher 升到 1.4.0：作者从维护台账打开正式笔记后，必须人工核对并推进 `reviewedAt`；事实变化还必须同步当天 `updatedAt`。新 `content:review` 在 `main`、空暂存区、零无关修改和唯一已跟踪目标的边界内运行完整仓库门，check-only 保持 Git 不变，push 只提交/同步当前 Markdown；临时 Git 仓库和本地裸远端真实证明失败回滚与精确提交。下一主线把 check-only 的成功从一条 Notice 升级为结构化 Author Proof，让作者在同步前看见旧/新日期、事实变化和唯一提交范围，同时保留 CLI 文本和失败关闭。需要品牌域名时再绑定自定义域名，旧公开站继续只作为迁移历史证据。
 
 ## 已知风险
 
@@ -32,7 +32,7 @@
 - slug 迁移已有构建验证的精确单跳 redirect 注册表，但仍是需要作者审阅的 Git 操作；不支持通配参数或自动推断，迁移必须同步处理内容、附件和引用；
 - Obsidian 已有全 inbox readiness 总览，但该报告有意只代表本地单篇写入事务，不替代正式发布的完整仓库门禁，也不进入看不到未跟踪草稿的 Actions；
 - Current record 已有 Studio 实时只读队列、每周 60/30 天 Actions 提醒和过期门；队列数据只随新 Production 接收内容变更，且仍不发送外部消息；若未来需要邮件/聊天通知，必须由所有者选择渠道后再接入；
-- Obsidian 维护台账 1.3.0 已验证版本化 JSON 并安全打开真实 sourcePath；真实 Obsidian 的主题组合、超长标题和大量记录仍需随实际内容增长观察，自动化当前证明 DOM/行为/CSS 契约而不是宿主像素渲染。插件 schema 与 CLI version 必须同步升级，异常会退回第二次纯文本命令；
+- Obsidian 维护台账 1.4.0 已验证版本化 JSON 并安全打开真实 sourcePath；正式复核已能检查与精确同步，但 check-only 成功目前只给 Notice，不展示 HEAD/当前日期和语义差异清单。真实主题组合、超长标题和大量记录仍需随实际内容增长观察；插件 schema 与 CLI version 必须同步升级，异常会退回第二次纯文本命令；
 - 内部链接支持内容页和严格标题锚点，行内/引用式/自引用共享实际渲染 slug 规则，详情页与公开知识地图共享 outgoing/backlinks；明确不支持 Obsidian 块引用，标题改名必须同步深链，当前双列 SVG 为小型内容库优化，内容规模增长后需要过滤/分组；
 - 正文普通 HTTPS 与结构化 repository/demo/canonical 已有统一确定性库存和受控实时报告；实时 DNS/网络结果有意不进 Actions，timeout/限流不能冒充内容错误；
 - 文章与项目已有完整 A4 打印版式，但 PDF 仍由读者通过浏览器打印生成，仓库不把二进制 PDF 当作发布源，也不提供服务端 PDF 缓存；后续版式变化仍需重新做真实 PDF 全页复核；
