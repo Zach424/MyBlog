@@ -369,6 +369,45 @@ function reviewDeliveryReport({
   };
 }
 
+function reviewDeliveryReceipt() {
+  const parentOid = "a".repeat(40);
+  const commitOid = "b".repeat(40);
+  return {
+    version: 1,
+    mode: "delivered",
+    review: {
+      blobOid: "d".repeat(40),
+      commitOid,
+      parentOid,
+      slug: "myblog",
+      sourcePath: "content/projects/myblog.md",
+      subject: "content: review myblog",
+      treeOid: "c".repeat(40),
+    },
+    transition: {
+      after: {
+        localHead: commitOid,
+        relation: "synchronized",
+        trackingHead: commitOid,
+      },
+      before: {
+        localHead: commitOid,
+        relation: "pending-review",
+        trackingHead: parentOid,
+      },
+      command: `git push origin ${commitOid}:refs/heads/main`,
+    },
+    safety: {
+      fetchExecuted: false,
+      headStable: true,
+      indexStable: true,
+      rebaseExecuted: false,
+      resetExecuted: false,
+      worktreeStable: true,
+    },
+  };
+}
+
 function findCommand(harness, id) {
   const command = harness.commands.find((candidate) => candidate.id === id);
   assert.ok(command, `Expected command ${id}`);
@@ -382,7 +421,7 @@ test("renders a versioned maintenance ledger and opens an exact Vault note", asy
     createPluginHarness(),
   ]);
   const manifest = JSON.parse(manifestSource);
-  assert.equal(manifest.version, "1.8.0");
+  assert.equal(manifest.version, "1.9.0");
   assert.equal(manifest.isDesktopOnly, true);
   assert.match(styles, /^\.myblog-maintenance \{/mu);
   assert.match(styles, /\[data-status="overdue"\]/u);
@@ -392,6 +431,7 @@ test("renders a versioned maintenance ledger and opens an exact Vault note", asy
   assert.match(styles, /myblog-review-proof__deferred/u);
   assert.match(styles, /myblog-review-proof__candidate/u);
   assert.match(styles, /^\.myblog-review-delivery \{/mu);
+  assert.match(styles, /^\.myblog-review-delivery-receipt \{/mu);
   assert.doesNotMatch(styles, /(?:linear-gradient|@keyframes|animation:)/u);
 
   const command = findCommand(harness, "inspect-published-maintenance");
@@ -525,6 +565,70 @@ test("falls back to local-only text when delivery evidence is inconsistent", () 
       /待同步复核提交/u,
     );
   });
+});
+
+test("delivers an exact pending review and renders a sealed receipt", async () => {
+  const harness = await createPluginHarness();
+  const command = findCommand(harness, "deliver-pending-review");
+  assert.equal(command.checkCallback(true), true);
+  command.checkCallback(false);
+  assert.deepEqual(plain(harness.spawned[0].args), [
+    "/d",
+    "/s",
+    "/c",
+    "npm",
+    "--silent",
+    "run",
+    "content:review:deliver",
+    "--",
+    "--format",
+    "json",
+  ]);
+  const receipt = reviewDeliveryReceipt();
+  harness.spawned[0].child.stdout.emit("data", Buffer.from(JSON.stringify(receipt)));
+  harness.spawned[0].child.emit("close", 0);
+  assert.equal(harness.reconciliations, 1);
+  assert.equal(harness.modals.length, 1);
+  const modal = harness.modals[0];
+  assert.equal(
+    modal.contentEl.classes.has("myblog-review-delivery-receipt"),
+    true,
+  );
+  assert.equal(elementsByTag(modal, "button").length, 0);
+  const text = allElements(modal.contentEl).map((element) => element.text).join(" ");
+  assert.match(text, /DELIVERY RECEIPT \/ SYNCHRONIZED/u);
+  assert.match(
+    text,
+    /VERIFIED LOCAL COMMIT.*SEALED PUSH.*ORIGIN\/MAIN · OBSERVED AFTER PUSH/su,
+  );
+  assert.match(text, /HEAD STABLE.*INDEX STABLE.*WORKTREE STABLE/su);
+  assert.match(text, /content\/projects\/myblog\.md/u);
+  assert.ok(text.includes(receipt.transition.command));
+  assert.ok(
+    elementsByTag(modal, "code").some(
+      (element) => element.text === receipt.review.treeOid,
+    ),
+  );
+
+  const mobile = await createPluginHarness({ desktop: false });
+  assert.equal(findCommand(mobile, "deliver-pending-review").checkCallback(true), false);
+});
+
+test("does not retry delivery or reconcile when its success receipt is invalid", async () => {
+  const harness = await createPluginHarness();
+  const receipt = reviewDeliveryReceipt();
+  receipt.transition.after.trackingHead = "e".repeat(40);
+  findCommand(harness, "deliver-pending-review").checkCallback(false);
+  harness.spawned[0].child.stdout.emit("data", Buffer.from(JSON.stringify(receipt)));
+  harness.spawned[0].child.emit("close", 0);
+  assert.equal(harness.spawned.length, 1);
+  assert.equal(harness.modals.length, 0);
+  assert.equal(harness.reconciliations, 0);
+  assert.ok(
+    harness.notices.some((notice) =>
+      /重新同步未能生成可信回执/u.test(notice.message),
+    ),
+  );
 });
 
 test("accepts a valid overdue report even though the CLI exits with code 1", async () => {

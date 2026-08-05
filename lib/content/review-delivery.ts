@@ -1,6 +1,7 @@
 import { PUBLISHED_NOTE_PATTERN } from "./review-note.ts";
 
 export const CONTENT_REVIEW_DELIVERY_REPORT_VERSION = 1;
+export const CONTENT_REVIEW_DELIVERY_RECEIPT_VERSION = 1;
 export const CONTENT_REVIEW_LOCAL_REF = "refs/heads/main";
 export const CONTENT_REVIEW_TRACKING_REF = "refs/remotes/origin/main";
 export const GIT_OBJECT_ID_PATTERN = /^(?:[a-f0-9]{40}|[a-f0-9]{64})$/u;
@@ -61,6 +62,40 @@ export type ContentReviewDeliveryReport = {
     autoExecuted: false;
     command: "git push origin main" | null;
   };
+};
+
+export type ContentReviewDeliveryReceipt = {
+  version: 1;
+  mode: "delivered";
+  review: NonNullable<ContentReviewDeliveryReport["pendingReview"]>;
+  transition: {
+    before: {
+      localHead: string;
+      relation: "pending-review";
+      trackingHead: string;
+    };
+    after: {
+      localHead: string;
+      relation: "synchronized";
+      trackingHead: string;
+    };
+    command: string;
+  };
+  safety: {
+    fetchExecuted: false;
+    headStable: true;
+    indexStable: true;
+    rebaseExecuted: false;
+    resetExecuted: false;
+    worktreeStable: true;
+  };
+};
+
+type ContentReviewDeliveryReceiptInput = {
+  after: ContentReviewDeliveryReport;
+  before: ContentReviewDeliveryReport;
+  indexStable: boolean;
+  worktreeStable: boolean;
 };
 
 function assertOid(value: string, label: string) {
@@ -189,5 +224,66 @@ export function analyzeContentReviewDelivery(
             autoExecuted: false,
             command: null,
           },
+  };
+}
+
+export function createContentReviewDeliveryReceipt({
+  after,
+  before,
+  indexStable,
+  worktreeStable,
+}: ContentReviewDeliveryReceiptInput): ContentReviewDeliveryReceipt {
+  if (
+    before.relation.status !== "pending-review" ||
+    before.pendingReview === null
+  ) {
+    throw new Error("交付前必须存在一个精确待同步正式复核");
+  }
+  if (before.observation.currentBranch !== "main") {
+    throw new Error("只能在 main 分支重新同步正式复核");
+  }
+  const review = before.pendingReview;
+  if (
+    before.observation.localHead !== review.commitOid ||
+    before.observation.trackingHead !== review.parentOid
+  ) {
+    throw new Error("交付前的 HEAD、父级与待同步复核不一致");
+  }
+  if (
+    after.relation.status !== "synchronized" ||
+    after.observation.currentBranch !== "main" ||
+    after.observation.localHead !== review.commitOid ||
+    after.observation.trackingHead !== review.commitOid
+  ) {
+    throw new Error("交付后的 main 必须仍是已验证复核提交并与 tracking ref 同步");
+  }
+  if (!indexStable) throw new Error("交付期间 index 必须保持不变");
+  if (!worktreeStable) throw new Error("交付期间 worktree 必须保持不变");
+
+  return {
+    version: CONTENT_REVIEW_DELIVERY_RECEIPT_VERSION,
+    mode: "delivered",
+    review: { ...review },
+    transition: {
+      before: {
+        localHead: review.commitOid,
+        relation: "pending-review",
+        trackingHead: review.parentOid,
+      },
+      after: {
+        localHead: review.commitOid,
+        relation: "synchronized",
+        trackingHead: review.commitOid,
+      },
+      command: `git push origin ${review.commitOid}:refs/heads/main`,
+    },
+    safety: {
+      fetchExecuted: false,
+      headStable: true,
+      indexStable: true,
+      rebaseExecuted: false,
+      resetExecuted: false,
+      worktreeStable: true,
+    },
   };
 }

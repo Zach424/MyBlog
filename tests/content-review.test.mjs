@@ -18,7 +18,10 @@ import {
   fingerprintContentReviewCandidate,
   inspectContentReview,
 } from "../lib/content/review-note.ts";
-import { analyzeContentReviewDelivery } from "../lib/content/review-delivery.ts";
+import {
+  analyzeContentReviewDelivery,
+  createContentReviewDeliveryReceipt,
+} from "../lib/content/review-delivery.ts";
 import { classifyContentReviewWorktree } from "../lib/content/review-worktree.ts";
 
 const reviewerScriptPath = fileURLToPath(
@@ -26,6 +29,9 @@ const reviewerScriptPath = fileURLToPath(
 );
 const deliveryScriptPath = fileURLToPath(
   new URL("../scripts/report-content-review-delivery.mjs", import.meta.url),
+);
+const deliverScriptPath = fileURLToPath(
+  new URL("../scripts/deliver-content-review.mjs", import.meta.url),
 );
 const sourcePath = "content/posts/reviewed-note.md";
 
@@ -94,6 +100,15 @@ function runDeliveryReport(root, ...args) {
     root,
     process.execPath,
     ["--experimental-strip-types", deliveryScriptPath, ...args],
+    { allowFailure: true },
+  );
+}
+
+function runReviewDelivery(root, ...args) {
+  return run(
+    root,
+    process.execPath,
+    ["--experimental-strip-types", deliverScriptPath, ...args],
     { allowFailure: true },
   );
 }
@@ -310,6 +325,87 @@ test("keeps ambiguous local history out of pending-review recovery", () => {
   });
   assert.equal(missing.relation.status, "tracking-missing");
   assert.equal(missing.observation.trackingHead, null);
+});
+
+test("creates a delivery receipt only for a stable exact transition", () => {
+  const trackingHead = "a".repeat(40);
+  const commitOid = "b".repeat(40);
+  const pending = analyzeContentReviewDelivery({
+    ahead: 1,
+    behind: 0,
+    currentBranch: "main",
+    localHead: commitOid,
+    pendingCommit: {
+      blobOid: "d".repeat(40),
+      commitOid,
+      parentOids: [trackingHead],
+      paths: [sourcePath],
+      subject: "content: review reviewed-note",
+      treeOid: "c".repeat(40),
+    },
+    trackingHead,
+  });
+  const synchronized = analyzeContentReviewDelivery({
+    ahead: 0,
+    behind: 0,
+    currentBranch: "main",
+    localHead: commitOid,
+    pendingCommit: null,
+    trackingHead: commitOid,
+  });
+  const receipt = createContentReviewDeliveryReceipt({
+    after: synchronized,
+    before: pending,
+    indexStable: true,
+    worktreeStable: true,
+  });
+  assert.equal(receipt.version, 1);
+  assert.equal(receipt.mode, "delivered");
+  assert.equal(receipt.review.commitOid, commitOid);
+  assert.equal(
+    receipt.transition.command,
+    `git push origin ${commitOid}:refs/heads/main`,
+  );
+  assert.deepEqual(receipt.transition.before, {
+    localHead: commitOid,
+    relation: "pending-review",
+    trackingHead,
+  });
+  assert.deepEqual(receipt.transition.after, {
+    localHead: commitOid,
+    relation: "synchronized",
+    trackingHead: commitOid,
+  });
+  assert.deepEqual(receipt.safety, {
+    fetchExecuted: false,
+    headStable: true,
+    indexStable: true,
+    rebaseExecuted: false,
+    resetExecuted: false,
+    worktreeStable: true,
+  });
+
+  const wrongAfter = structuredClone(synchronized);
+  wrongAfter.observation.localHead = "e".repeat(40);
+  wrongAfter.observation.trackingHead = "e".repeat(40);
+  assert.throws(
+    () => createContentReviewDeliveryReceipt({
+      after: wrongAfter,
+      before: pending,
+      indexStable: true,
+      worktreeStable: true,
+    }),
+    /交付后的 main 必须仍是已验证复核提交/u,
+  );
+  assert.throws(
+    () => createContentReviewDeliveryReceipt({
+      after: synchronized,
+      before: pending,
+      indexStable: false,
+      worktreeStable: true,
+    }),
+    /index.*保持不变/u,
+  );
 });
 
 test("classifies only isolated author drafts as deferred review work", () => {
@@ -890,11 +986,96 @@ test("reports and blocks a verified review commit whose push is still pending", 
       /已有待同步正式内容复核.*content\/posts\/reviewed-note\.md.*content:review:status/su,
     );
 
+    const rejectedDelivery = runReviewDelivery(fixture.root, "--format", "json");
+    assert.equal(
+      rejectedDelivery.status,
+      1,
+      `${rejectedDelivery.stdout}\n${rejectedDelivery.stderr}`,
+    );
+    assert.match(
+      `${rejectedDelivery.stdout}\n${rejectedDelivery.stderr}`,
+      /精确复核提交同步失败.*本地提交保持不变/su,
+    );
+    assert.equal(git(fixture.root, "rev-parse", "HEAD"), pendingHead);
+    assert.equal(
+      git(fixture.remote, "rev-parse", "refs/heads/main"),
+      fixture.baseHead,
+    );
+
     await rm(hookPath, { force: true });
-    git(fixture.root, "push", "origin", "main");
+    git(fixture.root, "switch", "-c", "delivery-work");
+    const wrongBranch = runReviewDelivery(fixture.root, "--format", "json");
+    assert.equal(wrongBranch.status, 1);
+    assert.match(
+      `${wrongBranch.stdout}\n${wrongBranch.stderr}`,
+      /只能在 main 分支重新同步/u,
+    );
+    git(fixture.root, "switch", "main");
+
+    const deliveredAction = runReviewDelivery(fixture.root, "--format", "json");
+    assert.equal(
+      deliveredAction.status,
+      0,
+      `${deliveredAction.stdout}\n${deliveredAction.stderr}`,
+    );
+    const receipt = JSON.parse(deliveredAction.stdout);
+    assert.equal(receipt.mode, "delivered");
+    assert.equal(receipt.review.commitOid, pendingHead);
+    assert.equal(receipt.review.sourcePath, sourcePath);
+    assert.equal(
+      receipt.transition.command,
+      `git push origin ${pendingHead}:refs/heads/main`,
+    );
+    assert.equal(receipt.transition.after.relation, "synchronized");
+    assert.equal(receipt.safety.headStable, true);
+    assert.equal(receipt.safety.indexStable, true);
+    assert.equal(receipt.safety.worktreeStable, true);
+    assert.equal(receipt.safety.fetchExecuted, false);
+    assert.equal(receipt.safety.rebaseExecuted, false);
+    assert.equal(receipt.safety.resetExecuted, false);
+    assert.equal(git(fixture.root, "rev-parse", "HEAD"), pendingHead);
+    assert.equal(
+      git(fixture.remote, "rev-parse", "refs/heads/main"),
+      pendingHead,
+    );
     const delivered = runDeliveryReport(fixture.root, "--format", "json");
     assert.equal(delivered.status, 0, `${delivered.stdout}\n${delivered.stderr}`);
     assert.equal(JSON.parse(delivered.stdout).relation.status, "synchronized");
+  } finally {
+    await removeFixture(fixture);
+  }
+});
+
+test("keeps a pending review when the unseen remote rejects a non-fast-forward", async () => {
+  const fixture = await createReviewFixture();
+  try {
+    const hookPath = join(fixture.remote, "hooks", "pre-receive");
+    await writeFile(hookPath, "#!/bin/sh\nexit 1\n");
+    await chmod(hookPath, 0o755);
+    const initial = runReviewer(fixture.root, "--push");
+    assert.equal(initial.status, 1, `${initial.stdout}\n${initial.stderr}`);
+    const pendingHead = git(fixture.root, "rev-parse", "HEAD");
+    await rm(hookPath, { force: true });
+
+    git(fixture.remote, "config", "user.name", "Remote Advance");
+    git(fixture.remote, "config", "user.email", "remote@example.test");
+    const remoteTree = git(fixture.remote, "rev-parse", `${fixture.baseHead}^{tree}`);
+    const remoteCommit = run(
+      fixture.remote,
+      "git",
+      ["commit-tree", remoteTree, "-p", fixture.baseHead],
+      { input: "remote advanced independently\n" },
+    ).stdout.trim();
+    git(fixture.remote, "update-ref", "refs/heads/main", remoteCommit, fixture.baseHead);
+
+    const delivery = runReviewDelivery(fixture.root, "--format", "json");
+    assert.equal(delivery.status, 1, `${delivery.stdout}\n${delivery.stderr}`);
+    assert.match(
+      `${delivery.stdout}\n${delivery.stderr}`,
+      /精确复核提交同步失败.*本地提交保持不变/su,
+    );
+    assert.equal(git(fixture.root, "rev-parse", "HEAD"), pendingHead);
+    assert.equal(git(fixture.remote, "rev-parse", "refs/heads/main"), remoteCommit);
   } finally {
     await removeFixture(fixture);
   }

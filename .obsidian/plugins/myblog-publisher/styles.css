@@ -227,6 +227,47 @@
   max-width: 48rem;
 }
 
+.myblog-review-delivery-receipt {
+  --myblog-delivery-ink: var(--text-normal, #1f272a);
+  --myblog-delivery-verified: var(--color-green, #2f756f);
+  --myblog-delivery-trace: var(--background-modifier-border, #486f78);
+  --myblog-delivery-hold: var(--color-orange, #c6683c);
+  --myblog-delivery-paper: var(--background-primary, #f4f3ef);
+  color: var(--myblog-delivery-ink);
+  font-family: var(--font-interface);
+  max-width: 48rem;
+}
+
+.myblog-review-delivery-receipt .myblog-review-delivery__eyebrow {
+  color: var(--myblog-delivery-verified);
+}
+
+.myblog-review-delivery-receipt .myblog-review-delivery__node--local {
+  border-bottom-color: var(--myblog-delivery-verified);
+}
+
+.myblog-review-delivery__track--sealed {
+  color: var(--myblog-delivery-verified);
+}
+
+.myblog-review-delivery-receipt__stability {
+  border-block: 1px solid var(--background-modifier-border);
+  color: var(--myblog-delivery-verified);
+  display: grid;
+  font-family: var(--font-monospace);
+  font-size: var(--font-ui-smaller);
+  font-weight: var(--font-semibold);
+  gap: var(--size-4-3);
+  grid-template-columns: repeat(3, minmax(0, 1fr));
+  letter-spacing: 0.04em;
+  margin: var(--size-4-5) 0 0;
+  padding-block: var(--size-4-3);
+}
+
+.myblog-review-delivery-receipt .myblog-review-delivery__note {
+  border-inline-start-color: var(--myblog-delivery-verified);
+}
+
 .myblog-review-delivery__eyebrow {
   color: var(--myblog-delivery-trace);
   font-family: var(--font-monospace);
@@ -364,6 +405,11 @@
   }
 
   .myblog-review-delivery__row {
+    gap: var(--size-2-2);
+    grid-template-columns: 1fr;
+  }
+
+  .myblog-review-delivery-receipt__stability {
     gap: var(--size-2-2);
     grid-template-columns: 1fr;
   }

@@ -6,6 +6,7 @@ const MAX_CAPTURED_OUTPUT = 200_000;
 const MAINTENANCE_REPORT_VERSION = 1;
 const CONTENT_REVIEW_PROOF_VERSION = 3;
 const CONTENT_REVIEW_DELIVERY_REPORT_VERSION = 1;
+const CONTENT_REVIEW_DELIVERY_RECEIPT_VERSION = 1;
 const GIT_OBJECT_ID_PATTERN = /^(?:[a-f0-9]{40}|[a-f0-9]{64})$/u;
 const CONTENT_REVIEW_DELIVERY_STATUSES = [
   "synchronized",
@@ -766,6 +767,151 @@ function parseContentReviewDeliveryReport(output) {
   return report;
 }
 
+function parseContentReviewDeliveryReceipt(output) {
+  let receipt;
+  try {
+    receipt = JSON.parse(output);
+  } catch {
+    throw new Error("正式复核交付回执不是有效 JSON");
+  }
+  assertPlainObject(receipt, "正式复核交付回执");
+  assertExactKeys(
+    receipt,
+    ["version", "mode", "review", "transition", "safety"],
+    "正式复核交付回执",
+  );
+  if (receipt.version !== CONTENT_REVIEW_DELIVERY_RECEIPT_VERSION) {
+    valueError(
+      "正式复核交付回执 version",
+      `必须是 ${CONTENT_REVIEW_DELIVERY_RECEIPT_VERSION}`,
+    );
+  }
+  if (receipt.mode !== "delivered") {
+    valueError("正式复核交付回执 mode", "必须是 delivered");
+  }
+
+  assertPlainObject(receipt.review, "正式复核交付回执 review");
+  assertExactKeys(
+    receipt.review,
+    [
+      "blobOid",
+      "commitOid",
+      "parentOid",
+      "slug",
+      "sourcePath",
+      "subject",
+      "treeOid",
+    ],
+    "正式复核交付回执 review",
+  );
+  for (const field of ["blobOid", "commitOid", "parentOid", "treeOid"]) {
+    assertGitObjectId(
+      receipt.review[field],
+      `正式复核交付回执 review.${field}`,
+    );
+  }
+  if (
+    typeof receipt.review.slug !== "string" ||
+    !/^[a-z0-9]+(?:-[a-z0-9]+)*$/u.test(receipt.review.slug)
+  ) {
+    valueError("正式复核交付回执 review.slug", "必须是稳定 slug");
+  }
+  const expectedSource = new RegExp(
+    `^content/(?:posts|projects)/${receipt.review.slug}\\.md$`,
+    "u",
+  );
+  if (!expectedSource.test(receipt.review.sourcePath)) {
+    valueError("正式复核交付回执 review.sourcePath", "必须与 slug 严格对应");
+  }
+  if (receipt.review.subject !== `content: review ${receipt.review.slug}`) {
+    valueError("正式复核交付回执 review.subject", "必须与 slug 严格对应");
+  }
+
+  assertPlainObject(receipt.transition, "正式复核交付回执 transition");
+  assertExactKeys(
+    receipt.transition,
+    ["before", "after", "command"],
+    "正式复核交付回执 transition",
+  );
+  for (const phase of ["before", "after"]) {
+    assertPlainObject(
+      receipt.transition[phase],
+      `正式复核交付回执 transition.${phase}`,
+    );
+    assertExactKeys(
+      receipt.transition[phase],
+      ["localHead", "relation", "trackingHead"],
+      `正式复核交付回执 transition.${phase}`,
+    );
+    assertGitObjectId(
+      receipt.transition[phase].localHead,
+      `正式复核交付回执 transition.${phase}.localHead`,
+    );
+    assertGitObjectId(
+      receipt.transition[phase].trackingHead,
+      `正式复核交付回执 transition.${phase}.trackingHead`,
+    );
+  }
+  if (
+    receipt.transition.before.relation !== "pending-review" ||
+    receipt.transition.before.localHead !== receipt.review.commitOid ||
+    receipt.transition.before.trackingHead !== receipt.review.parentOid
+  ) {
+    valueError(
+      "正式复核交付回执 transition.before",
+      "必须绑定待交付 commit 与父 tracking head",
+    );
+  }
+  if (
+    receipt.transition.after.relation !== "synchronized" ||
+    receipt.transition.after.localHead !== receipt.review.commitOid ||
+    receipt.transition.after.trackingHead !== receipt.review.commitOid
+  ) {
+    valueError(
+      "正式复核交付回执 transition.after",
+      "必须证明 local/tracking 都是已交付 commit",
+    );
+  }
+  const expectedCommand = `git push origin ${receipt.review.commitOid}:refs/heads/main`;
+  if (receipt.transition.command !== expectedCommand) {
+    valueError(
+      "正式复核交付回执 transition.command",
+      "必须是绑定已验证 commit 的精确非强制 push",
+    );
+  }
+
+  assertPlainObject(receipt.safety, "正式复核交付回执 safety");
+  assertExactKeys(
+    receipt.safety,
+    [
+      "fetchExecuted",
+      "headStable",
+      "indexStable",
+      "rebaseExecuted",
+      "resetExecuted",
+      "worktreeStable",
+    ],
+    "正式复核交付回执 safety",
+  );
+  const expectedSafety = {
+    fetchExecuted: false,
+    headStable: true,
+    indexStable: true,
+    rebaseExecuted: false,
+    resetExecuted: false,
+    worktreeStable: true,
+  };
+  for (const [field, expected] of Object.entries(expectedSafety)) {
+    if (receipt.safety[field] !== expected) {
+      valueError(
+        `正式复核交付回执 safety.${field}`,
+        `必须是 ${expected}`,
+      );
+    }
+  }
+  return receipt;
+}
+
 function remainingLabel(remainingDays) {
   return remainingDays >= 0
     ? `剩余 ${remainingDays} 天`
@@ -1041,6 +1187,83 @@ class ContentReviewDeliveryModal extends Modal {
   }
 }
 
+class ContentReviewDeliveryReceiptModal extends Modal {
+  constructor(app, receipt) {
+    super(app);
+    this.receipt = receipt;
+  }
+
+  onOpen() {
+    const { contentEl, receipt } = this;
+    contentEl.empty();
+    contentEl.addClass("myblog-review-delivery-receipt");
+    contentEl.createEl("p", {
+      cls: "myblog-review-delivery__eyebrow",
+      text: "DELIVERY RECEIPT / SYNCHRONIZED",
+    });
+    contentEl.createEl("h2", {
+      cls: "myblog-review-delivery__title",
+      text: "正式内容复核已重新同步",
+    });
+    contentEl.createEl("p", {
+      cls: "myblog-review-delivery__boundary",
+      text: "已把验证过的精确 commit 推送到 origin/main；未执行 fetch、rebase、reset，也未修改 index 或工作区。",
+    });
+
+    const transition = contentEl.createEl("section", {
+      cls: "myblog-review-delivery__transition",
+    });
+    transition.setAttr("aria-label", "已验证本地提交精确送达到 origin/main");
+    const local = transition.createEl("div", {
+      cls: "myblog-review-delivery__node",
+    });
+    local.createEl("span", { text: "VERIFIED LOCAL COMMIT" });
+    local.createEl("code", {
+      text: shortGitObjectId(receipt.transition.before.localHead),
+    });
+    const track = transition.createEl("div", {
+      cls: "myblog-review-delivery__track myblog-review-delivery__track--sealed",
+    });
+    track.createEl("span", { text: "SEALED PUSH" });
+    const tracking = transition.createEl("div", {
+      cls: "myblog-review-delivery__node myblog-review-delivery__node--local",
+    });
+    tracking.createEl("span", { text: "ORIGIN/MAIN · OBSERVED AFTER PUSH" });
+    tracking.createEl("code", {
+      text: shortGitObjectId(receipt.transition.after.trackingHead),
+    });
+
+    const ledger = contentEl.createEl("dl", {
+      cls: "myblog-review-delivery__ledger",
+    });
+    createDeliveryRow(ledger, "交付状态", "DELIVERED / SYNCHRONIZED", {
+      state: "synchronized",
+    });
+    createDeliveryRow(ledger, "正式内容", receipt.review.sourcePath, {
+      code: true,
+    });
+    createDeliveryRow(ledger, "commit", receipt.review.commitOid, { code: true });
+    createDeliveryRow(ledger, "tree", receipt.review.treeOid, { code: true });
+    createDeliveryRow(ledger, "content blob", receipt.review.blobOid, {
+      code: true,
+    });
+    createDeliveryRow(ledger, "精确 refspec", receipt.transition.command, {
+      code: true,
+    });
+
+    const stability = contentEl.createEl("p", {
+      cls: "myblog-review-delivery-receipt__stability",
+    });
+    stability.createEl("span", { text: "HEAD STABLE" });
+    stability.createEl("span", { text: "INDEX STABLE" });
+    stability.createEl("span", { text: "WORKTREE STABLE" });
+    contentEl.createEl("p", {
+      cls: "myblog-review-delivery__note",
+      text: "local main 与最后观察到的 origin/main 已对齐到同一复核提交；线上部署仍由 GitHub 与 Vercel 的独立检查确认。",
+    });
+  }
+}
+
 class ContentReviewProofModal extends Modal {
   constructor(app, proof) {
     super(app);
@@ -1302,6 +1525,12 @@ module.exports = class MyBlogPublisher extends Plugin {
       name: "查看待同步正式内容复核",
       checkCallback: (checking) => this.inspectReviewDelivery(checking),
     });
+
+    this.addCommand({
+      id: "deliver-pending-review",
+      name: "重新同步待交付正式内容复核",
+      checkCallback: (checking) => this.deliverPendingReview(checking),
+    });
   }
 
   onunload() {
@@ -1507,6 +1736,39 @@ module.exports = class MyBlogPublisher extends Plugin {
         success: "已打开纯文本正式复核交付证据。",
       },
       (report) => new ContentReviewDeliveryTextModal(this.app, report).open(),
+    );
+  }
+
+  deliverPendingReview(checking) {
+    if (!this.isDesktopVault()) return false;
+    if (checking) return true;
+    return this.runRepositoryCommand(
+      [
+        "--silent",
+        "run",
+        "content:review:deliver",
+        "--",
+        "--format",
+        "json",
+      ],
+      {
+        failure: "待交付正式内容重新同步未完成",
+        progress: "正在重新验证并同步精确复核提交…",
+        startFailure: "待交付正式内容重新同步命令无法启动",
+      },
+      (output) => {
+        let receipt;
+        try {
+          receipt = parseContentReviewDeliveryReceipt(output);
+        } catch (error) {
+          throw new Error(
+            `重新同步未能生成可信回执：${error.message}；请运行“查看待同步正式内容复核”重新取证`,
+          );
+        }
+        new ContentReviewDeliveryReceiptModal(this.app, receipt).open();
+        this.app.vault.adapter.reconcile?.();
+        new Notice("待交付正式内容复核已重新同步。", 8000);
+      },
     );
   }
 

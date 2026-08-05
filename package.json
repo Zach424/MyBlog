@@ -18,6 +18,7 @@
     "content:publish": "node --experimental-strip-types scripts/publish-note.mjs",
     "content:review": "node --experimental-strip-types scripts/review-note.mjs",
     "content:review:status": "node --experimental-strip-types scripts/report-content-review-delivery.mjs",
+    "content:review:deliver": "node --experimental-strip-types scripts/deliver-content-review.mjs",
     "content:inbox": "node --experimental-strip-types scripts/report-inbox-readiness.mjs",
     "content:status": "node --experimental-strip-types scripts/report-content-maintenance.mjs",
     "links:external": "node --experimental-strip-types scripts/report-external-links.mjs",
