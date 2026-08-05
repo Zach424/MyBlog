@@ -153,9 +153,46 @@ test("reports ready and scheduled drafts with real media derivation", async () =
         target: "/posts/ready-note#方法",
       },
     ]);
+    const attachment = byPath["content/inbox/ready-note.md"].attachments[0];
+    assert.equal(attachment.sourcePath, "public/uploads/evidence.png");
+    assert.equal(attachment.targetPath, "public/uploads/ready-note/evidence.webp");
+    assert.equal(attachment.publicUrl, "/uploads/ready-note/evidence.webp");
+    assert.equal(attachment.preparation.optimized, true);
+    assert.deepEqual(
+      {
+        format: attachment.preparation.source.format,
+        height: attachment.preparation.source.height,
+        pages: attachment.preparation.source.pages,
+        sourcePath: attachment.preparation.source.sourcePath,
+        width: attachment.preparation.source.width,
+      },
+      {
+        format: "png",
+        height: 630,
+        pages: 1,
+        sourcePath: attachment.sourcePath,
+        width: 1200,
+      },
+    );
+    assert.deepEqual(
+      {
+        format: attachment.preparation.output.format,
+        height: attachment.preparation.output.height,
+        pages: attachment.preparation.output.pages,
+        sourcePath: attachment.preparation.output.sourcePath,
+        width: attachment.preparation.output.width,
+      },
+      {
+        format: "webp",
+        height: 630,
+        pages: 1,
+        sourcePath: attachment.targetPath,
+        width: 1200,
+      },
+    );
     assert.equal(
-      byPath["content/inbox/ready-note.md"].attachments[0].preparation.output.format,
-      "webp",
+      attachment.preparation.bytesSaved,
+      attachment.preparation.source.bytes - attachment.preparation.output.bytes,
     );
     assert.equal(byPath["content/inbox/scheduled-project.md"].state, "scheduled");
     assert.equal(byPath["content/inbox/scheduled-project.md"].kind, "project");

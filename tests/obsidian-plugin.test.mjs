@@ -495,6 +495,34 @@ function inboxPreparedAttachment(slug = "current-draft") {
   };
 }
 
+function inboxPreservedAttachment(slug = "current-draft") {
+  return {
+    publicUrl: `/uploads/${slug}/animation.gif`,
+    sourcePath: "public/uploads/animation.gif",
+    targetPath: `public/uploads/${slug}/animation.gif`,
+    preparation: {
+      bytesSaved: 0,
+      optimized: false,
+      output: {
+        bytes: 4096,
+        format: "gif",
+        height: 360,
+        pages: 12,
+        sourcePath: `public/uploads/${slug}/animation.gif`,
+        width: 640,
+      },
+      source: {
+        bytes: 4096,
+        format: "gif",
+        height: 360,
+        pages: 12,
+        sourcePath: "public/uploads/animation.gif",
+        width: 640,
+      },
+    },
+  };
+}
+
 function contentReviewProof({
   candidateAlgorithm = "sha256",
   candidateDigest = "0123456789abcdef".repeat(4),
@@ -775,7 +803,7 @@ function authorDoctorReport() {
     ["workspace-dependencies", "workspace", "Workspace dependencies", "35/35 pinned packages", "all declared packages installed at pinned versions"],
     ["content-layout", "workspace", "Content layout", "5/5 required paths", "5 required authoring paths"],
     ["obsidian-vault", "vault", "Obsidian Vault", ".obsidian present", ".obsidian directory present"],
-    ["publisher-plugin", "vault", "MyBlog Publisher", "myblog-publisher@1.24.0 · desktop", "myblog-publisher 1.24.0 desktop plugin"],
+    ["publisher-plugin", "vault", "MyBlog Publisher", "myblog-publisher@1.25.0 · desktop", "myblog-publisher 1.25.0 desktop plugin"],
   ];
   const scripts = [
     "content:author:doctor",
@@ -822,7 +850,7 @@ function authorDoctorReport() {
           isDesktopOnly: true,
           mainPresent: true,
           stylesPresent: true,
-          version: "1.24.0",
+          version: "1.25.0",
         },
       },
       workspace: {
@@ -1222,7 +1250,9 @@ test("renders one current draft author-intent summary from versioned local evide
   harness.spawned[0].child.stdout.emit(
     "data",
     Buffer.from(JSON.stringify(inboxReadinessReport({
-      entry: { attachments: [inboxPreparedAttachment()] },
+      entry: {
+        attachments: [inboxPreparedAttachment(), inboxPreservedAttachment()],
+      },
     }))),
   );
   harness.spawned[0].child.emit("close", 0);
@@ -1238,7 +1268,16 @@ test("renders one current draft author-intent summary from versioned local evide
   assert.match(text, /DRAFT → PUBLIC/u);
   assert.match(text, /READY \/ PUBLIC ON PASS/u);
   assert.match(text, /current-draft\.md.*content\/posts\/current-draft\.md/su);
-  assert.match(text, /TYPE.*ARTICLE.*DATE.*2026-08-06.*NOW.*MEDIA.*1.*LINKS.*2/su);
+  assert.match(text, /TYPE.*ARTICLE.*DATE.*2026-08-06.*NOW.*MEDIA.*2.*LINKS.*2/su);
+  assert.match(text, /MEDIA TRACE.*2 ATTACHMENTS/su);
+  assert.match(
+    text,
+    /OPTIMIZED.*SAVED 1\.00 KiB.*33\.3%.*public\/uploads\/evidence\.png.*public\/uploads\/current-draft\/evidence\.webp.*\/uploads\/current-draft\/evidence\.webp.*PNG.*1200×630 PX.*3\.00 KiB.*WEBP.*1200×630 PX.*2\.00 KiB/su,
+  );
+  assert.match(
+    text,
+    /PRESERVED.*BYTE-STABLE.*public\/uploads\/animation\.gif.*\/uploads\/current-draft\/animation\.gif.*GIF.*640×360 PX.*12 FRAMES.*4\.00 KiB/su,
+  );
   assert.match(text, /LINK TRACE.*2 VERIFIED/su);
   assert.match(
     text,
@@ -1249,6 +1288,7 @@ test("renders one current draft author-intent summary from versioned local evide
   assert.deepEqual(elementsByTag(modal, "button").map((button) => button.text), ["关闭"]);
   assert.match(styles, /^\.myblog-draft-intent \{/mu);
   assert.match(styles, /myblog-draft-intent__signature/u);
+  assert.match(styles, /myblog-draft-intent__media/u);
   assert.match(styles, /myblog-draft-intent__links/u);
   assert.deepEqual(harness.processAttempts, []);
   assert.deepEqual(harness.vaultReads, []);
@@ -1258,6 +1298,8 @@ test("renders one current draft author-intent summary from versioned local evide
 
 test("shows scheduled and blocked date semantics without adding an action", async (t) => {
   const sourcePath = "content/inbox/current-draft.md";
+  const missingAttachment = inboxPreparedAttachment();
+  delete missingAttachment.preparation;
   const cases = [
     [
       "scheduled",
@@ -1288,6 +1330,23 @@ test("shows scheduled and blocked date semantics without adding an action", asyn
       }),
       /HOLD \/ 1 BLOCKER.*阻塞证据.*attachment-missing.*missing\.png/su,
     ],
+    [
+      "blocked media without a derived envelope",
+      inboxReadinessReport({
+        entry: {
+          attachments: [missingAttachment],
+          issues: [
+            {
+              code: "attachment-missing",
+              message: "正文引用的附件不存在：public/uploads/evidence.png",
+              path: "public/uploads/evidence.png",
+            },
+          ],
+          state: "blocked",
+        },
+      }),
+      /HOLD \/ 1 BLOCKER.*MEDIA TRACE.*1 ATTACHMENT.*UNPROVEN.*MEDIA ENVELOPE UNAVAILABLE.*public\/uploads\/evidence\.png.*public\/uploads\/current-draft\/evidence\.webp.*\/uploads\/current-draft\/evidence\.webp/su,
+    ],
   ];
 
   for (const [name, report, expectation] of cases) {
@@ -1307,6 +1366,13 @@ test("shows scheduled and blocked date semantics without adding an action", asyn
 
 test("fails closed when current-draft intent evidence is untrusted or the active file drifts", async (t) => {
   const sourcePath = "content/inbox/current-draft.md";
+  const changedMediaReport = (mutate, entry = {}) => {
+    const attachment = inboxPreparedAttachment();
+    mutate(attachment);
+    return JSON.stringify(inboxReadinessReport({
+      entry: { attachments: [attachment], ...entry },
+    }));
+  };
   const multiEntryReport = inboxReadinessReport();
   multiEntryReport.entries.push({
     ...multiEntryReport.entries[0],
@@ -1407,6 +1473,71 @@ test("fails closed when current-draft intent evidence is untrusted or the active
           }],
         },
       })),
+    ],
+    [
+      "ready media has no preparation envelope",
+      changedMediaReport((attachment) => delete attachment.preparation),
+    ],
+    [
+      "unprepared blocked media has no matching issue",
+      changedMediaReport(
+        (attachment) => delete attachment.preparation,
+        { state: "blocked" },
+      ),
+    ],
+    [
+      "media source inspection path drifts",
+      changedMediaReport((attachment) => {
+        attachment.preparation.source.sourcePath = "public/uploads/other.png";
+      }),
+    ],
+    [
+      "media output inspection path drifts",
+      changedMediaReport((attachment) => {
+        attachment.preparation.output.sourcePath =
+          "public/uploads/current-draft/other.webp";
+      }),
+    ],
+    [
+      "media byte delta drifts",
+      changedMediaReport((attachment) => {
+        attachment.preparation.bytesSaved = 1023;
+      }),
+    ],
+    [
+      "preserved media changes bytes",
+      (() => {
+        const attachment = inboxPreservedAttachment();
+        attachment.preparation.output.bytes = 4095;
+        return JSON.stringify(inboxReadinessReport({
+          entry: { attachments: [attachment] },
+        }));
+      })(),
+    ],
+    [
+      "optimized media has an incompatible frame envelope",
+      changedMediaReport((attachment) => {
+        attachment.preparation.output.pages = 2;
+      }),
+    ],
+    [
+      "optimized media enlarges its source",
+      changedMediaReport((attachment) => {
+        attachment.preparation.output.width = 1201;
+      }),
+    ],
+    [
+      "two media entries share one target",
+      (() => {
+        const first = inboxPreparedAttachment();
+        const second = inboxPreservedAttachment();
+        second.targetPath = first.targetPath;
+        second.publicUrl = first.publicUrl;
+        second.preparation.output.sourcePath = first.targetPath;
+        return JSON.stringify(inboxReadinessReport({
+          entry: { attachments: [first, second] },
+        }));
+      })(),
     ],
   ];
   for (const [name, output] of invalidCases) {
@@ -1813,7 +1944,7 @@ test("renders a versioned maintenance ledger and opens an exact Vault note", asy
     createPluginHarness(),
   ]);
   const manifest = JSON.parse(manifestSource);
-  assert.equal(manifest.version, "1.24.0");
+  assert.equal(manifest.version, "1.25.0");
   assert.equal(manifest.minAppVersion, "1.5.7");
   assert.equal(manifest.isDesktopOnly, true);
   assert.match(styles, /^\.myblog-draft-create \{/mu);

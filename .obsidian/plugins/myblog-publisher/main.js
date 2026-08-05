@@ -21,7 +21,7 @@ const CONTENT_DELIVERY_TRIAGE_REPORT_VERSION = 1;
 const AUTHOR_DOCTOR_REPORT_VERSION = 1;
 const INBOX_READINESS_REPORT_VERSION = 2;
 const AUTHOR_DOCTOR_NODE_ENGINE = ">=22.13.0";
-const AUTHOR_DOCTOR_PLUGIN_VERSION = "1.24.0";
+const AUTHOR_DOCTOR_PLUGIN_VERSION = "1.25.0";
 const DRAFT_TITLE_MAX_LENGTH = 120;
 const DRAFT_SLUG_MAX_LENGTH = 80;
 const DRAFT_SLUG_PATTERN = /^[a-z0-9]+(?:-[a-z0-9]+)*$/u;
@@ -158,6 +158,38 @@ function assertNonEmptyString(value, label) {
   if (typeof value !== "string" || value.trim() !== value || value.length === 0) {
     valueError(label, "必须是无首尾空白的非空字符串");
   }
+}
+
+function formatDraftMediaBytes(bytes) {
+  if (bytes < 1024) return `${bytes} B`;
+  if (bytes < 1024 * 1024) return `${(bytes / 1024).toFixed(2)} KiB`;
+  return `${(bytes / (1024 * 1024)).toFixed(2)} MiB`;
+}
+
+function formatDraftMediaInspection(inspection) {
+  const frames = inspection.pages > 1 ? ` · ${inspection.pages} FRAMES` : "";
+  return `${inspection.format.toUpperCase()} · ${inspection.width}×${inspection.height} PX${frames} · ${formatDraftMediaBytes(inspection.bytes)}`;
+}
+
+function formatDraftMediaChange(preparation) {
+  if (!preparation.optimized) return "BYTE-STABLE";
+  const percentage = Math.abs(
+    (preparation.bytesSaved / preparation.source.bytes) * 100,
+  ).toFixed(1);
+  const direction = preparation.bytesSaved >= 0 ? "SAVED" : "ADDED";
+  return `${direction} ${formatDraftMediaBytes(Math.abs(preparation.bytesSaved))} · ${percentage}%`;
+}
+
+function mediaFormatForPath(path) {
+  const extension = path.toLowerCase().match(/\.([a-z0-9]+)$/u)?.[1];
+  return {
+    avif: "avif",
+    gif: "gif",
+    jpeg: "jpeg",
+    jpg: "jpeg",
+    png: "png",
+    webp: "webp",
+  }[extension];
 }
 
 function countExactLine(source, line) {
@@ -373,6 +405,8 @@ function parseInboxReadinessReport(output, expectedSourcePath) {
       valueError(`${entryLabel}.attachments`, "必须是数组");
     }
     const attachmentSources = new Set();
+    const attachmentTargets = new Set();
+    const unpreparedAttachmentSources = new Set();
     for (const [attachmentIndex, attachment] of entry.attachments.entries()) {
       const attachmentLabel = `${entryLabel}.attachments[${attachmentIndex}]`;
       assertPlainObject(attachment, attachmentLabel);
@@ -394,6 +428,10 @@ function parseInboxReadinessReport(output, expectedSourcePath) {
         valueError(`${attachmentLabel}.sourcePath`, "不能重复");
       }
       attachmentSources.add(attachment.sourcePath);
+      if (attachmentTargets.has(attachment.targetPath)) {
+        valueError(`${attachmentLabel}.targetPath`, "不能重复");
+      }
+      attachmentTargets.add(attachment.targetPath);
       if (attachment.publicUrl !== attachment.targetPath.replace(/^public/u, "")) {
         valueError(`${attachmentLabel}.publicUrl`, "必须与 targetPath 对应");
       }
@@ -403,7 +441,12 @@ function parseInboxReadinessReport(output, expectedSourcePath) {
           valueError(`${attachmentLabel}.targetPath`, `必须位于 ${targetPrefix}`);
         }
       }
-      if (hasPreparation) {
+      if (!hasPreparation) {
+        if (entry.state !== "blocked") {
+          valueError(`${attachmentLabel}.preparation`, "ready 或 scheduled 附件必须完成媒体派生");
+        }
+        unpreparedAttachmentSources.add(attachment.sourcePath);
+      } else {
         assertPlainObject(attachment.preparation, `${attachmentLabel}.preparation`);
         assertExactKeys(
           attachment.preparation,
@@ -426,7 +469,7 @@ function parseInboxReadinessReport(output, expectedSourcePath) {
             inspectionLabel,
           );
           for (const field of ["bytes", "height", "pages", "width"]) {
-            assertInteger(inspection[field], `${inspectionLabel}.${field}`, field === "bytes" ? 0 : 1);
+            assertInteger(inspection[field], `${inspectionLabel}.${field}`, 1);
           }
           assertNonEmptyString(inspection.format, `${inspectionLabel}.format`);
           if (
@@ -434,6 +477,38 @@ function parseInboxReadinessReport(output, expectedSourcePath) {
             !safeRepositoryPath.test(inspection.sourcePath)
           ) {
             valueError(`${inspectionLabel}.sourcePath`, "必须是安全仓库路径");
+          }
+          if (mediaFormatForPath(inspection.sourcePath) !== inspection.format) {
+            valueError(`${inspectionLabel}.format`, "必须与媒体路径扩展名一致");
+          }
+        }
+        const { output, source } = attachment.preparation;
+        if (source.sourcePath !== attachment.sourcePath) {
+          valueError(`${attachmentLabel}.preparation.source.sourcePath`, "必须等于附件 sourcePath");
+        }
+        if (output.sourcePath !== attachment.targetPath) {
+          valueError(`${attachmentLabel}.preparation.output.sourcePath`, "必须等于附件 targetPath");
+        }
+        if (attachment.preparation.bytesSaved !== source.bytes - output.bytes) {
+          valueError(`${attachmentLabel}.preparation.bytesSaved`, "必须等于输入字节减输出字节");
+        }
+        if (!attachment.preparation.optimized) {
+          for (const field of ["bytes", "format", "height", "pages", "width"]) {
+            if (source[field] !== output[field]) {
+              valueError(`${attachmentLabel}.preparation.output.${field}`, "保留原文件时必须与输入一致");
+            }
+          }
+        } else {
+          if (
+            source.pages !== 1 ||
+            !new Set(["jpeg", "png", "webp"]).has(source.format) ||
+            output.format !== "webp" ||
+            output.pages !== 1
+          ) {
+            valueError(`${attachmentLabel}.preparation`, "optimized 包络必须是单帧 PNG/JPEG/WebP 到 WebP");
+          }
+          if (output.width > source.width || output.height > source.height) {
+            valueError(`${attachmentLabel}.preparation.output`, "优化产物不得放大输入尺寸");
           }
         }
       }
@@ -452,6 +527,15 @@ function parseInboxReadinessReport(output, expectedSourcePath) {
         if (/\\|\u0000|\.\.(?:\/|$)/u.test(issue.path)) {
           valueError(`${issueLabel}.path`, "不是安全仓库路径");
         }
+      }
+    }
+    for (const sourcePath of unpreparedAttachmentSources) {
+      const hasMatchingIssue = entry.issues.some((issue) =>
+        new Set(["attachment-invalid", "attachment-missing"]).has(issue.code) &&
+        issue.path === sourcePath,
+      );
+      if (!hasMatchingIssue) {
+        valueError(`${entryLabel}.attachments`, `未派生附件必须有同源 missing/invalid 问题：${sourcePath}`);
       }
     }
     if (entry.state === "blocked" && entry.issues.length === 0) {
@@ -2909,12 +2993,62 @@ class DraftIntentModal extends Modal {
     for (const [term, value] of [
       ["TYPE", entry.contentType?.toUpperCase() ?? "UNPROVEN"],
       ["DATE", dateSemantics],
-      ["MEDIA", `${entry.attachments.length} ATTACHMENTS`],
+      [
+        "MEDIA",
+        `${entry.attachments.length} ATTACHMENT${entry.attachments.length === 1 ? "" : "S"}`,
+      ],
       ["LINKS", `${entry.internalLinkCount} REFERENCES`],
     ]) {
       const row = evidence.createDiv({ cls: "myblog-draft-intent__evidence-row" });
       row.createEl("dt", { text: term });
       row.createEl("dd", { text: value });
+    }
+
+    if (entry.attachments.length > 0) {
+      const media = contentEl.createEl("section", {
+        cls: "myblog-draft-intent__media",
+      });
+      const mediaHeader = media.createDiv({ cls: "myblog-draft-intent__media-header" });
+      mediaHeader.createEl("h3", { text: "MEDIA TRACE" });
+      mediaHeader.createEl("span", {
+        text: `${entry.attachments.length} ATTACHMENT${entry.attachments.length === 1 ? "" : "S"}`,
+      });
+      const list = media.createEl("ol");
+      for (const attachment of entry.attachments) {
+        const item = list.createEl("li");
+        const summary = item.createDiv({ cls: "myblog-draft-intent__media-summary" });
+        summary.createEl("span", {
+          text: !attachment.preparation
+            ? "UNPROVEN"
+            : attachment.preparation.optimized
+              ? "OPTIMIZED"
+              : "PRESERVED",
+        });
+        summary.createEl("span", {
+          text: attachment.preparation
+            ? formatDraftMediaChange(attachment.preparation)
+            : "MEDIA ENVELOPE UNAVAILABLE",
+        });
+        const mapping = item.createDiv({ cls: "myblog-draft-intent__media-mapping" });
+        mapping.createEl("code", { text: attachment.sourcePath });
+        mapping.createEl("strong", { text: "→ REPOSITORY" });
+        mapping.createEl("code", { text: attachment.targetPath });
+        const publicTarget = item.createDiv({ cls: "myblog-draft-intent__media-public" });
+        publicTarget.createEl("span", { text: "PUBLIC" });
+        publicTarget.createEl("code", { text: attachment.publicUrl });
+        if (attachment.preparation) {
+          const specification = item.createDiv({
+            cls: "myblog-draft-intent__media-specification",
+          });
+          specification.createEl("span", {
+            text: formatDraftMediaInspection(attachment.preparation.source),
+          });
+          specification.createEl("strong", { text: "→" });
+          specification.createEl("span", {
+            text: formatDraftMediaInspection(attachment.preparation.output),
+          });
+        }
+      }
     }
 
     if (entry.internalLinks.length > 0) {
