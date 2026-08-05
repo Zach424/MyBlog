@@ -215,3 +215,153 @@
     gap: var(--size-2-1);
   }
 }
+
+.myblog-review-proof {
+  --myblog-proof-ink: var(--text-normal, #1f272a);
+  --myblog-proof-verified: var(--color-green, #2f756f);
+  --myblog-proof-trace: var(--background-modifier-border, #486f78);
+  --myblog-proof-caution: var(--color-orange, #c6683c);
+  --myblog-proof-paper: var(--background-primary, #f4f3ef);
+  color: var(--myblog-proof-ink);
+  font-family: var(--font-interface);
+  max-width: 48rem;
+}
+
+.myblog-review-proof__eyebrow {
+  color: var(--myblog-proof-verified);
+  font-family: var(--font-monospace);
+  font-size: var(--font-ui-smaller);
+  font-weight: var(--font-semibold);
+  letter-spacing: 0.08em;
+  margin: 0 0 var(--size-2-2);
+}
+
+.myblog-review-proof__title {
+  font-family: var(--font-text);
+  margin: 0 0 var(--size-4-2);
+}
+
+.myblog-review-proof__boundary {
+  border-inline-start: 0.22rem solid var(--myblog-proof-verified);
+  color: var(--text-muted);
+  margin: 0 0 var(--size-4-5);
+  padding-inline-start: var(--size-4-3);
+}
+
+.myblog-review-proof__content-title {
+  font-family: var(--font-text);
+  font-size: var(--font-ui-large);
+  line-height: var(--line-height-tight);
+  margin: 0;
+}
+
+.myblog-review-proof__source {
+  color: var(--text-muted);
+  font-family: var(--font-monospace);
+  font-size: var(--font-ui-smaller);
+  margin: var(--size-2-2) 0 0;
+  overflow-wrap: anywhere;
+}
+
+.myblog-review-proof__transition {
+  align-items: end;
+  display: grid;
+  gap: var(--size-4-3);
+  grid-template-columns: minmax(0, 1fr) minmax(3rem, 0.55fr) minmax(0, 1fr);
+  margin-top: var(--size-4-6);
+}
+
+.myblog-review-proof__date-node {
+  border-bottom: 0.24rem solid var(--myblog-proof-trace);
+  display: flex;
+  flex-direction: column;
+  gap: var(--size-2-1);
+  min-width: 0;
+  padding-bottom: var(--size-4-2);
+}
+
+.myblog-review-proof__date-node--current {
+  border-bottom-color: var(--myblog-proof-verified);
+  text-align: end;
+}
+
+.myblog-review-proof__date-node span {
+  color: var(--text-muted);
+  font-size: var(--font-ui-smaller);
+}
+
+.myblog-review-proof__date-node time {
+  font-family: var(--font-monospace);
+  font-size: var(--font-ui-large);
+  font-variant-numeric: tabular-nums;
+  font-weight: var(--font-semibold);
+}
+
+.myblog-review-proof__track {
+  align-items: center;
+  border-top: 1px solid var(--myblog-proof-trace);
+  color: var(--myblog-proof-verified);
+  display: flex;
+  justify-content: center;
+  margin-bottom: calc(var(--size-4-2) + 0.1rem);
+}
+
+.myblog-review-proof__track span {
+  background: var(--myblog-proof-paper);
+  font-family: var(--font-monospace);
+  line-height: 1;
+  padding-inline: var(--size-2-2);
+  transform: translateY(-50%);
+}
+
+.myblog-review-proof__ledger {
+  border-top: 1px solid var(--background-modifier-border);
+  margin: var(--size-4-6) 0 0;
+}
+
+.myblog-review-proof__row {
+  border-bottom: 1px solid var(--background-modifier-border);
+  display: grid;
+  gap: var(--size-4-3);
+  grid-template-columns: minmax(8rem, 0.7fr) minmax(0, 1.3fr);
+  padding-block: var(--size-4-3);
+}
+
+.myblog-review-proof__row dt {
+  color: var(--text-muted);
+  font-size: var(--font-ui-smaller);
+}
+
+.myblog-review-proof__row dd {
+  margin-inline-start: 0;
+  overflow-wrap: anywhere;
+}
+
+.myblog-review-proof__row[data-state="changed"] dd,
+.myblog-review-proof__row[data-state="passed"] dd {
+  color: var(--myblog-proof-verified);
+  font-weight: var(--font-semibold);
+}
+
+.myblog-review-proof__next {
+  border-inline-start: 0.22rem solid var(--myblog-proof-caution);
+  color: var(--text-muted);
+  margin: var(--size-4-5) 0 0;
+  padding-inline-start: var(--size-4-3);
+}
+
+@media (max-width: 36rem) {
+  .myblog-review-proof__transition {
+    gap: var(--size-4-2);
+    grid-template-columns: minmax(0, 1fr) minmax(1.5rem, 0.25fr) minmax(0, 1fr);
+  }
+
+  .myblog-review-proof__date-node time {
+    font-size: var(--font-ui-small);
+  }
+
+  .myblog-review-proof__row {
+    gap: var(--size-2-2);
+    grid-template-columns: 1fr;
+  }
+}

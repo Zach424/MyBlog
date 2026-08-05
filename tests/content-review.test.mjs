@@ -12,7 +12,10 @@ import { join } from "node:path";
 import { fileURLToPath } from "node:url";
 import test from "node:test";
 import { resolveContentBuildDate } from "../build/content-build-date.ts";
-import { inspectContentReview } from "../lib/content/review-note.ts";
+import {
+  createContentReviewProof,
+  inspectContentReview,
+} from "../lib/content/review-note.ts";
 
 const reviewerScriptPath = fileURLToPath(
   new URL("../scripts/review-note.mjs", import.meta.url),
@@ -70,16 +73,16 @@ function git(root, ...args) {
   return run(root, "git", args).stdout.trim();
 }
 
-function runReviewer(root, mode) {
+function runReviewer(root, ...args) {
   return run(
     root,
     process.execPath,
-    ["--experimental-strip-types", reviewerScriptPath, sourcePath, mode],
+    ["--experimental-strip-types", reviewerScriptPath, sourcePath, ...args],
     { allowFailure: true },
   );
 }
 
-async function createReviewFixture(checkExitCode = 0) {
+async function createReviewFixture(checkExitCode = 0, qualityOutputBytes = 0) {
   const root = await mkdtemp(join(tmpdir(), "myblog-review-"));
   const remote = await mkdtemp(join(tmpdir(), "myblog-review-remote-"));
   const reviewDate = resolveContentBuildDate();
@@ -104,7 +107,7 @@ async function createReviewFixture(checkExitCode = 0) {
     ),
     writeFile(
       join(root, "quality.cjs"),
-      `process.exit(${checkExitCode});\n`,
+      `process.stdout.write("q".repeat(${qualityOutputBytes}));\nprocess.exit(${checkExitCode});\n`,
     ),
     writeFile(join(root, ...sourcePath.split("/")), baseContent),
   ]);
@@ -163,10 +166,12 @@ test("accepts an explicit review-only date advance", () => {
     {
       kind: "post",
       previousReviewedAt: previousDate,
+      previousUpdatedAt: previousDate,
       reviewedAt: reviewDate,
       slug: "reviewed-note",
       sourcePath,
       substantiveChanged: false,
+      title: "Review workflow",
       updatedAt: previousDate,
     },
   );
@@ -264,11 +269,45 @@ test("rejects stale evidence, identity drift, and non-current records", () => {
 });
 
 test("checks one reviewed note without changing Git state", async () => {
-  const fixture = await createReviewFixture();
+  const fixture = await createReviewFixture(0, 250_000);
   try {
-    const result = runReviewer(fixture.root, "--check-only");
+    const result = runReviewer(
+      fixture.root,
+      "--check-only",
+      "--format",
+      "json",
+    );
     assert.equal(result.status, 0, `${result.stdout}\n${result.stderr}`);
-    assert.match(result.stdout, /正式内容复核检查通过/u);
+    const proof = JSON.parse(result.stdout);
+    assert.deepEqual(proof, {
+      version: 1,
+      mode: "check-only",
+      review: {
+        kind: "post",
+        previousReviewedAt: fixture.previousDate,
+        previousUpdatedAt: fixture.previousDate,
+        reviewedAt: fixture.reviewDate,
+        slug: "reviewed-note",
+        sourcePath,
+        substantiveChanged: false,
+        title: "Review workflow",
+        updatedAt: fixture.previousDate,
+      },
+      git: {
+        branch: "main",
+        changedPaths: [sourcePath],
+        committablePaths: [sourcePath],
+        stagedPaths: [],
+        untrackedPaths: [],
+      },
+      qualityGate: {
+        command: "npm run check",
+        status: "passed",
+      },
+    });
+    assert.deepEqual(createContentReviewProof(proof.review), proof);
+    assert.doesNotMatch(result.stdout, /> .* check/u);
+    assert.ok(result.stdout.length < 5_000, "quality output leaked into JSON stdout");
     assert.equal(git(fixture.root, "rev-parse", "HEAD"), fixture.baseHead);
     assert.equal(git(fixture.root, "diff", "--cached", "--name-only"), "");
     assert.equal(git(fixture.root, "diff", "--name-only"), sourcePath);
@@ -294,6 +333,15 @@ test("blocks unrelated worktree files before the quality gate", async () => {
 test("rejects pre-staged content and non-main branches", async () => {
   const fixture = await createReviewFixture();
   try {
+    const mutatingJson = runReviewer(
+      fixture.root,
+      "--push",
+      "--format",
+      "json",
+    );
+    assert.equal(mutatingJson.status, 1, `${mutatingJson.stdout}\n${mutatingJson.stderr}`);
+    assert.match(`${mutatingJson.stdout}\n${mutatingJson.stderr}`, /只用于 --check-only/u);
+
     git(fixture.root, "add", "--", sourcePath);
     const staged = runReviewer(fixture.root, "--check-only");
     assert.equal(staged.status, 1, `${staged.stdout}\n${staged.stderr}`);

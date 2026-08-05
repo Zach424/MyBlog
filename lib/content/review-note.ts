@@ -8,6 +8,7 @@ import {
 
 export const PUBLISHED_NOTE_PATTERN =
   /^content\/(posts|projects)\/([a-z0-9]+(?:-[a-z0-9]+)*)\.md$/u;
+export const CONTENT_REVIEW_PROOF_VERSION = 1;
 
 type ContentReviewInput = {
   currentContent: string;
@@ -19,11 +20,40 @@ type ContentReviewInput = {
 export type ContentReviewInspection = {
   kind: ContentRecord["kind"];
   previousReviewedAt: string;
+  previousUpdatedAt: string | undefined;
   reviewedAt: string;
   slug: string;
   sourcePath: string;
   substantiveChanged: boolean;
+  title: string;
   updatedAt: string | undefined;
+};
+
+export type ContentReviewProof = {
+  version: 1;
+  mode: "check-only";
+  review: {
+    kind: ContentRecord["kind"];
+    previousReviewedAt: string;
+    previousUpdatedAt: string | null;
+    reviewedAt: string;
+    slug: string;
+    sourcePath: string;
+    substantiveChanged: boolean;
+    title: string;
+    updatedAt: string | null;
+  };
+  git: {
+    branch: "main";
+    changedPaths: [string];
+    committablePaths: [string];
+    stagedPaths: [];
+    untrackedPaths: [];
+  };
+  qualityGate: {
+    command: "npm run check";
+    status: "passed";
+  };
 };
 
 function reject(sourcePath: string, message: string): never {
@@ -111,10 +141,43 @@ export function inspectContentReview({
   return {
     kind: current.kind,
     previousReviewedAt: previous.reviewedAt,
+    previousUpdatedAt: previous.updatedAt,
     reviewedAt: current.reviewedAt,
     slug: current.slug,
     sourcePath,
     substantiveChanged,
+    title: current.title,
     updatedAt: current.updatedAt,
+  };
+}
+
+export function createContentReviewProof(
+  inspection: ContentReviewInspection,
+): ContentReviewProof {
+  return {
+    version: CONTENT_REVIEW_PROOF_VERSION,
+    mode: "check-only",
+    review: {
+      kind: inspection.kind,
+      previousReviewedAt: inspection.previousReviewedAt,
+      previousUpdatedAt: inspection.previousUpdatedAt ?? null,
+      reviewedAt: inspection.reviewedAt,
+      slug: inspection.slug,
+      sourcePath: inspection.sourcePath,
+      substantiveChanged: inspection.substantiveChanged,
+      title: inspection.title,
+      updatedAt: inspection.updatedAt ?? null,
+    },
+    git: {
+      branch: "main",
+      changedPaths: [inspection.sourcePath],
+      committablePaths: [inspection.sourcePath],
+      stagedPaths: [],
+      untrackedPaths: [],
+    },
+    qualityGate: {
+      command: "npm run check",
+      status: "passed",
+    },
   };
 }

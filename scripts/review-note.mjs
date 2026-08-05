@@ -1,8 +1,10 @@
 import { spawnSync } from "node:child_process";
 import { existsSync, readFileSync } from "node:fs";
 import { resolve } from "node:path";
+import { parseArgs } from "node:util";
 import { resolveContentBuildDate } from "../build/content-build-date.ts";
 import {
+  createContentReviewProof,
   inspectContentReview,
   PUBLISHED_NOTE_PATTERN,
 } from "../lib/content/review-note.ts";
@@ -16,6 +18,7 @@ function run(command, args, options = {}) {
   const result = spawnSync(command, args, {
     cwd: process.cwd(),
     encoding: "utf8",
+    maxBuffer: 5_000_000,
     stdio: options.capture ? "pipe" : "inherit",
     shell: false,
   });
@@ -30,11 +33,15 @@ function runGit(args, options = {}) {
   return run("git", args, options);
 }
 
-function runNpm(args) {
+function runNpm(args, options = {}) {
   if (process.platform === "win32") {
-    return run(process.env.ComSpec || "cmd.exe", ["/d", "/s", "/c", "npm", ...args]);
+    return run(
+      process.env.ComSpec || "cmd.exe",
+      ["/d", "/s", "/c", "npm", ...args],
+      options,
+    );
   }
-  return run("npm", args);
+  return run("npm", args, options);
 }
 
 function nulPaths(value) {
@@ -77,24 +84,34 @@ function assertSingleReviewChange(sourcePath) {
   }
 }
 
-const args = process.argv.slice(2);
-const sourceArguments = args.filter((argument) => !argument.startsWith("--"));
-const checkOnly = args.includes("--check-only");
-const push = args.includes("--push");
-const unknownFlags = args.filter(
-  (argument) => argument.startsWith("--") && !["--check-only", "--push"].includes(argument),
-);
-if (
-  sourceArguments.length !== 1 ||
-  checkOnly === push ||
-  unknownFlags.length > 0
-) {
+let parsedArgs;
+try {
+  parsedArgs = parseArgs({
+    allowPositionals: true,
+    options: {
+      "check-only": { type: "boolean" },
+      format: { type: "string" },
+      push: { type: "boolean" },
+    },
+    strict: true,
+  });
+} catch (error) {
+  fail(error instanceof Error ? error.message : String(error));
+}
+const checkOnly = parsedArgs.values["check-only"] === true;
+const push = parsedArgs.values.push === true;
+const format = parsedArgs.values.format ?? "text";
+if (parsedArgs.positionals.length !== 1 || checkOnly === push) {
   fail(
-    "用法：npm run content:review -- content/posts|projects/<slug>.md (--check-only|--push)",
+    "用法：npm run content:review -- content/posts|projects/<slug>.md (--check-only|--push) [--format text|json]",
   );
 }
+if (!["text", "json"].includes(format)) fail("--format 只能是 text 或 json");
+if (push && format === "json") fail("--format json 只用于 --check-only 证据");
 
-const sourcePath = sourceArguments[0].replaceAll("\\", "/").replace(/^\.\//u, "");
+const sourcePath = parsedArgs.positionals[0]
+  .replaceAll("\\", "/")
+  .replace(/^\.\//u, "");
 if (!PUBLISHED_NOTE_PATTERN.test(sourcePath)) {
   fail("只接受 content/posts 或 content/projects 中稳定 kebab-case 文件名的 Markdown");
 }
@@ -115,23 +132,41 @@ try {
   fail(error instanceof Error ? error.message : String(error));
 }
 
-console.log(`[review] 正式内容：${inspection.sourcePath}`);
-console.log(
-  `[review] 复核日期：${inspection.previousReviewedAt} -> ${inspection.reviewedAt}`,
-);
-console.log(
-  `[review] 事实变化：${inspection.substantiveChanged ? `有 · updatedAt ${inspection.updatedAt}` : "无 · 仅推进 reviewedAt"}`,
-);
+if (format === "text") {
+  console.log(`[review] 正式内容：${inspection.sourcePath}`);
+  console.log(
+    `[review] 复核日期：${inspection.previousReviewedAt} -> ${inspection.reviewedAt}`,
+  );
+  console.log(
+    `[review] 事实变化：${inspection.substantiveChanged ? `有 · updatedAt ${inspection.updatedAt}` : "无 · 仅推进 reviewedAt"}`,
+  );
+}
 
 try {
-  runNpm(["run", "check"]);
+  if (format === "json") {
+    const quality = runNpm(["run", "check"], {
+      allowFailure: true,
+      capture: true,
+    });
+    if (quality.status !== 0) {
+      if (quality.stdout) process.stderr.write(quality.stdout);
+      if (quality.stderr) process.stderr.write(quality.stderr);
+      throw new Error(`npm run check 失败，退出码 ${quality.status}`);
+    }
+  } else {
+    runNpm(["run", "check"]);
+  }
   assertSingleReviewChange(sourcePath);
 } catch (error) {
   fail(`全量检查失败；文件保持未暂存。${error instanceof Error ? ` ${error.message}` : ""}`);
 }
 
 if (checkOnly) {
-  console.log("[review] 正式内容复核检查通过；未暂存、未提交、未推送。");
+  if (format === "json") {
+    console.log(JSON.stringify(createContentReviewProof(inspection), null, 2));
+  } else {
+    console.log("[review] 正式内容复核检查通过；未暂存、未提交、未推送。");
+  }
   process.exit(0);
 }
 

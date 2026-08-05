@@ -278,6 +278,38 @@ function maintenanceReport({ records = [maintenanceRecord()], version = 1 } = {}
   };
 }
 
+function contentReviewProof({
+  sourcePath = "content/projects/myblog.md",
+  version = 1,
+} = {}) {
+  return {
+    version,
+    mode: "check-only",
+    review: {
+      kind: "project",
+      previousReviewedAt: "2026-08-04",
+      previousUpdatedAt: "2026-08-04",
+      reviewedAt: "2026-08-05",
+      slug: "myblog",
+      sourcePath,
+      substantiveChanged: true,
+      title: "MyBlog 项目复盘",
+      updatedAt: "2026-08-05",
+    },
+    git: {
+      branch: "main",
+      changedPaths: [sourcePath],
+      committablePaths: [sourcePath],
+      stagedPaths: [],
+      untrackedPaths: [],
+    },
+    qualityGate: {
+      command: "npm run check",
+      status: "passed",
+    },
+  };
+}
+
 function findCommand(harness, id) {
   const command = harness.commands.find((candidate) => candidate.id === id);
   assert.ok(command, `Expected command ${id}`);
@@ -291,11 +323,13 @@ test("renders a versioned maintenance ledger and opens an exact Vault note", asy
     createPluginHarness(),
   ]);
   const manifest = JSON.parse(manifestSource);
-  assert.equal(manifest.version, "1.4.0");
+  assert.equal(manifest.version, "1.5.0");
   assert.equal(manifest.isDesktopOnly, true);
   assert.match(styles, /^\.myblog-maintenance \{/mu);
   assert.match(styles, /\[data-status="overdue"\]/u);
   assert.match(styles, /font-family: var\(--font-interface\)/u);
+  assert.match(styles, /^\.myblog-review-proof \{/mu);
+  assert.match(styles, /myblog-review-proof__transition/u);
   assert.doesNotMatch(styles, /(?:linear-gradient|@keyframes|animation:)/u);
 
   const command = findCommand(harness, "inspect-published-maintenance");
@@ -542,13 +576,36 @@ test("checks or syncs only the active formal content note", async () => {
     "--",
     activeFilePath,
     "--check-only",
+    "--format",
+    "json",
   ]);
   harness.spawned[0].child.stdout.emit(
     "data",
-    Buffer.from("[review] 正式内容复核检查通过"),
+    Buffer.from(JSON.stringify(contentReviewProof())),
   );
   harness.spawned[0].child.emit("close", 0);
-  assert.equal(harness.reconciliations, 1);
+  assert.equal(harness.reconciliations, 0);
+  assert.equal(harness.modals.length, 1);
+  assert.equal(
+    harness.modals[0].contentEl.classes.has("myblog-review-proof"),
+    true,
+  );
+  assert.deepEqual(
+    elementsByTag(harness.modals[0], "h2").map((element) => element.text),
+    ["正式内容复核证据"],
+  );
+  assert.match(
+    elementsByTag(harness.modals[0], "p")
+      .map((element) => element.text)
+      .join(" "),
+    /尚未暂存、提交或推送/u,
+  );
+  assert.equal(elementsByTag(harness.modals[0], "button").length, 0);
+  assert.ok(
+    elementsByTag(harness.modals[0], "code").some(
+      (element) => element.text === activeFilePath,
+    ),
+  );
 
   sync.checkCallback(false);
   assert.deepEqual(plain(harness.spawned[1].args), [
@@ -563,7 +620,7 @@ test("checks or syncs only the active formal content note", async () => {
     "--push",
   ]);
   harness.spawned[1].child.emit("close", 0);
-  assert.equal(harness.reconciliations, 2);
+  assert.equal(harness.reconciliations, 1);
 
   const inbox = await createPluginHarness({
     activeFilePath: "content/inbox/draft.md",
@@ -581,4 +638,52 @@ test("checks or syncs only the active formal content note", async () => {
     findCommand(mobile, "review-current-published-note").checkCallback(true),
     false,
   );
+});
+
+test("falls back to plain review evidence for invalid or mismatched proof JSON", async (t) => {
+  const activeFilePath = "content/projects/myblog.md";
+  const inconsistentUpdate = contentReviewProof();
+  inconsistentUpdate.review.updatedAt = "2026-08-04";
+  const cases = [
+    ["invalid JSON", "not-json"],
+    [
+      "mismatched source",
+      JSON.stringify(
+        contentReviewProof({ sourcePath: "content/projects/other.md" }),
+      ),
+    ],
+    ["unsupported version", JSON.stringify(contentReviewProof({ version: 2 }))],
+    ["inconsistent update evidence", JSON.stringify(inconsistentUpdate)],
+  ];
+
+  for (const [name, output] of cases) {
+    await t.test(name, async () => {
+      const harness = await createPluginHarness({ activeFilePath });
+      findCommand(harness, "validate-current-published-note").checkCallback(false);
+      harness.spawned[0].child.stdout.emit("data", Buffer.from(output));
+      harness.spawned[0].child.emit("close", 0);
+      assert.equal(harness.spawned.length, 2);
+      assert.deepEqual(plain(harness.spawned[1].args), [
+        "/d",
+        "/s",
+        "/c",
+        "npm",
+        "run",
+        "content:review",
+        "--",
+        activeFilePath,
+        "--check-only",
+      ]);
+      harness.spawned[1].child.stdout.emit(
+        "data",
+        Buffer.from("[review] 正式内容复核检查通过；未暂存、未提交、未推送。"),
+      );
+      harness.spawned[1].child.emit("close", 0);
+      assert.equal(harness.modals.length, 1);
+      assert.match(
+        elementsByTag(harness.modals[0], "pre")[0].text,
+        /未暂存、未提交、未推送/u,
+      );
+    });
+  }
 });

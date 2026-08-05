@@ -4,6 +4,7 @@ const { spawn } = require("node:child_process");
 
 const MAX_CAPTURED_OUTPUT = 200_000;
 const MAINTENANCE_REPORT_VERSION = 1;
+const CONTENT_REVIEW_PROOF_VERSION = 1;
 const MAINTENANCE_STATUSES = [
   "healthy",
   "review-soon",
@@ -266,6 +267,182 @@ function parseMaintenanceReport(output) {
   return report;
 }
 
+function parseContentReviewProof(output, expectedSourcePath) {
+  let proof;
+  try {
+    proof = JSON.parse(output);
+  } catch {
+    throw new Error("正式内容复核证据不是有效 JSON");
+  }
+
+  assertPlainObject(proof, "正式内容复核证据");
+  assertExactKeys(
+    proof,
+    ["version", "mode", "review", "git", "qualityGate"],
+    "正式内容复核证据",
+  );
+  if (proof.version !== CONTENT_REVIEW_PROOF_VERSION) {
+    valueError(
+      "正式内容复核证据 version",
+      `必须是 ${CONTENT_REVIEW_PROOF_VERSION}`,
+    );
+  }
+  if (proof.mode !== "check-only") {
+    valueError("正式内容复核证据 mode", "必须是 check-only");
+  }
+
+  assertPlainObject(proof.review, "正式内容复核证据 review");
+  assertExactKeys(
+    proof.review,
+    [
+      "kind",
+      "previousReviewedAt",
+      "previousUpdatedAt",
+      "reviewedAt",
+      "slug",
+      "sourcePath",
+      "substantiveChanged",
+      "title",
+      "updatedAt",
+    ],
+    "正式内容复核证据 review",
+  );
+  if (proof.review.kind !== "post" && proof.review.kind !== "project") {
+    valueError("正式内容复核证据 review.kind", "必须是 post 或 project");
+  }
+  if (
+    typeof proof.review.slug !== "string" ||
+    !/^[a-z0-9]+(?:-[a-z0-9]+)*$/u.test(proof.review.slug)
+  ) {
+    valueError("正式内容复核证据 review.slug", "必须是稳定 kebab-case slug");
+  }
+  assertNonEmptyString(proof.review.title, "正式内容复核证据 review.title");
+  const directory = proof.review.kind === "post" ? "posts" : "projects";
+  const derivedSourcePath = `content/${directory}/${proof.review.slug}.md`;
+  if (
+    proof.review.sourcePath !== derivedSourcePath ||
+    proof.review.sourcePath !== expectedSourcePath
+  ) {
+    valueError(
+      "正式内容复核证据 review.sourcePath",
+      `必须与活动笔记严格一致：${expectedSourcePath}`,
+    );
+  }
+  parseIsoDate(
+    proof.review.previousReviewedAt,
+    "正式内容复核证据 review.previousReviewedAt",
+  );
+  parseIsoDate(
+    proof.review.reviewedAt,
+    "正式内容复核证据 review.reviewedAt",
+  );
+  if (proof.review.previousReviewedAt >= proof.review.reviewedAt) {
+    valueError(
+      "正式内容复核证据 review.reviewedAt",
+      "必须晚于 previousReviewedAt",
+    );
+  }
+  for (const field of ["previousUpdatedAt", "updatedAt"]) {
+    const value = proof.review[field];
+    if (value !== null) {
+      parseIsoDate(value, `正式内容复核证据 review.${field}`);
+    }
+  }
+  if (
+    proof.review.previousUpdatedAt !== null &&
+    proof.review.previousUpdatedAt > proof.review.previousReviewedAt
+  ) {
+    valueError(
+      "正式内容复核证据 review.previousUpdatedAt",
+      "不能晚于 previousReviewedAt",
+    );
+  }
+  if (
+    proof.review.updatedAt !== null &&
+    proof.review.updatedAt > proof.review.reviewedAt
+  ) {
+    valueError(
+      "正式内容复核证据 review.updatedAt",
+      "不能晚于 reviewedAt",
+    );
+  }
+  if (typeof proof.review.substantiveChanged !== "boolean") {
+    valueError(
+      "正式内容复核证据 review.substantiveChanged",
+      "必须是 boolean",
+    );
+  }
+  if (
+    proof.review.substantiveChanged &&
+    proof.review.updatedAt !== proof.review.reviewedAt
+  ) {
+    valueError(
+      "正式内容复核证据 review.updatedAt",
+      "事实变化时必须等于 reviewedAt",
+    );
+  }
+  if (
+    !proof.review.substantiveChanged &&
+    proof.review.updatedAt !== proof.review.previousUpdatedAt
+  ) {
+    valueError(
+      "正式内容复核证据 review.updatedAt",
+      "事实未变时必须保持 previousUpdatedAt",
+    );
+  }
+
+  assertPlainObject(proof.git, "正式内容复核证据 git");
+  assertExactKeys(
+    proof.git,
+    [
+      "branch",
+      "changedPaths",
+      "committablePaths",
+      "stagedPaths",
+      "untrackedPaths",
+    ],
+    "正式内容复核证据 git",
+  );
+  if (proof.git.branch !== "main") {
+    valueError("正式内容复核证据 git.branch", "必须是 main");
+  }
+  for (const field of ["changedPaths", "committablePaths"]) {
+    if (
+      !Array.isArray(proof.git[field]) ||
+      proof.git[field].length !== 1 ||
+      proof.git[field][0] !== expectedSourcePath
+    ) {
+      valueError(
+        `正式内容复核证据 git.${field}`,
+        `必须只包含 ${expectedSourcePath}`,
+      );
+    }
+  }
+  for (const field of ["stagedPaths", "untrackedPaths"]) {
+    if (!Array.isArray(proof.git[field]) || proof.git[field].length !== 0) {
+      valueError(`正式内容复核证据 git.${field}`, "必须是空数组");
+    }
+  }
+
+  assertPlainObject(proof.qualityGate, "正式内容复核证据 qualityGate");
+  assertExactKeys(
+    proof.qualityGate,
+    ["command", "status"],
+    "正式内容复核证据 qualityGate",
+  );
+  if (
+    proof.qualityGate.command !== "npm run check" ||
+    proof.qualityGate.status !== "passed"
+  ) {
+    valueError(
+      "正式内容复核证据 qualityGate",
+      "必须证明 npm run check 已通过",
+    );
+  }
+
+  return proof;
+}
+
 function remainingLabel(remainingDays) {
   return remainingDays >= 0
     ? `剩余 ${remainingDays} 天`
@@ -279,6 +456,18 @@ function createMetric(container, label, value, className) {
   metric.createEl("dt", { text: label });
   metric.createEl("dd", { text: String(value) });
   return metric;
+}
+
+function createProofRow(container, label, value, options = {}) {
+  const row = container.createEl("div", {
+    cls: "myblog-review-proof__row",
+  });
+  if (options.state) row.setAttr("data-state", options.state);
+  row.createEl("dt", { text: label });
+  const detail = row.createEl("dd");
+  if (options.code) detail.createEl("code", { text: String(value) });
+  else detail.setText(String(value));
+  return row;
 }
 
 class ReadOnlyReportModal extends Modal {
@@ -319,6 +508,103 @@ class ContentMaintenanceTextModal extends ReadOnlyReportModal {
         "结构化视图不可用，以下为只读纯文本证据；不会修改 reviewedAt、内容、提交或推送文件。",
       report,
       title: "已发布内容复核台账 · 纯文本",
+    });
+  }
+}
+
+class ContentReviewProofTextModal extends ReadOnlyReportModal {
+  constructor(app, report) {
+    super(app, {
+      description:
+        "结构化 Author Proof 不可用，以下为重新执行后的只读文本证据；同步仍需单独运行。",
+      report,
+      title: "正式内容复核证据 · 纯文本",
+    });
+  }
+}
+
+class ContentReviewProofModal extends Modal {
+  constructor(app, proof) {
+    super(app);
+    this.proof = proof;
+  }
+
+  onOpen() {
+    const { contentEl, proof } = this;
+    const { review } = proof;
+    contentEl.empty();
+    contentEl.addClass("myblog-review-proof");
+    contentEl.createEl("p", {
+      cls: "myblog-review-proof__eyebrow",
+      text: "AUTHOR PROOF / CHECKED",
+    });
+    contentEl.createEl("h2", {
+      cls: "myblog-review-proof__title",
+      text: "正式内容复核证据",
+    });
+    contentEl.createEl("p", {
+      cls: "myblog-review-proof__boundary",
+      text: "只读检查已通过；尚未暂存、提交或推送。",
+    });
+    contentEl.createEl("h3", {
+      cls: "myblog-review-proof__content-title",
+      text: review.title,
+    });
+    const source = contentEl.createEl("p", {
+      cls: "myblog-review-proof__source",
+    });
+    source.createEl("code", { text: review.sourcePath });
+
+    const transition = contentEl.createEl("section", {
+      cls: "myblog-review-proof__transition",
+    });
+    transition.setAttr("aria-label", "复核日期从 HEAD 推进到当前笔记");
+    const previous = transition.createEl("div", {
+      cls: "myblog-review-proof__date-node",
+    });
+    previous.createEl("span", { text: "HEAD 复核日" });
+    previous.createEl("time", { text: review.previousReviewedAt });
+    const track = transition.createEl("div", {
+      cls: "myblog-review-proof__track",
+    });
+    track.setAttr("aria-hidden", "true");
+    track.createEl("span", { text: "→" });
+    const current = transition.createEl("div", {
+      cls: "myblog-review-proof__date-node myblog-review-proof__date-node--current",
+    });
+    current.createEl("span", { text: "当前复核日" });
+    current.createEl("time", { text: review.reviewedAt });
+
+    const ledger = contentEl.createEl("dl", {
+      cls: "myblog-review-proof__ledger",
+    });
+    createProofRow(
+      ledger,
+      "事实变化",
+      review.substantiveChanged
+        ? "有 · updatedAt 已同步"
+        : "无 · 仅推进 reviewedAt",
+      { state: review.substantiveChanged ? "changed" : "review-only" },
+    );
+    createProofRow(
+      ledger,
+      "updatedAt",
+      review.updatedAt ?? "未设置",
+      { code: true },
+    );
+    createProofRow(ledger, "质量门", "npm run check · passed", {
+      state: "passed",
+    });
+    createProofRow(ledger, "分支与工作区", "main · index 0 · untracked 0");
+    createProofRow(
+      ledger,
+      "唯一可提交路径",
+      proof.git.committablePaths[0],
+      { code: true },
+    );
+    contentEl.createEl("p", {
+      cls: "myblog-review-proof__next",
+      text: "确认以上证据后，仍需单独运行“提交并同步当前正式内容复核”。",
     });
   }
 }
@@ -704,26 +990,64 @@ module.exports = class MyBlogPublisher extends Plugin {
     if (!isPublishedNote || !this.isDesktopVault()) return false;
     if (checking) return true;
 
+    if (!push) {
+      return this.runRepositoryCommand(
+        [
+          "run",
+          "content:review",
+          "--",
+          file.path,
+          "--check-only",
+          "--format",
+          "json",
+        ],
+        {
+          failure: "正式内容复核未完成",
+          progress: "正在执行正式内容完整复核检查…",
+          startFailure: "正式内容复核命令无法启动",
+        },
+        (output) => this.openStructuredContentReview(output, file.path),
+      );
+    }
+
     return this.runRepositoryCommand(
-      [
-        "run",
-        "content:review",
-        "--",
-        file.path,
-        push ? "--push" : "--check-only",
-      ],
+      ["run", "content:review", "--", file.path, "--push"],
       {
         failure: "正式内容复核未完成",
-        progress: push
-          ? "正在执行完整检查、提交并同步复核…"
-          : "正在执行正式内容完整复核检查…",
+        progress: "正在执行完整检查、提交并同步复核…",
         startFailure: "正式内容复核命令无法启动",
-        success: push
-          ? "正式内容复核已提交并同步，等待线上部署完成。"
-          : "正式内容复核检查通过；没有暂存、提交或推送。",
+        success: "正式内容复核已提交并同步，等待线上部署完成。",
         successDuration: 8000,
       },
       () => this.app.vault.adapter.reconcile?.(),
+    );
+  }
+
+  openStructuredContentReview(output, sourcePath) {
+    try {
+      const proof = parseContentReviewProof(output, sourcePath);
+      new ContentReviewProofModal(this.app, proof).open();
+      new Notice("正式内容 Author Proof 已生成；尚未提交或推送。", 8000);
+    } catch (error) {
+      new Notice(
+        `结构化 Author Proof 不可用：${error.message}。正在重新读取纯文本证据…`,
+        10000,
+      );
+      this.inspectContentReviewText(sourcePath);
+    }
+  }
+
+  inspectContentReviewText(sourcePath) {
+    return this.runRepositoryCommand(
+      ["run", "content:review", "--", sourcePath, "--check-only"],
+      {
+        failure: "纯文本正式内容复核未完成",
+        progress: "正在重新执行纯文本正式内容复核…",
+        startFailure: "纯文本正式内容复核命令无法启动",
+        success: "已打开纯文本正式内容复核证据。",
+        successDuration: 8000,
+      },
+      (report) => new ContentReviewProofTextModal(this.app, report).open(),
     );
   }
 
