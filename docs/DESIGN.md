@@ -141,6 +141,8 @@ Obsidian 的维护入口服从宿主应用而不是复制网页皮肤。1.3.0 �
 
 1.17.0 在同一条原生 Notice 中补全活动脉冲。ACTIVE 与 BUSY 继续共享 operation、source、phase 的信息层级，随后依次显示“阶段进入 + 阶段用时”“最近输出 + 静默时长”“开始 + 总用时”；尚无输出时明确写“本阶段尚无输出”，不显示空时间。没有新增健康色、卡住徽章、超时阈值、进度条、Modal、CSS、按钮或常驻刷新；静默只是 stdout/stderr 的可观察间隔，不是故障判断。这样既让长门禁的阶段停留可追踪，也不把构建工具的输出缓冲误画成错误。
 
+1.18.0 把事务结束后的空白状态设计为一条会话内证据回执。活动时仍显示 `ACTIVE`，结束后“查看当前作者事务”才显示 `IDLE · LAST RECEIPT`；信息顺序是 outcome → operation → source → final phase → started/ended/elapsed → 会话与动作边界。六类 outcome 同时使用中文动词与 `COMPLETED / HELD / COMMAND FAILED / START FAILED / RESULT FAILED / UNLOADED` monospace token，不使用绿色成功卡、红色错误卡或分数。回执仍是同一 Native Notice，不新增 Modal、CSS、按钮、动画或历史列表；最后一行明确重载即清除，且不会重试、恢复或推送。视觉上的取舍是让“刚才发生了什么”可复查，而不是把单条回执扩张成任务中心。
+
 ## 站点图标
 
 `app/icon.png` 为 `256 × 256` PNG，只保留 Commit Trace 的节点、轨迹环与信号色半环，不包含文字、缩写或第二套标志。图标以社交分享卡为风格参考生成，再确定性缩放并纳入尺寸与体积测试；它用于小尺寸识别，不替代首页的工程轨迹签名。
