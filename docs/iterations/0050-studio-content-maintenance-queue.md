@@ -66,6 +66,7 @@
 - 公开 `.next/static` 为 1,818,133 B；独立维护 HTML/CSS/MJS 合计 23,138 B，没有把作者功能并入公开阅读客户端；
 - 实现提交 `5dd380a7d7551bff2f6952520092e5ab64678f2b` 已推送 `main`；Quality Gate `30980923777`（#84）和 Vercel Production 验证 `30980962760`（#77）均 completed/success；
 - 上线后本地运行 `npm run production:smoke -- https://blog-iota-five-59.vercel.app --expect-oauth`，通过 24 条 Sitemap 路由、新维护资源/快照和 OAuth 302。
+- 归档提交 `71acaa1ef1150a56fdcc5b16586ad6f9a0c71143` 已推送；Quality Gate `30981378943`（#85）与 Vercel Production 验证 `30981408665`（#78）均 completed/success，证明状态页与 Obsidian 轮次档案进入 `main` 后仍保持完整交付链路。
 
 ## 8. 经验与教训
 
