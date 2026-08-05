@@ -135,6 +135,8 @@ Obsidian 的维护入口服从宿主应用而不是复制网页皮肤。1.3.0 �
 
 1.14.0 复用这条电路作为四个新发布/复核事务的自动联锁，不另造第二套 dashboard。ready 是无视觉打断的通路，直接进入原命令；attention 才在电路前增加一条窄的双列 `TRANSACTION INTERLOCK / HELD` latch，明确显示被停止的操作与调用时冻结的来源路径，再接原有 circuit 和修复证据。latch 使用既有 caution 规则线、宿主 token 与 monospace 标识，不新增按钮、卡片、渐变、阴影或动画；窄屏折为单列，先回答“哪个事务被停止”，再说明“哪项前置条件未满足”。
 
+1.15.0 把并发状态表达成短暂的系统占用，而不是新的错误页面。第二个新作者事务只收到一条 monospace 开头的 `AUTHOR TRANSACTION / BUSY` Notice，随后列出正在运行的原始操作、冻结 sourcePath 和“完成后再试”；它不打开 Modal、不复制 preflight circuit、不增加 CSS、按钮、进度条或虚构百分比。视觉层继续把 attention 留给可修复环境缺口，把 busy 留给暂时的串行化事实。
+
 ## 站点图标
 
 `app/icon.png` 为 `256 × 256` PNG，只保留 Commit Trace 的节点、轨迹环与信号色半环，不包含文字、缩写或第二套标志。图标以社交分享卡为风格参考生成，再确定性缩放并纳入尺寸与体积测试；它用于小尺寸识别，不替代首页的工程轨迹签名。

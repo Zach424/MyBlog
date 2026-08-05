@@ -16,7 +16,7 @@
 
 首次使用、升级 Node/Git、重新安装依赖、移动仓库或更新插件后，先运行 `npm run content:author:doctor`，或命令面板的“检查本机发布环境”。version 1 报告固定检查 Node/npm/Git、仓库根、main、origin/main 本地同步基线、Git 身份是否配置、package/脚本/固定依赖、内容目录、Vault 与 MyBlog Publisher 版本。它只输出身份是否配置，不泄露姓名或邮箱；不会安装依赖、修改 Git/Obsidian 配置、读取凭据、访问网络或要求工作区为空，也不替代单篇发布门和 `release:check`。
 
-MyBlog Publisher 1.14.0 会在“检查当前草稿”“发布当前草稿并同步 GitHub”“检查当前正式内容复核”“提交并同步当前正式内容复核”真正启动前自动运行同一 JSON doctor。ready 不弹窗并立即进入原命令；attention 打开 `TRANSACTION INTERLOCK / HELD` 与同一 preflight circuit，显示被停止的操作、来源路径和修复证据；不可信 JSON 改读纯文本并失败关闭。所有只读状态、统一分诊和两类待交付重送有意绕过该 synchronized 联锁，避免阻断正确恢复。
+MyBlog Publisher 1.15.0 会在“检查当前草稿”“发布当前草稿并同步 GitHub”“检查当前正式内容复核”“提交并同步当前正式内容复核”真正启动前自动运行同一 JSON doctor，并用一个 single-flight lease 串行化四类新事务。租约从 doctor 启动跨越领域命令与诊断降级，直到成功、失败或 spawn error 才释放；占用期间再次调用只显示 `AUTHOR TRANSACTION / BUSY`、当前操作和冻结路径，不启动第二个进程链。attention 仍打开 `TRANSACTION INTERLOCK / HELD`；不可信 JSON 改读纯文本并失败关闭。所有只读状态、统一分诊和两类待交付重送有意绕过租约，避免阻断正确恢复。
 
 任何发布或正式复核 push 失败后，统一先运行 `npm run content:delivery:status`，或命令面板的“查看 Git 交付恢复”。它只读取一次本地 `main`、最后观察到的 `origin/main` 和 HEAD，把现场严格分为 synchronized、exact pending-review、exact pending-publication 或 inspect；不会 fetch、push、运行 status/deliver，也不会修改历史或工作区。只有 exact route 才会列出对应的既有 status 与 deliver 命令；当前分支不是 `main` 时仍可识别类型，但会保持写入锁定。
 
