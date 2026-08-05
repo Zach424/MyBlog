@@ -127,6 +127,8 @@ Obsidian 的维护入口服从宿主应用而不是复制网页皮肤。1.3.0 �
 
 1.10.0 为新内容待交付建立独立视觉语义，不把复核的单路径 receipt 套在多路径事务上。顶部仍是真实 `ORIGIN/MAIN · LAST OBSERVED ── +1 ── LOCAL MAIN`，精确发布包使用 `PUBLICATION HOLD / ATOMIC BUNDLE`；主体唯一签名是带 Caution 左侧 spine 的 `COMMIT ENVELOPE / N PATHS`，并按作者认知顺序列出 `NOTE / ADDED`、`MEDIA nn / ADDED`、`INBOX / DELETED`，每行保留路径和对应 blob 短身份。下方 ledger 才列 title、subject、完整 commit/tree/target blob 与精确 OID 命令。这个视图只读，没有按钮、卡片、分数、渐变或动画；普通 ahead 只显示 INSPECT，不给 push 建议。Verified `#2f756f`、Trace `#486f78`、Caution `#c6683c`、Paper `#f4f3ef` 与宿主 text/interface/monospace 保持一致，窄屏把 manifest 和 ledger 折为单列。
 
+1.11.0 的发布成功视图保留 Commit Envelope 作为多路径身份，不退化成泛化成功卡。顶部为 `PUBLICATION RECEIPT / SEALED ENVELOPE`，唯一轨迹是 `VERIFIED COMMIT ENVELOPE ── SEALED PUSH ── ORIGIN/MAIN · OBSERVED AFTER PUSH`；中段把同一 manifest spine 从 Caution 切为 Verified，并明确 `DELIVERED ENVELOPE / N PATHS`，NOTE、MEDIA、INBOX 的顺序、路径和 blob 身份保持不变。底部 ledger 列 commit/tree/target blob/精确 refspec，四列 `HEAD / INDEX / WORKTREE / MANIFEST STABLE` 证明本地与多路径清单未漂移。回执与执行命令分离，没有重试、复制、庆祝动画、分数或“安全”徽章；末行继续说明 Git 送达不等于 Production 完成。窄屏将四项稳定性折为单列。
+
 ## 站点图标
 
 `app/icon.png` 为 `256 × 256` PNG，只保留 Commit Trace 的节点、轨迹环与信号色半环，不包含文字、缩写或第二套标志。图标以社交分享卡为风格参考生成，再确定性缩放并纳入尺寸与体积测试；它用于小尺寸识别，不替代首页的工程轨迹签名。

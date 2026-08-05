@@ -55,9 +55,16 @@ npm run content:publish -- content/inbox/learning-vercel-deployments.md --push
 
 ### 在 Obsidian 查看待同步新内容发布
 
-如果 `--push` 已创建 `content: publish <slug>` 但提示 push 失败，不要恢复 inbox、复制草稿或再次运行发布。先运行“MyBlog Publisher: 查看待同步新内容发布”，命令行等价为 `npm run content:publish:status`；JSON 证据增加 `-- --format json`。MyBlog Publisher 1.10.0 只读取本地 main、最后观察到的 origin/main 和 HEAD commit，不 fetch、不 push、不写文件。只有 ahead 1 / behind 0、单父级等于 tracking head、subject 与 slug 一致，且 commit 变更精确等于一个新增正式 Markdown、可选同 slug inbox 删除和零到多个同 slug 归档媒体新增，才显示 `PUBLICATION HOLD / ATOMIC BUNDLE`。
+如果 `--push` 已创建 `content: publish <slug>` 但提示 push 失败，不要恢复 inbox、复制草稿或再次运行发布。先运行“MyBlog Publisher: 查看待同步新内容发布”，命令行等价为 `npm run content:publish:status`；JSON 证据增加 `-- --format json`。MyBlog Publisher 1.11.0 只读取本地 main、最后观察到的 origin/main 和 HEAD commit，不 fetch、不 push、不写文件。只有 ahead 1 / behind 0、单父级等于 tracking head、subject 与 slug 一致，且 commit 变更精确等于一个新增正式 Markdown、可选同 slug inbox 删除和零到多个同 slug 归档媒体新增，才显示 `PUBLICATION HOLD / ATOMIC BUNDLE`。
 
-结构化 Modal 用 `COMMIT ENVELOPE / N PATHS` 依次列出 `NOTE / ADDED`、`MEDIA nn / ADDED`、`INBOX / DELETED`，并保留 commit/tree/target blob 和 `git push origin <verified-oid>:refs/heads/main`。该命令当前只显示证据，不代为执行命令；普通 ahead、复核提交、额外路径、旧媒体修改和多提交堆叠只显示 INSPECT。报告字段、排序、blob、路径集合或附件计数不可信时，插件重新运行纯文本状态，不显示半可信 envelope。发布器自己也会在读取源草稿前检查同一状态，任何非 synchronized 关系都阻止第二次 `--push`。
+结构化 Modal 用 `COMMIT ENVELOPE / N PATHS` 依次列出 `NOTE / ADDED`、`MEDIA nn / ADDED`、`INBOX / DELETED`，并保留 commit/tree/target blob 和 `git push origin <verified-oid>:refs/heads/main`。只读证据确认无误后，单独运行“MyBlog Publisher: 重新同步待交付新内容发布”；命令行等价如下：
+
+```bash
+npm run content:publish:deliver
+npm run content:publish:deliver -- --format json
+```
+
+执行器不接受路径或 commit 参数：它从当前 main 再次读取同一个 exact pending-publication，固定 index/worktree 和完整 Commit Envelope，二次核对后只把已验证 OID 以普通非强制 refspec 推向 `origin/main`。服务器拒绝或远端抢先推进时，本地发布提交与 envelope 保持不变；错误分支、普通 ahead、复核提交、额外路径、旧媒体修改、堆叠提交或执行前漂移都会在 push 前失败。成功后 Modal 显示 `PUBLICATION RECEIPT / SEALED ENVELOPE`、同一 NOTE/MEDIA/INBOX 清单、commit/tree/target blob、精确 refspec，以及 `HEAD / INDEX / WORKTREE / MANIFEST STABLE`。回执只证明 Git 送达，Vercel Production 仍由独立检查确认；成功输出不可信或 postcondition 不完整时不会自动重试，而是要求重新运行只读状态。发布器自己也会在读取源草稿前检查同一状态，任何非 synchronized 关系都阻止第二次 `--push`。
 
 全部草稿的命令行总览：
 
@@ -71,15 +78,15 @@ npm run content:inbox -- --date 2026-08-05
 
 ### 在 Obsidian 查看已发布内容复核台账
 
-打开命令面板并运行“查看已发布内容复核台账”。MyBlog Publisher 1.10.0 会在仓库根目录隐藏运行 `npm --silent run content:status -- --format json`，验证版本化报告后，用原生 deadline ledger 显示报告日期、Current/Historical/未公开数量、healthy/review-soon/due-soon/overdue 四档计数、源笔记路径、review-by、剩余天数和复核清单。每条记录的“打开笔记”只打开 Vault 中精确存在的 `content/posts|projects/<slug>.md`。该命令不读取网络、不修改 `reviewedAt`、不保存文件、不提交也不推送；它和 Studio 队列、每周 Actions 复用同一维护规则。
+打开命令面板并运行“查看已发布内容复核台账”。MyBlog Publisher 1.11.0 会在仓库根目录隐藏运行 `npm --silent run content:status -- --format json`，验证版本化报告后，用原生 deadline ledger 显示报告日期、Current/Historical/未公开数量、healthy/review-soon/due-soon/overdue 四档计数、源笔记路径、review-by、剩余天数和复核清单。每条记录的“打开笔记”只打开 Vault 中精确存在的 `content/posts|projects/<slug>.md`。该命令不读取网络、不修改 `reviewedAt`、不保存文件、不提交也不推送；它和 Studio 队列、每周 Actions 复用同一维护规则。
 
-检查期间的持续 Notice 会在成功、降级、失败或插件卸载时关闭。维护 CLI 用退出码 1 表达“存在逾期内容”时，插件仍会展示通过 schema 的结构化报告；JSON、schema、安全路径或 UI 渲染不可信时，插件自动再读一次纯文本报告，而不是打开半可信交互。命令无法启动时仍只显示诊断；可在仓库终端运行 `npm run content:status` 取得完整输出。仓库更新了插件版本而 Obsidian 已经打开时，需要重启 Obsidian，或先关闭再启用 MyBlog Publisher，才能加载 1.10.0 代码。
+检查期间的持续 Notice 会在成功、降级、失败或插件卸载时关闭。维护 CLI 用退出码 1 表达“存在逾期内容”时，插件仍会展示通过 schema 的结构化报告；JSON、schema、安全路径或 UI 渲染不可信时，插件自动再读一次纯文本报告，而不是打开半可信交互。命令无法启动时仍只显示诊断；可在仓库终端运行 `npm run content:status` 取得完整输出。仓库更新了插件版本而 Obsidian 已经打开时，需要重启 Obsidian，或先关闭再启用 MyBlog Publisher，才能加载 1.11.0 代码。
 
 ### 在 Obsidian 完成正式内容复核
 
 复核不是自动更新时间戳。先从台账打开正式文章或项目，逐项核对正文中的版本、架构、项目状态、命令和链接：无事实变化时只把 `reviewedAt` 改为上海当天；有正文或元数据变化时，同时把 `updatedAt` 和 `reviewedAt` 改为当天。不要改变 `publishedAt`，Historical、draft 或未来内容不进入该流程。
 
-保存笔记后先运行“MyBlog Publisher: 检查当前正式内容复核”。MyBlog Publisher 1.10.0 要求 `main`、本地 main 与最后观察到的 origin/main synchronized、目标已被 Git 跟踪且暂存区完全为空；工作区除目标外，可以保留稳定的 inbox 草稿和未跟踪根图片。完整 `npm run check` 前后使用同一个 impact classifier 重算，并要求 HEAD、tracking 关系与目标原始字节的 SHA-256 不变。成功 Proof 会显示 `CANDIDATE / GATE-STABLE` 短指纹，把并行工作列为 `DEFERRED / NOT IN COMMIT`，并继续显示日期迁移、事实变化、updatedAt、质量门和唯一可提交路径。已跟踪根媒体、嵌套归档媒体、其他正式内容、代码或未知路径不会 deferred，而会直接阻断。确认后运行“提交并同步当前正式内容复核”，它再次执行同样门禁，只暂存该 Markdown，核对 index 与提交 tree 的 Git-clean blob 后以 `content: review <slug>` 提交并推送 `origin main`；并行草稿保持原状态。
+保存笔记后先运行“MyBlog Publisher: 检查当前正式内容复核”。MyBlog Publisher 1.11.0 要求 `main`、本地 main 与最后观察到的 origin/main synchronized、目标已被 Git 跟踪且暂存区完全为空；工作区除目标外，可以保留稳定的 inbox 草稿和未跟踪根图片。完整 `npm run check` 前后使用同一个 impact classifier 重算，并要求 HEAD、tracking 关系与目标原始字节的 SHA-256 不变。成功 Proof 会显示 `CANDIDATE / GATE-STABLE` 短指纹，把并行工作列为 `DEFERRED / NOT IN COMMIT`，并继续显示日期迁移、事实变化、updatedAt、质量门和唯一可提交路径。已跟踪根媒体、嵌套归档媒体、其他正式内容、代码或未知路径不会 deferred，而会直接阻断。确认后运行“提交并同步当前正式内容复核”，它再次执行同样门禁，只暂存该 Markdown，核对 index 与提交 tree 的 Git-clean blob 后以 `content: review <slug>` 提交并推送 `origin main`；并行草稿保持原状态。
 
 如果最后一步提示 push 失败，不要再次提交复核。先运行“查看待同步正式内容复核”；只有 rail 仍证明同一个精确 pending-review 时，才运行“重新同步待交付正式内容复核”。该命令调用 `content:review:deliver`，以已验证 commit OID 作为 push 源，不接受路径或分支参数。服务器拒绝、远端抢先推进、错误分支和本地状态漂移都会失败并保留提交；成功后弹出的 sealed receipt 必须同时列出相同的 local/tracking OID、commit/tree/blob、精确 refspec 与 HEAD/INDEX/WORKTREE STABLE。回执只证明 Git 交付，Production 仍看 GitHub/Vercel 检查；回执解析失败时不会自动再推一次。
 

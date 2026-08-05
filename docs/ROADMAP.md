@@ -8,11 +8,11 @@
 | 4. 作者自助写作 | done | `/studio` OAuth + editorial workflow PR、Obsidian Vault/模板/附件/真实 `--push` |
 | 5. Vercel 原生迁移 | production live | 原生 Next.js、无 Cloudflare 依赖、24 路由生产冒烟通过 |
 | 6. 所有者生产上线 | done | Git 自动 Production、稳定域名自动冒烟、双端发布、回滚与恢复均已验收 |
-| 7. 持续内容与作者体验 | in progress | Iteration 0059 完成新内容多路径待交付身份、重复发布阻断、精确 OID 建议与 Obsidian Commit Envelope |
+| 7. 持续内容与作者体验 | in progress | Iteration 0060 完成新内容 Commit Envelope 安全重送、manifest 稳定性证明与 Obsidian sealed receipt |
 
 ## 当前唯一主线
 
-进入持续内容与作者体验阶段。Iteration 0059 已把 MyBlog Publisher 升到 1.10.0：新内容发布用独立 version 1 状态把正式 Markdown、可选 inbox 删除和归档媒体验证为一个原子 Commit Envelope；真实 push 拒绝后本地 commit 可读，第二次发布在读取源草稿前阻断，普通 ahead 不借用恢复建议。状态命令完全只读，显示精确 OID refspec 但本轮不代为执行。下一主线为这个 exact pending-publication 增加独立安全重送和 delivered receipt，不与正式复核状态/回执混用。需要品牌域名时再绑定自定义域名，旧公开站继续只作为迁移历史证据。
+进入持续内容与作者体验阶段。Iteration 0060 已把 MyBlog Publisher 升到 1.11.0：作者确认 exact pending-publication 后，可用独立命令再次验证 main、commit/tree/blob、整个路径清单和 index/worktree，只推送已验证 OID；远端拒绝或 unseen advance 保留本地 envelope。只有 push 后引用对齐且 HEAD/index/worktree/manifest 都稳定才返回独立 version 1 sealed receipt，回执异常不自动重试。下一主线为发布和复核两类失败提供一个统一的只读交付分诊入口，让作者无需先猜提交类型即可找到正确 status/deliver 命令，但两个写事务和各自回执继续分离。需要品牌域名时再绑定自定义域名，旧公开站继续只作为迁移历史证据。
 
 ## 已知风险
 
@@ -32,7 +32,7 @@
 - slug 迁移已有构建验证的精确单跳 redirect 注册表，但仍是需要作者审阅的 Git 操作；不支持通配参数或自动推断，迁移必须同步处理内容、附件和引用；
 - Obsidian 已有全 inbox readiness 总览，但该报告有意只代表本地单篇写入事务，不替代正式发布的完整仓库门禁，也不进入看不到未跟踪草稿的 Actions；
 - Current record 已有 Studio 实时只读队列、每周 60/30 天 Actions 提醒和过期门；队列数据只随新 Production 接收内容变更，且仍不发送外部消息；若未来需要邮件/聊天通知，必须由所有者选择渠道后再接入；
-- Obsidian 维护/Author Proof/交付状态与回执 1.10.0 已验证五套版本化 JSON、活动 sourcePath、候选 SHA-256、deferred 差集、复核与发布两种待交付关系、精确 OID refspec 和各自降级；新内容 Commit Envelope 的真实主题组合、超长 object id/path 和大量媒体仍需随使用观察。复核 push 已成功但后置取证失败时有意不自动重试；发布待交付当前只读取证，执行恢复留到下一轮；
+- Obsidian 维护/Author Proof/交付状态与回执 1.11.0 已验证六套版本化 JSON、活动 sourcePath、候选 SHA-256、deferred 差集、复核与发布两种待交付关系、精确 OID refspec、各自安全重送和不自动重试的回执；新内容 Commit Envelope 的真实主题组合、超长 object id/path 和大量媒体仍需随使用观察。两类 push 成功但后置取证失败时都必须重新读状态，不得自动重试；作者目前仍需先判断应查看“复核”还是“新内容发布”，统一只读分诊留到下一轮；
 - 内部链接支持内容页和严格标题锚点，行内/引用式/自引用共享实际渲染 slug 规则，详情页与公开知识地图共享 outgoing/backlinks；明确不支持 Obsidian 块引用，标题改名必须同步深链，当前双列 SVG 为小型内容库优化，内容规模增长后需要过滤/分组；
 - 正文普通 HTTPS 与结构化 repository/demo/canonical 已有统一确定性库存和受控实时报告；实时 DNS/网络结果有意不进 Actions，timeout/限流不能冒充内容错误；
 - 文章与项目已有完整 A4 打印版式，但 PDF 仍由读者通过浏览器打印生成，仓库不把二进制 PDF 当作发布源，也不提供服务端 PDF 缓存；后续版式变化仍需重新做真实 PDF 全页复核；
