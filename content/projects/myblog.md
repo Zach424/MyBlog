@@ -18,7 +18,7 @@ demo: "https://blog-iota-five-59.vercel.app"
 
 ## 当前状态（2026-08-06）
 
-MyBlog 运行在 [Vercel](https://blog-iota-five-59.vercel.app)，使用 Next.js 16.3、React 19 与 TypeScript；GitHub `main` 自动交付 Production。网页 Studio 和 Obsidian 均可自主发布；MyBlog Publisher 1.23.0 为当前草稿只派生目标媒体，同时保留全库共享证据。
+MyBlog 运行在 [Vercel](https://blog-iota-five-59.vercel.app)，使用 Next.js 16.3、React 19 与 TypeScript；GitHub `main` 自动交付 Production。网页 Studio 和 Obsidian 均可自主发布；MyBlog Publisher 1.24.0 为当前草稿显示正式验证过的精确链接 trace，同时只派生目标媒体并保留全库共享证据。
 
 Cloudflare、Sites、Vinext、Vite Worker 和 Wrangler 仅属于 2026-07-18 至 2026-07-19 的首版与迁移历史，不再是当前运行依赖。旧公开站保留为迁移期回退证据，页面顶部的 Live demo 始终指向当前生产站。
 
@@ -60,7 +60,7 @@ Studio 内容复核页复用正式维护报告，而不是在浏览器重写日�
 
 Obsidian 插件用固定参数数组和 `shell: false` 在 Vault 根目录启动同一 `content:status`，把报告以 `setText` 写入原生只读 Modal；Windows 通过隐藏 `cmd.exe` 运行 npm，POSIX 直接运行 npm。发布、inbox 和维护命令共享活动进程账本与 200,000 字符输出边界，成功、错误、非零退出或插件卸载都会关闭持续 Notice；卸载在 Windows 以固定参数、无 shell 的 `taskkill.exe /T /F` 终止命令进程树，POSIX 直接终止子进程，并忽略迟到事件。报告不访问网络、不写内容，也不改变正式构建门。
 
-当前草稿意图复用正式解析，不在插件中解析 Markdown/YAML。1.23.0 将活动路径以 `--source` 传入：报告仍轻量解析全草稿并应用共享/目标问题，只为当前来源生成媒体候选并返回唯一 entry。证据或活动文件漂移时失败关闭；`DRAFT → PUBLIC` 只读界面不提供发布动作。
+当前草稿意图复用正式解析，不在插件中解析 Markdown/YAML。1.24.0 的 version 2 报告从同一次链接验证循环返回目标、fragment、源码行和重复次数；`LINK TRACE` 只读展示，公开关系语义不变。报告仍轻量解析全草稿并应用共享/目标问题，只为当前来源生成媒体候选；证据或活动文件漂移时失败关闭。
 
 视觉系统以 Commit Trace 为唯一主要识别元素，把日期、文章类型和项目里程碑连成一条工程轨迹。Evidence Rail 只显示可验证状态，不展示虚构的完成率。
 
@@ -104,7 +104,7 @@ Sites 首次生产发布后，首页与集合页返回 200，但没有任何内�
 
 ### Vercel 阶段（当前）
 
-Studio/Obsidian 双发布、内容维护、关系门与 Vercel 恢复均已验收。Iteration 0072 增加安全 `--source`，跳过无关媒体派生但保留跨草稿事实；选择性合同 11/11、相关回归 145/145、doctor 13/13，完整门通过 306/306、45 页、19/19 与生产审计 0。生产站公开且不依赖 Cloudflare。
+Studio/Obsidian 双发布、内容维护、关系门与 Vercel 恢复均已验收。Iteration 0073 增加精确链接目标、源码行与重复次数；完整门通过 311/311、45 页、19/19 与生产审计 0。生产站公开且不依赖 Cloudflare。
 
 ## 复盘
 
@@ -112,4 +112,4 @@ Studio/Obsidian 双发布、内容维护、关系门与 Vercel 恢复均已验�
 
 ## 下一步
 
-下一轮把当前草稿的站内链接计数提升为正式解析产生的精确目标清单；云 API、评论、统计、自动发布与自动修复保持范围外。
+下一轮把当前草稿的媒体计数提升为 readiness 已验证的精确变换清单；云 API、评论、统计、自动发布与自动修复保持范围外。
