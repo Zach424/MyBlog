@@ -133,6 +133,8 @@ Obsidian 的维护入口服从宿主应用而不是复制网页皮肤。1.3.0 �
 
 1.13.0 把作者环境表示成一条发布前电路，而不是健康分数仪表盘。顶部 `AUTHOR PREFLIGHT / LOCAL ONLY` 固定只读边界，`RUNTIME → GIT → WORKSPACE → VAULT` 四个真实前置站按依赖顺序汇合到 `AUTHOR READY` 或 `AUTHOR HOLD`；每站同时用 PASS/HOLD 文本和 Verified/Caution 规则线表达状态。下方 ledger 逐项给出 observed、expected 与仅在 attention 时出现的修复指令。唯一汇合端点是视觉签名，不增加按钮、自动安装、进度环、卡片、阴影、渐变或动画；正文服从宿主 text/interface，版本、路径和观测值使用 monospace。窄屏把四站与证据行折为单列，信息顺序保持不变。
 
+1.14.0 复用这条电路作为四个新发布/复核事务的自动联锁，不另造第二套 dashboard。ready 是无视觉打断的通路，直接进入原命令；attention 才在电路前增加一条窄的双列 `TRANSACTION INTERLOCK / HELD` latch，明确显示被停止的操作与调用时冻结的来源路径，再接原有 circuit 和修复证据。latch 使用既有 caution 规则线、宿主 token 与 monospace 标识，不新增按钮、卡片、渐变、阴影或动画；窄屏折为单列，先回答“哪个事务被停止”，再说明“哪项前置条件未满足”。
+
 ## 站点图标
 
 `app/icon.png` 为 `256 × 256` PNG，只保留 Commit Trace 的节点、轨迹环与信号色半环，不包含文字、缩写或第二套标志。图标以社交分享卡为风格参考生成，再确定性缩放并纳入尺寸与体积测试；它用于小尺寸识别，不替代首页的工程轨迹签名。

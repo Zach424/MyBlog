@@ -44,9 +44,9 @@ Current record 至少每 180 天逐项复核一次架构、版本、状态、外
 
 日常可先打开 `/studio/maintenance` 查看 Review Horizon 和全库优先级，再从 `Edit entry` 进入稳定条目。该页面的内容集合来自当前部署、日期按请求时的 `Asia/Shanghai` 当天推进；因此修改只有在新 Production 上线后可见，但无需为了日期变化重新部署。接口只返回已公开 Current 内容的最小元数据，不返回正文、源路径、草稿或 Historical。页面失败时先点 `Retry`，仍失败再运行 `npm run content:status` 并检查 `/studio/maintenance.json` 的 HTTP 状态；不要用手工改日期或缓存快照替代复核。
 
-在本机 Vault 中也可从命令面板运行“查看已发布内容复核台账”。插件 1.13.0 先启动本地 `content:status --format json`，严格核对版本、计数、日期计算、状态阈值、排序、公开路由和精确来源路径，再显示四档期限轨迹与逐条记录；“打开笔记”只接受 Vault 中真实存在的 `content/posts|projects/<slug>.md`。报告命令因已过期内容返回退出码 1 时仍会解析并展示有效 JSON；JSON、schema、路径或 Modal 渲染异常时，插件会再运行纯文本 `content:status` 并以安全文本节点显示证据。两条路径都零网络、零日期/文件写入。Windows 报告子进程隐藏运行且不插入动态 shell 字符串，插件卸载时以固定 `taskkill.exe /T /F` 参数清理整棵命令进程树，POSIX 直接终止子进程。持续 Notice 若没有在命令终态消失，或插件关闭后仍存在 npm 进程，视为插件生命周期故障；笔记不存在时先确认文件已同步且路径大小写正确，再在终端运行 `npm run content:status` 取证。插件文件更新后，已打开的 Obsidian 需要重启或重新启用插件才能加载新版本。
+在本机 Vault 中也可从命令面板运行“查看已发布内容复核台账”。插件 1.14.0 先启动本地 `content:status --format json`，严格核对版本、计数、日期计算、状态阈值、排序、公开路由和精确来源路径，再显示四档期限轨迹与逐条记录；“打开笔记”只接受 Vault 中真实存在的 `content/posts|projects/<slug>.md`。报告命令因已过期内容返回退出码 1 时仍会解析并展示有效 JSON；JSON、schema、路径或 Modal 渲染异常时，插件会再运行纯文本 `content:status` 并以安全文本节点显示证据。两条路径都零网络、零日期/文件写入。Windows 报告子进程隐藏运行且不插入动态 shell 字符串，插件卸载时以固定 `taskkill.exe /T /F` 参数清理整棵命令进程树，POSIX 直接终止子进程。持续 Notice 若没有在命令终态消失，或插件关闭后仍存在 npm 进程，视为插件生命周期故障；笔记不存在时先确认文件已同步且路径大小写正确，再在终端运行 `npm run content:status` 取证。插件文件更新后，已打开的 Obsidian 需要重启或重新启用插件才能加载新版本。
 
-正式内容复核使用 `npm run content:review -- content/posts|projects/<slug>.md --check-only`，确认后把最后一个参数改为 `--push`。命令只接受 `main` 上已经公开的 Current 文件：`publishedAt` 不得改变，`reviewedAt` 必须从固定 HEAD 推进到 `Asia/Shanghai` 当天；事实变化时 `updatedAt` 也必须是当天。暂存区必须完全为空，包括 `git add -N`；可以并行保留已修改/未跟踪的稳定 inbox 草稿，以及未跟踪的根暂存图片。已跟踪根图片修改、嵌套归档媒体、其他正式内容、代码、配置或未知路径会阻断。完整门前后都重算影响，并要求 HEAD 与目标原始 SHA-256 保持不变；push 只提交当前 Markdown，且 index/tree blob 必须对应门前经过 Git clean/filter 的同一候选，deferred 路径原样留在本地。MyBlog Publisher 1.13.0 严格验证 Proof v3 的 candidate 与 worktree 差集，再显示短指纹、路径和状态；结构或 UI 异常重新执行普通文本 check-only，命令失败不伪造 Proof。门失败保持未暂存；commit 前失败取消目标暂存；commit 后 tree 不匹配会原子撤回本地提交并保留工作区；已验证 commit 的 push 失败仍保留本地提交。
+正式内容复核使用 `npm run content:review -- content/posts|projects/<slug>.md --check-only`，确认后把最后一个参数改为 `--push`。命令只接受 `main` 上已经公开的 Current 文件：`publishedAt` 不得改变，`reviewedAt` 必须从固定 HEAD 推进到 `Asia/Shanghai` 当天；事实变化时 `updatedAt` 也必须是当天。暂存区必须完全为空，包括 `git add -N`；可以并行保留已修改/未跟踪的稳定 inbox 草稿，以及未跟踪的根暂存图片。已跟踪根图片修改、嵌套归档媒体、其他正式内容、代码、配置或未知路径会阻断。完整门前后都重算影响，并要求 HEAD 与目标原始 SHA-256 保持不变；push 只提交当前 Markdown，且 index/tree blob 必须对应门前经过 Git clean/filter 的同一候选，deferred 路径原样留在本地。MyBlog Publisher 1.14.0 严格验证 Proof v3 的 candidate 与 worktree 差集，再显示短指纹、路径和状态；结构或 UI 异常重新执行普通文本 check-only，命令失败不伪造 Proof。门失败保持未暂存；commit 前失败取消目标暂存；commit 后 tree 不匹配会原子撤回本地提交并保留工作区；已验证 commit 的 push 失败仍保留本地提交。
 
 任何复核或新内容发布 push 失败后，不先猜提交类型：运行 `npm run content:delivery:status`，或 Obsidian 的“查看 Git 交付恢复”。该命令从同一份本地快照输出 version 1 只读分诊，明确 `networkChecked: false` 与 `autoExecuted: false`。`REVIEW / MATCHED` 或 `PUBLICATION / MATCHED` 只表示当前 commit 满足相应领域身份，下一步仍要单独运行界面列出的 status 命令复核完整证据，再由作者显式执行对应 deliver。`INSPECT / MATCHED`、behind、diverged、tracking-missing 或多提交 ahead 都不提供写命令；非 main 只显示类型和 status 命令，deliver 保持锁定。分诊不 fetch/push/rebase/reset，不修改 HEAD、index、worktree，也不会串联执行任何恢复动作。
 
@@ -60,7 +60,9 @@ push 失败后先运行 `npm run content:review:status`，或在 Obsidian 运行
 
 ## 发布前检查
 
-环境或仓库位置发生变化后，先运行 `npm run content:author:doctor`，或在 Obsidian 运行“检查本机发布环境”。13 项固定检查覆盖 Node/npm/Git、仓库根、main/upstream 本地同步、身份是否配置、package/关键脚本/全部固定依赖、内容路径、Vault 与插件 1.13.0。attention 返回退出码 1 并给出修复指令，但不会自动执行；姓名、邮箱和凭据不进入报告。该命令不要求工作区为空，因为合法草稿、附件和待复核内容可能存在；具体提交边界仍由 publish/review 门决定。
+环境或仓库位置发生变化后，可运行 `npm run content:author:doctor`，或在 Obsidian 运行“检查本机发布环境”单独诊断。13 项固定检查覆盖 Node/npm/Git、仓库根、main/upstream 本地同步、身份是否配置、package/关键脚本/全部固定依赖、内容路径、Vault 与插件 1.14.0。attention 返回退出码 1 并给出修复指令，但不会自动执行；姓名、邮箱和凭据不进入报告。该命令不要求工作区为空，因为合法草稿、附件和待复核内容可能存在；具体提交边界仍由 publish/review 门决定。
+
+插件 1.14.0 在“检查当前草稿”“发布当前草稿并同步 GitHub”“检查当前正式内容复核”“提交并同步当前正式内容复核”启动时自动运行同一 JSON doctor，并冻结调用时的来源路径。ready 不弹出 doctor，直接且仅启动一次原领域命令；attention 显示 `TRANSACTION INTERLOCK / HELD` 和完整 circuit，原命令不启动；无效 JSON 改读纯文本但仍失败关闭，doctor 致命退出同样停止。只读报告、统一分诊、复核/发布状态和两类 deliver 有意绕过该联锁，确保 synchronized 问题不会封死恢复路径。
 
 ```bash
 npm run content:author:doctor

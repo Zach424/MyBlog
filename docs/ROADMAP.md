@@ -8,11 +8,11 @@
 | 4. 作者自助写作 | done | `/studio` OAuth + editorial workflow PR、Obsidian Vault/模板/附件/真实 `--push` |
 | 5. Vercel 原生迁移 | production live | 原生 Next.js、无 Cloudflare 依赖、24 路由生产冒烟通过 |
 | 6. 所有者生产上线 | done | Git 自动 Production、稳定域名自动冒烟、双端发布、回滚与恢复均已验收 |
-| 7. 持续内容与作者体验 | in progress | Iteration 0062 完成 13 项本机作者环境 doctor 与 Obsidian preflight circuit |
+| 7. 持续内容与作者体验 | in progress | Iteration 0063 完成四个 Obsidian 作者事务的自动 doctor 前置联锁 |
 
 ## 当前唯一主线
 
-进入持续内容与作者体验阶段。Iteration 0062 已把 MyBlog Publisher 升到 1.13.0：作者可在发布前运行 version 1 doctor，一次检查 Runtime、Git、Workspace、Vault 共 13 项本地事实，严格 parser 从 observation 重算全部状态与 summary；报告不安装、不改配置、不读凭据、不联网。真实仓库为 13/13 ready、32/32 固定依赖匹配，删除测试远端后仍可报告。下一主线把 doctor 作为新发布/新复核事务的前置联锁，但继续排除待交付重送，避免 synchronized 要求阻断正确恢复。需要品牌域名时再绑定自定义域名，旧公开站继续只作为迁移历史证据。
+进入持续内容与作者体验阶段。Iteration 0063 已把 MyBlog Publisher 升到 1.14.0：检查/发布当前草稿、检查/提交当前正式内容复核四个事务都会先运行同一 version 1 doctor，ready 无弹窗继续原命令，attention 以 `TRANSACTION INTERLOCK / HELD` 展示被冻结的操作、来源路径与同一 preflight circuit；不可信 JSON 和致命退出均失败关闭。所有只读报告、统一分诊、领域状态与两类 deliver 继续绕过联锁，避免 synchronized 要求阻断正确恢复。下一主线为这四条链路增加跨 preflight 与领域命令的 single-flight lease；需要品牌域名时再绑定自定义域名，旧公开站继续只作为迁移历史证据。
 
 ## 已知风险
 
@@ -32,7 +32,7 @@
 - slug 迁移已有构建验证的精确单跳 redirect 注册表，但仍是需要作者审阅的 Git 操作；不支持通配参数或自动推断，迁移必须同步处理内容、附件和引用；
 - Obsidian 已有全 inbox readiness 总览，但该报告有意只代表本地单篇写入事务，不替代正式发布的完整仓库门禁，也不进入看不到未跟踪草稿的 Actions；
 - Current record 已有 Studio 实时只读队列、每周 60/30 天 Actions 提醒和过期门；队列数据只随新 Production 接收内容变更，且仍不发送外部消息；若未来需要邮件/聊天通知，必须由所有者选择渠道后再接入；
-- Obsidian 维护/Author Proof/交付状态与回执 1.13.0 已增加 13 项本机 doctor，并保留统一分诊及原有六套版本化 JSON、活动 sourcePath、候选 SHA-256、deferred 差集、复核与发布两种待交付关系、精确 OID refspec、各自安全重送和不自动重试的回执；doctor 目前是显式命令，尚未作为新发布/复核事务联锁。新内容 Commit Envelope 的真实主题组合、超长 object id/path 和大量媒体仍需随使用观察；tracking ref 明确只是最后本地观察，inspect 路由不会猜测修复；
+- Obsidian 维护/Author Proof/交付状态与回执 1.14.0 已为四个新发布/复核事务增加自动 doctor 联锁，并保留统一分诊及原有六套版本化 JSON、活动 sourcePath、候选 SHA-256、deferred 差集、复核与发布两种待交付关系、精确 OID refspec、各自安全重送和不自动重试的回执；当前联锁按单次调用结算，两个几乎同时触发的作者事务仍可能各自通过 doctor 并并行启动重型质量门或写入链路。新内容 Commit Envelope 的真实主题组合、超长 object id/path 和大量媒体仍需随使用观察；tracking ref 明确只是最后本地观察，inspect 路由不会猜测修复；
 - 内部链接支持内容页和严格标题锚点，行内/引用式/自引用共享实际渲染 slug 规则，详情页与公开知识地图共享 outgoing/backlinks；明确不支持 Obsidian 块引用，标题改名必须同步深链，当前双列 SVG 为小型内容库优化，内容规模增长后需要过滤/分组；
 - 正文普通 HTTPS 与结构化 repository/demo/canonical 已有统一确定性库存和受控实时报告；实时 DNS/网络结果有意不进 Actions，timeout/限流不能冒充内容错误；
 - 文章与项目已有完整 A4 打印版式，但 PDF 仍由读者通过浏览器打印生成，仓库不把二进制 PDF 当作发布源，也不提供服务端 PDF 缓存；后续版式变化仍需重新做真实 PDF 全页复核；
