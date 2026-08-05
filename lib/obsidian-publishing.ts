@@ -325,7 +325,8 @@ function validatePreparedContentLinks(
     extractMarkdownHeadingAnchors(markdown).map((heading) => heading.id),
   );
 
-  for (const reference of extractInternalContentReferences(markdown)) {
+  const references = extractInternalContentReferences(markdown);
+  for (const reference of references) {
     const targetUrl = reference.kind === "self" ? ownUrl : reference.url;
     const target = reference.kind === "self" ? undefined : targetsByUrl.get(targetUrl);
     if (reference.kind !== "self" && !target) {
@@ -348,6 +349,7 @@ function validatePreparedContentLinks(
       throw new Error(`站内链接标题锚点不存在：${targetUrl}#${reference.fragment}`);
     }
   }
+  return references.length;
 }
 
 export function prepareObsidianNote(
@@ -382,7 +384,7 @@ export function prepareObsidianNote(
     throw new Error("无法关闭草稿状态，请检查 frontmatter 中的 draft 字段");
   }
 
-  validatePreparedContentLinks(prepared, kind, slug, linkTargets);
+  const internalLinkCount = validatePreparedContentLinks(prepared, kind, slug, linkTargets);
   if (kind === "post") parsePostFile(targetPath, prepared);
   else parseProjectFile(targetPath, prepared);
 
@@ -393,5 +395,6 @@ export function prepareObsidianNote(
     targetPath,
     content: prepared.endsWith("\n") ? prepared : `${prepared}\n`,
     attachments: normalizedAttachments.attachments,
+    internalLinkCount,
   };
 }

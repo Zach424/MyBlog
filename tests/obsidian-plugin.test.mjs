@@ -324,6 +324,9 @@ async function createPluginHarness({
     getFile(path) {
       return fileMap.get(path) ?? null;
     },
+    setActiveFilePath(path) {
+      activePath = path;
+    },
     get reconciliations() {
       return reconciliations;
     },
@@ -403,6 +406,78 @@ function maintenanceReport({ records = [maintenanceRecord()], version = 1 } = {}
       "更新 reviewedAt 后再发布",
     ],
     thresholds: { dueSoonDays: 7, reviewSoonDays: 30 },
+  };
+}
+
+function inboxReadinessReport({
+  entry = {},
+  reportDate = "2026-08-06",
+  safety = {},
+  version = 1,
+} = {}) {
+  const sourcePath = "content/inbox/current-draft.md";
+  const resolvedEntry = {
+    attachments: [],
+    contentType: "article",
+    draftState: "draft",
+    internalLinkCount: 2,
+    issues: [],
+    kind: "post",
+    publishedAt: reportDate,
+    slug: "current-draft",
+    sourcePath,
+    state: "ready",
+    targetPath: "content/posts/current-draft.md",
+    ...entry,
+  };
+  return {
+    version,
+    mode: "read-only",
+    counts: {
+      attachments: resolvedEntry.attachments.length,
+      blocked: resolvedEntry.state === "blocked" ? 1 : 0,
+      drafts: 1,
+      issues: resolvedEntry.issues.length,
+      ready: resolvedEntry.state === "ready" ? 1 : 0,
+      scheduled: resolvedEntry.state === "scheduled" ? 1 : 0,
+    },
+    entries: [resolvedEntry],
+    reportDate,
+    safety: {
+      authorFilesChanged: false,
+      commitCreated: false,
+      networkChecked: false,
+      pushExecuted: false,
+      ...safety,
+    },
+  };
+}
+
+function inboxPreparedAttachment(slug = "current-draft") {
+  return {
+    publicUrl: `/uploads/${slug}/evidence.webp`,
+    sourcePath: "public/uploads/evidence.png",
+    targetPath: `public/uploads/${slug}/evidence.webp`,
+    preparation: {
+      bytesSaved: 1024,
+      optimized: true,
+      output: {
+        bytes: 2048,
+        format: "webp",
+        height: 630,
+        pages: 1,
+        sourcePath: `public/uploads/${slug}/evidence.webp`,
+        width: 1200,
+      },
+      source: {
+        bytes: 3072,
+        format: "png",
+        height: 630,
+        pages: 1,
+        sourcePath: "public/uploads/evidence.png",
+        width: 1200,
+      },
+    },
   };
 }
 
@@ -686,7 +761,7 @@ function authorDoctorReport() {
     ["workspace-dependencies", "workspace", "Workspace dependencies", "35/35 pinned packages", "all declared packages installed at pinned versions"],
     ["content-layout", "workspace", "Content layout", "5/5 required paths", "5 required authoring paths"],
     ["obsidian-vault", "vault", "Obsidian Vault", ".obsidian present", ".obsidian directory present"],
-    ["publisher-plugin", "vault", "MyBlog Publisher", "myblog-publisher@1.21.0 · desktop", "myblog-publisher 1.21.0 desktop plugin"],
+    ["publisher-plugin", "vault", "MyBlog Publisher", "myblog-publisher@1.22.0 · desktop", "myblog-publisher 1.22.0 desktop plugin"],
   ];
   const scripts = [
     "content:author:doctor",
@@ -733,7 +808,7 @@ function authorDoctorReport() {
           isDesktopOnly: true,
           mainPresent: true,
           stylesPresent: true,
-          version: "1.21.0",
+          version: "1.22.0",
         },
       },
       workspace: {
@@ -1106,6 +1181,183 @@ test("renders native evidence for a filename-owned draft without offering cleanu
   assert.equal(harness.spawned.length, 0);
 });
 
+test("renders one current draft author-intent summary from versioned local evidence", async () => {
+  const sourcePath = "content/inbox/current-draft.md";
+  const [styles, harness] = await Promise.all([
+    readFile(stylesUrl, "utf8"),
+    createPluginHarness({ activeFilePath: sourcePath, files: [] }),
+  ]);
+  const command = findCommand(harness, "inspect-current-draft-intent");
+  assert.equal(command.name, "查看当前草稿发布意图");
+  assert.equal(command.checkCallback(true), true);
+  assert.equal(command.checkCallback(false), true);
+  assert.deepEqual(plain(harness.spawned[0].args), [
+    "/d",
+    "/s",
+    "/c",
+    "npm",
+    "--silent",
+    "run",
+    "content:inbox",
+    "--",
+    "--format",
+    "json",
+  ]);
+  harness.spawned[0].child.stdout.emit(
+    "data",
+    Buffer.from(JSON.stringify(inboxReadinessReport({
+      entry: { attachments: [inboxPreparedAttachment()] },
+    }))),
+  );
+  harness.spawned[0].child.emit("close", 0);
+
+  assert.equal(harness.modals.length, 1);
+  const modal = harness.modals[0];
+  const text = allElements(modal.contentEl).map((element) => element.text).join(" ");
+  assert.equal(modal.contentEl.classes.has("myblog-draft-intent"), true);
+  assert.deepEqual(elementsByTag(modal, "h2").map((element) => element.text), [
+    "当前草稿发布意图",
+  ]);
+  assert.match(text, /AUTHOR INTENT \/ LOCAL EVIDENCE/u);
+  assert.match(text, /DRAFT → PUBLIC/u);
+  assert.match(text, /READY \/ PUBLIC ON PASS/u);
+  assert.match(text, /current-draft\.md.*content\/posts\/current-draft\.md/su);
+  assert.match(text, /TYPE.*ARTICLE.*DATE.*2026-08-06.*NOW.*MEDIA.*1.*LINKS.*2/su);
+  assert.match(text, /不会修改、发布、提交、推送或联网/u);
+  assert.deepEqual(elementsByTag(modal, "button").map((button) => button.text), ["关闭"]);
+  assert.match(styles, /^\.myblog-draft-intent \{/mu);
+  assert.match(styles, /myblog-draft-intent__signature/u);
+  assert.deepEqual(harness.processAttempts, []);
+  assert.deepEqual(harness.vaultReads, []);
+  assert.equal(harness.reconciliations, 0);
+  assert.equal(harness.spawned.length, 1);
+});
+
+test("shows scheduled and blocked date semantics without adding an action", async (t) => {
+  const sourcePath = "content/inbox/current-draft.md";
+  const cases = [
+    [
+      "scheduled",
+      inboxReadinessReport({
+        entry: {
+          contentType: "project",
+          kind: "project",
+          publishedAt: "2026-08-10",
+          state: "scheduled",
+          targetPath: "content/projects/current-draft.md",
+        },
+      }),
+      /SCHEDULED \/ FUTURE DATE.*PROJECT.*2026-08-10.*SCHEDULED/su,
+    ],
+    [
+      "blocked",
+      inboxReadinessReport({
+        entry: {
+          issues: [
+            {
+              code: "attachment-missing",
+              message: "正文引用的附件不存在：public/uploads/missing.png",
+              path: "public/uploads/missing.png",
+            },
+          ],
+          state: "blocked",
+        },
+      }),
+      /HOLD \/ 1 BLOCKER.*阻塞证据.*attachment-missing.*missing\.png/su,
+    ],
+  ];
+
+  for (const [name, report, expectation] of cases) {
+    await t.test(name, async () => {
+      const harness = await createPluginHarness({ activeFilePath: sourcePath, files: [] });
+      findCommand(harness, "inspect-current-draft-intent").checkCallback(false);
+      harness.spawned[0].child.stdout.emit("data", Buffer.from(JSON.stringify(report)));
+      harness.spawned[0].child.emit("close", 0);
+      const modal = harness.modals[0];
+      const text = allElements(modal.contentEl).map((element) => element.text).join(" ");
+      assert.match(text, expectation);
+      assert.deepEqual(elementsByTag(modal, "button").map((button) => button.text), ["关闭"]);
+      assert.equal(harness.spawned.length, 1);
+    });
+  }
+});
+
+test("fails closed when current-draft intent evidence is untrusted or the active file drifts", async (t) => {
+  const sourcePath = "content/inbox/current-draft.md";
+  const invalidCases = [
+    ["invalid JSON", "not-json"],
+    ["unsupported version", JSON.stringify(inboxReadinessReport({ version: 2 }))],
+    [
+      "unsafe safety claim",
+      JSON.stringify(inboxReadinessReport({ safety: { networkChecked: true } })),
+    ],
+    [
+      "mismatched source",
+      JSON.stringify(inboxReadinessReport({
+        entry: {
+          slug: "other-draft",
+          sourcePath: "content/inbox/other-draft.md",
+          targetPath: "content/posts/other-draft.md",
+        },
+      })),
+    ],
+    [
+      "inconsistent counts",
+      JSON.stringify({
+        ...inboxReadinessReport(),
+        counts: { ...inboxReadinessReport().counts, ready: 0 },
+      }),
+    ],
+  ];
+  for (const [name, output] of invalidCases) {
+    await t.test(name, async () => {
+      const harness = await createPluginHarness({ activeFilePath: sourcePath, files: [] });
+      findCommand(harness, "inspect-current-draft-intent").checkCallback(false);
+      harness.spawned[0].child.stdout.emit("data", Buffer.from(output));
+      harness.spawned[0].child.emit("close", 0);
+      assert.equal(harness.modals.length, 0);
+      assert.equal(harness.spawned.length, 1);
+      assert.match(harness.notices.at(-1).message, /作者意图摘要证据不可用/u);
+    });
+  }
+
+  await t.test("active file drift", async () => {
+    const harness = await createPluginHarness({
+      activeFilePath: sourcePath,
+      files: ["content/inbox/other-draft.md"],
+    });
+    findCommand(harness, "inspect-current-draft-intent").checkCallback(false);
+    harness.setActiveFilePath("content/inbox/other-draft.md");
+    harness.spawned[0].child.stdout.emit(
+      "data",
+      Buffer.from(JSON.stringify(inboxReadinessReport())),
+    );
+    harness.spawned[0].child.emit("close", 0);
+    assert.equal(harness.modals.length, 0);
+    assert.equal(harness.spawned.length, 1);
+    assert.match(harness.notices.at(-1).message, /活动草稿已变化/u);
+  });
+});
+
+test("offers current draft intent only for an exact desktop inbox Markdown path", async () => {
+  const cases = [
+    {},
+    { activeFilePath: "content/posts/published.md" },
+    { activeFilePath: "content/inbox/Unsafe Draft.md" },
+    { activeFilePath: "content/inbox/draft.txt" },
+    { activeFilePath: "content/inbox/draft.md", desktop: false },
+  ];
+  for (const options of cases) {
+    const harness = await createPluginHarness(options);
+    assert.equal(
+      findCommand(harness, "inspect-current-draft-intent").checkCallback(true),
+      false,
+    );
+    assert.equal(harness.spawned.length, 0);
+    assert.equal(harness.modals.length, 0);
+  }
+});
+
 test("removes one exact legacy slug atomically while preserving every other byte", async () => {
   const sourcePath = "content/inbox/original-draft.md";
   const content = legacyIdentityDraft({ lineEnding: "\r\n" });
@@ -1461,7 +1713,7 @@ test("renders a versioned maintenance ledger and opens an exact Vault note", asy
     createPluginHarness(),
   ]);
   const manifest = JSON.parse(manifestSource);
-  assert.equal(manifest.version, "1.21.0");
+  assert.equal(manifest.version, "1.22.0");
   assert.equal(manifest.minAppVersion, "1.5.7");
   assert.equal(manifest.isDesktopOnly, true);
   assert.match(styles, /^\.myblog-draft-create \{/mu);
@@ -1473,6 +1725,8 @@ test("renders a versioned maintenance ledger and opens an exact Vault note", asy
   assert.match(styles, /myblog-draft-identity__signature/u);
   assert.match(styles, /myblog-draft-identity__evidence/u);
   assert.match(styles, /myblog-draft-identity__error:empty/u);
+  assert.match(styles, /^\.myblog-draft-intent \{/mu);
+  assert.match(styles, /myblog-draft-intent__signature/u);
   assert.match(styles, /^\.myblog-maintenance \{/mu);
   assert.match(styles, /\[data-status="overdue"\]/u);
   assert.match(styles, /font-family: var\(--font-interface\)/u);

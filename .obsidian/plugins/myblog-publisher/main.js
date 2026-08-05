@@ -19,8 +19,9 @@ const CONTENT_PUBLISH_DELIVERY_REPORT_VERSION = 1;
 const CONTENT_PUBLISH_DELIVERY_RECEIPT_VERSION = 1;
 const CONTENT_DELIVERY_TRIAGE_REPORT_VERSION = 1;
 const AUTHOR_DOCTOR_REPORT_VERSION = 1;
+const INBOX_READINESS_REPORT_VERSION = 1;
 const AUTHOR_DOCTOR_NODE_ENGINE = ">=22.13.0";
-const AUTHOR_DOCTOR_PLUGIN_VERSION = "1.21.0";
+const AUTHOR_DOCTOR_PLUGIN_VERSION = "1.22.0";
 const DRAFT_TITLE_MAX_LENGTH = 120;
 const DRAFT_SLUG_MAX_LENGTH = 80;
 const DRAFT_SLUG_PATTERN = /^[a-z0-9]+(?:-[a-z0-9]+)*$/u;
@@ -185,6 +186,254 @@ function addIsoDays(value, days) {
 
 function dayDifference(later, earlier) {
   return (later.getTime() - earlier.getTime()) / 86_400_000;
+}
+
+function parseInboxReadinessReport(output, expectedSourcePath) {
+  let report;
+  try {
+    report = JSON.parse(output);
+  } catch {
+    throw new Error("收件箱发布意图证据不是有效 JSON");
+  }
+  const label = "收件箱发布意图证据";
+  assertPlainObject(report, label);
+  assertExactKeys(
+    report,
+    ["version", "mode", "counts", "entries", "reportDate", "safety"],
+    label,
+  );
+  if (report.version !== INBOX_READINESS_REPORT_VERSION) {
+    valueError(`${label} version`, `必须是 ${INBOX_READINESS_REPORT_VERSION}`);
+  }
+  if (report.mode !== "read-only") valueError(`${label} mode`, "必须是 read-only");
+  parseIsoDate(report.reportDate, `${label} reportDate`);
+
+  assertPlainObject(report.safety, `${label} safety`);
+  assertExactKeys(
+    report.safety,
+    ["authorFilesChanged", "commitCreated", "networkChecked", "pushExecuted"],
+    `${label} safety`,
+  );
+  for (const field of Object.keys(report.safety)) {
+    if (report.safety[field] !== false) {
+      valueError(`${label} safety.${field}`, "必须为 false");
+    }
+  }
+
+  const states = ["blocked", "scheduled", "ready"];
+  const issueCodes = new Set([
+    "attachment-invalid",
+    "attachment-missing",
+    "attachment-shared",
+    "attachment-target-exists",
+    "attachment-tracked",
+    "draft-invalid",
+    "draft-symlink",
+    "target-exists",
+  ]);
+  const safeReportSource = /^content\/inbox\/[^/\\\u0000-\u001f\u007f]+\.md$/u;
+  const safeRepositoryPath = /^(?:content|public)\/[^\\\u0000-\u001f\u007f]+$/u;
+  if (!Array.isArray(report.entries)) valueError(`${label} entries`, "必须是数组");
+  const sources = new Set();
+  for (const [index, entry] of report.entries.entries()) {
+    const entryLabel = `${label} entries[${index}]`;
+    assertPlainObject(entry, entryLabel);
+    const optionalKeys = ["contentType", "kind", "publishedAt", "slug", "targetPath"].filter((key) =>
+      Object.prototype.hasOwnProperty.call(entry, key),
+    );
+    assertExactKeys(
+      entry,
+      [
+        "attachments",
+        "draftState",
+        "internalLinkCount",
+        "issues",
+        "sourcePath",
+        "state",
+        ...optionalKeys,
+      ],
+      entryLabel,
+    );
+    if (typeof entry.sourcePath !== "string" || !safeReportSource.test(entry.sourcePath)) {
+      valueError(`${entryLabel}.sourcePath`, "必须是安全的 content/inbox Markdown 路径");
+    }
+    if (sources.has(entry.sourcePath)) {
+      valueError(`${entryLabel}.sourcePath`, "不能重复");
+    }
+    sources.add(entry.sourcePath);
+    if (!states.includes(entry.state)) valueError(`${entryLabel}.state`, "不是受支持的状态");
+    if (!["disabled", "draft", "unknown"].includes(entry.draftState)) {
+      valueError(`${entryLabel}.draftState`, "不是受支持的草稿状态");
+    }
+    assertInteger(entry.internalLinkCount, `${entryLabel}.internalLinkCount`, 0);
+
+    const preparedFields = ["contentType", "kind", "publishedAt", "slug", "targetPath"];
+    const preparedCount = preparedFields.filter((field) =>
+      Object.prototype.hasOwnProperty.call(entry, field),
+    ).length;
+    if (preparedCount !== 0 && preparedCount !== preparedFields.length) {
+      valueError(entryLabel, "正式发布身份字段必须同时存在或同时缺失");
+    }
+    if (preparedCount === 0 && entry.internalLinkCount !== 0) {
+      valueError(`${entryLabel}.internalLinkCount`, "未完成正式解析时必须为 0");
+    }
+    if (preparedCount === preparedFields.length) {
+      if (!new Set(["post", "project"]).has(entry.kind)) {
+        valueError(`${entryLabel}.kind`, "必须是 post 或 project");
+      }
+      if (!new Set(["article", "til", "project"]).has(entry.contentType)) {
+        valueError(`${entryLabel}.contentType`, "必须是 article、til 或 project");
+      }
+      if (
+        (entry.kind === "post" && entry.contentType === "project") ||
+        (entry.kind === "project" && entry.contentType !== "project")
+      ) {
+        valueError(`${entryLabel}.contentType`, "必须与 kind 一致");
+      }
+      if (typeof entry.slug !== "string" || !DRAFT_SLUG_PATTERN.test(entry.slug)) {
+        valueError(`${entryLabel}.slug`, "必须是安全的 kebab-case slug");
+      }
+      const expectedDraftPath = `content/inbox/${entry.slug}.md`;
+      if (entry.sourcePath !== expectedDraftPath) {
+        valueError(`${entryLabel}.sourcePath`, `必须与 slug 一致：${expectedDraftPath}`);
+      }
+      const directory = entry.kind === "post" ? "posts" : "projects";
+      const expectedTargetPath = `content/${directory}/${entry.slug}.md`;
+      if (entry.targetPath !== expectedTargetPath) {
+        valueError(`${entryLabel}.targetPath`, `必须是 ${expectedTargetPath}`);
+      }
+      parseIsoDate(entry.publishedAt, `${entryLabel}.publishedAt`);
+    }
+
+    if (!Array.isArray(entry.attachments)) {
+      valueError(`${entryLabel}.attachments`, "必须是数组");
+    }
+    const attachmentSources = new Set();
+    for (const [attachmentIndex, attachment] of entry.attachments.entries()) {
+      const attachmentLabel = `${entryLabel}.attachments[${attachmentIndex}]`;
+      assertPlainObject(attachment, attachmentLabel);
+      const hasPreparation = Object.prototype.hasOwnProperty.call(attachment, "preparation");
+      assertExactKeys(
+        attachment,
+        ["publicUrl", "sourcePath", "targetPath", ...(hasPreparation ? ["preparation"] : [])],
+        attachmentLabel,
+      );
+      for (const field of ["sourcePath", "targetPath"]) {
+        if (
+          typeof attachment[field] !== "string" ||
+          !/^public\/uploads\/[^\\\u0000-\u001f\u007f]+$/u.test(attachment[field])
+        ) {
+          valueError(`${attachmentLabel}.${field}`, "必须是安全的 public/uploads 路径");
+        }
+      }
+      if (attachmentSources.has(attachment.sourcePath)) {
+        valueError(`${attachmentLabel}.sourcePath`, "不能重复");
+      }
+      attachmentSources.add(attachment.sourcePath);
+      if (attachment.publicUrl !== attachment.targetPath.replace(/^public/u, "")) {
+        valueError(`${attachmentLabel}.publicUrl`, "必须与 targetPath 对应");
+      }
+      if (preparedCount === preparedFields.length) {
+        const targetPrefix = `public/uploads/${entry.slug}/`;
+        if (!attachment.targetPath.startsWith(targetPrefix)) {
+          valueError(`${attachmentLabel}.targetPath`, `必须位于 ${targetPrefix}`);
+        }
+      }
+      if (hasPreparation) {
+        assertPlainObject(attachment.preparation, `${attachmentLabel}.preparation`);
+        assertExactKeys(
+          attachment.preparation,
+          ["bytesSaved", "optimized", "output", "source"],
+          `${attachmentLabel}.preparation`,
+        );
+        if (!Number.isInteger(attachment.preparation.bytesSaved)) {
+          valueError(`${attachmentLabel}.preparation.bytesSaved`, "必须是整数");
+        }
+        if (typeof attachment.preparation.optimized !== "boolean") {
+          valueError(`${attachmentLabel}.preparation.optimized`, "必须是 boolean");
+        }
+        for (const envelope of ["source", "output"]) {
+          const inspection = attachment.preparation[envelope];
+          const inspectionLabel = `${attachmentLabel}.preparation.${envelope}`;
+          assertPlainObject(inspection, inspectionLabel);
+          assertExactKeys(
+            inspection,
+            ["bytes", "format", "height", "pages", "sourcePath", "width"],
+            inspectionLabel,
+          );
+          for (const field of ["bytes", "height", "pages", "width"]) {
+            assertInteger(inspection[field], `${inspectionLabel}.${field}`, field === "bytes" ? 0 : 1);
+          }
+          assertNonEmptyString(inspection.format, `${inspectionLabel}.format`);
+          if (
+            typeof inspection.sourcePath !== "string" ||
+            !safeRepositoryPath.test(inspection.sourcePath)
+          ) {
+            valueError(`${inspectionLabel}.sourcePath`, "必须是安全仓库路径");
+          }
+        }
+      }
+    }
+
+    if (!Array.isArray(entry.issues)) valueError(`${entryLabel}.issues`, "必须是数组");
+    for (const [issueIndex, issue] of entry.issues.entries()) {
+      const issueLabel = `${entryLabel}.issues[${issueIndex}]`;
+      assertPlainObject(issue, issueLabel);
+      const hasPath = Object.prototype.hasOwnProperty.call(issue, "path");
+      assertExactKeys(issue, ["code", "message", ...(hasPath ? ["path"] : [])], issueLabel);
+      if (!issueCodes.has(issue.code)) valueError(`${issueLabel}.code`, "不是受支持的问题代码");
+      assertNonEmptyString(issue.message, `${issueLabel}.message`);
+      if (hasPath) {
+        assertNonEmptyString(issue.path, `${issueLabel}.path`);
+        if (/\\|\u0000|\.\.(?:\/|$)/u.test(issue.path)) {
+          valueError(`${issueLabel}.path`, "不是安全仓库路径");
+        }
+      }
+    }
+    if (entry.state === "blocked" && entry.issues.length === 0) {
+      valueError(`${entryLabel}.issues`, "blocked 草稿必须包含阻塞证据");
+    }
+    if (entry.state !== "blocked" && entry.issues.length !== 0) {
+      valueError(`${entryLabel}.issues`, "非 blocked 草稿不能包含问题");
+    }
+    if (entry.state !== "blocked" && preparedCount !== preparedFields.length) {
+      valueError(entryLabel, "可发布状态必须包含完整正式发布身份");
+    }
+    if (entry.state === "scheduled" && entry.publishedAt <= report.reportDate) {
+      valueError(`${entryLabel}.publishedAt`, "scheduled 草稿必须晚于 reportDate");
+    }
+    if (entry.state === "ready" && entry.publishedAt > report.reportDate) {
+      valueError(`${entryLabel}.publishedAt`, "ready 草稿不能晚于 reportDate");
+    }
+  }
+
+  assertPlainObject(report.counts, `${label} counts`);
+  assertExactKeys(
+    report.counts,
+    ["attachments", "blocked", "drafts", "issues", "ready", "scheduled"],
+    `${label} counts`,
+  );
+  for (const field of Object.keys(report.counts)) {
+    assertInteger(report.counts[field], `${label} counts.${field}`, 0);
+  }
+  const expectedCounts = {
+    attachments: report.entries.reduce((total, entry) => total + entry.attachments.length, 0),
+    blocked: report.entries.filter((entry) => entry.state === "blocked").length,
+    drafts: report.entries.length,
+    issues: report.entries.reduce((total, entry) => total + entry.issues.length, 0),
+    ready: report.entries.filter((entry) => entry.state === "ready").length,
+    scheduled: report.entries.filter((entry) => entry.state === "scheduled").length,
+  };
+  for (const [field, value] of Object.entries(expectedCounts)) {
+    if (report.counts[field] !== value) {
+      valueError(`${label} counts.${field}`, "必须与 entries 一致");
+    }
+  }
+  const matches = report.entries.filter((entry) => entry.sourcePath === expectedSourcePath);
+  if (matches.length !== 1) {
+    valueError(`${label} entries`, `必须只包含一个活动草稿证据：${expectedSourcePath}`);
+  }
+  return Object.freeze({ entry: matches[0], reportDate: report.reportDate });
 }
 
 function expectedStatus(remainingDays, thresholds) {
@@ -2541,6 +2790,89 @@ class InboxReadinessModal extends ReadOnlyReportModal {
   }
 }
 
+class DraftIntentModal extends Modal {
+  constructor(app, evidence) {
+    super(app);
+    this.evidence = evidence;
+  }
+
+  onOpen() {
+    const { contentEl } = this;
+    const { entry, reportDate } = this.evidence;
+    contentEl.empty();
+    contentEl.addClass("myblog-draft-intent");
+    contentEl.createEl("p", {
+      cls: "myblog-draft-intent__eyebrow",
+      text: "AUTHOR INTENT / LOCAL EVIDENCE",
+    });
+    contentEl.createEl("h2", { text: "当前草稿发布意图" });
+    contentEl.createEl("p", {
+      cls: "myblog-draft-intent__boundary",
+      text: "只读复用正式发布解析与收件箱就绪证据；不会修改、发布、提交、推送或联网。",
+    });
+
+    const signature = contentEl.createDiv({ cls: "myblog-draft-intent__signature" });
+    const source = signature.createDiv({ cls: "myblog-draft-intent__endpoint" });
+    source.createEl("span", { text: "DRAFT" });
+    source.createEl("code", { text: entry.sourcePath });
+    signature.createEl("strong", {
+      cls: "myblog-draft-intent__arrow",
+      text: "DRAFT → PUBLIC",
+    });
+    const target = signature.createDiv({ cls: "myblog-draft-intent__endpoint" });
+    target.createEl("span", { text: "PUBLIC" });
+    target.createEl("code", { text: entry.targetPath ?? "UNPROVEN" });
+
+    const statusToken = entry.state === "ready"
+      ? "READY / PUBLIC ON PASS"
+      : entry.state === "scheduled"
+        ? "SCHEDULED / FUTURE DATE"
+        : `HOLD / ${entry.issues.length} BLOCKER${entry.issues.length === 1 ? "" : "S"}`;
+    const status = contentEl.createEl("p", {
+      cls: "myblog-draft-intent__status",
+      text: statusToken,
+    });
+    status.setAttr("data-state", entry.state);
+
+    const dateSemantics = !entry.publishedAt
+      ? "UNPROVEN"
+      : entry.publishedAt > reportDate
+        ? `${entry.publishedAt} · SCHEDULED`
+        : `${entry.publishedAt} · NOW`;
+    const evidence = contentEl.createEl("dl", {
+      cls: "myblog-draft-intent__evidence",
+    });
+    for (const [term, value] of [
+      ["TYPE", entry.contentType?.toUpperCase() ?? "UNPROVEN"],
+      ["DATE", dateSemantics],
+      ["MEDIA", `${entry.attachments.length} ATTACHMENTS`],
+      ["LINKS", `${entry.internalLinkCount} REFERENCES`],
+    ]) {
+      const row = evidence.createDiv({ cls: "myblog-draft-intent__evidence-row" });
+      row.createEl("dt", { text: term });
+      row.createEl("dd", { text: value });
+    }
+
+    if (entry.issues.length > 0) {
+      const blockers = contentEl.createEl("section", {
+        cls: "myblog-draft-intent__blockers",
+      });
+      blockers.createEl("h3", { text: "阻塞证据" });
+      const list = blockers.createEl("ol");
+      for (const issue of entry.issues) {
+        list.createEl("li", {
+          text: `[${issue.code}] ${issue.message}${issue.path ? ` · ${issue.path}` : ""}`,
+        });
+      }
+    }
+
+    const actions = contentEl.createDiv({ cls: "myblog-draft-intent__actions" });
+    const close = actions.createEl("button", { text: "关闭" });
+    close.setAttr("type", "button");
+    close.addEventListener("click", () => this.close());
+  }
+}
+
 class ContentMaintenanceTextModal extends ReadOnlyReportModal {
   constructor(app, report) {
     super(app, {
@@ -3625,6 +3957,12 @@ module.exports = class MyBlogPublisher extends Plugin {
     });
 
     this.addCommand({
+      id: "inspect-current-draft-intent",
+      name: "查看当前草稿发布意图",
+      checkCallback: (checking) => this.inspectCurrentDraftIntent(checking),
+    });
+
+    this.addCommand({
       id: "validate-current-note",
       name: "检查当前草稿",
       checkCallback: (checking) => this.publishCurrentNote(checking, false),
@@ -3790,6 +4128,46 @@ module.exports = class MyBlogPublisher extends Plugin {
       new Notice(message, 10000);
     });
     return true;
+  }
+
+  inspectCurrentDraftIntent(checking) {
+    if (!this.isDesktopVault()) return false;
+    const identity = this.getActiveInboxDraftIdentity();
+    if (!identity) return false;
+    if (checking) return true;
+    return this.runRepositoryCommand(
+      ["--silent", "run", "content:inbox", "--", "--format", "json"],
+      {
+        failure: "当前草稿作者意图检查未完成",
+        progress: `正在读取 ${identity.sourcePath} 的本地发布意图…`,
+        startFailure: "当前草稿作者意图检查无法启动",
+      },
+      (output) => this.openCurrentDraftIntent(output, identity),
+    );
+  }
+
+  openCurrentDraftIntent(output, identity) {
+    const current = this.getActiveInboxDraftIdentity();
+    const frozenFile = this.app.vault.getAbstractFileByPath(identity.sourcePath);
+    if (
+      !current ||
+      current.file !== identity.file ||
+      current.sourcePath !== identity.sourcePath ||
+      frozenFile !== identity.file
+    ) {
+      new Notice("活动草稿已变化；当前作者意图摘要未打开，请重新运行命令。", 10000);
+      return;
+    }
+    try {
+      const evidence = parseInboxReadinessReport(output, identity.sourcePath);
+      new DraftIntentModal(this.app, evidence).open();
+      new Notice("当前草稿发布意图已从本地只读证据生成。", 5000);
+    } catch (error) {
+      new Notice(
+        `作者意图摘要证据不可用：${error.message}。未回退、未重试，也未执行发布。`,
+        12000,
+      );
+    }
   }
 
   async openDraftIdentityEvidence(identity) {

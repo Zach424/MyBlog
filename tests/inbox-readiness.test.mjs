@@ -101,7 +101,11 @@ test("reports ready and scheduled drafts with real media derivation", async () =
     await Promise.all([
       writeFile(
         join(root, "content", "inbox", "ready-note.md"),
-        article("ready-note", "2026-08-05", "证据 ![[evidence.png|示例图]]。"),
+        article(
+          "ready-note",
+          "2026-08-05",
+          "证据 ![[evidence.png|示例图]]；[[#方法|回看方法]]。",
+        ),
       ),
       writeFile(
         join(root, "content", "inbox", "scheduled-project.md"),
@@ -115,6 +119,14 @@ test("reports ready and scheduled drafts with real media derivation", async () =
     const report = await inspectInboxReadiness(root, "2026-08-05", { stagingParent });
     const byPath = Object.fromEntries(report.entries.map((entry) => [entry.sourcePath, entry]));
 
+    assert.equal(report.version, 1);
+    assert.equal(report.mode, "read-only");
+    assert.deepEqual(report.safety, {
+      authorFilesChanged: false,
+      commitCreated: false,
+      networkChecked: false,
+      pushExecuted: false,
+    });
     assert.deepEqual(report.counts, {
       attachments: 1,
       blocked: 0,
@@ -125,13 +137,17 @@ test("reports ready and scheduled drafts with real media derivation", async () =
     });
     assert.equal(byPath["content/inbox/ready-note.md"].state, "ready");
     assert.equal(byPath["content/inbox/ready-note.md"].kind, "post");
+    assert.equal(byPath["content/inbox/ready-note.md"].contentType, "article");
     assert.equal(byPath["content/inbox/ready-note.md"].draftState, "draft");
+    assert.equal(byPath["content/inbox/ready-note.md"].internalLinkCount, 1);
     assert.equal(
       byPath["content/inbox/ready-note.md"].attachments[0].preparation.output.format,
       "webp",
     );
     assert.equal(byPath["content/inbox/scheduled-project.md"].state, "scheduled");
     assert.equal(byPath["content/inbox/scheduled-project.md"].kind, "project");
+    assert.equal(byPath["content/inbox/scheduled-project.md"].contentType, "project");
+    assert.equal(byPath["content/inbox/scheduled-project.md"].internalLinkCount, 0);
     assert.deepEqual(
       await readFile(join(root, "public", "uploads", "evidence.png")),
       sourceBefore,
@@ -249,6 +265,8 @@ test("runs the real JSON CLI and leaves the repository byte-for-byte untouched",
     );
     assert.equal(result.status, 0, `${result.stdout}\n${result.stderr}`);
     const report = JSON.parse(result.stdout);
+    assert.equal(report.version, 1);
+    assert.equal(report.mode, "read-only");
     assert.equal(report.counts.ready, 1);
     assert.deepEqual(await readFile(draftPath), before);
     assert.deepEqual(await readdir(join(root, "content", "posts")), []);

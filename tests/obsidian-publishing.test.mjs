@@ -290,6 +290,7 @@ test("normalizes Obsidian note and heading links into stable blog URLs", () => {
   assert.match(result.content, /\[项目\]\(\/projects\/myblog\)/u);
   assert.match(result.content, /\[本文方法\]\(#方法\)/u);
   assert.deepEqual(result.attachments, []);
+  assert.equal(result.internalLinkCount, 3);
 });
 
 test("keeps external and code-example links out of Obsidian link conversion", () => {
@@ -313,6 +314,7 @@ test("keeps external and code-example links out of Obsidian link conversion", ()
   assert.match(result.content, /\[Obsidian\]\(https:\/\/obsidian\.md\/help\/links\)/u);
   assert.match(result.content, /`\[\[building-a-maintainable-blog\]\]`/u);
   assert.match(result.content, /\[\[myblog\|项目\]\]/u);
+  assert.equal(result.internalLinkCount, 0);
 });
 
 test("rejects missing, ambiguous, and block-level Obsidian links", () => {
@@ -549,7 +551,7 @@ test("ships a desktop Obsidian command without hidden shell interpolation", asyn
     readFile(new URL("../.obsidian/plugins/myblog-publisher/main.js", import.meta.url), "utf8"),
   ]);
   assert.equal(JSON.parse(manifest).isDesktopOnly, true);
-  assert.equal(JSON.parse(manifest).version, "1.21.0");
+  assert.equal(JSON.parse(manifest).version, "1.22.0");
   assert.equal(JSON.parse(manifest).minAppVersion, "1.5.7");
   assert.match(plugin, /FileSystemAdapter/);
   assert.match(plugin, /create-blog-draft/);

@@ -26,6 +26,8 @@ import { parsePostFile, parseProjectFile } from "./contract.ts";
 const ISO_DATE_PATTERN = /^\d{4}-\d{2}-\d{2}$/u;
 const SLUG_PATTERN = /^[a-z0-9]+(?:-[a-z0-9]+)*$/u;
 
+export const INBOX_READINESS_REPORT_VERSION = 1 as const;
+
 export const INBOX_READINESS_STATES = ["blocked", "scheduled", "ready"] as const;
 export type InboxReadinessState = (typeof INBOX_READINESS_STATES)[number];
 
@@ -51,7 +53,9 @@ export type InboxReadinessAttachment = PreparedAttachment & {
 
 export type InboxReadinessEntry = {
   attachments: InboxReadinessAttachment[];
+  contentType?: "article" | "project" | "til";
   draftState: "disabled" | "draft" | "unknown";
+  internalLinkCount: number;
   issues: InboxReadinessIssue[];
   kind?: ObsidianContentKind;
   publishedAt?: string;
@@ -62,6 +66,8 @@ export type InboxReadinessEntry = {
 };
 
 export type InboxReadinessReport = {
+  version: typeof INBOX_READINESS_REPORT_VERSION;
+  mode: "read-only";
   counts: {
     attachments: number;
     blocked: number;
@@ -72,6 +78,12 @@ export type InboxReadinessReport = {
   };
   entries: InboxReadinessEntry[];
   reportDate: string;
+  safety: {
+    authorFilesChanged: false;
+    commitCreated: false;
+    networkChecked: false;
+    pushExecuted: false;
+  };
 };
 
 function isIsoDate(value: string) {
@@ -160,6 +172,7 @@ function blockedEntry(sourcePath: string): InboxReadinessEntry {
   return {
     attachments: [],
     draftState: "unknown",
+    internalLinkCount: 0,
     issues: [],
     ...(SLUG_PATTERN.test(candidateSlug) ? { slug: candidateSlug } : {}),
     sourcePath,
@@ -208,10 +221,16 @@ async function inspectDraft(
   entry.slug = prepared.slug;
   entry.targetPath = prepared.targetPath;
   entry.attachments = prepared.attachments.map((attachment) => ({ ...attachment }));
-  const record = prepared.kind === "post"
-    ? parsePostFile(prepared.targetPath, prepared.content)
-    : parseProjectFile(prepared.targetPath, prepared.content);
-  entry.publishedAt = record.publishedAt;
+  entry.internalLinkCount = prepared.internalLinkCount;
+  if (prepared.kind === "post") {
+    const record = parsePostFile(prepared.targetPath, prepared.content);
+    entry.publishedAt = record.publishedAt;
+    entry.contentType = record.type;
+  } else {
+    const record = parseProjectFile(prepared.targetPath, prepared.content);
+    entry.publishedAt = record.publishedAt;
+    entry.contentType = "project";
+  }
 
   if (await pathExists(resolve(projectRoot, prepared.targetPath))) {
     addIssue(
@@ -285,7 +304,7 @@ async function inspectDraft(
 
   entry.state = entry.issues.length > 0
     ? "blocked"
-    : record.publishedAt > reportDate
+    : entry.publishedAt > reportDate
       ? "scheduled"
       : "ready";
   return entry;
@@ -329,6 +348,8 @@ function createReport(entries: InboxReadinessEntry[], reportDate: string) {
     left.sourcePath.localeCompare(right.sourcePath, "en"),
   );
   return {
+    version: INBOX_READINESS_REPORT_VERSION,
+    mode: "read-only",
     counts: {
       attachments: sorted.reduce((total, entry) => total + entry.attachments.length, 0),
       blocked: sorted.filter((entry) => entry.state === "blocked").length,
@@ -339,6 +360,12 @@ function createReport(entries: InboxReadinessEntry[], reportDate: string) {
     },
     entries: sorted,
     reportDate,
+    safety: {
+      authorFilesChanged: false,
+      commitCreated: false,
+      networkChecked: false,
+      pushExecuted: false,
+    },
   } satisfies InboxReadinessReport;
 }
 
@@ -414,13 +441,20 @@ export function formatInboxReadinessText(report: InboxReadinessReport) {
   }
   for (const entry of report.entries) {
     const identity = [
-      entry.kind === "post" ? "文章" : entry.kind === "project" ? "项目" : "类型未知",
+      entry.contentType === "article"
+        ? "技术文章"
+        : entry.contentType === "til"
+          ? "今日所学"
+          : entry.contentType === "project"
+            ? "项目"
+            : "类型未知",
       entry.draftState === "draft"
         ? "draft=true"
         : entry.draftState === "disabled"
           ? "draft=false"
           : "draft 未知",
       entry.publishedAt ? `公开日 ${entry.publishedAt}` : "公开日未知",
+      `站内链接 ${entry.internalLinkCount}`,
     ].join(" · ");
     lines.push(
       `[inbox] ${STATE_LABELS[entry.state]} · ${entry.sourcePath}${entry.targetPath ? ` -> ${entry.targetPath}` : ""} · ${identity}`,
