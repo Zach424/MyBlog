@@ -5,6 +5,7 @@
 完成标题、摘要、标签和正文后，在 Obsidian 命令面板运行：
 
 - `MyBlog Publisher: 查看全部草稿发布就绪状态`：在只读弹窗中列出 ready、scheduled、blocked、目标路径、附件派生和阻塞原因；
+- `MyBlog Publisher: 检查本机发布环境`：发布或正式复核前只读检查 Runtime、Git、Workspace 与 Vault 共 13 项前置条件；只给修复指令，不自动修改；
 - `MyBlog Publisher: 检查当前草稿`：只验证，不移动、不提交；
 - `MyBlog Publisher: 查看 Git 交付恢复`：任何 push 失败后首先运行；它从同一份本地 Git 快照把现场分到复核、新内容发布或人工检查，只显示既有后续命令；
 - `MyBlog Publisher: 查看待同步新内容发布`：只读比较本地 `main` 与最后观察到的 `origin/main`，识别由正式笔记、可选 inbox 删除和归档媒体组成的精确原子发布包；
@@ -12,6 +13,8 @@
 - `MyBlog Publisher: 发布当前草稿并同步 GitHub`：关闭草稿、移动到正式内容目录、执行全量检查、提交并推送。
 
 命令行等价总览为 `npm run content:inbox`；JSON 证据使用 `npm run content:inbox -- --format json`。总览不会移动、改写、提交或推送作者文件。
+
+首次使用、升级 Node/Git、重新安装依赖、移动仓库或更新插件后，先运行 `npm run content:author:doctor`，或命令面板的“检查本机发布环境”。version 1 报告固定检查 Node/npm/Git、仓库根、main、origin/main 本地同步基线、Git 身份是否配置、package/脚本/固定依赖、内容目录、Vault 与 MyBlog Publisher 版本。它只输出身份是否配置，不泄露姓名或邮箱；不会安装依赖、修改 Git/Obsidian 配置、读取凭据、访问网络或要求工作区为空，也不替代单篇发布门和 `release:check`。
 
 任何发布或正式复核 push 失败后，统一先运行 `npm run content:delivery:status`，或命令面板的“查看 Git 交付恢复”。它只读取一次本地 `main`、最后观察到的 `origin/main` 和 HEAD，把现场严格分为 synchronized、exact pending-review、exact pending-publication 或 inspect；不会 fetch、push、运行 status/deliver，也不会修改历史或工作区。只有 exact route 才会列出对应的既有 status 与 deliver 命令；当前分支不是 `main` 时仍可识别类型，但会保持写入锁定。
 

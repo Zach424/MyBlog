@@ -131,6 +131,8 @@ Obsidian 的维护入口服从宿主应用而不是复制网页皮肤。1.3.0 �
 
 1.12.0 把 push 失败后的第一步设计成 Git switchyard，而不是恢复仪表盘。顶部以 `DELIVERY TRIAGE / READ ONLY` 固定证据边界，一个 `OBSERVED LOCAL MAIN` 节点向下分出 `REVIEW`、`PUBLICATION`、`INSPECT` 三条轨道；同一时刻只有一条显示 `MATCHED`，其余保持 `STANDBY`。下方 ledger 才列 relation、branch、完整领域身份及既有 status/deliver 命令；错误分支保留类型识别但显示写入锁。synchronized 用 Verified，其余匹配用 Caution，Trace 标记观察事实，OID/path/命令使用 monospace。视图没有按钮、卡片、自动跳转、分数、渐变或动画，末行明确分诊不会执行 status/deliver，tracking ref 只是最后本地观察；窄屏把三条分支和账本都折为单列。
 
+1.13.0 把作者环境表示成一条发布前电路，而不是健康分数仪表盘。顶部 `AUTHOR PREFLIGHT / LOCAL ONLY` 固定只读边界，`RUNTIME → GIT → WORKSPACE → VAULT` 四个真实前置站按依赖顺序汇合到 `AUTHOR READY` 或 `AUTHOR HOLD`；每站同时用 PASS/HOLD 文本和 Verified/Caution 规则线表达状态。下方 ledger 逐项给出 observed、expected 与仅在 attention 时出现的修复指令。唯一汇合端点是视觉签名，不增加按钮、自动安装、进度环、卡片、阴影、渐变或动画；正文服从宿主 text/interface，版本、路径和观测值使用 monospace。窄屏把四站与证据行折为单列，信息顺序保持不变。
+
 ## 站点图标
 
 `app/icon.png` 为 `256 × 256` PNG，只保留 Commit Trace 的节点、轨迹环与信号色半环，不包含文字、缩写或第二套标志。图标以社交分享卡为风格参考生成，再确定性缩放并纳入尺寸与体积测试；它用于小尺寸识别，不替代首页的工程轨迹签名。
