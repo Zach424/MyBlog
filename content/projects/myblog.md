@@ -18,7 +18,7 @@ demo: "https://blog-iota-five-59.vercel.app"
 
 ## 当前状态（2026-08-06）
 
-MyBlog 运行在 [Vercel](https://blog-iota-five-59.vercel.app)，使用 Next.js 16.3、React 19 与 TypeScript；GitHub `main` 自动交付 Production。网页 Studio 和 Obsidian 均可自主发布；MyBlog Publisher 1.26.0 为当前草稿显示正式验证过的 COVER/BODY 媒体用途、出现次数、源码行、精确变换与链接 trace，同时只派生目标媒体并保留全库共享证据。
+MyBlog 运行在 [Vercel](https://blog-iota-five-59.vercel.app)，使用 Next.js 16.3、React 19 与 TypeScript；GitHub `main` 自动交付 Production。Studio 和 Obsidian 均可自主发布；MyBlog Publisher 1.27.0 显示当前草稿的 COVER/BODY 来源行、逐次最终替代文本、媒体变换与链接 trace，并保留共享证据。
 
 Cloudflare、Sites、Vinext、Vite Worker 和 Wrangler 仅属于 2026-07-18 至 2026-07-19 的首版与迁移历史，不再是当前运行依赖。旧公开站保留为迁移期回退证据，页面顶部的 Live demo 始终指向当前生产站。
 
@@ -60,7 +60,7 @@ Studio 内容复核页复用正式维护报告，而不是在浏览器重写日�
 
 Obsidian 插件用固定参数数组和 `shell: false` 在 Vault 根目录启动同一 `content:status`，把报告以 `setText` 写入原生只读 Modal；Windows 通过隐藏 `cmd.exe` 运行 npm，POSIX 直接运行 npm。发布、inbox 和维护命令共享活动进程账本与 200,000 字符输出边界，成功、错误、非零退出或插件卸载都会关闭持续 Notice；卸载在 Windows 以固定参数、无 shell 的 `taskkill.exe /T /F` 终止命令进程树，POSIX 直接终止子进程，并忽略迟到事件。报告不访问网络、不写内容，也不改变正式构建门。
 
-当前草稿意图复用正式解析，不在插件中解析 Markdown/YAML 或读取图片。version 3 报告从同一次链接验证循环返回目标、fragment、源码行和重复次数，并在既有 cover/正文附件归一化过程中为每个 preparation 聚合 COVER/BODY、出现次数与全部来源行；1.26.0 严格消费这组证据，以 `MEDIA TRACE` 显示用途、source/target/public URL、输入输出格式/尺寸/帧数/字节和 optimized/preserved/unproven 状态。报告仍轻量解析全草稿并应用共享/目标问题，只为当前来源生成媒体候选；证据或活动文件漂移时失败关闭。
+当前草稿意图复用正式解析，不在插件中解析 Markdown/YAML 或读取图片。version 4 把每次 COVER/BODY 使用的来源行和最终替代文本一一对应：正文 alt 在现有图片归一化回调生成最终 Markdown 时登记，cover alt 读取正式 Zod 解析结果。1.27.0 在原 `MEDIA TRACE` 显示 `ALT · L<n>`；空值保持可见并产生 blocker，插件双向核对文本与问题证据。报告只为当前来源派生媒体，同时保留全库共享/目标判断；证据或活动文件漂移时失败关闭。
 
 视觉系统以 Commit Trace 为唯一主要识别元素，把日期、文章类型和项目里程碑连成一条工程轨迹。Evidence Rail 只显示可验证状态，不展示虚构的完成率。
 
@@ -104,7 +104,7 @@ Sites 首次生产发布后，首页与集合页返回 200，但没有任何内�
 
 ### Vercel 阶段（当前）
 
-Studio/Obsidian 双发布、内容维护、关系门与 Vercel 恢复均已验收。Iteration 0075 增加每个媒体的 COVER/BODY 用途、出现次数与全部草稿源码行；完整门通过 328/328、45 页、19/19 与生产审计 0。生产站公开且不依赖 Cloudflare。
+Studio/Obsidian 双发布、内容维护、关系门与 Vercel 恢复均已验收。Iteration 0076 增加每个媒体使用点的最终替代文本，并让空值以可见证据阻塞草稿；完整门通过 335/335、45 页、19/19 与生产审计 0。生产站公开且不依赖 Cloudflare。
 
 ## 复盘
 
@@ -112,4 +112,4 @@ Studio/Obsidian 双发布、内容维护、关系门与 Vercel 恢复均已验�
 
 ## 下一步
 
-下一轮为每个媒体使用点补充最终发布的替代文本证据，让作者发布前核对可访问性措辞；云 API、评论、统计、自动发布与自动修复保持范围外。
+下一轮区分 BODY alt 的 `AUTHORED / FILENAME FALLBACK` 来源并阻塞文件名回退，要求 Markdown alt 或 Wiki display 提供真实描述；不另写解析或自动文案，云 API 与发布边界保持范围外。

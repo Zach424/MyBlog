@@ -80,6 +80,7 @@
 0073-exact-draft-link-targets.md
 0074-draft-media-transformation-trace.md
 0075-draft-media-source-usages.md
+0076-draft-media-alternative-text-trace.md
 ```
 
 ## 必填结构
