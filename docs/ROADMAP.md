@@ -12,7 +12,7 @@
 
 ## 当前唯一主线
 
-进入持续内容与作者体验阶段。Iteration 0086 已在现有 `SHARE TRACE / CANONICAL` 中加入 `COPY MD`：全部 ASCII 标点按 CommonMark 转义并经 GFM 反解析，两个动作共享同步 busy 锁、禁用态和可访问回执；桌面、390px、320px、GitHub runner 与 Vercel Production 均已验收。生产等价项目页最终为 99,997/100,000 raw HTML 字节，说明统一原始体积门已把模板开销和作者内容增长混在一起。下一主线先建立 raw 紧急上限 + gzip 传输预算 + 路由余量诊断的双层质量门；稳定后再复用现有 RSS/公开索引实现 JSON Feed 1.1。需要品牌域名时再绑定自定义域名，旧公开站继续只作为迁移历史证据。
+进入持续内容与作者体验阶段。Iteration 0086 已在现有 `SHARE TRACE / CANONICAL` 中加入 `COPY MD`：全部 ASCII 标点按 CommonMark 转义并经 GFM 反解析，两个动作共享同步 busy 锁、禁用态和可访问回执；桌面、390px、320px、GitHub runner 与 Vercel Production 均已验收。项目页在应用测试代理主机下为 99,997/100,000 raw HTML 字节，稳定生产域名实际为 100,493 字节，说明统一原始体积门既混合了模板开销和作者内容增长，也因替代主机长度产生假绿。下一主线先建立真实规范主机语义 + raw 紧急上限 + gzip 传输预算 + 路由余量诊断的双层质量门；稳定后再复用现有 RSS/公开索引实现 JSON Feed 1.1。需要品牌域名时再绑定自定义域名，旧公开站继续只作为迁移历史证据。
 
 ## 已知风险
 
