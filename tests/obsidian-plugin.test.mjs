@@ -925,7 +925,7 @@ function authorDoctorReport() {
     ["workspace-dependencies", "workspace", "Workspace dependencies", "35/35 pinned packages", "all declared packages installed at pinned versions"],
     ["content-layout", "workspace", "Content layout", "5/5 required paths", "5 required authoring paths"],
     ["obsidian-vault", "vault", "Obsidian Vault", ".obsidian present", ".obsidian directory present"],
-    ["publisher-plugin", "vault", "MyBlog Publisher", "myblog-publisher@1.33.0 · desktop", "myblog-publisher 1.33.0 desktop plugin"],
+    ["publisher-plugin", "vault", "MyBlog Publisher", "myblog-publisher@1.34.0 · desktop", "myblog-publisher 1.34.0 desktop plugin"],
   ];
   const scripts = [
     "content:author:doctor",
@@ -972,7 +972,7 @@ function authorDoctorReport() {
           isDesktopOnly: true,
           mainPresent: true,
           stylesPresent: true,
-          version: "1.33.0",
+          version: "1.34.0",
         },
       },
       workspace: {
@@ -1837,6 +1837,105 @@ test("binds the summary and every source jump to the same exact draft bytes", as
   });
 });
 
+test("supersedes only the previous current-draft intent subprocess", async (t) => {
+  const sourcePath = "content/inbox/current-draft.md";
+  const source = filenameOwnedDraft();
+
+  await t.test("checking is inert and an unrelated report remains active", async () => {
+    const harness = await createPluginHarness({
+      activeFilePath: sourcePath,
+      fileContents: { [sourcePath]: source },
+      files: [],
+      platform: "linux",
+    });
+    const inbox = findCommand(harness, "inspect-inbox-readiness");
+    const intent = findCommand(harness, "inspect-current-draft-intent");
+    inbox.checkCallback(false);
+    intent.checkCallback(false);
+    assert.equal(intent.checkCallback(true), true);
+    assert.equal(harness.spawned.length, 2);
+    assert.equal(harness.plugin.activeRuns.size, 2);
+    assert.equal(harness.spawned[0].child.killed, false);
+    assert.equal(harness.spawned[1].child.killed, false);
+    assert.equal(harness.notices[0].hidden, false);
+    assert.equal(harness.notices[1].hidden, false);
+
+    intent.checkCallback(false);
+
+    assert.equal(harness.spawned.length, 3);
+    assert.equal(harness.plugin.activeRuns.size, 2);
+    assert.equal(harness.spawned[0].child.killed, false);
+    assert.equal(harness.spawned[1].child.killed, true);
+    assert.equal(harness.spawned[2].child.killed, false);
+    assert.equal(harness.notices[0].hidden, false);
+    assert.equal(harness.notices[1].hidden, true);
+    assert.equal(harness.notices[2].hidden, false);
+
+    const noticeCount = harness.notices.length;
+    harness.spawned[1].child.stdout.emit("data", Buffer.from("stale output"));
+    harness.spawned[1].child.emit("error", new Error("stale process error"));
+    harness.spawned[1].child.emit("close", 1);
+    assert.equal(harness.notices.length, noticeCount);
+    assert.equal(harness.plugin.activeRuns.size, 2);
+  });
+
+  await t.test("Windows termination is attempted before the replacement starts", async () => {
+    const harness = await createPluginHarness({
+      activeFilePath: sourcePath,
+      fileContents: { [sourcePath]: source },
+      files: [],
+    });
+    const intent = findCommand(harness, "inspect-current-draft-intent");
+    intent.checkCallback(false);
+    intent.checkCallback(false);
+
+    assert.equal(harness.spawned.length, 3);
+    assert.equal(harness.spawned[1].executable, "taskkill.exe");
+    assert.deepEqual(plain(harness.spawned[1].args), [
+      "/pid",
+      String(harness.spawned[0].child.pid),
+      "/t",
+      "/f",
+    ]);
+    assert.deepEqual(plain(harness.spawned[1].options), {
+      shell: false,
+      stdio: "ignore",
+      windowsHide: true,
+    });
+    assert.equal(harness.spawned[2].executable, "C:\\Windows\\System32\\cmd.exe");
+    assert.equal(harness.notices[0].hidden, true);
+    assert.equal(harness.plugin.activeRuns.size, 1);
+
+    harness.spawned[1].child.emit("error", new Error("taskkill unavailable"));
+    assert.equal(harness.spawned[0].child.killed, true);
+    assert.equal(harness.plugin.activeRuns.size, 1);
+  });
+
+  await t.test("replacement start failure keeps the old run stopped and reports current failure", async () => {
+    const harness = await createPluginHarness({
+      activeFilePath: sourcePath,
+      fileContents: { [sourcePath]: source },
+      files: [],
+      platform: "linux",
+      throwSpawnAt: [1],
+    });
+    const intent = findCommand(harness, "inspect-current-draft-intent");
+    intent.checkCallback(false);
+    intent.checkCallback(false);
+
+    assert.equal(harness.spawned.length, 1);
+    assert.equal(harness.spawned[0].child.killed, true);
+    assert.equal(harness.plugin.activeRuns.size, 0);
+    assert.equal(harness.notices[0].hidden, true);
+    assert.equal(harness.notices[1].hidden, true);
+    assert.match(harness.notices[2].message, /当前草稿作者意图检查无法启动.*spawn unavailable/u);
+
+    const noticeCount = harness.notices.length;
+    harness.spawned[0].child.emit("close", 0);
+    assert.equal(harness.notices.length, noticeCount);
+  });
+});
+
 test("keeps current-draft intent evidence latest-wins through async verification and unload", async (t) => {
   const sourcePath = "content/inbox/current-draft.md";
   const source = filenameOwnedDraft();
@@ -1848,6 +1947,7 @@ test("keeps current-draft intent evidence latest-wins through async verification
       activeFilePath: sourcePath,
       fileContents: { [sourcePath]: source },
       files: [],
+      platform: "linux",
     });
     const command = findCommand(harness, "inspect-current-draft-intent");
     command.checkCallback(false);
@@ -1878,6 +1978,7 @@ test("keeps current-draft intent evidence latest-wins through async verification
       activeFilePath: sourcePath,
       fileContents: { [sourcePath]: source },
       files: [],
+      platform: "linux",
     });
     const command = findCommand(harness, "inspect-current-draft-intent");
     command.checkCallback(false);
@@ -1903,6 +2004,7 @@ test("keeps current-draft intent evidence latest-wins through async verification
       activeFilePath: sourcePath,
       fileContents: { [sourcePath]: source },
       files: [],
+      platform: "linux",
     });
     const command = findCommand(harness, "inspect-current-draft-intent");
     command.checkCallback(false);
@@ -2816,7 +2918,7 @@ test("renders a versioned maintenance ledger and opens an exact Vault note", asy
     createPluginHarness(),
   ]);
   const manifest = JSON.parse(manifestSource);
-  assert.equal(manifest.version, "1.33.0");
+  assert.equal(manifest.version, "1.34.0");
   assert.equal(manifest.minAppVersion, "1.5.7");
   assert.equal(manifest.isDesktopOnly, true);
   assert.match(styles, /^\.myblog-draft-create \{/mu);

@@ -23,7 +23,8 @@ const CONTENT_DELIVERY_TRIAGE_REPORT_VERSION = 1;
 const AUTHOR_DOCTOR_REPORT_VERSION = 1;
 const INBOX_READINESS_REPORT_VERSION = 6;
 const AUTHOR_DOCTOR_NODE_ENGINE = ">=22.13.0";
-const AUTHOR_DOCTOR_PLUGIN_VERSION = "1.33.0";
+const AUTHOR_DOCTOR_PLUGIN_VERSION = "1.34.0";
+const CURRENT_DRAFT_INTENT_RUN_SCOPE = Symbol("current-draft-intent");
 const DRAFT_TITLE_MAX_LENGTH = 120;
 const DRAFT_SLUG_MAX_LENGTH = 80;
 const DRAFT_SLUG_PATTERN = /^[a-z0-9]+(?:-[a-z0-9]+)*$/u;
@@ -4469,6 +4470,17 @@ module.exports = class MyBlogPublisher extends Plugin {
     this.activeRuns.clear();
   }
 
+  supersedeRepositoryRuns(scope) {
+    if (scope === null || scope === undefined) return 0;
+    let superseded = 0;
+    for (const [child, run] of [...this.activeRuns]) {
+      if (run.scope !== scope || !run.cancel()) continue;
+      superseded += 1;
+      this.terminateChild(child);
+    }
+    return superseded;
+  }
+
   terminateChild(child) {
     const killDirectly = () => {
       try {
@@ -4556,6 +4568,7 @@ module.exports = class MyBlogPublisher extends Plugin {
     const identity = this.getActiveInboxDraftIdentity();
     if (!identity) return false;
     if (checking) return true;
+    this.supersedeRepositoryRuns(CURRENT_DRAFT_INTENT_RUN_SCOPE);
     const generation = Object.freeze({});
     this.currentDraftIntentGeneration = generation;
     return this.runRepositoryCommand(
@@ -4577,6 +4590,7 @@ module.exports = class MyBlogPublisher extends Plugin {
       (output) => this.openCurrentDraftIntent(output, identity, generation),
       null,
       () => this.isCurrentDraftIntentGeneration(generation),
+      CURRENT_DRAFT_INTENT_RUN_SCOPE,
     );
   }
 
@@ -5490,6 +5504,7 @@ module.exports = class MyBlogPublisher extends Plugin {
     onSuccess,
     authorLease = null,
     continuationGuard = null,
+    runScope = null,
   ) {
     const root = this.app.vault.adapter.getBasePath();
     const executable = process.platform === "win32"
@@ -5547,7 +5562,7 @@ module.exports = class MyBlogPublisher extends Plugin {
       return true;
     };
 
-    this.activeRuns.set(child, { cancel, progressNotice });
+    this.activeRuns.set(child, { cancel, progressNotice, scope: runScope });
     child.stdout.on("data", appendOutput);
     child.stderr.on("data", appendOutput);
     child.on("error", (error) => {
