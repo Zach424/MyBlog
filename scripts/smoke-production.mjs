@@ -1,5 +1,12 @@
 import { fileURLToPath } from "node:url";
 import { resolve } from "node:path";
+import {
+  assertHtmlBudgetCoverage,
+  assertHtmlBudgets,
+  formatHtmlBudgetReport,
+  HTML_ROUTE_BASELINES,
+  measureHtmlBudget,
+} from "./html-budget.mjs";
 
 function invariant(condition, message) {
   if (!condition) throw new Error(message);
@@ -63,18 +70,30 @@ export async function runProductionSmoke(originInput, { expectOAuth = false } = 
     invariant(home.response.headers.has(header), `首页缺少 ${header}`);
   }
 
+  const htmlBudgetReports = [
+    measureHtmlBudget({ pathname: "/", html: home.body }),
+  ];
+
   for (const [pathname, marker] of [
     ["/posts", "文章与 TIL"],
     ["/projects", "项目复盘"],
     ["/knowledge", "知识之间，应该看得见来路"],
     ["/posts/building-a-maintainable-blog", "从零搭建可维护的个人技术博客"],
     ["/projects/myblog", "MyBlog"],
+    ["/series/build-my-blog", "从零搭建可维护的个人技术博客"],
+    ["/tags/typescript", "TypeScript"],
     ["/search?q=cloudflare", "Cloudflare"],
+    ["/about", "学习不是收藏答案，而是更新判断"],
   ]) {
     const page = await request(origin, pathname);
     invariant(page.response.status === 200, `${pathname} 状态 ${page.response.status}`);
     invariant(page.body.includes(marker), `${pathname} 缺少预期内容`);
+    if (HTML_ROUTE_BASELINES[pathname]) {
+      htmlBudgetReports.push(measureHtmlBudget({ pathname, html: page.body }));
+    }
   }
+  assertHtmlBudgetCoverage(htmlBudgetReports);
+  assertHtmlBudgets(htmlBudgetReports);
 
   const legacyBlog = await request(origin, "/blog", { redirect: "manual" });
   invariant(legacyBlog.response.status === 308, `/blog 永久重定向状态 ${legacyBlog.response.status}`);
@@ -380,7 +399,12 @@ export async function runProductionSmoke(originInput, { expectOAuth = false } = 
     "404 必须 no-store",
   );
 
-  return { origin: origin.origin, sitemapCount: sitemapUrls.length, oauth: oauth.response.status };
+  return {
+    origin: origin.origin,
+    sitemapCount: sitemapUrls.length,
+    oauth: oauth.response.status,
+    htmlBudgetReports,
+  };
 }
 
 const isEntryPoint = process.argv[1] && fileURLToPath(import.meta.url) === resolve(process.argv[1]);
@@ -392,6 +416,7 @@ if (isEntryPoint) {
   }
   try {
     const result = await runProductionSmoke(origin, { expectOAuth: process.argv.includes("--expect-oauth") });
+    console.log(formatHtmlBudgetReport(result.htmlBudgetReports));
     console.log(`[smoke] ${result.origin}: ${result.sitemapCount} routes, OAuth ${result.oauth}`);
   } catch (error) {
     console.error(`[smoke] ${error instanceof Error ? error.message : String(error)}`);

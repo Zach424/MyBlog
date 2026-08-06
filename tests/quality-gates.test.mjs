@@ -1,6 +1,13 @@
 import assert from "node:assert/strict";
 import { access, readdir, readFile, stat } from "node:fs/promises";
 import test from "node:test";
+import {
+  assertHtmlBudgetCoverage,
+  assertHtmlBudgets,
+  formatHtmlBudgetReport,
+  HTML_BUDGET_ORIGIN,
+  measureHtmlBudget,
+} from "../scripts/html-budget.mjs";
 
 async function request(pathname = "/") {
   if (!process.env.TEST_BASE_URL) throw new Error("TEST_BASE_URL is required");
@@ -8,7 +15,7 @@ async function request(pathname = "/") {
     redirect: "manual",
     headers: {
       accept: "text/html",
-      "x-forwarded-host": "blog.example.test",
+      "x-forwarded-host": HTML_BUDGET_ORIGIN.host,
       "x-forwarded-proto": "https",
     },
   });
@@ -20,7 +27,7 @@ async function postStudioMathPreview(body, headers = {}) {
     body: typeof body === "string" ? body : JSON.stringify(body),
     headers: {
       "content-type": "application/json",
-      "x-forwarded-host": "blog.example.test",
+      "x-forwarded-host": HTML_BUDGET_ORIGIN.host,
       "x-forwarded-proto": "https",
       ...headers,
     },
@@ -35,7 +42,7 @@ async function postStudioEntryPreflight(body, headers = {}) {
     body: typeof body === "string" ? body : JSON.stringify(body),
     headers: {
       "content-type": "application/json",
-      "x-forwarded-host": "blog.example.test",
+      "x-forwarded-host": HTML_BUDGET_ORIGIN.host,
       "x-forwarded-proto": "https",
       ...headers,
     },
@@ -332,7 +339,7 @@ test("renders bounded Studio formula previews with the production Markdown pipel
   assert.equal(tooLarge.status, 413);
 });
 
-test("keeps key HTML routes structurally valid and uniquely identified", async () => {
+test("keeps key HTML routes structurally valid and within explainable transfer budgets", async (context) => {
   const paths = [
     "/",
     "/posts",
@@ -345,21 +352,31 @@ test("keeps key HTML routes structurally valid and uniquely identified", async (
     "/about",
   ];
 
+  const budgetReports = [];
+
   for (const pathname of paths) {
     const response = await request(pathname);
     assert.equal(response.status, 200, pathname);
-    const html = visibleDocument(await response.text());
+    const responseHtml = await response.text();
+    const html = visibleDocument(responseHtml);
+    budgetReports.push(measureHtmlBudget({ pathname, html: responseHtml }));
     assert.equal(countMatches(html, /<main\b/g), 1, `${pathname}: main`);
     assert.equal(countMatches(html, /<h1\b/g), 1, `${pathname}: h1`);
     assert.match(html, /<html lang="zh-CN">/, pathname);
     assert.match(html, /<meta name="description" content="[^"]+"/, pathname);
-    assert.match(html, /<link rel="canonical" href="https:\/\/blog\.example\.test(?:\/|\")/, pathname);
+    assert.ok(
+      html.includes(`<link rel="canonical" href="${HTML_BUDGET_ORIGIN.origin}`),
+      `${pathname}: canonical origin`,
+    );
     assert.match(html, /<a class="skip-link" href="#main-content">/, pathname);
-    assert.ok(Buffer.byteLength(html) < 100_000, `${pathname}: HTML exceeds 100 KB`);
 
     const ids = [...html.matchAll(/\sid="([^"]+)"/g)].map((match) => match[1]);
     assert.equal(new Set(ids).size, ids.length, `${pathname}: duplicate id`);
   }
+
+  context.diagnostic(formatHtmlBudgetReport(budgetReports));
+  assertHtmlBudgetCoverage(budgetReports);
+  assertHtmlBudgets(budgetReports);
 });
 
 test("keeps every visible internal navigation target healthy", async () => {
@@ -384,8 +401,8 @@ test("keeps every visible internal navigation target healthy", async () => {
     for (const match of html.matchAll(/\shref="([^"]+)"/g)) {
       const href = match[1];
       if (href.startsWith("#") || href.startsWith("/assets/")) continue;
-      const url = new URL(href, "https://blog.example.test");
-      if (url.origin !== "https://blog.example.test") continue;
+      const url = new URL(href, HTML_BUDGET_ORIGIN);
+      if (url.origin !== HTML_BUDGET_ORIGIN.origin) continue;
       targetPaths.add(`${url.pathname}${url.search}`);
     }
   }
