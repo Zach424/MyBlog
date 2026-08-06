@@ -18,7 +18,7 @@ MyBlog 是 Zach424 的个人技术知识库与公开工程日志。它把学习�
 | Obsidian 写作 | done | Vault、三类受信模板、桌面插件 1.34.0、文件名唯一草稿身份、本地原子新建/安全改名/旧身份取证与严格清理、source-scoped 当前草稿作者意图、原始来源字节 SHA-256 摘要/导航双重绑定、作者意图与身份读取各自独立的 latest-wins generation/卸载失效、作者意图旧活动进程的专属 scope 接管与跨平台终止、媒体 COVER/BODY 来源/逐次替代文本/作者或文件名回退取证/精确变换、ALT 与 LINK occurrence 精确源码行导航、四个新发布/复核事务的 single-flight lease、阶段/输出活动脉冲、会话内最近终态回执与自动 doctor 联锁、13 项本机前置电路、统一只读 Git 交付分诊、版本化维护台账/Author Proof v3、两类安全重送/可信回执、deferred 并行草稿和新稿 `--check-only`/`--push` |
 | Inbox 发布就绪 | done | version 6/read-only 全草稿 ready/scheduled/blocked、每个可读来源的原始字节 SHA-256、Article/TIL/Project、精确站内目标/源码行/重复次数、媒体 COVER/BODY 用途/出现次数/源码行/最终替代文本及来源、空文本与文件名回退阻塞、真实媒体候选、目标/共享附件诊断、CLI 全库或 `--source` 聚焦 JSON 与 Obsidian 当前草稿原生摘要 |
 | 附件发布 | done | Wiki/Markdown 图片转换、按内容隔离、稳定命名、越界保护、失败回滚 |
-| 自动交付 | done | GitHub `main` → Vercel Production → 稳定域名冒烟；checkout/setup-node v6 Node 24 action runtime，应用 Node 22 与 workflow 语义有结构测试 |
+| 自动交付 | done | GitHub `main` → Vercel Production → 稳定域名冒烟；checkout/setup-node v6 Node 24 action runtime 的六处引用固定到官方完整 SHA，应用 Node 22 与 workflow 语义由共享结构/发布门禁保护 |
 | 恢复能力 | done | Vercel 显式目标回滚、当前版本恢复、再次冒烟 |
 | 内容知识网络 | done | GFM 行内/引用式/自引用链接、页面与标题锚点构建门、文章与项目双向引用账本 |
 | 公开知识地图 | done | `/knowledge` 服务端 SVG 信号场、HTML 关系账本、孤立记录、主导航与 Sitemap，Markdown 链接为唯一事实源 |
@@ -44,21 +44,21 @@ MyBlog 是 Zach424 的个人技术知识库与公开工程日志。它把学习�
 - 路由：严格 YAML + Zod 永久重定向注册表、Next `redirects()` 308、构建期现行路由与静态文件交叉校验；
 - 知识图：纯函数派生有向节点/边、语义 SVG + HTML 账本、零客户端布局依赖与 320px 明确降级；
 - 托管：Vercel 原生 Next.js，当前链路不依赖 Cloudflare；
-- 质量：ESLint、Node test、TypeScript、Next build、真实生产服务器 HTTP 测试、npm audit、YAML workflow 契约与线上冒烟。
+- 质量：ESLint、Node test、TypeScript、Next build、真实生产服务器 HTTP 测试、npm audit、YAML workflow 契约、官方 action 完整 SHA 共享门禁与线上冒烟。
 
 ## 当前运行状态
 
 - 仓库：<https://github.com/Zach424/MyBlog>，生产分支 `main`；
 - 生产站：<https://blog-iota-five-59.vercel.app>；
-- 本轮实现提交：`b21fd49d1aee7135175e8fa7c1078ec8a4e3f19c`（当前草稿作者意图旧活动进程的专属 scope 接管）；
-- 自动交付：实现提交已推送；[Quality Gate #149](https://github.com/Zach424/MyBlog/actions/runs/31078691653) 与 [Verify Vercel production #142](https://github.com/Zach424/MyBlog/actions/runs/31078724667) 均成功，归档提交继续按同一链路独立验证；
-- 最新完成迭代：0083 当前草稿作者意图进程接管；
+- 本轮实现提交：`26ab5cc8c8a5576cb6d524a0b8e75f750a6b22f8`（三个 workflow 的六处官方 action 不可变 SHA 与共享门禁）；
+- 自动交付：实现提交已推送；[Quality Gate #151](https://github.com/Zach424/MyBlog/actions/runs/31080308460) 与 [Verify Vercel production #144](https://github.com/Zach424/MyBlog/actions/runs/31080346240) 均成功，归档提交继续按同一链路独立验证；
+- 最新完成迭代：0084 GitHub Actions 不可变引用门禁；
 - Obsidian 状态：仓库根目录就是 Vault，`docs/STATUS.md` 与 `docs/iterations/*.md` 可直接阅读和维护；
 - 手动外部接入：自定义域名、统计、评论、公开邮箱均暂缓，不阻塞当前开发。
 
 ## 本轮新增能力
 
-MyBlog Publisher 1.34.0 为“查看当前草稿发布意图”分配唯一 Symbol scope。新一次真正运行先调用旧 active run 的幂等 `cancel()`，立即隐藏进度并删除 owner，再由既有终止器结束进程：POSIX 直接 kill，Windows 使用 `taskkill /t /f` 且启动失败回退直接 kill。迟到 stdout/error/close 均被 settled 守卫静默；`checking=true` 与 scope-null 的全 inbox、维护、doctor、发布和复核命令保持独立。replacement 启动失败继续显示当前错误。没有视觉、正文或发布动作变化。失败优先 183/186，错误落点复测 183/186，插件 187/187、定向回归 207/207、完整 376/376、45 页构建、19/19 应用测试和生产依赖审计 0 均通过；真实 doctor 13/13 ready、插件 1.34.0，真实 inbox v6 为空且全部安全声明为 false。
+三个 workflow 的 checkout/setup-node 已从可移动 `@v6` 固定到官方完整 commit SHA：checkout `d23441a48e516b6c34aea4fa41551a30e30af803`（v6.1.0），setup-node `249970729cb0ef3589644e2896645e5dc5ba9c38`（v6.5.0），每处保留 `# v6` 可读注释。新增共享 ESM 事实源与源码验证器，YAML 单元测试和 `check-release-config` 共同拒绝浮动 ref、短 SHA、未复核完整 SHA、错误仓库、注释漂移或 action 数量/顺序变化；触发器、权限、runner、应用 Node 22、cache 和命令不变。失败优先 4/5，修复后 workflow 5/5、部署组合 7/7、完整 377/377、45 页构建、19/19 应用测试与生产依赖审计 0 均通过；真实 doctor 13/13 ready，inbox 与暂存区为空，外链离线库存本地问题 0。
 
 ## 风险与下一步
 
@@ -72,6 +72,6 @@ MyBlog Publisher 1.34.0 为“查看当前草稿发布意图”分配唯一 Symb
 8. Studio OAuth origin、GitHub 凭据、Vercel deployment URL 保护和 Hobby 回滚范围仍需按运行手册维护；
 9. 统计、评论和自定义域名需要所有者最终选择，现阶段不主动接入；
 10. `decap-cms` 的开发依赖树仍有上游无修复的高危审计项；它不进入公开服务端生产依赖，但其浏览器编辑器包仅对已授权作者开放，后续应单独评估升级或替代方案。
-11. checkout/setup-node v6 的官方 major tag 会移动；当前六处引用仍只固定 major，下一轮将从官方仓库核对并改为不可变 SHA，同时用本地结构测试拒绝浮动 ref。自动更新机器人继续暂缓，避免在本轮引入新的云服务接入。
+11. checkout/setup-node v6 的六处移动 tag 风险已关闭：执行 ref 全部固定到从官方仓库核对的完整 SHA，测试与发布前检查共享唯一事实源。不可变 pin 不会自动接收上游修复，自动更新机器人继续暂缓；后续必须主动核对官方 refs，不能把 `# v6` 注释当作执行引用。
 
-下一轮唯一主任务：从 `actions/checkout` 与 `actions/setup-node` 官方仓库核对当前 v6 commit，把三个 workflow 的六处 `uses:` 固定到不可变 SHA并保留 `# v6` 注释；扩展本地结构测试，拒绝浮动 ref、短 SHA、错误仓库和注释漂移。不得启用自动更新机器人、真实 API或其他云服务，不得改变触发器、权限、应用 Node 22 或 workflow 命令语义。
+下一轮唯一主任务：为文章与项目详情页增加可访问的读者分享控件。服务端传入规范 URL，客户端优先使用 Web Share API、不支持时回退 Clipboard API；用户取消静默、真实失败不伪报成功、执行期间避免重复触发，并以 `aria-live` 提供结果回执。保留打印来源、canonical、内容语义和无 JavaScript 阅读能力，不接入社交 SDK、跟踪器、短链、账号或云 API。

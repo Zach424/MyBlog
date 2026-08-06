@@ -8,16 +8,16 @@
 | 4. 作者自助写作 | done | `/studio` OAuth + editorial workflow PR、Obsidian Vault/模板/附件/真实 `--push` |
 | 5. Vercel 原生迁移 | production live | 原生 Next.js、无 Cloudflare 依赖、24 路由生产冒烟通过 |
 | 6. 所有者生产上线 | done | Git 自动 Production、稳定域名自动冒烟、双端发布、回滚与恢复均已验收 |
-| 7. 持续内容与作者体验 | in progress | Iteration 0083 完成当前草稿作者意图旧活动进程的专属 scope 接管、跨平台终止与相邻命令隔离 |
+| 7. 持续内容与作者体验 | in progress | Iteration 0084 完成三个 workflow 的六处官方 action 不可变 SHA、共享结构/发布门禁与真实 runner 验收 |
 
 ## 当前唯一主线
 
-进入持续内容与作者体验阶段。Iteration 0083 已把 MyBlog Publisher 升到 1.34.0：“查看当前草稿发布意图”的新运行会先结算并终止同一 Symbol scope 的旧活动进程，旧进度立即隐藏，迟到事件静默；POSIX、Windows taskkill/fallback、`checking=true`、replacement 启动失败和全 inbox 报告隔离均有回归。已进入异步 Vault read 的旧 Promise 继续由 generation 失效，身份读取和发布事务不受影响。下一主线为把 GitHub workflow 的六处官方 v6 action 引用从移动 tag 固定到官方不可变 SHA，并由本地结构测试守住；需要品牌域名时再绑定自定义域名，旧公开站继续只作为迁移历史证据。
+进入持续内容与作者体验阶段。Iteration 0084 已把质量、生产冒烟和手动回滚 workflow 的 checkout/setup-node 六处引用固定到官方完整 SHA，同时保留 `# v6` 可读注释。共享 ESM 验证器让 YAML 测试与发布前检查共同拒绝浮动 ref、短 SHA、未复核值、错误仓库和注释漂移；触发器、权限、应用 Node 22、cache 与命令语义不变，并已通过真实 GitHub runner 和 Vercel Production。下一主线为给文章与项目详情页增加无外部服务、可访问的系统分享/复制规范链接控件；需要品牌域名时再绑定自定义域名，旧公开站继续只作为迁移历史证据。
 
 ## 已知风险
 
 - Studio 依赖 GitHub OAuth App，回调 origin 变更后必须同步修改设置并重新部署；
-- checkout/setup-node v6 已消除 Node 20 runtime warning，但三个 workflow 的六处 major tag 仍可移动；下一轮从官方仓库核对 current v6 SHA并固定，本地测试拒绝浮动 ref，自动更新机器人仍暂缓；
+- checkout/setup-node v6 已消除 Node 20 runtime warning，且三个 workflow 的六处执行引用已固定为官方完整 SHA；共享门禁拒绝浮动/短/未知引用，但不可变 pin 不会自动接收上游修复，自动更新机器人仍暂缓，后续需主动复核官方 refs；
 - Studio 运行时约 5 MB，已固定 3.14.1、同源提供并使用不可变缓存；升级时必须同步修改版本化 URL、SRI、依赖和测试；
 - `decap-cms` 开发依赖树仍包含上游未提供修复的审计项；当前只向已授权作者提供固定浏览器包，后续需单独评估新版或替代编辑器；
 - Decap GitHub backend 的 OAuth scope 对公开仓库仍较宽，账号应启用 2FA 并定期撤销不用的授权；
