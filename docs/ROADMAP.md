@@ -8,11 +8,11 @@
 | 4. 作者自助写作 | done | `/studio` OAuth + editorial workflow PR、Obsidian Vault/模板/附件/真实 `--push` |
 | 5. Vercel 原生迁移 | production live | 原生 Next.js、无 Cloudflare 依赖、24 路由生产冒烟通过 |
 | 6. 所有者生产上线 | done | Git 自动 Production、稳定域名自动冒烟、双端发布、回滚与恢复均已验收 |
-| 7. 持续内容与作者体验 | in progress | Iteration 0086 完成 CommonMark/GFM Markdown 引用复制、双动作 single-flight、320px 与生产验收 |
+| 7. 持续内容与作者体验 | in progress | Iteration 0087 完成稳定生产基线、raw/gzip 双层预算、九路余量诊断与本地/线上双验证 |
 
 ## 当前唯一主线
 
-进入持续内容与作者体验阶段。Iteration 0086 已在现有 `SHARE TRACE / CANONICAL` 中加入 `COPY MD`：全部 ASCII 标点按 CommonMark 转义并经 GFM 反解析，两个动作共享同步 busy 锁、禁用态和可访问回执；桌面、390px、320px、GitHub runner 与 Vercel Production 均已验收。项目页在应用测试代理主机下为 99,997/100,000 raw HTML 字节，稳定生产域名实际为 100,493 字节，说明统一原始体积门既混合了模板开销和作者内容增长，也因替代主机长度产生假绿。下一主线先建立真实规范主机语义 + raw 紧急上限 + gzip 传输预算 + 路由余量诊断的双层质量门；稳定后再复用现有 RSS/公开索引实现 JSON Feed 1.1。需要品牌域名时再绑定自定义域名，旧公开站继续只作为迁移历史证据。
+进入持续内容与作者体验阶段。Iteration 0087 已把统一 raw 100KB 门升级为可解释的双层质量契约：九条路由保存带来源的稳定生产 raw/Node gzip 基线，raw 使用 160 KiB 紧急上限，gzip 由 `max(20%, 2 KiB)` 余量和 1 KiB 取整推导；本地固定稳定 host、部署后测实际 origin，覆盖缺失/重复/意外路由失败关闭并逐条显示余量。稳定生产最大项目页为 raw 100,493/163,840、gzip 23,385/28,672。下一主线复用现有 RSS、公开索引和 Markdown 纯文本管线实现 JSON Feed 1.1 `/feed.json` 与发现链接，并由新预算证明 metadata 增长仍有边界。需要品牌域名时再绑定自定义域名，旧公开站继续只作为迁移历史证据。
 
 ## 已知风险
 

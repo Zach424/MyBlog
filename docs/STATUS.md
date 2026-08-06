@@ -20,6 +20,7 @@ MyBlog 是 Zach424 的个人技术知识库与公开工程日志。它把学习�
 | Inbox 发布就绪 | done | version 6/read-only 全草稿 ready/scheduled/blocked、每个可读来源的原始字节 SHA-256、Article/TIL/Project、精确站内目标/源码行/重复次数、媒体 COVER/BODY 用途/出现次数/源码行/最终替代文本及来源、空文本与文件名回退阻塞、真实媒体候选、目标/共享附件诊断、CLI 全库或 `--source` 聚焦 JSON 与 Obsidian 当前草稿原生摘要 |
 | 附件发布 | done | Wiki/Markdown 图片转换、按内容隔离、稳定命名、越界保护、失败回滚 |
 | 自动交付 | done | GitHub `main` → Vercel Production → 稳定域名冒烟；checkout/setup-node v6 Node 24 action runtime 的六处引用固定到官方完整 SHA，应用 Node 22 与 workflow 语义由共享结构/发布门禁保护 |
+| HTML 传输预算 | done | 九条关键路由的稳定生产 raw/Node gzip 基线、160 KiB 紧急上限、20%/2 KiB gzip 余量公式、本地稳定 host 与部署后实际 origin 双验证、逐路由余量报告与覆盖失败关闭 |
 | 恢复能力 | done | Vercel 显式目标回滚、当前版本恢复、再次冒烟 |
 | 内容知识网络 | done | GFM 行内/引用式/自引用链接、页面与标题锚点构建门、文章与项目双向引用账本 |
 | 公开知识地图 | done | `/knowledge` 服务端 SVG 信号场、HTML 关系账本、孤立记录、主导航与 Sitemap，Markdown 链接为唯一事实源 |
@@ -45,21 +46,21 @@ MyBlog 是 Zach424 的个人技术知识库与公开工程日志。它把学习�
 - 路由：严格 YAML + Zod 永久重定向注册表、Next `redirects()` 308、构建期现行路由与静态文件交叉校验；
 - 知识图：纯函数派生有向节点/边、语义 SVG + HTML 账本、零客户端布局依赖与 320px 明确降级；
 - 托管：Vercel 原生 Next.js，当前链路不依赖 Cloudflare；
-- 质量：ESLint、Node test、TypeScript、Next build、真实生产服务器 HTTP 测试、npm audit、YAML workflow 契约、官方 action 完整 SHA 共享门禁与线上冒烟。
+- 质量：ESLint、Node test、TypeScript、Next build、真实生产服务器 HTTP 测试、npm audit、YAML workflow 契约、官方 action 完整 SHA 共享门禁、`Buffer.byteLength`/Node zlib raw-gzip 双层预算与线上实际 origin 冒烟。
 
 ## 当前运行状态
 
 - 仓库：<https://github.com/Zach424/MyBlog>，生产分支 `main`；
 - 生产站：<https://blog-iota-five-59.vercel.app>；
-- 本轮实现提交：`0a3613d2f4c62357338f0fa1038978119c60f684`（Markdown 引用生成/复制与双通道分享状态机）；
-- 自动交付：实现提交已推送；[Quality Gate #155](https://github.com/Zach424/MyBlog/actions/runs/31087515593) 与 [Verify Vercel production #148](https://github.com/Zach424/MyBlog/actions/runs/31087559247) 均成功，归档提交继续按同一链路独立验证；
-- 最新完成迭代：0086 Markdown 引用复制；
+- 本轮实现提交：`ab5e088e8a6398947daf60f6f63c2d9bb5d88d1a`（可解释的 raw/gzip HTML 双层预算）；
+- 自动交付：实现提交已推送；[Quality Gate #158](https://github.com/Zach424/MyBlog/actions/runs/31089835689) 与 [Verify Vercel production #151](https://github.com/Zach424/MyBlog/actions/runs/31089875181) 均成功，归档提交继续按同一链路独立验证；
+- 最新完成迭代：0087 可解释的 HTML 双层预算；
 - Obsidian 状态：仓库根目录就是 Vault，`docs/STATUS.md` 与 `docs/iterations/*.md` 可直接阅读和维护；
 - 手动外部接入：自定义域名、统计、评论、公开邮箱均暂缓，不阻塞当前开发。
 
 ## 本轮新增能力
 
-现有 `SHARE TRACE / CANONICAL` 右端升级为主/次双通道控制台：`SHARE / COPY` 保留系统分享与 URL 回退，`COPY MD` 生成 `[标题](规范 URL)`。标题全部 ASCII 标点按 CommonMark 反斜杠转义，并用项目实际 GFM parser 反解析证明仍是原始纯文本；URL 不改写。两个动作共用同步 busy 锁和一条 `aria-live` 回执，无 Clipboard 时诚实失败并指向规范 anchor。失败优先 13 项中 6 通过/7 失败，最终定向 14/14、完整 391/391、45 页、19/19 与生产审计 0。真实桌面、390px、320px 覆盖复制成功、系统分享 pending 双禁用、键盘焦点和零横向溢出；应用测试代理主机下项目页为 99,997/100,000 字节，稳定生产域名实际解压 HTML 为 100,493 字节，四个稳定入口均为 HTTP 200。
+旧的统一 raw HTML `<100,000` 门已升级为共享双层模型：九条关键路由保留带日期、来源提交和稳定 origin 的生产 raw/Node gzip 基线；raw 只由 160 KiB 紧急上限保护，gzip 上限由基线加 `max(20%, 2 KiB)` 后向上取整到 1 KiB。本地生产测试使用稳定 Vercel host，部署后冒烟再测实际输入 origin；每条报告包含实测、阈值、基线和正负余量，漏测、重复、意外路由和超限都失败关闭。失败优先 0/1，最终预算/部署定向 9/9、完整 398/398、45 页、19/19 与生产审计 0。稳定生产 24 路由/OAuth 302；最大项目页 raw `100,493/163,840`、gzip `23,385/28,672`，余量 `63,347` 与 `5,287` 字节。
 
 ## 风险与下一步
 
@@ -74,6 +75,6 @@ MyBlog 是 Zach424 的个人技术知识库与公开工程日志。它把学习�
 9. 统计、评论和自定义域名需要所有者最终选择，现阶段不主动接入；
 10. `decap-cms` 的开发依赖树仍有上游无修复的高危审计项；它不进入公开服务端生产依赖，但其浏览器编辑器包仅对已授权作者开放，后续应单独评估升级或替代方案。
 11. checkout/setup-node v6 的六处移动 tag 风险已关闭：执行 ref 全部固定到从官方仓库核对的完整 SHA，测试与发布前检查共享唯一事实源。不可变 pin 不会自动接收上游修复，自动更新机器人继续暂缓；后续必须主动核对官方 refs，不能把 `# v6` 注释当作执行引用。
-12. 项目详情在应用测试代理主机下为 99,997/100,000 raw HTML 字节，但稳定生产域名实际为 100,493 字节；当前门禁不但没有余量，还因替代主机较短而产生假绿。继续增加 metadata 或作者内容也会把“模板开销”和“内容增长”混成同一种失败。下一轮必须让预算使用真实规范主机语义，并建立 raw 紧急上限与 gzip 传输预算的双层证据，再继续增加发现端点。
+12. 替代主机 raw 100KB 假绿已由双层预算关闭。Node gzip 是确定性传输模拟，不包含 Vercel CDN Brotli、响应头、TLS 或真实用户 Web Vitals；稳定域名变化时必须同步更新 origin 与带来源的生产基线，基线增长也必须经过产品价值复核，不能为单路由临时抬线。
 
-下一轮唯一主任务：把统一 raw HTML 100KB 门升级为可解释的双层预算。保留明确原始紧急上限，同时用 `node:zlib` 计算实际生产主机语义下响应的 gzip 传输字节，为关键路由输出 raw/gzip 实测、阈值和余量；用可压缩与不可压缩失败夹具证明模型区分真实传输风险，并用规范主机一致性测试关闭替代主机假绿。阈值必须由当前基线和公开 headroom 规则推导，不能只为项目页放行。页面、内容、部署与外部服务不变；门禁稳定后再实现 JSON Feed 1.1。
+下一轮唯一主任务：实现 JSON Feed 1.1 的 `/feed.json` 与根页面发现链接。复用现有公开内容索引、请求时 origin、稳定排序与 Markdown 纯文本管线，提供规范 feed/item URL、摘要、`content_text`、发布/修改日期和 tags；响应使用 `application/feed+json` 与现有发现端点缓存语义。先写格式、转义、排序、日期、公开过滤、响应头、metadata 和生产冒烟失败测试，再让现有九路 raw/gzip 门证明新增 `<link>` 在预算内。RSS 保持兼容，不接入外部服务。

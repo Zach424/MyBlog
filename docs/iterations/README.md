@@ -91,6 +91,7 @@
 0084-github-actions-immutable-pins.md
 0085-canonical-share-trace.md
 0086-markdown-citation-copy.md
+0087-explainable-html-budgets.md
 ```
 
 ## 必填结构
