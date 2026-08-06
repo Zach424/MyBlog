@@ -11,6 +11,7 @@ import {
 } from "@/components/ContentViews";
 import { ContentCover } from "@/components/ContentCover";
 import { MarkdownContent } from "@/components/MarkdownContent";
+import { ShareTrace } from "@/components/ShareTrace";
 import { StructuredData } from "@/components/StructuredData";
 import {
   getAllPosts,
@@ -138,6 +139,11 @@ export default async function PostPage({ params }: PostPageProps) {
             </Link>
           ) : null
         }
+      />
+      <ShareTrace
+        text={post.description}
+        title={post.title}
+        url={canonicalUrl}
       />
       <PrintSource url={canonicalUrl} />
       {cover ? (

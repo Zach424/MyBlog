@@ -203,6 +203,18 @@ test("renders Markdown articles with metadata, anchors, code and navigation", as
     html.replaceAll("<!-- -->", ""),
     /<p class="print-source">Source \/ <a href="https:\/\/blog\.example\.test\/posts\/building-a-maintainable-blog">https:\/\/blog\.example\.test\/posts\/building-a-maintainable-blog<\/a><\/p>/,
   );
+  assert.match(
+    html,
+    /<section(?=[^>]*class="content-share")(?=[^>]*data-share-enhanced="false")(?=[^>]*data-share-state="idle")[^>]*>/u,
+  );
+  assert.match(
+    html,
+    /<a(?=[^>]*class="content-share-source")(?=[^>]*href="https:\/\/blog\.example\.test\/posts\/building-a-maintainable-blog")[^>]*>/u,
+  );
+  assert.match(
+    html,
+    /<div class="content-share-action" hidden=""><button(?=[^>]*class="content-share-button")(?=[^>]*type="button")[^>]*>/u,
+  );
   assert.equal((html.match(/data-footnote-ref="true"/g) ?? []).length, 2);
   assert.match(html, /href="#note-fn-%E5%BD%93%E5%89%8D%E6%9E%B6%E6%9E%84"/);
   assert.match(html, /id="note-fnref-%E5%BD%93%E5%89%8D%E6%9E%B6%E6%9E%84-2"/);
@@ -248,6 +260,14 @@ test("renders project Markdown and returns a real 404 for unknown content", asyn
   assert.match(
     projectHtml.replaceAll("<!-- -->", ""),
     /<p class="print-source">Source \/ <a href="https:\/\/blog\.example\.test\/projects\/myblog">https:\/\/blog\.example\.test\/projects\/myblog<\/a><\/p>/,
+  );
+  assert.match(
+    projectHtml,
+    /<a(?=[^>]*class="content-share-source")(?=[^>]*href="https:\/\/blog\.example\.test\/projects\/myblog")[^>]*>/u,
+  );
+  assert.match(
+    projectHtml,
+    /<div class="content-share-action" hidden=""><button(?=[^>]*class="content-share-button")(?=[^>]*type="button")[^>]*>/u,
   );
   assert.match(
     projectHtml,

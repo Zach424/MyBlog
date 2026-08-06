@@ -10,6 +10,7 @@ import {
 } from "@/components/ContentViews";
 import { ContentCover } from "@/components/ContentCover";
 import { MarkdownContent } from "@/components/MarkdownContent";
+import { ShareTrace } from "@/components/ShareTrace";
 import { StructuredData } from "@/components/StructuredData";
 import {
   getAllProjects,
@@ -137,6 +138,11 @@ export default async function ProjectPage({ params }: ProjectPageProps) {
             ) : null}
           </div>
         }
+      />
+      <ShareTrace
+        text={project.description}
+        title={project.title}
+        url={projectUrl}
       />
       <PrintSource url={projectUrl} />
       {cover ? <ContentCover cover={cover} kind="Project" /> : null}
