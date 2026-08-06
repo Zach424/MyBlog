@@ -89,6 +89,7 @@
 0082-draft-identity-latest-wins.md
 0083-draft-intent-process-supersession.md
 0084-github-actions-immutable-pins.md
+0085-canonical-share-trace.md
 ```
 
 ## 必填结构

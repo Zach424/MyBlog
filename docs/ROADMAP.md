@@ -8,11 +8,11 @@
 | 4. 作者自助写作 | done | `/studio` OAuth + editorial workflow PR、Obsidian Vault/模板/附件/真实 `--push` |
 | 5. Vercel 原生迁移 | production live | 原生 Next.js、无 Cloudflare 依赖、24 路由生产冒烟通过 |
 | 6. 所有者生产上线 | done | Git 自动 Production、稳定域名自动冒烟、双端发布、回滚与恢复均已验收 |
-| 7. 持续内容与作者体验 | in progress | Iteration 0084 完成三个 workflow 的六处官方 action 不可变 SHA、共享结构/发布门禁与真实 runner 验收 |
+| 7. 持续内容与作者体验 | in progress | Iteration 0085 完成文章/项目规范链接分享、系统/复制回退、渐进增强与真实浏览器/生产验收 |
 
 ## 当前唯一主线
 
-进入持续内容与作者体验阶段。Iteration 0084 已把质量、生产冒烟和手动回滚 workflow 的 checkout/setup-node 六处引用固定到官方完整 SHA，同时保留 `# v6` 可读注释。共享 ESM 验证器让 YAML 测试与发布前检查共同拒绝浮动 ref、短 SHA、未复核值、错误仓库和注释漂移；触发器、权限、应用 Node 22、cache 与命令语义不变，并已通过真实 GitHub runner 和 Vercel Production。下一主线为给文章与项目详情页增加无外部服务、可访问的系统分享/复制规范链接控件；需要品牌域名时再绑定自定义域名，旧公开站继续只作为迁移历史证据。
+进入持续内容与作者体验阶段。Iteration 0085 已让文章与项目详情页服务器输出 `SHARE TRACE / CANONICAL` 证据轨道，客户端优先调用系统分享，并以 Clipboard 回退、取消静默、双能力真实失败、single-flight、`aria-live`、无 JavaScript anchor、响应式布局和 print 隔离关闭浏览器边界；真实桌面/移动浏览器、GitHub runner 与 Vercel Production 均已验收。下一主线为在同一轨道加入可直接粘贴到 Obsidian、README 或 issue 的 Markdown 引用复制，并严格处理标题转义、失败回执和 320px 布局；需要品牌域名时再绑定自定义域名，旧公开站继续只作为迁移历史证据。
 
 ## 已知风险
 

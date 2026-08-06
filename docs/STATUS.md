@@ -12,6 +12,7 @@ MyBlog 是 Zach424 的个人技术知识库与公开工程日志。它把学习�
 | --- | --- | --- |
 | 内容契约 | done | YAML + Zod 校验文章、TIL、项目、标签、专题、日期、URL、内容语境、复核日期与本地封面替代文本 |
 | 公开阅读 | done | 首页、文章、项目、专题、标签、搜索、关于、响应式、深色模式与详情页封面 |
+| 读者分享 | done | 文章/项目服务端规范链接、Web Share、Clipboard 回退、取消静默、single-flight、`aria-live` 回执、无 JavaScript 恢复路径与 print 隔离 |
 | Markdown | done | GFM、代码高亮、语言标签、渐进增强的一键复制、与实际渲染一致的 H1–H6 heading id、H2/H3 目录与原生永久链接、Obsidian 兼容脚注/尾注与行内/块级数学公式、A4 打印/PDF 版式、阅读时间、相邻文章与响应式正文图片 |
 | 内容发现 | done | SEO、内容级 OG/Twitter 封面、JSON-LD、RSS、Sitemap、robots、本地全文搜索 |
 | 网页写作 | done | `/studio`、GitHub OAuth、Decap workflow、PR、按 slug 归档媒体、稳定 slug 锁定、双层 SHA-256 冲突预检、快速重选 latest-wins、生产规则公式预览与全字段只读发布清单 |
@@ -37,7 +38,7 @@ MyBlog 是 Zach424 的个人技术知识库与公开工程日志。它把学习�
 - 视觉方向：Commit Trace / Evidence Rail，中文优先、工程档案感、浅深色响应式；
 - 运行时：Next.js 16.3.0、React 19.2.6、TypeScript 5、Node.js 22+；
 - 内容：仓库内 Markdown、YAML、Zod，GitHub 是唯一事实源；
-- 阅读：react-markdown、remark-gfm、remark-math、rehype-slug、rehype-highlight、rehype-katex 与 KaTeX；服务端 Markdown、中文脚注语义与回链、HTML + MathML 数学公式、MarkdownHeading 永久链接与 PrintSource 可信来源，最小 CodeBlock 客户端岛、Clipboard API 与 aria-live；GFM + math 共享 mdast 继续复现标题、链接、媒体和搜索语义，生产阅读与 Studio 共享 remark/rehype/KaTeX/安全 URL 规则，构建期公式使用 `trust: false`/严格资源上限；A4 `@page` 与 scoped print CSS 只重排既有语义 DOM；
+- 阅读：react-markdown、remark-gfm、remark-math、rehype-slug、rehype-highlight、rehype-katex 与 KaTeX；服务端 Markdown、中文脚注语义与回链、HTML + MathML 数学公式、MarkdownHeading 永久链接与 PrintSource 可信来源，最小 CodeBlock/ShareTrace 客户端岛、Web Share/Clipboard API、single-flight 与 aria-live；GFM + math 共享 mdast 继续复现标题、链接、媒体和搜索语义，生产阅读与 Studio 共享 remark/rehype/KaTeX/安全 URL 规则，构建期公式使用 `trust: false`/严格资源上限；A4 `@page` 与 scoped print CSS 只重排既有语义 DOM；
 - 发布：Decap CMS 3.14.1、GitHub OAuth、stable slug 自定义控件、同源媒体清单、内存会话账本、per-input generation 与 SHA-256 冲突确认、官方 preview template、同源只读公式/全字段预检端点、public-only 内容维护快照与严格浏览器契约、内容字段 allowlist、Obsidian 自有插件 1.34.0、Article/TIL/Project 受信模板、文件名唯一草稿身份、Vault 原子创建/旧身份清理与 FileManager 安全改名、身份读取独立 latest-wins/unload owner、version 6 inbox evidence、原始来源字节 `sourceSha256`、`--source` 聚焦模式与 `DRAFT → PUBLIC`/`MEDIA TRACE`/`LINK TRACE` 当前草稿摘要、摘要打开和 ALT/REF 导航前的全文摘要复核、当前草稿意图命令/报告/异步读取的 latest-wins generation、卸载失效和专属进程 scope 接管、媒体用途/次数/行号/替代文本/来源账本与精确行导航、空文本与文件名回退 blocker 双向核对、四事务 single-flight lease/active 阶段与 stdout/stderr 活动快照/会话内最近终态回执/自动 author-doctor interlock/version 1 的 13 项 preflight circuit、单快照 Git 交付 switchyard、版本化维护 deadline ledger/复核 Author Proof v3/两类本地交付 rail 与 sealed receipt/发布 Commit Envelope/inbox 只读 Modal、候选 SHA-256 与 Git-clean blob 绑定、两类待交付提交识别和独立安全重送、精确 OID refspec、防重复发布、manifest 稳定性、共享 worktree impact classifier、deferred 路径证据、review-note/publish-note 领域与 Git 交付门、六条纯文本降级、统一子进程生命周期与 Node 发布脚本；
 - 媒体：Sharp 0.35.3、浏览器 magic/帧结构解析、`createImageBitmap` 与 Web Crypto、构建期确定性摘要清单、mdast-util-from-markdown 2.0.3、`next/image`、固有尺寸、WebP 优化、引用所有权与 Git 附件跟踪；
 - 维护：内容新鲜度、根暂存媒体与正文/结构化端点外链的 CLI；Studio 与 Obsidian 都可显示公开 Current 队列，确定性库存进入本地发布候选，时间/DNS 敏感的外链 HEAD 只显式运行；
@@ -50,15 +51,15 @@ MyBlog 是 Zach424 的个人技术知识库与公开工程日志。它把学习�
 
 - 仓库：<https://github.com/Zach424/MyBlog>，生产分支 `main`；
 - 生产站：<https://blog-iota-five-59.vercel.app>；
-- 本轮实现提交：`26ab5cc8c8a5576cb6d524a0b8e75f750a6b22f8`（三个 workflow 的六处官方 action 不可变 SHA 与共享门禁）；
-- 自动交付：实现提交已推送；[Quality Gate #151](https://github.com/Zach424/MyBlog/actions/runs/31080308460) 与 [Verify Vercel production #144](https://github.com/Zach424/MyBlog/actions/runs/31080346240) 均成功，归档提交继续按同一链路独立验证；
-- 最新完成迭代：0084 GitHub Actions 不可变引用门禁；
+- 本轮实现提交：`837689e2586bb1a7299755ba49a5cd887a2d38a7`（文章/项目规范链接分享轨道与完整回退状态机）；
+- 自动交付：实现提交已推送；[Quality Gate #153](https://github.com/Zach424/MyBlog/actions/runs/31082890571) 与 [Verify Vercel production #146](https://github.com/Zach424/MyBlog/actions/runs/31082942938) 均成功，归档提交继续按同一链路独立验证；
+- 最新完成迭代：0085 规范链接分享轨迹；
 - Obsidian 状态：仓库根目录就是 Vault，`docs/STATUS.md` 与 `docs/iterations/*.md` 可直接阅读和维护；
 - 手动外部接入：自定义域名、统计、评论、公开邮箱均暂缓，不阻塞当前开发。
 
 ## 本轮新增能力
 
-三个 workflow 的 checkout/setup-node 已从可移动 `@v6` 固定到官方完整 commit SHA：checkout `d23441a48e516b6c34aea4fa41551a30e30af803`（v6.1.0），setup-node `249970729cb0ef3589644e2896645e5dc5ba9c38`（v6.5.0），每处保留 `# v6` 可读注释。新增共享 ESM 事实源与源码验证器，YAML 单元测试和 `check-release-config` 共同拒绝浮动 ref、短 SHA、未复核完整 SHA、错误仓库、注释漂移或 action 数量/顺序变化；触发器、权限、runner、应用 Node 22、cache 和命令不变。失败优先 4/5，修复后 workflow 5/5、部署组合 7/7、完整 377/377、45 页构建、19/19 应用测试与生产依赖审计 0 均通过；真实 doctor 13/13 ready，inbox 与暂存区为空，外链离线库存本地问题 0。
+文章与项目详情页新增 `SHARE TRACE / CANONICAL` 证据轨道：服务器输出并保留绝对规范链接，客户端优先把精确 `{ title, text, url }` 交给 Web Share；不支持或发生非取消错误时回退复制 URL，`AbortError` 静默，双能力失败才显示失败。同步 busy 锁、disabled、`aria-live`、3.2 秒复位、SSR 隐藏增强按钮、无 JavaScript anchor、响应式 grid 与 print 隔离共同关闭交互边界。失败优先 0/2，修复后定向 7/7；完整 384/384、45 页构建、19/19 应用测试与生产依赖审计 0 均通过。真实桌面/移动浏览器覆盖系统面板、Escape 取消、重复触发、键盘焦点、390px 布局、文章/项目 URL 与控制台 0 错误；四个稳定生产入口均为 HTTP 200。
 
 ## 风险与下一步
 
@@ -74,4 +75,4 @@ MyBlog 是 Zach424 的个人技术知识库与公开工程日志。它把学习�
 10. `decap-cms` 的开发依赖树仍有上游无修复的高危审计项；它不进入公开服务端生产依赖，但其浏览器编辑器包仅对已授权作者开放，后续应单独评估升级或替代方案。
 11. checkout/setup-node v6 的六处移动 tag 风险已关闭：执行 ref 全部固定到从官方仓库核对的完整 SHA，测试与发布前检查共享唯一事实源。不可变 pin 不会自动接收上游修复，自动更新机器人继续暂缓；后续必须主动核对官方 refs，不能把 `# v6` 注释当作执行引用。
 
-下一轮唯一主任务：为文章与项目详情页增加可访问的读者分享控件。服务端传入规范 URL，客户端优先使用 Web Share API、不支持时回退 Clipboard API；用户取消静默、真实失败不伪报成功、执行期间避免重复触发，并以 `aria-live` 提供结果回执。保留打印来源、canonical、内容语义和无 JavaScript 阅读能力，不接入社交 SDK、跟踪器、短链、账号或云 API。
+下一轮唯一主任务：在现有分享轨道增加独立的 Markdown 引用复制，输出可直接粘贴到 Obsidian、README 或 issue 的 `[标题](规范 URL)`。先定义标题中反斜杠、方括号等字符的确定性转义，再实现独立 single-flight、Clipboard 成功/失败 `aria-live` 回执、无 Clipboard 恢复路径和 320px 布局；保留系统分享取消语义、canonical、打印来源与无 JavaScript 阅读能力，不接入云服务、账号、跟踪器或第三方 SDK。
