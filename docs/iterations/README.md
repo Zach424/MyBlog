@@ -90,6 +90,7 @@
 0083-draft-intent-process-supersession.md
 0084-github-actions-immutable-pins.md
 0085-canonical-share-trace.md
+0086-markdown-citation-copy.md
 ```
 
 ## 必填结构

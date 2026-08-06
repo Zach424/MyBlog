@@ -8,11 +8,11 @@
 | 4. 作者自助写作 | done | `/studio` OAuth + editorial workflow PR、Obsidian Vault/模板/附件/真实 `--push` |
 | 5. Vercel 原生迁移 | production live | 原生 Next.js、无 Cloudflare 依赖、24 路由生产冒烟通过 |
 | 6. 所有者生产上线 | done | Git 自动 Production、稳定域名自动冒烟、双端发布、回滚与恢复均已验收 |
-| 7. 持续内容与作者体验 | in progress | Iteration 0085 完成文章/项目规范链接分享、系统/复制回退、渐进增强与真实浏览器/生产验收 |
+| 7. 持续内容与作者体验 | in progress | Iteration 0086 完成 CommonMark/GFM Markdown 引用复制、双动作 single-flight、320px 与生产验收 |
 
 ## 当前唯一主线
 
-进入持续内容与作者体验阶段。Iteration 0085 已让文章与项目详情页服务器输出 `SHARE TRACE / CANONICAL` 证据轨道，客户端优先调用系统分享，并以 Clipboard 回退、取消静默、双能力真实失败、single-flight、`aria-live`、无 JavaScript anchor、响应式布局和 print 隔离关闭浏览器边界；真实桌面/移动浏览器、GitHub runner 与 Vercel Production 均已验收。下一主线为在同一轨道加入可直接粘贴到 Obsidian、README 或 issue 的 Markdown 引用复制，并严格处理标题转义、失败回执和 320px 布局；需要品牌域名时再绑定自定义域名，旧公开站继续只作为迁移历史证据。
+进入持续内容与作者体验阶段。Iteration 0086 已在现有 `SHARE TRACE / CANONICAL` 中加入 `COPY MD`：全部 ASCII 标点按 CommonMark 转义并经 GFM 反解析，两个动作共享同步 busy 锁、禁用态和可访问回执；桌面、390px、320px、GitHub runner 与 Vercel Production 均已验收。生产等价项目页最终为 99,997/100,000 raw HTML 字节，说明统一原始体积门已把模板开销和作者内容增长混在一起。下一主线先建立 raw 紧急上限 + gzip 传输预算 + 路由余量诊断的双层质量门；稳定后再复用现有 RSS/公开索引实现 JSON Feed 1.1。需要品牌域名时再绑定自定义域名，旧公开站继续只作为迁移历史证据。
 
 ## 已知风险
 
