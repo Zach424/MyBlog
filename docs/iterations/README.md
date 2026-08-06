@@ -84,6 +84,7 @@
 0077-draft-media-alternative-text-provenance.md
 0078-draft-media-alt-source-navigation.md
 0079-draft-link-source-navigation.md
+0080-draft-source-byte-binding.md
 ```
 
 ## 必填结构

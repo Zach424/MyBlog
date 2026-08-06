@@ -8,11 +8,11 @@
 | 4. 作者自助写作 | done | `/studio` OAuth + editorial workflow PR、Obsidian Vault/模板/附件/真实 `--push` |
 | 5. Vercel 原生迁移 | production live | 原生 Next.js、无 Cloudflare 依赖、24 路由生产冒烟通过 |
 | 6. 所有者生产上线 | done | Git 自动 Production、稳定域名自动冒烟、双端发布、回滚与恢复均已验收 |
-| 7. 持续内容与作者体验 | in progress | Iteration 0079 完成 LINK TRACE 每次引用到精确源码行的安全导航 |
+| 7. 持续内容与作者体验 | in progress | Iteration 0080 完成当前草稿摘要与 ALT/REF 导航的原始来源字节 SHA-256 绑定 |
 
 ## 当前唯一主线
 
-进入持续内容与作者体验阶段。Iteration 0079 已把 MyBlog Publisher 升到 1.30.0：`LINK TRACE` 把每个 occurrence 展开为 `REF · L<n>`，与媒体 ALT 一起复用路径、同一 Vault `TFile`、磁盘/Editor 行界和活动 `MarkdownView` 守卫。失败保留 Modal，且不写文、不发布、不运行 Git 或联网。下一主线为给 source-scoped readiness 增加草稿内容 SHA-256，阻止同一文件被编辑后继续消费旧行号证据；需要品牌域名时再绑定自定义域名，旧公开站继续只作为迁移历史证据。
+进入持续内容与作者体验阶段。Iteration 0080 已把 inbox readiness 升到 version 6、MyBlog Publisher 升到 1.31.0：生产端对一次读取的原始草稿字节计算 `sourceSha256`，Obsidian 在打开摘要与执行每次 ALT/REF 导航前都重读并比较完整摘要；同一路径、同一 `TFile` 和有效行号不再能掩盖正文变化。失败保留 Modal，且不写文、不自动重跑、不发布、不运行 Git 或联网。下一主线为给命令到异步复核的全链路增加 latest-wins generation 与卸载失效，阻止旧完成项晚到后打开摘要；需要品牌域名时再绑定自定义域名，旧公开站继续只作为迁移历史证据。
 
 ## 已知风险
 
@@ -32,7 +32,7 @@
 - slug 迁移已有构建验证的精确单跳 redirect 注册表，但仍是需要作者审阅的 Git 操作；不支持通配参数或自动推断，迁移必须同步处理内容、附件和引用；
 - Obsidian 已有全 inbox readiness 总览，但该报告有意只代表本地单篇写入事务，不替代正式发布的完整仓库门禁，也不进入看不到未跟踪草稿的 Actions；
 - Current record 已有 Studio 实时只读队列、每周 60/30 天 Actions 提醒和过期门；队列数据只随新 Production 接收内容变更，且仍不发送外部消息；若未来需要邮件/聊天通知，必须由所有者选择渠道后再接入；
-- Obsidian 维护/Author Proof/交付状态与回执 1.30.0 保留四事务 owner-checked single-flight lease、phase/output activity pulse、会话内 terminal receipt、统一分诊及版本化 JSON；当前草稿作者意图使用 source-scoped version 5 inbox JSON，显示媒体 COVER/BODY、出现次数/来源行/逐次 alt/作者来源、精确变换与链接 trace，并仍只为当前附件生成真实候选、轻量解析全草稿和读取已发布链接目标以保留全局正确性。模板驱动向导、文件名唯一身份、FileManager 改名与 `Vault.process` 严格旧字段清理已闭合新旧草稿身份。ALT 与 LINK occurrence 现都能在路径、`TFile` 和双重行界复核后定位编辑器；真实 Obsidian 主题下的 Modal 版式和交互仍需首次使用观察。version 5 没有内容指纹，同一路径文件在行号仍有效时的语义变化无法自动识别。带注释、引号、anchor/tag、缩进、重复键或不匹配值的旧 slug 保持只读；新内容 Commit Envelope 的真实主题组合、超长 object id/path 和大量媒体仍需随使用观察；tracking ref 明确只是最后本地观察，inspect 路由不会猜测修复；
+- Obsidian 维护/Author Proof/交付状态与回执 1.31.0 保留四事务 owner-checked single-flight lease、phase/output activity pulse、会话内 terminal receipt、统一分诊及版本化 JSON；当前草稿作者意图使用 source-scoped version 6 inbox JSON，显示媒体 COVER/BODY、出现次数/来源行/逐次 alt/作者来源、精确变换与链接 trace，并以原始来源字节 SHA-256 绑定摘要和每次导航，同时仍只为当前附件生成真实候选、轻量解析全草稿和读取已发布链接目标以保留全局正确性。模板驱动向导、文件名唯一身份、FileManager 改名与 `Vault.process` 严格旧字段清理已闭合新旧草稿身份。ALT 与 LINK occurrence 现都能在路径、`TFile`、完整摘要和双重行界复核后定位编辑器；真实 Obsidian 主题下的 Modal 版式和交互仍需首次使用观察。摘要不是来源签名，且当前异步摘要复核没有命令级 generation；连续运行或插件卸载期间的旧完成项仍需下一轮失效保护。带注释、引号、anchor/tag、缩进、重复键或不匹配值的旧 slug 保持只读；新内容 Commit Envelope 的真实主题组合、超长 object id/path 和大量媒体仍需随使用观察；tracking ref 明确只是最后本地观察，inspect 路由不会猜测修复；
 - 内部链接支持内容页和严格标题锚点，行内/引用式/自引用共享实际渲染 slug 规则，详情页与公开知识地图共享 outgoing/backlinks；明确不支持 Obsidian 块引用，标题改名必须同步深链，当前双列 SVG 为小型内容库优化，内容规模增长后需要过滤/分组；
 - 正文普通 HTTPS 与结构化 repository/demo/canonical 已有统一确定性库存和受控实时报告；实时 DNS/网络结果有意不进 Actions，timeout/限流不能冒充内容错误；
 - 文章与项目已有完整 A4 打印版式，但 PDF 仍由读者通过浏览器打印生成，仓库不把二进制 PDF 当作发布源，也不提供服务端 PDF 缓存；后续版式变化仍需重新做真实 PDF 全页复核；
