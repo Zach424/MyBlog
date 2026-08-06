@@ -7,7 +7,7 @@
 - GitHub：<https://github.com/Zach424/MyBlog>
 - 当前生产站：<https://blog-iota-five-59.vercel.app>
 - 迁移期回退站：<https://zach424-engineering-notes.zhiqingchen792.chatgpt.site>
-- 发布状态：Vercel 原生 Next.js、GitHub `main` 自动部署、Studio editorial workflow 与只读内容复核队列、Obsidian `--push`、内部链接/标题锚点门禁、反向引用、公开知识地图、版本化永久重定向、生产冒烟与回滚恢复均已验收
+- 发布状态：Vercel 原生 Next.js、GitHub `main` 自动部署、Studio editorial workflow 与只读内容复核队列、Obsidian `--push`、内部链接/标题锚点门禁、反向引用、公开知识地图、版本化永久重定向、生产冒烟、回滚恢复与六处官方 Actions 不可变 SHA 门禁均已验收
 - 内容入口：`/studio` 网页后台、`/studio/maintenance` 已公开 Current 内容复核队列、仓库根目录 Obsidian Vault、普通 Git 编辑器
 - 数据模型：仓库内 Markdown + YAML frontmatter，无数据库；公开内容标明当前维护/历史快照和最近复核日期
 

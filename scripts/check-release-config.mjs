@@ -1,4 +1,5 @@
 import { readFileSync } from "node:fs";
+import { assertImmutableGitHubActionPins } from "./github-actions-pins.mjs";
 
 const requiredFiles = [
   ".github/workflows/quality.yml",
@@ -53,19 +54,12 @@ for (const [name, workflow] of [
   ["production smoke", smokeWorkflow],
   ["rollback", rollbackWorkflow],
 ]) {
-  for (const marker of [
-    "uses: actions/checkout@v6",
-    "uses: actions/setup-node@v6",
-    "node-version: 22",
-    "cache: npm",
-  ]) {
+  assertImmutableGitHubActionPins(workflow, name);
+
+  for (const marker of ["node-version: 22", "cache: npm"]) {
     if (!workflow.includes(marker)) {
       throw new Error(`${name} workflow is missing the current Actions runtime contract: ${marker}`);
     }
-  }
-
-  if (/actions\/(?:checkout|setup-node)@v[1-5]\b/u.test(workflow)) {
-    throw new Error(`${name} workflow still references a pre-Node 24 action major.`);
   }
 }
 

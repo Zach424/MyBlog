@@ -2,6 +2,10 @@ import assert from "node:assert/strict";
 import { readFile } from "node:fs/promises";
 import test from "node:test";
 import YAML from "yaml";
+import {
+  assertImmutableGitHubActionPins,
+  PINNED_GITHUB_ACTIONS,
+} from "../scripts/github-actions-pins.mjs";
 
 const workflowNames = ["quality", "production-smoke", "rollback"];
 
@@ -23,7 +27,7 @@ function getOnlyJob(workflow) {
   return jobs[0];
 }
 
-test("uses Node 24 GitHub actions while keeping the application on Node 22", async () => {
+test("pins Node 24 GitHub actions while keeping the application on Node 22", async () => {
   for (const name of workflowNames) {
     const { source, value } = await readWorkflow(name);
     const job = getOnlyJob(value);
@@ -33,8 +37,8 @@ test("uses Node 24 GitHub actions while keeping the application on Node 22", asy
     assert.deepEqual(value.permissions, { contents: "read" }, `${name} permissions changed`);
     assert.deepEqual(
       actionSteps.map((step) => step.uses),
-      ["actions/checkout@v6", "actions/setup-node@v6"],
-      `${name} must use the Node 24 action majors`,
+      assertImmutableGitHubActionPins(source, name),
+      `${name} YAML values must match the source-level immutable pins`,
     );
     assert.deepEqual(
       actionSteps[1].with,
@@ -43,6 +47,49 @@ test("uses Node 24 GitHub actions while keeping the application on Node 22", asy
     );
     assert.doesNotMatch(source, /actions\/(?:checkout|setup-node)@v[1-5]\b/u);
     assert.doesNotMatch(source, /always-auth/u);
+  }
+});
+
+test("rejects floating, abbreviated, unreviewed, and mislabeled action pins", () => {
+  const validSource = PINNED_GITHUB_ACTIONS
+    .map(({ repository, sha, version }) => `      uses: ${repository}@${sha} # ${version}`)
+    .join("\n");
+  const cases = [
+    {
+      name: "floating major ref",
+      source: validSource.replace(PINNED_GITHUB_ACTIONS[0].sha, "v6"),
+      message: /full-length commit SHA/u,
+    },
+    {
+      name: "abbreviated SHA",
+      source: validSource.replace(
+        PINNED_GITHUB_ACTIONS[0].sha,
+        PINNED_GITHUB_ACTIONS[0].sha.slice(0, 12),
+      ),
+      message: /full-length commit SHA/u,
+    },
+    {
+      name: "unreviewed full SHA",
+      source: validSource.replace(PINNED_GITHUB_ACTIONS[0].sha, "0".repeat(40)),
+      message: /reviewed v6 commit/u,
+    },
+    {
+      name: "wrong repository",
+      source: validSource.replace("actions/checkout", "someone/checkout"),
+      message: /reviewed official repository/u,
+    },
+    {
+      name: "comment drift",
+      source: validSource.replace("# v6", "# latest"),
+      message: /human-readable # v6 comment/u,
+    },
+  ];
+
+  for (const example of cases) {
+    assert.throws(
+      () => assertImmutableGitHubActionPins(example.source, example.name),
+      example.message,
+    );
   }
 });
 
