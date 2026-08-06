@@ -286,8 +286,8 @@ async function createPluginHarness({
           activeView = null;
         }
         if (deferredVaultReadNumbers.includes(vaultReads.length)) {
-          await new Promise((resolve) => {
-            deferredVaultReads.set(vaultReads.length, resolve);
+          await new Promise((resolve, reject) => {
+            deferredVaultReads.set(vaultReads.length, { reject, resolve });
           });
         }
         return content;
@@ -407,11 +407,21 @@ async function createPluginHarness({
     plugin,
     processAttempts,
     renameAttempts,
-    resolveVaultRead(readNumber) {
-      const resolve = deferredVaultReads.get(readNumber);
-      if (!resolve) throw new Error(`Vault read ${readNumber} is not deferred`);
+    rejectVaultRead(readNumber, error = new Error(`Vault read ${readNumber} rejected`)) {
+      const continuation = deferredVaultReads.get(readNumber);
+      if (!continuation) {
+        throw new Error(`Vault read ${readNumber} is not deferred`);
+      }
       deferredVaultReads.delete(readNumber);
-      resolve();
+      continuation.reject(error);
+    },
+    resolveVaultRead(readNumber) {
+      const continuation = deferredVaultReads.get(readNumber);
+      if (!continuation) {
+        throw new Error(`Vault read ${readNumber} is not deferred`);
+      }
+      deferredVaultReads.delete(readNumber);
+      continuation.resolve();
     },
     replaceFile(path, { keepActiveFile = false } = {}) {
       const current = fileMap.get(path) ?? null;
@@ -915,7 +925,7 @@ function authorDoctorReport() {
     ["workspace-dependencies", "workspace", "Workspace dependencies", "35/35 pinned packages", "all declared packages installed at pinned versions"],
     ["content-layout", "workspace", "Content layout", "5/5 required paths", "5 required authoring paths"],
     ["obsidian-vault", "vault", "Obsidian Vault", ".obsidian present", ".obsidian directory present"],
-    ["publisher-plugin", "vault", "MyBlog Publisher", "myblog-publisher@1.32.0 · desktop", "myblog-publisher 1.32.0 desktop plugin"],
+    ["publisher-plugin", "vault", "MyBlog Publisher", "myblog-publisher@1.33.0 · desktop", "myblog-publisher 1.33.0 desktop plugin"],
   ];
   const scripts = [
     "content:author:doctor",
@@ -962,7 +972,7 @@ function authorDoctorReport() {
           isDesktopOnly: true,
           mainPresent: true,
           stylesPresent: true,
-          version: "1.32.0",
+          version: "1.33.0",
         },
       },
       workspace: {
@@ -1341,6 +1351,106 @@ test("renders native evidence for a filename-owned draft without offering cleanu
   assert.deepEqual(harness.processAttempts, []);
   assert.deepEqual(harness.vaultReads, [sourcePath]);
   assert.equal(harness.spawned.length, 0);
+});
+
+test("keeps current draft identity evidence latest-wins through async reads and unload", async (t) => {
+  const sourcePath = "content/inbox/original-draft.md";
+  const content = filenameOwnedDraft();
+
+  await t.test("stale read success cannot open after the latest evidence", async () => {
+    const harness = await createPluginHarness({
+      activeFilePath: sourcePath,
+      deferredVaultReadNumbers: [1],
+      fileContents: { [sourcePath]: content },
+      files: [],
+    });
+    const command = findCommand(harness, "inspect-current-inbox-draft-identity");
+    command.checkCallback(false);
+    command.checkCallback(false);
+    await settleAsyncWork();
+
+    assert.deepEqual(harness.vaultReads, [sourcePath, sourcePath]);
+    assert.equal(harness.modals.length, 1);
+    harness.resolveVaultRead(1);
+    await settleAsyncWork();
+
+    assert.equal(harness.modals.length, 1);
+    assert.equal(harness.notices.length, 0);
+  });
+
+  await t.test("stale read failure stays silent after the latest evidence", async () => {
+    const harness = await createPluginHarness({
+      activeFilePath: sourcePath,
+      deferredVaultReadNumbers: [1],
+      fileContents: { [sourcePath]: content },
+      files: [],
+    });
+    const command = findCommand(harness, "inspect-current-inbox-draft-identity");
+    command.checkCallback(false);
+    command.checkCallback(false);
+    await settleAsyncWork();
+
+    assert.equal(harness.modals.length, 1);
+    harness.rejectVaultRead(1, new Error("old read failed"));
+    await settleAsyncWork();
+
+    assert.equal(harness.modals.length, 1);
+    assert.equal(harness.notices.length, 0);
+  });
+
+  await t.test("current read failure keeps the existing author-facing error", async () => {
+    const harness = await createPluginHarness({
+      activeFilePath: sourcePath,
+      deferredVaultReadNumbers: [1],
+      fileContents: { [sourcePath]: content },
+      files: [],
+    });
+    findCommand(harness, "inspect-current-inbox-draft-identity").checkCallback(false);
+    harness.rejectVaultRead(1, new Error("current read failed"));
+    await settleAsyncWork();
+
+    assert.equal(harness.modals.length, 0);
+    assert.equal(harness.notices.length, 1);
+    assert.match(harness.notices[0].message, /草稿身份读取失败.*current read failed/u);
+  });
+
+  await t.test("active draft drift during the read does not open stale evidence", async () => {
+    const otherPath = "content/inbox/other-draft.md";
+    const harness = await createPluginHarness({
+      activeFilePath: sourcePath,
+      deferredVaultReadNumbers: [1],
+      fileContents: {
+        [otherPath]: filenameOwnedDraft({ title: "另一篇草稿" }),
+        [sourcePath]: content,
+      },
+      files: [],
+    });
+    findCommand(harness, "inspect-current-inbox-draft-identity").checkCallback(false);
+    harness.setActiveFilePath(otherPath);
+    harness.resolveVaultRead(1);
+    await settleAsyncWork();
+
+    assert.equal(harness.modals.length, 0);
+    assert.equal(harness.notices.length, 1);
+    assert.match(harness.notices[0].message, /当前草稿在检查期间已变化/u);
+  });
+
+  await t.test("unload invalidates an in-flight identity read", async () => {
+    const harness = await createPluginHarness({
+      activeFilePath: sourcePath,
+      deferredVaultReadNumbers: [1],
+      fileContents: { [sourcePath]: content },
+      files: [],
+    });
+    findCommand(harness, "inspect-current-inbox-draft-identity").checkCallback(false);
+    harness.plugin.onunload();
+    assert.equal(harness.plugin.currentDraftIdentityGeneration, null);
+    harness.resolveVaultRead(1);
+    await settleAsyncWork();
+
+    assert.equal(harness.modals.length, 0);
+    assert.equal(harness.notices.length, 0);
+  });
 });
 
 test("renders one current draft author-intent summary with accessible ALT and LINK navigation", async () => {
@@ -2498,6 +2608,7 @@ test("serializes cleanup modals through one plugin-level lease", async () => {
   });
   const command = findCommand(harness, "inspect-current-inbox-draft-identity");
   command.checkCallback(false);
+  await settleAsyncWork();
   command.checkCallback(false);
   await settleAsyncWork();
   const [first, second] = harness.modals;
@@ -2705,7 +2816,7 @@ test("renders a versioned maintenance ledger and opens an exact Vault note", asy
     createPluginHarness(),
   ]);
   const manifest = JSON.parse(manifestSource);
-  assert.equal(manifest.version, "1.32.0");
+  assert.equal(manifest.version, "1.33.0");
   assert.equal(manifest.minAppVersion, "1.5.7");
   assert.equal(manifest.isDesktopOnly, true);
   assert.match(styles, /^\.myblog-draft-create \{/mu);

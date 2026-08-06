@@ -23,7 +23,7 @@ const CONTENT_DELIVERY_TRIAGE_REPORT_VERSION = 1;
 const AUTHOR_DOCTOR_REPORT_VERSION = 1;
 const INBOX_READINESS_REPORT_VERSION = 6;
 const AUTHOR_DOCTOR_NODE_ENGINE = ">=22.13.0";
-const AUTHOR_DOCTOR_PLUGIN_VERSION = "1.32.0";
+const AUTHOR_DOCTOR_PLUGIN_VERSION = "1.33.0";
 const DRAFT_TITLE_MAX_LENGTH = 120;
 const DRAFT_SLUG_MAX_LENGTH = 80;
 const DRAFT_SLUG_PATTERN = /^[a-z0-9]+(?:-[a-z0-9]+)*$/u;
@@ -4340,6 +4340,7 @@ module.exports = class MyBlogPublisher extends Plugin {
   onload() {
     this.activeRuns = new Map();
     this.authorTransactionLease = null;
+    this.currentDraftIdentityGeneration = null;
     this.currentDraftIntentGeneration = null;
     this.draftRenameLease = null;
     this.draftIdentityCleanupLease = null;
@@ -4452,6 +4453,7 @@ module.exports = class MyBlogPublisher extends Plugin {
   }
 
   onunload() {
+    this.currentDraftIdentityGeneration = null;
     this.currentDraftIntentGeneration = null;
     this.draftRenameLease = null;
     this.draftIdentityCleanupLease = null;
@@ -4530,13 +4532,23 @@ module.exports = class MyBlogPublisher extends Plugin {
     const identity = this.getActiveInboxDraftIdentity();
     if (!identity) return false;
     if (checking) return true;
-    void this.openDraftIdentityEvidence(identity).catch((error) => {
+    const generation = Object.freeze({});
+    this.currentDraftIdentityGeneration = generation;
+    void this.openDraftIdentityEvidence(identity, generation).catch((error) => {
+      if (!this.isCurrentDraftIdentityGeneration(generation)) return;
       const message = error instanceof Error
         ? error.message
         : "草稿身份检查失败。";
       new Notice(message, 10000);
     });
     return true;
+  }
+
+  isCurrentDraftIdentityGeneration(generation) {
+    return (
+      generation !== null &&
+      this.currentDraftIdentityGeneration === generation
+    );
   }
 
   inspectCurrentDraftIntent(checking) {
@@ -4762,13 +4774,18 @@ module.exports = class MyBlogPublisher extends Plugin {
     return true;
   }
 
-  async openDraftIdentityEvidence(identity) {
+  async openDraftIdentityEvidence(identity, generation) {
+    if (!this.isCurrentDraftIdentityGeneration(generation)) return null;
     const file = this.app.vault.getAbstractFileByPath(identity.sourcePath);
+    const current = this.getActiveInboxDraftIdentity();
     if (
       !(file instanceof TFile) ||
       file !== identity.file ||
       file.path !== identity.sourcePath ||
-      file.extension !== "md"
+      file.extension !== "md" ||
+      !current ||
+      current.file !== file ||
+      current.sourcePath !== identity.sourcePath
     ) {
       throw new Error("当前草稿在检查开始前已变化；请重新运行命令。");
     }
@@ -4776,12 +4793,21 @@ module.exports = class MyBlogPublisher extends Plugin {
     try {
       content = await this.app.vault.read(file);
     } catch (error) {
+      if (!this.isCurrentDraftIdentityGeneration(generation)) return null;
       throw new Error(`草稿身份读取失败：${identity.sourcePath} · ${error.message}`);
     }
-    if (this.app.vault.getAbstractFileByPath(identity.sourcePath) !== file) {
+    if (!this.isCurrentDraftIdentityGeneration(generation)) return null;
+    const currentAfterRead = this.getActiveInboxDraftIdentity();
+    if (
+      !currentAfterRead ||
+      currentAfterRead.file !== file ||
+      currentAfterRead.sourcePath !== identity.sourcePath ||
+      this.app.vault.getAbstractFileByPath(identity.sourcePath) !== file
+    ) {
       throw new Error("当前草稿在检查期间已变化；请重新运行命令。");
     }
     const report = this.analyzeDraftIdentity(identity, content);
+    if (!this.isCurrentDraftIdentityGeneration(generation)) return null;
     new DraftIdentityModal(this, report).open();
     return report;
   }
