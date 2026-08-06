@@ -890,7 +890,7 @@ function authorDoctorReport() {
     ["workspace-dependencies", "workspace", "Workspace dependencies", "35/35 pinned packages", "all declared packages installed at pinned versions"],
     ["content-layout", "workspace", "Content layout", "5/5 required paths", "5 required authoring paths"],
     ["obsidian-vault", "vault", "Obsidian Vault", ".obsidian present", ".obsidian directory present"],
-    ["publisher-plugin", "vault", "MyBlog Publisher", "myblog-publisher@1.29.0 · desktop", "myblog-publisher 1.29.0 desktop plugin"],
+    ["publisher-plugin", "vault", "MyBlog Publisher", "myblog-publisher@1.30.0 · desktop", "myblog-publisher 1.30.0 desktop plugin"],
   ];
   const scripts = [
     "content:author:doctor",
@@ -937,7 +937,7 @@ function authorDoctorReport() {
           isDesktopOnly: true,
           mainPresent: true,
           stylesPresent: true,
-          version: "1.29.0",
+          version: "1.30.0",
         },
       },
       workspace: {
@@ -1314,7 +1314,7 @@ test("renders native evidence for a filename-owned draft without offering cleanu
   assert.equal(harness.spawned.length, 0);
 });
 
-test("renders one current draft author-intent summary with accessible ALT navigation", async () => {
+test("renders one current draft author-intent summary with accessible ALT and LINK navigation", async () => {
   const sourcePath = "content/inbox/current-draft.md";
   const [styles, harness] = await Promise.all([
     readFile(stylesUrl, "utf8"),
@@ -1372,9 +1372,9 @@ test("renders one current draft author-intent summary with accessible ALT naviga
   assert.match(text, /LINK TRACE.*2 VERIFIED/su);
   assert.match(
     text,
-    /POST.*\/posts\/building-a-maintainable-blog#method.*L18, L22.*×2/su,
+    /POST.*\/posts\/building-a-maintainable-blog#method.*REF · L18.*REF · L22.*×2/su,
   );
-  assert.match(text, /PROJECT.*\/projects\/myblog.*L19/su);
+  assert.match(text, /PROJECT.*\/projects\/myblog.*REF · L19/su);
   assert.match(text, /不会修改、发布、提交、推送或联网/u);
   const jumpButtons = elementsByTag(modal, "button").filter((button) =>
     button.classes.has("myblog-draft-intent__media-jump"),
@@ -1391,6 +1391,19 @@ test("renders one current draft author-intent summary with accessible ALT naviga
     jumpButtons[3].attributes["aria-label"],
     /定位到当前草稿第 24 行的替代文本.*AUTHORED/u,
   );
+  const linkJumpButtons = elementsByTag(modal, "button").filter((button) =>
+    button.classes.has("myblog-draft-intent__link-jump"),
+  );
+  assert.deepEqual(linkJumpButtons.map((button) => button.text), [
+    "REF · L18",
+    "REF · L22",
+    "REF · L19",
+  ]);
+  assert.ok(linkJumpButtons.every((button) => button.attributes.type === "button"));
+  assert.match(
+    linkJumpButtons[1].attributes["aria-label"],
+    /定位到当前草稿第 22 行的 POST 引用.*building-a-maintainable-blog#method/u,
+  );
   assert.equal(elementsByTag(modal, "button").at(-1).text, "关闭");
   assert.match(styles, /^\.myblog-draft-intent \{/mu);
   assert.match(styles, /myblog-draft-intent__signature/u);
@@ -1400,6 +1413,8 @@ test("renders one current draft author-intent summary with accessible ALT naviga
   assert.match(styles, /myblog-draft-intent__media-jump/u);
   assert.match(styles, /myblog-draft-intent__media-jump:focus-visible/u);
   assert.match(styles, /myblog-draft-intent__links/u);
+  assert.match(styles, /myblog-draft-intent__link-jump/u);
+  assert.match(styles, /myblog-draft-intent__link-jump:focus-visible/u);
   assert.deepEqual(harness.processAttempts, []);
   assert.deepEqual(harness.vaultReads, []);
   assert.equal(harness.reconciliations, 0);
@@ -1447,6 +1462,77 @@ test("navigates one ALT evidence to its exact current draft line without writing
   assert.deepEqual(harness.processAttempts, []);
   assert.equal(harness.spawned.length, 1);
   assert.match(harness.notices.at(-1).message, /已定位到当前草稿 L24/u);
+});
+
+test("navigates one LINK occurrence to its exact current draft line without writing", async () => {
+  const sourcePath = "content/inbox/current-draft.md";
+  const source = markdownWithLineCount(32);
+  const harness = await createPluginHarness({
+    activeFilePath: sourcePath,
+    fileContents: { [sourcePath]: source },
+    files: [],
+  });
+  findCommand(harness, "inspect-current-draft-intent").checkCallback(false);
+  harness.spawned[0].child.stdout.emit(
+    "data",
+    Buffer.from(JSON.stringify(inboxReadinessReport())),
+  );
+  harness.spawned[0].child.emit("close", 0);
+
+  const modal = harness.modals[0];
+  const jump = elementsByTag(modal, "button").find(
+    (button) => button.text === "REF · L22",
+  );
+  assert.ok(jump);
+  await Promise.all([jump.trigger("click"), jump.trigger("click")]);
+
+  assert.deepEqual(harness.openedFiles.map((file) => file.path), [sourcePath]);
+  assert.deepEqual(plain(harness.openedStates), [{ active: true }]);
+  assert.deepEqual(plain(harness.cursorPositions), [{ line: 21, ch: 0 }]);
+  assert.deepEqual(plain(harness.scrollRanges), [{
+    center: true,
+    range: {
+      from: { line: 21, ch: 0 },
+      to: { line: 21, ch: 0 },
+    },
+  }]);
+  assert.equal(harness.editorFocusCount, 1);
+  assert.equal(modal.closed, true);
+  assert.deepEqual(harness.vaultReads, [sourcePath]);
+  assert.equal(harness.getContent(sourcePath), source);
+  assert.deepEqual(harness.processAttempts, []);
+  assert.equal(harness.spawned.length, 1);
+  assert.match(harness.notices.at(-1).message, /已定位到当前草稿 L22 · LINK/u);
+});
+
+test("fails closed when a LINK occurrence is outside the current source", async () => {
+  const sourcePath = "content/inbox/current-draft.md";
+  const source = markdownWithLineCount(10);
+  const harness = await createPluginHarness({
+    activeFilePath: sourcePath,
+    fileContents: { [sourcePath]: source },
+    files: [],
+  });
+  findCommand(harness, "inspect-current-draft-intent").checkCallback(false);
+  harness.spawned[0].child.stdout.emit(
+    "data",
+    Buffer.from(JSON.stringify(inboxReadinessReport())),
+  );
+  harness.spawned[0].child.emit("close", 0);
+
+  const modal = harness.modals[0];
+  const jump = elementsByTag(modal, "button").find(
+    (button) => button.text === "REF · L22",
+  );
+  assert.ok(jump);
+  await jump.trigger("click");
+
+  assert.deepEqual(harness.vaultReads, [sourcePath]);
+  assert.deepEqual(harness.openedFiles, []);
+  assert.deepEqual(harness.cursorPositions, []);
+  assert.equal(modal.closed, false);
+  assert.equal(harness.getContent(sourcePath), source);
+  assert.match(harness.notices.at(-1).message, /LINK 证据 L22.*当前文件只有 10 行/u);
 });
 
 test("fails closed when an ALT source navigation target drifts", async (t) => {
@@ -1655,12 +1741,12 @@ test("shows scheduled and blocked date semantics without adding publication acti
       assert.match(text, expectation);
       const buttons = elementsByTag(modal, "button");
       assert.equal(buttons.at(-1).text, "关闭");
-      assert.equal(
-        buttons.some((button) =>
-          button.text !== "关闭" &&
-          !button.classes.has("myblog-draft-intent__media-jump")),
-        false,
-      );
+      const nonCloseButtons = buttons.filter((button) => button.text !== "关闭");
+      assert.ok(nonCloseButtons.every((button) =>
+        button.classes.has("myblog-draft-intent__media-jump") ||
+        button.classes.has("myblog-draft-intent__link-jump")));
+      assert.ok(nonCloseButtons.every((button) =>
+        !/发布|修复|检查/u.test(button.text)));
       assert.equal(harness.spawned.length, 1);
     });
   }
@@ -2369,7 +2455,7 @@ test("renders a versioned maintenance ledger and opens an exact Vault note", asy
     createPluginHarness(),
   ]);
   const manifest = JSON.parse(manifestSource);
-  assert.equal(manifest.version, "1.29.0");
+  assert.equal(manifest.version, "1.30.0");
   assert.equal(manifest.minAppVersion, "1.5.7");
   assert.equal(manifest.isDesktopOnly, true);
   assert.match(styles, /^\.myblog-draft-create \{/mu);

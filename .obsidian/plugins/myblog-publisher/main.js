@@ -22,7 +22,7 @@ const CONTENT_DELIVERY_TRIAGE_REPORT_VERSION = 1;
 const AUTHOR_DOCTOR_REPORT_VERSION = 1;
 const INBOX_READINESS_REPORT_VERSION = 5;
 const AUTHOR_DOCTOR_NODE_ENGINE = ">=22.13.0";
-const AUTHOR_DOCTOR_PLUGIN_VERSION = "1.29.0";
+const AUTHOR_DOCTOR_PLUGIN_VERSION = "1.30.0";
 const DRAFT_TITLE_MAX_LENGTH = 120;
 const DRAFT_SLUG_MAX_LENGTH = 80;
 const DRAFT_SLUG_PATTERN = /^[a-z0-9]+(?:-[a-z0-9]+)*$/u;
@@ -3043,7 +3043,7 @@ class DraftIntentModal extends Modal {
     this.plugin = plugin;
   }
 
-  async navigateToSourceLine(sourceLine) {
+  async navigateToSourceLine(sourceLine, evidenceKind = "ALT") {
     if (this.navigating) return;
     this.navigating = true;
     for (const button of this.jumpButtons) button.disabled = true;
@@ -3051,6 +3051,7 @@ class DraftIntentModal extends Modal {
     try {
       completed = await this.plugin.openDraftIntentSourceLine({
         identity: this.identity,
+        evidenceKind,
         sourceLine,
         sourcePath: this.evidence.entry.sourcePath,
       });
@@ -3172,7 +3173,7 @@ class DraftIntentModal extends Modal {
               `打开 ${entry.sourcePath} 并定位到 L${usage.sourceLines[index]}`,
             );
             jump.addEventListener("click", () =>
-              this.navigateToSourceLine(usage.sourceLines[index]),
+              this.navigateToSourceLine(usage.sourceLines[index], "ALT"),
             );
             this.jumpButtons.push(jump);
             const altValue = usageRow.createEl("span", {
@@ -3220,9 +3221,31 @@ class DraftIntentModal extends Modal {
         const trace = item.createDiv({ cls: "myblog-draft-intent__link-trace" });
         trace.createEl("span", { text: link.kind.toUpperCase() });
         trace.createEl("code", { text: link.target });
-        trace.createEl("span", {
-          text: `${link.sourceLines.map((line) => `L${line}`).join(", ")}${link.occurrences > 1 ? ` · ×${link.occurrences}` : ""}`,
+        const occurrences = trace.createDiv({
+          cls: "myblog-draft-intent__link-occurrences",
         });
+        for (const sourceLine of link.sourceLines) {
+          const jump = occurrences.createEl("button", {
+            cls: "myblog-draft-intent__link-jump",
+            text: `REF · L${sourceLine}`,
+          });
+          jump.setAttr("type", "button");
+          jump.setAttr(
+            "aria-label",
+            `定位到当前草稿第 ${sourceLine} 行的 ${link.kind.toUpperCase()} 引用 · ${link.target}`,
+          );
+          jump.setAttr(
+            "title",
+            `打开 ${entry.sourcePath} 并定位到 L${sourceLine} · ${link.target}`,
+          );
+          jump.addEventListener("click", () =>
+            this.navigateToSourceLine(sourceLine, "LINK"),
+          );
+          this.jumpButtons.push(jump);
+        }
+        if (link.occurrences > 1) {
+          occurrences.createEl("span", { text: `×${link.occurrences}` });
+        }
       }
     }
 
@@ -4552,15 +4575,19 @@ module.exports = class MyBlogPublisher extends Plugin {
     }
   }
 
-  async openDraftIntentSourceLine({ identity, sourceLine, sourcePath }) {
+  async openDraftIntentSourceLine({ evidenceKind, identity, sourceLine, sourcePath }) {
+    const evidenceLabel = evidenceKind === "ALT" || evidenceKind === "LINK"
+      ? evidenceKind
+      : null;
     if (
+      !evidenceLabel ||
       typeof sourcePath !== "string" ||
       !DRAFT_INBOX_PATH_PATTERN.test(sourcePath) ||
       sourcePath !== identity.sourcePath ||
       !Number.isInteger(sourceLine) ||
       sourceLine < 1
     ) {
-      new Notice("ALT 来源证据不安全，已拒绝打开；未定位、未修改文件。", 10000);
+      new Notice("来源证据不安全，已拒绝打开；未定位、未修改文件。", 10000);
       return false;
     }
 
@@ -4570,7 +4597,7 @@ module.exports = class MyBlogPublisher extends Plugin {
       current.file !== identity.file ||
       current.sourcePath !== sourcePath
     ) {
-      new Notice("活动草稿已变化；ALT 来源未定位，请重新运行作者意图检查。", 10000);
+      new Notice(`活动草稿已变化；${evidenceLabel} 来源未定位，请重新运行作者意图检查。`, 10000);
       return false;
     }
 
@@ -4581,7 +4608,7 @@ module.exports = class MyBlogPublisher extends Plugin {
       file.path !== sourcePath ||
       file.extension !== "md"
     ) {
-      new Notice("草稿来源文件已变化；ALT 来源未定位，请重新运行作者意图检查。", 10000);
+      new Notice(`草稿来源文件已变化；${evidenceLabel} 来源未定位，请重新运行作者意图检查。`, 10000);
       return false;
     }
 
@@ -4600,14 +4627,14 @@ module.exports = class MyBlogPublisher extends Plugin {
       currentAfterRead.sourcePath !== sourcePath ||
       this.app.vault.getAbstractFileByPath(sourcePath) !== file
     ) {
-      new Notice("草稿来源在行号检查期间发生变化；ALT 来源未定位。", 10000);
+      new Notice(`草稿来源在行号检查期间发生变化；${evidenceLabel} 来源未定位。`, 10000);
       return false;
     }
 
     const sourceLineCount = content.split(/\r\n|\r|\n/u).length;
     if (sourceLine > sourceLineCount) {
       new Notice(
-        `ALT 证据 L${sourceLine} 已超出范围；当前文件只有 ${sourceLineCount} 行，未定位。`,
+        `${evidenceLabel} 证据 L${sourceLine} 已超出范围；当前文件只有 ${sourceLineCount} 行，未定位。`,
         10000,
       );
       return false;
@@ -4617,7 +4644,7 @@ module.exports = class MyBlogPublisher extends Plugin {
     try {
       await leaf.openFile(file, { active: true });
     } catch (error) {
-      new Notice(`草稿打开失败：${error.message}；ALT 来源未定位。`, 10000);
+      new Notice(`草稿打开失败：${error.message}；${evidenceLabel} 来源未定位。`, 10000);
       return false;
     }
 
@@ -4627,14 +4654,14 @@ module.exports = class MyBlogPublisher extends Plugin {
       !(view instanceof MarkdownView) ||
       view.file !== file
     ) {
-      new Notice("Markdown 编辑器不可用或活动文件漂移；ALT 来源未定位。", 10000);
+      new Notice(`Markdown 编辑器不可用或活动文件漂移；${evidenceLabel} 来源未定位。`, 10000);
       return false;
     }
 
     try {
       const editorLineCount = view.editor.lineCount();
       if (!Number.isInteger(editorLineCount) || sourceLine > editorLineCount) {
-        new Notice("编辑器中的草稿行数已变化；ALT 来源未定位，请重新检查。", 10000);
+        new Notice(`编辑器中的草稿行数已变化；${evidenceLabel} 来源未定位，请重新检查。`, 10000);
         return false;
       }
       const position = { line: sourceLine - 1, ch: 0 };
@@ -4646,7 +4673,7 @@ module.exports = class MyBlogPublisher extends Plugin {
       return false;
     }
 
-    new Notice(`已定位到当前草稿 L${sourceLine}；正文未修改。`, 5000);
+    new Notice(`已定位到当前草稿 L${sourceLine} · ${evidenceLabel}；正文未修改。`, 5000);
     return true;
   }
 
