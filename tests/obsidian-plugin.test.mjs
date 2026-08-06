@@ -1,4 +1,5 @@
 import assert from "node:assert/strict";
+import { createHash } from "node:crypto";
 import { readFile } from "node:fs/promises";
 import test from "node:test";
 import vm from "node:vm";
@@ -100,6 +101,7 @@ async function createPluginHarness({
   processMutation,
   processPostcondition = "exact",
   readActiveFilePath,
+  readActiveFilePathAt = 1,
   renameFailure,
   renamePostcondition = "exact",
   throwSpawnAt = [],
@@ -215,6 +217,9 @@ async function createPluginHarness({
   };
 
   const contentMap = new Map(Object.entries(fileContents));
+  if (activeFilePath && !contentMap.has(activeFilePath)) {
+    contentMap.set(activeFilePath, filenameOwnedDraft());
+  }
   let activePath = activeFilePath;
   let activeFileOverride = null;
   let activeView = null;
@@ -273,7 +278,7 @@ async function createPluginHarness({
           throw new Error(`Missing fixture content: ${file.path}`);
         }
         const content = contentMap.get(file.path);
-        if (readActiveFilePath) {
+        if (readActiveFilePath && vaultReads.length === readActiveFilePathAt) {
           activePath = readActiveFilePath;
           activeFileOverride = null;
           activeView = null;
@@ -354,6 +359,7 @@ async function createPluginHarness({
         };
       }
       if (specifier === "node:child_process") return { spawn };
+      if (specifier === "node:crypto") return { createHash };
       throw new Error(`Unexpected require: ${specifier}`);
     },
   });
@@ -379,6 +385,10 @@ async function createPluginHarness({
       activePath = path;
       activeFileOverride = null;
       activeView = null;
+    },
+    setContent(path, content) {
+      if (!fileMap.has(path)) throw new Error(`Missing fixture file: ${path}`);
+      contentMap.set(path, content);
     },
     get reconciliations() {
       return reconciliations;
@@ -475,7 +485,8 @@ function inboxReadinessReport({
   entry = {},
   reportDate = "2026-08-06",
   safety = {},
-  version = 5,
+  sourceContent = filenameOwnedDraft(),
+  version = 6,
 } = {}) {
   const sourcePath = "content/inbox/current-draft.md";
   const resolvedEntry = {
@@ -501,6 +512,7 @@ function inboxReadinessReport({
     kind: "post",
     publishedAt: reportDate,
     slug: "current-draft",
+    sourceSha256: sha256(sourceContent),
     sourcePath,
     state: "ready",
     targetPath: "content/posts/current-draft.md",
@@ -890,7 +902,7 @@ function authorDoctorReport() {
     ["workspace-dependencies", "workspace", "Workspace dependencies", "35/35 pinned packages", "all declared packages installed at pinned versions"],
     ["content-layout", "workspace", "Content layout", "5/5 required paths", "5 required authoring paths"],
     ["obsidian-vault", "vault", "Obsidian Vault", ".obsidian present", ".obsidian directory present"],
-    ["publisher-plugin", "vault", "MyBlog Publisher", "myblog-publisher@1.30.0 · desktop", "myblog-publisher 1.30.0 desktop plugin"],
+    ["publisher-plugin", "vault", "MyBlog Publisher", "myblog-publisher@1.31.0 · desktop", "myblog-publisher 1.31.0 desktop plugin"],
   ];
   const scripts = [
     "content:author:doctor",
@@ -937,7 +949,7 @@ function authorDoctorReport() {
           isDesktopOnly: true,
           mainPresent: true,
           stylesPresent: true,
-          version: "1.30.0",
+          version: "1.31.0",
         },
       },
       workspace: {
@@ -1064,6 +1076,10 @@ function legacyIdentityDraft({
 
 function markdownWithLineCount(lineCount) {
   return Array.from({ length: lineCount }, (_, index) => `line ${index + 1}`).join("\n");
+}
+
+function sha256(value) {
+  return createHash("sha256").update(value, "utf8").digest("hex");
 }
 
 async function settleAsyncWork() {
@@ -1347,6 +1363,7 @@ test("renders one current draft author-intent summary with accessible ALT and LI
     }))),
   );
   harness.spawned[0].child.emit("close", 0);
+  await settleAsyncWork();
 
   assert.equal(harness.modals.length, 1);
   const modal = harness.modals[0];
@@ -1359,7 +1376,10 @@ test("renders one current draft author-intent summary with accessible ALT and LI
   assert.match(text, /DRAFT → PUBLIC/u);
   assert.match(text, /READY \/ PUBLIC ON PASS/u);
   assert.match(text, /current-draft\.md.*content\/posts\/current-draft\.md/su);
-  assert.match(text, /TYPE.*ARTICLE.*DATE.*2026-08-06.*NOW.*MEDIA.*2.*LINKS.*2/su);
+  assert.match(
+    text,
+    /TYPE.*ARTICLE.*DATE.*2026-08-06.*NOW.*MEDIA.*2.*LINKS.*2.*SOURCE.*SHA-256 · [a-f0-9]{12}/su,
+  );
   assert.match(text, /MEDIA TRACE.*2 ATTACHMENTS/su);
   assert.match(
     text,
@@ -1416,7 +1436,7 @@ test("renders one current draft author-intent summary with accessible ALT and LI
   assert.match(styles, /myblog-draft-intent__link-jump/u);
   assert.match(styles, /myblog-draft-intent__link-jump:focus-visible/u);
   assert.deepEqual(harness.processAttempts, []);
-  assert.deepEqual(harness.vaultReads, []);
+  assert.deepEqual(harness.vaultReads, [sourcePath]);
   assert.equal(harness.reconciliations, 0);
   assert.equal(harness.spawned.length, 1);
 });
@@ -1434,9 +1454,11 @@ test("navigates one ALT evidence to its exact current draft line without writing
     "data",
     Buffer.from(JSON.stringify(inboxReadinessReport({
       entry: { attachments: [inboxPreparedAttachment()] },
+      sourceContent: source,
     }))),
   );
   harness.spawned[0].child.emit("close", 0);
+  await settleAsyncWork();
 
   const modal = harness.modals[0];
   const jump = elementsByTag(modal, "button").find(
@@ -1457,7 +1479,7 @@ test("navigates one ALT evidence to its exact current draft line without writing
   }]);
   assert.equal(harness.editorFocusCount, 1);
   assert.equal(modal.closed, true);
-  assert.deepEqual(harness.vaultReads, [sourcePath]);
+  assert.deepEqual(harness.vaultReads, [sourcePath, sourcePath]);
   assert.equal(harness.getContent(sourcePath), source);
   assert.deepEqual(harness.processAttempts, []);
   assert.equal(harness.spawned.length, 1);
@@ -1475,9 +1497,10 @@ test("navigates one LINK occurrence to its exact current draft line without writ
   findCommand(harness, "inspect-current-draft-intent").checkCallback(false);
   harness.spawned[0].child.stdout.emit(
     "data",
-    Buffer.from(JSON.stringify(inboxReadinessReport())),
+    Buffer.from(JSON.stringify(inboxReadinessReport({ sourceContent: source }))),
   );
   harness.spawned[0].child.emit("close", 0);
+  await settleAsyncWork();
 
   const modal = harness.modals[0];
   const jump = elementsByTag(modal, "button").find(
@@ -1498,7 +1521,7 @@ test("navigates one LINK occurrence to its exact current draft line without writ
   }]);
   assert.equal(harness.editorFocusCount, 1);
   assert.equal(modal.closed, true);
-  assert.deepEqual(harness.vaultReads, [sourcePath]);
+  assert.deepEqual(harness.vaultReads, [sourcePath, sourcePath]);
   assert.equal(harness.getContent(sourcePath), source);
   assert.deepEqual(harness.processAttempts, []);
   assert.equal(harness.spawned.length, 1);
@@ -1516,9 +1539,10 @@ test("fails closed when a LINK occurrence is outside the current source", async 
   findCommand(harness, "inspect-current-draft-intent").checkCallback(false);
   harness.spawned[0].child.stdout.emit(
     "data",
-    Buffer.from(JSON.stringify(inboxReadinessReport())),
+    Buffer.from(JSON.stringify(inboxReadinessReport({ sourceContent: source }))),
   );
   harness.spawned[0].child.emit("close", 0);
+  await settleAsyncWork();
 
   const modal = harness.modals[0];
   const jump = elementsByTag(modal, "button").find(
@@ -1527,7 +1551,7 @@ test("fails closed when a LINK occurrence is outside the current source", async 
   assert.ok(jump);
   await jump.trigger("click");
 
-  assert.deepEqual(harness.vaultReads, [sourcePath]);
+  assert.deepEqual(harness.vaultReads, [sourcePath, sourcePath]);
   assert.deepEqual(harness.openedFiles, []);
   assert.deepEqual(harness.cursorPositions, []);
   assert.equal(modal.closed, false);
@@ -1538,9 +1562,10 @@ test("fails closed when a LINK occurrence is outside the current source", async 
 test("fails closed when an ALT source navigation target drifts", async (t) => {
   const sourcePath = "content/inbox/current-draft.md";
   const openIntent = async (options = {}) => {
+    const source = options.fileContents?.[sourcePath] ?? markdownWithLineCount(32);
     const harness = await createPluginHarness({
       activeFilePath: sourcePath,
-      fileContents: { [sourcePath]: markdownWithLineCount(32) },
+      fileContents: { [sourcePath]: source },
       files: [],
       ...options,
     });
@@ -1549,9 +1574,11 @@ test("fails closed when an ALT source navigation target drifts", async (t) => {
       "data",
       Buffer.from(JSON.stringify(inboxReadinessReport({
         entry: { attachments: [inboxPreparedAttachment()] },
+        sourceContent: source,
       }))),
     );
     harness.spawned[0].child.emit("close", 0);
+    await settleAsyncWork();
     const modal = harness.modals[0];
     const jump = elementsByTag(modal, "button").find(
       (button) => button.text === "ALT · L24 · AUTHORED",
@@ -1566,7 +1593,7 @@ test("fails closed when an ALT source navigation target drifts", async (t) => {
     });
     harness.setActiveFilePath("content/inbox/other-draft.md");
     await jump.trigger("click");
-    assert.deepEqual(harness.vaultReads, []);
+    assert.deepEqual(harness.vaultReads, [sourcePath]);
     assert.deepEqual(harness.openedFiles, []);
     assert.equal(modal.closed, false);
     assert.match(harness.notices.at(-1).message, /活动草稿已变化.*未定位/u);
@@ -1576,7 +1603,7 @@ test("fails closed when an ALT source navigation target drifts", async (t) => {
     const { harness, jump, modal } = await openIntent();
     harness.replaceFile(sourcePath, { keepActiveFile: true });
     await jump.trigger("click");
-    assert.deepEqual(harness.vaultReads, []);
+    assert.deepEqual(harness.vaultReads, [sourcePath]);
     assert.deepEqual(harness.openedFiles, []);
     assert.equal(modal.closed, false);
     assert.match(harness.notices.at(-1).message, /草稿来源文件已变化.*未定位/u);
@@ -1586,9 +1613,10 @@ test("fails closed when an ALT source navigation target drifts", async (t) => {
     const { harness, jump, modal } = await openIntent({
       files: ["content/inbox/other-draft.md"],
       readActiveFilePath: "content/inbox/other-draft.md",
+      readActiveFilePathAt: 2,
     });
     await jump.trigger("click");
-    assert.deepEqual(harness.vaultReads, [sourcePath]);
+    assert.deepEqual(harness.vaultReads, [sourcePath, sourcePath]);
     assert.deepEqual(harness.openedFiles, []);
     assert.equal(modal.closed, false);
     assert.match(harness.notices.at(-1).message, /行号检查期间发生变化.*未定位/u);
@@ -1599,7 +1627,7 @@ test("fails closed when an ALT source navigation target drifts", async (t) => {
       fileContents: { [sourcePath]: markdownWithLineCount(10) },
     });
     await jump.trigger("click");
-    assert.deepEqual(harness.vaultReads, [sourcePath]);
+    assert.deepEqual(harness.vaultReads, [sourcePath, sourcePath]);
     assert.deepEqual(harness.openedFiles, []);
     assert.equal(modal.closed, false);
     assert.match(harness.notices.at(-1).message, /L24.*当前文件只有 10 行/u);
@@ -1631,6 +1659,58 @@ test("fails closed when an ALT source navigation target drifts", async (t) => {
     assert.deepEqual(harness.cursorPositions, []);
     assert.equal(modal.closed, false);
     assert.match(harness.notices.at(-1).message, /草稿打开失败.*workspace unavailable/u);
+  });
+});
+
+test("binds the summary and every source jump to the same exact draft bytes", async (t) => {
+  const sourcePath = "content/inbox/current-draft.md";
+  const source = markdownWithLineCount(32);
+
+  await t.test("source changed before summary opens", async () => {
+    const harness = await createPluginHarness({
+      activeFilePath: sourcePath,
+      fileContents: { [sourcePath]: `${source}\nchanged after report` },
+      files: [],
+    });
+    findCommand(harness, "inspect-current-draft-intent").checkCallback(false);
+    harness.spawned[0].child.stdout.emit(
+      "data",
+      Buffer.from(JSON.stringify(inboxReadinessReport({ sourceContent: source }))),
+    );
+    harness.spawned[0].child.emit("close", 0);
+    await settleAsyncWork();
+
+    assert.equal(harness.modals.length, 0);
+    assert.deepEqual(harness.vaultReads, [sourcePath]);
+    assert.deepEqual(harness.openedFiles, []);
+    assert.match(harness.notices.at(-1).message, /SHA-256.*内容已变化.*重新运行/u);
+  });
+
+  await t.test("same TFile changed after summary opens", async () => {
+    const harness = await createPluginHarness({
+      activeFilePath: sourcePath,
+      fileContents: { [sourcePath]: source },
+      files: [],
+    });
+    findCommand(harness, "inspect-current-draft-intent").checkCallback(false);
+    harness.spawned[0].child.stdout.emit(
+      "data",
+      Buffer.from(JSON.stringify(inboxReadinessReport({ sourceContent: source }))),
+    );
+    harness.spawned[0].child.emit("close", 0);
+    await settleAsyncWork();
+
+    const modal = harness.modals[0];
+    harness.setContent(sourcePath, source.replace("line 22", "changed"));
+    const jump = elementsByTag(modal, "button").find(
+      (button) => button.text === "REF · L22",
+    );
+    await jump.trigger("click");
+
+    assert.deepEqual(harness.vaultReads, [sourcePath, sourcePath]);
+    assert.deepEqual(harness.openedFiles, []);
+    assert.equal(modal.closed, false);
+    assert.match(harness.notices.at(-1).message, /LINK.*SHA-256.*证据已过期.*重新运行/u);
   });
 });
 
@@ -1736,6 +1816,7 @@ test("shows scheduled and blocked date semantics without adding publication acti
       findCommand(harness, "inspect-current-draft-intent").checkCallback(false);
       harness.spawned[0].child.stdout.emit("data", Buffer.from(JSON.stringify(report)));
       harness.spawned[0].child.emit("close", 0);
+      await settleAsyncWork();
       const modal = harness.modals[0];
       const text = allElements(modal.contentEl).map((element) => element.text).join(" ");
       assert.match(text, expectation);
@@ -1772,7 +1853,23 @@ test("fails closed when current-draft intent evidence is untrusted or the active
   multiEntryReport.counts.ready = 2;
   const invalidCases = [
     ["invalid JSON", "not-json"],
-    ["unsupported version", JSON.stringify(inboxReadinessReport({ version: 4 }))],
+    ["unsupported version", JSON.stringify(inboxReadinessReport({ version: 5 }))],
+    [
+      "missing source digest",
+      JSON.stringify((() => {
+        const report = inboxReadinessReport();
+        delete report.entries[0].sourceSha256;
+        return report;
+      })()),
+    ],
+    [
+      "malformed source digest",
+      JSON.stringify(inboxReadinessReport({ entry: { sourceSha256: "ABC123" } })),
+    ],
+    [
+      "unavailable source digest",
+      JSON.stringify(inboxReadinessReport({ entry: { sourceSha256: null } })),
+    ],
     [
       "unsafe safety claim",
       JSON.stringify(inboxReadinessReport({ safety: { networkChecked: true } })),
@@ -2455,7 +2552,7 @@ test("renders a versioned maintenance ledger and opens an exact Vault note", asy
     createPluginHarness(),
   ]);
   const manifest = JSON.parse(manifestSource);
-  assert.equal(manifest.version, "1.30.0");
+  assert.equal(manifest.version, "1.31.0");
   assert.equal(manifest.minAppVersion, "1.5.7");
   assert.equal(manifest.isDesktopOnly, true);
   assert.match(styles, /^\.myblog-draft-create \{/mu);

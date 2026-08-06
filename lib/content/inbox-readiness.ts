@@ -1,4 +1,5 @@
 import { spawnSync } from "node:child_process";
+import { createHash } from "node:crypto";
 import {
   lstat,
   mkdir,
@@ -28,7 +29,7 @@ const ISO_DATE_PATTERN = /^\d{4}-\d{2}-\d{2}$/u;
 const INBOX_SOURCE_PREFIX = "content/inbox/";
 const SLUG_PATTERN = /^[a-z0-9]+(?:-[a-z0-9]+)*$/u;
 
-export const INBOX_READINESS_REPORT_VERSION = 5 as const;
+export const INBOX_READINESS_REPORT_VERSION = 6 as const;
 
 export const INBOX_READINESS_STATES = ["blocked", "scheduled", "ready"] as const;
 export type InboxReadinessState = (typeof INBOX_READINESS_STATES)[number];
@@ -65,6 +66,7 @@ export type InboxReadinessEntry = {
   kind?: ObsidianContentKind;
   publishedAt?: string;
   slug?: string;
+  sourceSha256: string | null;
   sourcePath: string;
   state: InboxReadinessState;
   targetPath?: string;
@@ -201,6 +203,7 @@ function blockedEntry(sourcePath: string): InboxReadinessEntry {
     internalLinks: [],
     issues: [],
     ...(SLUG_PATTERN.test(candidateSlug) ? { slug: candidateSlug } : {}),
+    sourceSha256: null,
     sourcePath,
     state: "blocked",
   };
@@ -220,7 +223,9 @@ async function inspectDraft(
   const entry = blockedEntry(sourcePath);
   let raw: string;
   try {
-    raw = await readFile(resolve(projectRoot, sourcePath), "utf8");
+    const sourceBytes = await readFile(resolve(projectRoot, sourcePath));
+    entry.sourceSha256 = createHash("sha256").update(sourceBytes).digest("hex");
+    raw = sourceBytes.toString("utf8");
   } catch (error) {
     addIssue(
       entry,
@@ -538,7 +543,7 @@ export function formatInboxReadinessText(report: InboxReadinessReport) {
       `站内链接 ${entry.internalLinkCount}`,
     ].join(" · ");
     lines.push(
-      `[inbox] ${STATE_LABELS[entry.state]} · ${entry.sourcePath}${entry.targetPath ? ` -> ${entry.targetPath}` : ""} · ${identity}`,
+      `[inbox] ${STATE_LABELS[entry.state]} · ${entry.sourcePath}${entry.targetPath ? ` -> ${entry.targetPath}` : ""} · ${identity} · SOURCE SHA-256 ${entry.sourceSha256?.slice(0, 12) ?? "UNAVAILABLE"}`,
     );
     for (const attachment of entry.attachments) {
       lines.push(

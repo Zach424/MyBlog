@@ -10,6 +10,7 @@ const {
   TFile,
 } = require("obsidian");
 const { spawn } = require("node:child_process");
+const { createHash } = require("node:crypto");
 
 const MAX_CAPTURED_OUTPUT = 200_000;
 const MAINTENANCE_REPORT_VERSION = 1;
@@ -20,9 +21,9 @@ const CONTENT_PUBLISH_DELIVERY_REPORT_VERSION = 1;
 const CONTENT_PUBLISH_DELIVERY_RECEIPT_VERSION = 1;
 const CONTENT_DELIVERY_TRIAGE_REPORT_VERSION = 1;
 const AUTHOR_DOCTOR_REPORT_VERSION = 1;
-const INBOX_READINESS_REPORT_VERSION = 5;
+const INBOX_READINESS_REPORT_VERSION = 6;
 const AUTHOR_DOCTOR_NODE_ENGINE = ">=22.13.0";
-const AUTHOR_DOCTOR_PLUGIN_VERSION = "1.30.0";
+const AUTHOR_DOCTOR_PLUGIN_VERSION = "1.31.0";
 const DRAFT_TITLE_MAX_LENGTH = 120;
 const DRAFT_SLUG_MAX_LENGTH = 80;
 const DRAFT_SLUG_PATTERN = /^[a-z0-9]+(?:-[a-z0-9]+)*$/u;
@@ -161,6 +162,10 @@ function assertNonEmptyString(value, label) {
   }
 }
 
+function sourceSha256(value) {
+  return createHash("sha256").update(value, "utf8").digest("hex");
+}
+
 function formatDraftMediaBytes(bytes) {
   if (bytes < 1024) return `${bytes} B`;
   if (bytes < 1024 * 1024) return `${(bytes / 1024).toFixed(2)} KiB`;
@@ -284,6 +289,7 @@ function parseInboxReadinessReport(output, expectedSourcePath) {
         "internalLinkCount",
         "internalLinks",
         "issues",
+        "sourceSha256",
         "sourcePath",
         "state",
         ...optionalKeys,
@@ -292,6 +298,9 @@ function parseInboxReadinessReport(output, expectedSourcePath) {
     );
     if (typeof entry.sourcePath !== "string" || !safeReportSource.test(entry.sourcePath)) {
       valueError(`${entryLabel}.sourcePath`, "必须是安全的 content/inbox Markdown 路径");
+    }
+    if (typeof entry.sourceSha256 !== "string" || !/^[a-f0-9]{64}$/u.test(entry.sourceSha256)) {
+      valueError(`${entryLabel}.sourceSha256`, "必须是原始草稿字节的 64 位小写 SHA-256");
     }
     if (sources.has(entry.sourcePath)) {
       valueError(`${entryLabel}.sourcePath`, "不能重复");
@@ -3053,6 +3062,7 @@ class DraftIntentModal extends Modal {
         identity: this.identity,
         evidenceKind,
         sourceLine,
+        sourceSha256: this.evidence.entry.sourceSha256,
         sourcePath: this.evidence.entry.sourcePath,
       });
       if (completed) this.close();
@@ -3118,6 +3128,7 @@ class DraftIntentModal extends Modal {
         `${entry.attachments.length} ATTACHMENT${entry.attachments.length === 1 ? "" : "S"}`,
       ],
       ["LINKS", `${entry.internalLinkCount} REFERENCES`],
+      ["SOURCE", `SHA-256 · ${entry.sourceSha256.slice(0, 12)}`],
     ]) {
       const row = evidence.createDiv({ cls: "myblog-draft-intent__evidence-row" });
       row.createEl("dt", { text: term });
@@ -4563,19 +4574,69 @@ module.exports = class MyBlogPublisher extends Plugin {
       new Notice("活动草稿已变化；当前作者意图摘要未打开，请重新运行命令。", 10000);
       return;
     }
+    let evidence;
     try {
-      const evidence = parseInboxReadinessReport(output, identity.sourcePath);
-      new DraftIntentModal(this, evidence, identity).open();
-      new Notice("当前草稿发布意图已从本地只读证据生成。", 5000);
+      evidence = parseInboxReadinessReport(output, identity.sourcePath);
     } catch (error) {
       new Notice(
         `作者意图摘要证据不可用：${error.message}。未回退、未重试，也未执行发布。`,
         12000,
       );
+      return;
     }
+    void this.openVerifiedCurrentDraftIntent(evidence, identity);
   }
 
-  async openDraftIntentSourceLine({ evidenceKind, identity, sourceLine, sourcePath }) {
+  async openVerifiedCurrentDraftIntent(evidence, identity) {
+    const file = this.app.vault.getAbstractFileByPath(identity.sourcePath);
+    const current = this.getActiveInboxDraftIdentity();
+    if (
+      !(file instanceof TFile) ||
+      file !== identity.file ||
+      file.path !== identity.sourcePath ||
+      file.extension !== "md" ||
+      !current ||
+      current.file !== file ||
+      current.sourcePath !== identity.sourcePath
+    ) {
+      new Notice("活动草稿已变化；当前作者意图摘要未打开，请重新运行命令。", 10000);
+      return;
+    }
+
+    let content;
+    try {
+      content = await this.app.vault.read(file);
+    } catch (error) {
+      new Notice(`草稿 SHA-256 校验失败：${error.message}；摘要未打开。`, 10000);
+      return;
+    }
+
+    const currentAfterRead = this.getActiveInboxDraftIdentity();
+    if (
+      !currentAfterRead ||
+      currentAfterRead.file !== file ||
+      currentAfterRead.sourcePath !== identity.sourcePath ||
+      this.app.vault.getAbstractFileByPath(identity.sourcePath) !== file
+    ) {
+      new Notice("草稿来源在 SHA-256 校验期间发生变化；摘要未打开，请重新运行命令。", 10000);
+      return;
+    }
+    if (sourceSha256(content) !== evidence.entry.sourceSha256) {
+      new Notice("草稿 SHA-256 与报告不一致；内容已变化，摘要未打开，请重新运行命令。", 10000);
+      return;
+    }
+
+    new DraftIntentModal(this, evidence, identity).open();
+    new Notice("当前草稿发布意图已从 SHA-256 绑定的本地只读证据生成。", 5000);
+  }
+
+  async openDraftIntentSourceLine({
+    evidenceKind,
+    identity,
+    sourceLine,
+    sourcePath,
+    sourceSha256: expectedSourceSha256,
+  }) {
     const evidenceLabel = evidenceKind === "ALT" || evidenceKind === "LINK"
       ? evidenceKind
       : null;
@@ -4584,6 +4645,8 @@ module.exports = class MyBlogPublisher extends Plugin {
       typeof sourcePath !== "string" ||
       !DRAFT_INBOX_PATH_PATTERN.test(sourcePath) ||
       sourcePath !== identity.sourcePath ||
+      typeof expectedSourceSha256 !== "string" ||
+      !/^[a-f0-9]{64}$/u.test(expectedSourceSha256) ||
       !Number.isInteger(sourceLine) ||
       sourceLine < 1
     ) {
@@ -4628,6 +4691,14 @@ module.exports = class MyBlogPublisher extends Plugin {
       this.app.vault.getAbstractFileByPath(sourcePath) !== file
     ) {
       new Notice(`草稿来源在行号检查期间发生变化；${evidenceLabel} 来源未定位。`, 10000);
+      return false;
+    }
+
+    if (sourceSha256(content) !== expectedSourceSha256) {
+      new Notice(
+        `${evidenceLabel} 来源 SHA-256 不匹配；证据已过期，请重新运行作者意图检查。`,
+        10000,
+      );
       return false;
     }
 

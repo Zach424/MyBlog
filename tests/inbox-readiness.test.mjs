@@ -1,5 +1,6 @@
 import assert from "node:assert/strict";
 import { spawnSync } from "node:child_process";
+import { createHash } from "node:crypto";
 import {
   access,
   mkdtemp,
@@ -24,6 +25,10 @@ import { prepareMediaForPublishing } from "../lib/media-policy.ts";
 const reporterPath = fileURLToPath(
   new URL("../scripts/report-inbox-readiness.mjs", import.meta.url),
 );
+
+function sha256(value) {
+  return createHash("sha256").update(value).digest("hex");
+}
 
 function article(slug, publishedAt, body = "正文。") {
   return `---
@@ -127,7 +132,7 @@ test("reports ready and scheduled drafts with real media derivation", async () =
     const report = await inspectInboxReadiness(root, "2026-08-05", { stagingParent });
     const byPath = Object.fromEntries(report.entries.map((entry) => [entry.sourcePath, entry]));
 
-    assert.equal(report.version, 5);
+    assert.equal(report.version, 6);
     assert.equal(report.mode, "read-only");
     assert.deepEqual(report.safety, {
       authorFilesChanged: false,
@@ -144,6 +149,10 @@ test("reports ready and scheduled drafts with real media derivation", async () =
       scheduled: 1,
     });
     assert.equal(byPath["content/inbox/ready-note.md"].state, "ready");
+    assert.equal(
+      byPath["content/inbox/ready-note.md"].sourceSha256,
+      sha256(Buffer.from(readyDraft)),
+    );
     assert.equal(byPath["content/inbox/ready-note.md"].kind, "post");
     assert.equal(byPath["content/inbox/ready-note.md"].contentType, "article");
     assert.equal(byPath["content/inbox/ready-note.md"].draftState, "draft");
@@ -207,6 +216,10 @@ test("reports ready and scheduled drafts with real media derivation", async () =
       attachment.preparation.source.bytes - attachment.preparation.output.bytes,
     );
     assert.equal(byPath["content/inbox/scheduled-project.md"].state, "scheduled");
+    assert.equal(
+      byPath["content/inbox/scheduled-project.md"].sourceSha256,
+      sha256(Buffer.from(project("scheduled-project", "2026-08-10"))),
+    );
     assert.equal(byPath["content/inbox/scheduled-project.md"].kind, "project");
     assert.equal(byPath["content/inbox/scheduled-project.md"].contentType, "project");
     assert.equal(byPath["content/inbox/scheduled-project.md"].internalLinkCount, 0);
@@ -248,7 +261,8 @@ test("blocks empty body alternative text while preserving exact source evidence"
 
     const report = await inspectInboxReadiness(root, "2026-08-05");
     const entry = report.entries[0];
-    assert.equal(report.version, 5);
+    assert.equal(report.version, 6);
+    assert.equal(entry.sourceSha256, sha256(Buffer.from(draft)));
     assert.equal(entry.state, "blocked");
     assert.deepEqual(entry.attachments[0].usages, [
       {
@@ -301,7 +315,8 @@ test("blocks filename fallback alternative text while preserving the final text"
 
     const report = await inspectInboxReadiness(root, "2026-08-05");
     const entry = report.entries[0];
-    assert.equal(report.version, 5);
+    assert.equal(report.version, 6);
+    assert.equal(entry.sourceSha256, sha256(Buffer.from(draft)));
     assert.equal(entry.state, "blocked");
     assert.deepEqual(entry.attachments[0].usages, [
       {
@@ -368,6 +383,10 @@ test("isolates invalid drafts and reports target, media, and shared-source block
     const byPath = Object.fromEntries(report.entries.map((entry) => [entry.sourcePath, entry]));
 
     assert.equal(report.counts.blocked, 4);
+    assert.equal(
+      byPath["content/inbox/Bad Name.md"].sourceSha256,
+      sha256(Buffer.from("---\ndraft: true\n---\n")),
+    );
     assert.match(
       byPath["content/inbox/Bad Name.md"].issues[0].message,
       /小写 ASCII/u,
@@ -454,6 +473,7 @@ test("scopes evidence to one source while deriving only its media and preserving
 
     assert.equal(scoped.entries.length, 1);
     assert.deepEqual(scoped.entries[0], completeCurrent);
+    assert.match(scoped.entries[0].sourceSha256, /^[a-f0-9]{64}$/u);
     assert.deepEqual(scopedDerivations.sort(), [
       "public/uploads/current-only.png",
       "public/uploads/shared.png",
@@ -506,6 +526,7 @@ test("formats an actionable text report without treating blocked findings as a s
     const output = formatInboxReadinessText(report);
     assert.match(output, /草稿 1 · ready 0 · scheduled 0 · blocked 1/u);
     assert.match(output, /BLOCKED.*blocked-note\.md/u);
+    assert.match(output, /SOURCE SHA-256 [a-f0-9]{12}/u);
     assert.match(output, /附件来源 \[body\] L16/u);
     assert.match(output, /\[attachment-missing\]/u);
     assert.match(output, /不会移动、改写、提交或推送/u);
@@ -537,11 +558,12 @@ test("runs the real JSON CLI and leaves the repository byte-for-byte untouched",
     );
     assert.equal(result.status, 0, `${result.stdout}\n${result.stderr}`);
     const report = JSON.parse(result.stdout);
-    assert.equal(report.version, 5);
+    assert.equal(report.version, 6);
     assert.equal(report.mode, "read-only");
     assert.equal(report.counts.ready, 1);
     assert.equal(report.counts.drafts, 1);
     assert.equal(report.entries[0].sourcePath, "content/inbox/cli-note.md");
+    assert.equal(report.entries[0].sourceSha256, sha256(before));
     assert.deepEqual(await readFile(draftPath), before);
     assert.deepEqual(await readdir(join(root, "content", "posts")), []);
     assert.deepEqual(await readdir(join(root, "public", "uploads")), []);
