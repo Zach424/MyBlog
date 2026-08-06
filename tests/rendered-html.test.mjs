@@ -205,15 +205,24 @@ test("renders Markdown articles with metadata, anchors, code and navigation", as
   );
   assert.match(
     html,
-    /<section(?=[^>]*class="content-share")(?=[^>]*data-share-enhanced="false")(?=[^>]*data-share-state="idle")[^>]*>/u,
+    /<section(?=[^>]*class="content-share")(?=[^>]*data-action="none")(?=[^>]*data-share-enhanced="false")(?=[^>]*data-state="idle")[^>]*>/u,
   );
   assert.match(
     html,
-    /<a(?=[^>]*class="content-share-source")(?=[^>]*href="https:\/\/blog\.example\.test\/posts\/building-a-maintainable-blog")[^>]*>/u,
+    /<a(?=[^>]*class="share-url")(?=[^>]*href="https:\/\/blog\.example\.test\/posts\/building-a-maintainable-blog")[^>]*>/u,
   );
   assert.match(
     html,
-    /<div class="content-share-action" hidden=""><button(?=[^>]*class="content-share-button")(?=[^>]*type="button")[^>]*>/u,
+    /<div class="share-ops" hidden="">[\s\S]*?<button(?=[^>]*class="share-button share-button-main")(?=[^>]*type="button")[^>]*>/u,
+  );
+  assert.equal(
+    (html.match(/<button(?=[^>]*class="share-button [^"]+")[^>]*>/gu) ?? [])
+      .length,
+    2,
+  );
+  assert.match(
+    html,
+    /<button(?=[^>]*class="share-button share-button-md")(?=[^>]*type="button")[^>]*>/u,
   );
   assert.equal((html.match(/data-footnote-ref="true"/g) ?? []).length, 2);
   assert.match(html, /href="#note-fn-%E5%BD%93%E5%89%8D%E6%9E%B6%E6%9E%84"/);
@@ -263,11 +272,15 @@ test("renders project Markdown and returns a real 404 for unknown content", asyn
   );
   assert.match(
     projectHtml,
-    /<a(?=[^>]*class="content-share-source")(?=[^>]*href="https:\/\/blog\.example\.test\/projects\/myblog")[^>]*>/u,
+    /<a(?=[^>]*class="share-url")(?=[^>]*href="https:\/\/blog\.example\.test\/projects\/myblog")[^>]*>/u,
   );
   assert.match(
     projectHtml,
-    /<div class="content-share-action" hidden=""><button(?=[^>]*class="content-share-button")(?=[^>]*type="button")[^>]*>/u,
+    /<div class="share-ops" hidden="">[\s\S]*?<button(?=[^>]*class="share-button share-button-main")(?=[^>]*type="button")[^>]*>/u,
+  );
+  assert.match(
+    projectHtml,
+    /<button(?=[^>]*class="share-button share-button-md")(?=[^>]*type="button")[^>]*>/u,
   );
   assert.match(
     projectHtml,

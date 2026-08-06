@@ -1078,10 +1078,10 @@ input:focus-visible {
 }
 
 .content-share[data-share-enhanced="true"] {
-  grid-template-columns: 7.5rem minmax(0, 1fr) 10.5rem;
+  grid-template-columns: 7.5rem minmax(0, 1fr) minmax(18rem, 21rem);
 }
 
-.content-share-trace {
+.share-trace {
   display: flex;
   align-self: stretch;
   flex-direction: column;
@@ -1093,9 +1093,9 @@ input:focus-visible {
   text-transform: uppercase;
 }
 
-.content-share-trace span,
-.content-share-source span,
-.content-share-status {
+.share-trace span,
+.share-url span,
+.share-status {
   color: var(--faint);
   font-family: var(--mono);
   font-size: 0.5625rem;
@@ -1104,13 +1104,13 @@ input:focus-visible {
   text-transform: uppercase;
 }
 
-.content-share-trace strong {
+.share-trace strong {
   font-family: var(--display);
   font-size: 1rem;
   letter-spacing: 0.015em;
 }
 
-.content-share-source {
+.share-url {
   min-width: 0;
   display: flex;
   flex-direction: column;
@@ -1118,7 +1118,7 @@ input:focus-visible {
   text-decoration: none;
 }
 
-.content-share-source code {
+.share-url code {
   color: var(--muted);
   font-family: var(--mono);
   font-size: 0.6875rem;
@@ -1127,21 +1127,22 @@ input:focus-visible {
   transition: color 160ms ease;
 }
 
-.content-share-source:hover code {
+.share-url:hover code {
   color: var(--signal);
 }
 
-.content-share-action {
+.share-ops {
   min-width: 0;
   display: grid;
-  gap: 0.375rem;
+  grid-template-columns: minmax(0, 1.15fr) minmax(0, 0.85fr);
+  gap: 0.375rem 0.5rem;
 }
 
-.content-share-action[hidden] {
+.share-ops[hidden] {
   display: none;
 }
 
-.content-share-button {
+.share-button {
   min-height: 2.75rem;
   display: flex;
   align-items: center;
@@ -1159,35 +1160,49 @@ input:focus-visible {
   cursor: pointer;
 }
 
-.content-share-button:hover {
+.share-button-md {
+  color: var(--ink);
+  background: transparent;
+}
+
+.share-button:hover {
   border-color: var(--signal);
   background: var(--signal);
 }
 
-.content-share-button:disabled {
+.share-button:disabled {
   cursor: wait;
   opacity: 0.72;
 }
 
-.content-share-status {
+.share-status {
+  grid-column: 1 / -1;
   min-height: 1.5em;
   text-align: right;
   text-transform: none;
 }
 
-.content-share[data-share-state="shared"] .content-share-button,
-.content-share[data-share-state="copied"] .content-share-button {
+.content-share[data-action="share"][data-state="shared"]
+  .share-button-main,
+.content-share[data-action="share"][data-state="copied"]
+  .share-button-main,
+.content-share[data-action="citation"][data-state="copied"]
+  .share-button-md {
   border-color: var(--trace-dark);
   color: var(--ink);
   background: var(--trace);
 }
 
-.content-share[data-share-state="failed"] .content-share-button {
+.content-share[data-action="share"][data-state="failed"]
+  .share-button-main,
+.content-share[data-action="citation"][data-state="failed"]
+  .share-button-md {
   border-color: var(--signal);
+  color: var(--paper);
   background: var(--signal);
 }
 
-.content-share[data-share-state="failed"] .content-share-status {
+.content-share[data-state="failed"] .share-status {
   color: var(--signal);
 }
 
@@ -2967,7 +2982,7 @@ input:focus-visible {
     grid-template-columns: 7.5rem minmax(0, 1fr);
   }
 
-  .content-share-action {
+  .share-ops {
     grid-column: 2;
   }
 
@@ -3229,15 +3244,15 @@ input:focus-visible {
     padding-block: 1.5rem;
   }
 
-  .content-share-trace {
+  .share-trace {
     min-height: 2.75rem;
   }
 
-  .content-share-action {
+  .share-ops {
     grid-column: auto;
   }
 
-  .content-share-status {
+  .share-status {
     text-align: left;
   }
 

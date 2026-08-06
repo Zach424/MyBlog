@@ -11,6 +11,33 @@ export type CanonicalShareCapabilities = {
 
 export type CanonicalShareOutcome = "cancelled" | "copied" | "failed" | "shared";
 
+export type MarkdownCitationCopyOutcome = "copied" | "failed";
+
+export function createMarkdownCitation(
+  payload: Pick<CanonicalSharePayload, "title" | "url">,
+) {
+  const label = payload.title.replace(
+    /[\u0021-\u002f\u003a-\u0040\u005b-\u0060\u007b-\u007e]/gu,
+    "\\$&",
+  );
+
+  return `[${label}](${payload.url})`;
+}
+
+export async function copyMarkdownCitation(
+  payload: Pick<CanonicalSharePayload, "title" | "url">,
+  capabilities: Pick<CanonicalShareCapabilities, "copy">,
+): Promise<MarkdownCitationCopyOutcome> {
+  if (!capabilities.copy) return "failed";
+
+  try {
+    await capabilities.copy(createMarkdownCitation(payload));
+    return "copied";
+  } catch {
+    return "failed";
+  }
+}
+
 function isAbortError(error: unknown) {
   return (
     typeof error === "object" &&
