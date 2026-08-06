@@ -23,7 +23,7 @@ const CONTENT_DELIVERY_TRIAGE_REPORT_VERSION = 1;
 const AUTHOR_DOCTOR_REPORT_VERSION = 1;
 const INBOX_READINESS_REPORT_VERSION = 6;
 const AUTHOR_DOCTOR_NODE_ENGINE = ">=22.13.0";
-const AUTHOR_DOCTOR_PLUGIN_VERSION = "1.31.0";
+const AUTHOR_DOCTOR_PLUGIN_VERSION = "1.32.0";
 const DRAFT_TITLE_MAX_LENGTH = 120;
 const DRAFT_SLUG_MAX_LENGTH = 80;
 const DRAFT_SLUG_PATTERN = /^[a-z0-9]+(?:-[a-z0-9]+)*$/u;
@@ -4340,6 +4340,7 @@ module.exports = class MyBlogPublisher extends Plugin {
   onload() {
     this.activeRuns = new Map();
     this.authorTransactionLease = null;
+    this.currentDraftIntentGeneration = null;
     this.draftRenameLease = null;
     this.draftIdentityCleanupLease = null;
     this.lastAuthorTransactionReceipt = null;
@@ -4451,6 +4452,7 @@ module.exports = class MyBlogPublisher extends Plugin {
   }
 
   onunload() {
+    this.currentDraftIntentGeneration = null;
     this.draftRenameLease = null;
     this.draftIdentityCleanupLease = null;
     const authorLease = this.authorTransactionLease;
@@ -4542,6 +4544,8 @@ module.exports = class MyBlogPublisher extends Plugin {
     const identity = this.getActiveInboxDraftIdentity();
     if (!identity) return false;
     if (checking) return true;
+    const generation = Object.freeze({});
+    this.currentDraftIntentGeneration = generation;
     return this.runRepositoryCommand(
       [
         "--silent",
@@ -4558,11 +4562,18 @@ module.exports = class MyBlogPublisher extends Plugin {
         progress: `正在读取 ${identity.sourcePath} 的本地发布意图…`,
         startFailure: "当前草稿作者意图检查无法启动",
       },
-      (output) => this.openCurrentDraftIntent(output, identity),
+      (output) => this.openCurrentDraftIntent(output, identity, generation),
+      null,
+      () => this.isCurrentDraftIntentGeneration(generation),
     );
   }
 
-  openCurrentDraftIntent(output, identity) {
+  isCurrentDraftIntentGeneration(generation) {
+    return generation !== null && this.currentDraftIntentGeneration === generation;
+  }
+
+  openCurrentDraftIntent(output, identity, generation) {
+    if (!this.isCurrentDraftIntentGeneration(generation)) return;
     const current = this.getActiveInboxDraftIdentity();
     const frozenFile = this.app.vault.getAbstractFileByPath(identity.sourcePath);
     if (
@@ -4584,10 +4595,11 @@ module.exports = class MyBlogPublisher extends Plugin {
       );
       return;
     }
-    void this.openVerifiedCurrentDraftIntent(evidence, identity);
+    void this.openVerifiedCurrentDraftIntent(evidence, identity, generation);
   }
 
-  async openVerifiedCurrentDraftIntent(evidence, identity) {
+  async openVerifiedCurrentDraftIntent(evidence, identity, generation) {
+    if (!this.isCurrentDraftIntentGeneration(generation)) return;
     const file = this.app.vault.getAbstractFileByPath(identity.sourcePath);
     const current = this.getActiveInboxDraftIdentity();
     if (
@@ -4607,10 +4619,12 @@ module.exports = class MyBlogPublisher extends Plugin {
     try {
       content = await this.app.vault.read(file);
     } catch (error) {
+      if (!this.isCurrentDraftIntentGeneration(generation)) return;
       new Notice(`草稿 SHA-256 校验失败：${error.message}；摘要未打开。`, 10000);
       return;
     }
 
+    if (!this.isCurrentDraftIntentGeneration(generation)) return;
     const currentAfterRead = this.getActiveInboxDraftIdentity();
     if (
       !currentAfterRead ||
@@ -5444,7 +5458,13 @@ module.exports = class MyBlogPublisher extends Plugin {
     return true;
   }
 
-  runRepositoryCommand(npmArgs, messages, onSuccess, authorLease = null) {
+  runRepositoryCommand(
+    npmArgs,
+    messages,
+    onSuccess,
+    authorLease = null,
+    continuationGuard = null,
+  ) {
     const root = this.app.vault.adapter.getBasePath();
     const executable = process.platform === "win32"
       ? (process.env.ComSpec || "cmd.exe")
@@ -5453,6 +5473,7 @@ module.exports = class MyBlogPublisher extends Plugin {
       ? ["/d", "/s", "/c", "npm", ...npmArgs]
       : npmArgs;
     const progressNotice = new Notice(messages.progress, 0);
+    const canContinue = () => !continuationGuard || continuationGuard();
 
     let child;
     try {
@@ -5506,10 +5527,12 @@ module.exports = class MyBlogPublisher extends Plugin {
     child.on("error", (error) => {
       if (!cancel()) return;
       this.releaseAuthorTransactionLease(authorLease, child, "start-failed");
+      if (!canContinue()) return;
       new Notice(`${messages.startFailure}: ${error.message}`, 10000);
     });
     child.on("close", (code) => {
       if (!cancel()) return;
+      if (!canContinue()) return;
       const allowedExitCodes = messages.allowedExitCodes ?? [0];
       if (allowedExitCodes.includes(code)) {
         let terminalOutcome = "completed";

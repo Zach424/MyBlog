@@ -90,6 +90,7 @@ function createElement(tag, options = {}) {
 async function createPluginHarness({
   activeFilePath,
   createFailure,
+  deferredVaultReadNumbers = [],
   desktop = true,
   editorLineCount,
   fileContents = {},
@@ -120,6 +121,7 @@ async function createPluginHarness({
   const renameAttempts = [];
   const templateReads = [];
   const vaultReads = [];
+  const deferredVaultReads = new Map();
   let reconciliations = 0;
   const spawned = [];
   let spawnAttempts = 0;
@@ -283,6 +285,11 @@ async function createPluginHarness({
           activeFileOverride = null;
           activeView = null;
         }
+        if (deferredVaultReadNumbers.includes(vaultReads.length)) {
+          await new Promise((resolve) => {
+            deferredVaultReads.set(vaultReads.length, resolve);
+          });
+        }
         return content;
       },
       async process(file, callback) {
@@ -400,6 +407,12 @@ async function createPluginHarness({
     plugin,
     processAttempts,
     renameAttempts,
+    resolveVaultRead(readNumber) {
+      const resolve = deferredVaultReads.get(readNumber);
+      if (!resolve) throw new Error(`Vault read ${readNumber} is not deferred`);
+      deferredVaultReads.delete(readNumber);
+      resolve();
+    },
     replaceFile(path, { keepActiveFile = false } = {}) {
       const current = fileMap.get(path) ?? null;
       const replacement = new TFile(path);
@@ -902,7 +915,7 @@ function authorDoctorReport() {
     ["workspace-dependencies", "workspace", "Workspace dependencies", "35/35 pinned packages", "all declared packages installed at pinned versions"],
     ["content-layout", "workspace", "Content layout", "5/5 required paths", "5 required authoring paths"],
     ["obsidian-vault", "vault", "Obsidian Vault", ".obsidian present", ".obsidian directory present"],
-    ["publisher-plugin", "vault", "MyBlog Publisher", "myblog-publisher@1.31.0 · desktop", "myblog-publisher 1.31.0 desktop plugin"],
+    ["publisher-plugin", "vault", "MyBlog Publisher", "myblog-publisher@1.32.0 · desktop", "myblog-publisher 1.32.0 desktop plugin"],
   ];
   const scripts = [
     "content:author:doctor",
@@ -949,7 +962,7 @@ function authorDoctorReport() {
           isDesktopOnly: true,
           mainPresent: true,
           stylesPresent: true,
-          version: "1.31.0",
+          version: "1.32.0",
         },
       },
       workspace: {
@@ -1711,6 +1724,146 @@ test("binds the summary and every source jump to the same exact draft bytes", as
     assert.deepEqual(harness.openedFiles, []);
     assert.equal(modal.closed, false);
     assert.match(harness.notices.at(-1).message, /LINK.*SHA-256.*证据已过期.*重新运行/u);
+  });
+});
+
+test("keeps current-draft intent evidence latest-wins through async verification and unload", async (t) => {
+  const sourcePath = "content/inbox/current-draft.md";
+  const source = filenameOwnedDraft();
+  const report = JSON.stringify(inboxReadinessReport({ sourceContent: source }));
+  const successNotice = /SHA-256 绑定的本地只读证据生成/u;
+
+  await t.test("stale successful command result is silent", async () => {
+    const harness = await createPluginHarness({
+      activeFilePath: sourcePath,
+      fileContents: { [sourcePath]: source },
+      files: [],
+    });
+    const command = findCommand(harness, "inspect-current-draft-intent");
+    command.checkCallback(false);
+    command.checkCallback(false);
+
+    harness.spawned[0].child.stdout.emit("data", Buffer.from("not-json"));
+    harness.spawned[0].child.emit("close", 0);
+    assert.equal(harness.modals.length, 0);
+    assert.deepEqual(harness.vaultReads, []);
+    assert.equal(
+      harness.notices.some((notice) => /作者意图摘要证据不可用/u.test(notice.message)),
+      false,
+    );
+
+    harness.spawned[1].child.stdout.emit("data", Buffer.from(report));
+    harness.spawned[1].child.emit("close", 0);
+    await settleAsyncWork();
+    assert.equal(harness.modals.length, 1);
+    assert.deepEqual(harness.vaultReads, [sourcePath]);
+    assert.equal(
+      harness.notices.filter((notice) => successNotice.test(notice.message)).length,
+      1,
+    );
+  });
+
+  await t.test("stale command failure is silent", async () => {
+    const harness = await createPluginHarness({
+      activeFilePath: sourcePath,
+      fileContents: { [sourcePath]: source },
+      files: [],
+    });
+    const command = findCommand(harness, "inspect-current-draft-intent");
+    command.checkCallback(false);
+    command.checkCallback(false);
+    harness.spawned[0].child.stderr.emit("data", Buffer.from("old command failed"));
+    harness.spawned[0].child.emit("close", 1);
+
+    assert.equal(
+      harness.notices.some((notice) => /当前草稿作者意图检查未完成/u.test(notice.message)),
+      false,
+    );
+    assert.equal(harness.modals.length, 0);
+    assert.deepEqual(harness.vaultReads, []);
+
+    harness.spawned[1].child.stdout.emit("data", Buffer.from(report));
+    harness.spawned[1].child.emit("close", 0);
+    await settleAsyncWork();
+    assert.equal(harness.modals.length, 1);
+  });
+
+  await t.test("stale command error is silent", async () => {
+    const harness = await createPluginHarness({
+      activeFilePath: sourcePath,
+      fileContents: { [sourcePath]: source },
+      files: [],
+    });
+    const command = findCommand(harness, "inspect-current-draft-intent");
+    command.checkCallback(false);
+    command.checkCallback(false);
+    harness.spawned[0].child.emit("error", new Error("old process error"));
+
+    assert.equal(
+      harness.notices.some((notice) => /当前草稿作者意图检查无法启动/u.test(notice.message)),
+      false,
+    );
+    assert.equal(harness.plugin.activeRuns.size, 1);
+
+    harness.spawned[1].child.stdout.emit("data", Buffer.from(report));
+    harness.spawned[1].child.emit("close", 0);
+    await settleAsyncWork();
+    assert.equal(harness.modals.length, 1);
+  });
+
+  await t.test("stale digest read cannot open after the latest result", async () => {
+    const harness = await createPluginHarness({
+      activeFilePath: sourcePath,
+      deferredVaultReadNumbers: [1],
+      fileContents: { [sourcePath]: source },
+      files: [],
+    });
+    const command = findCommand(harness, "inspect-current-draft-intent");
+    command.checkCallback(false);
+    harness.spawned[0].child.stdout.emit("data", Buffer.from(report));
+    harness.spawned[0].child.emit("close", 0);
+    assert.deepEqual(harness.vaultReads, [sourcePath]);
+
+    command.checkCallback(false);
+    harness.spawned[1].child.stdout.emit("data", Buffer.from(report));
+    harness.spawned[1].child.emit("close", 0);
+    await settleAsyncWork();
+    assert.equal(harness.modals.length, 1);
+    assert.deepEqual(harness.vaultReads, [sourcePath, sourcePath]);
+
+    harness.resolveVaultRead(1);
+    await settleAsyncWork();
+    assert.equal(harness.modals.length, 1);
+    assert.equal(
+      harness.notices.filter((notice) => successNotice.test(notice.message)).length,
+      1,
+    );
+    assert.equal(harness.spawned.length, 2);
+  });
+
+  await t.test("unload invalidates an in-flight digest read", async () => {
+    const harness = await createPluginHarness({
+      activeFilePath: sourcePath,
+      deferredVaultReadNumbers: [1],
+      fileContents: { [sourcePath]: source },
+      files: [],
+    });
+    findCommand(harness, "inspect-current-draft-intent").checkCallback(false);
+    harness.spawned[0].child.stdout.emit("data", Buffer.from(report));
+    harness.spawned[0].child.emit("close", 0);
+    assert.deepEqual(harness.vaultReads, [sourcePath]);
+
+    harness.plugin.onunload();
+    assert.equal(harness.plugin.currentDraftIntentGeneration, null);
+    harness.resolveVaultRead(1);
+    await settleAsyncWork();
+
+    assert.equal(harness.modals.length, 0);
+    assert.equal(
+      harness.notices.filter((notice) => successNotice.test(notice.message)).length,
+      0,
+    );
+    assert.equal(harness.spawned.length, 1);
   });
 });
 
@@ -2552,7 +2705,7 @@ test("renders a versioned maintenance ledger and opens an exact Vault note", asy
     createPluginHarness(),
   ]);
   const manifest = JSON.parse(manifestSource);
-  assert.equal(manifest.version, "1.31.0");
+  assert.equal(manifest.version, "1.32.0");
   assert.equal(manifest.minAppVersion, "1.5.7");
   assert.equal(manifest.isDesktopOnly, true);
   assert.match(styles, /^\.myblog-draft-create \{/mu);
