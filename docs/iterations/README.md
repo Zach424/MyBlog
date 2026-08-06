@@ -83,6 +83,7 @@
 0076-draft-media-alternative-text-trace.md
 0077-draft-media-alternative-text-provenance.md
 0078-draft-media-alt-source-navigation.md
+0079-draft-link-source-navigation.md
 ```
 
 ## 必填结构
