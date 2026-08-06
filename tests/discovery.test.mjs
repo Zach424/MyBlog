@@ -1,6 +1,7 @@
 import assert from "node:assert/strict";
 import test from "node:test";
 import {
+  createJsonFeed,
   createRobotsText,
   createRssXml,
   createSitemapXml,
@@ -8,6 +9,7 @@ import {
 import { resolveSiteUrl } from "../lib/site.ts";
 
 const post = {
+  body: "# Build\n\nUse **evidence** & [source](https://example.com) `code`.",
   kind: "post",
   type: "article",
   title: "Build & verify <Worker>",
@@ -21,6 +23,9 @@ const post = {
 };
 
 const project = {
+  body: "<span>Visible project evidence</span>",
+  cover: "/uploads/myblog/cover.webp",
+  coverAlt: "MyBlog evidence rail",
   kind: "project",
   title: "MyBlog",
   description: "Project record",
@@ -47,6 +52,69 @@ test("creates escaped RSS with stable absolute item URLs", () => {
   assert.match(xml, /<atom:link href="https:\/\/blog\.example\.test\/rss\.xml"/);
   assert.match(xml, /<guid isPermaLink="true">https:\/\/blog\.example\.test\/posts\/build-worker<\/guid>/);
   assert.equal((xml.match(/<item>/g) ?? []).length, 2);
+});
+
+test("creates a JSON Feed 1.1 document with stable plain-text items", () => {
+  const source = createJsonFeed(new URL("https://blog.example.test"), [project, post]);
+  const feed = JSON.parse(source);
+
+  assert.equal(source.endsWith("\n"), true);
+  assert.deepEqual(Object.keys(feed), [
+    "version",
+    "title",
+    "home_page_url",
+    "feed_url",
+    "description",
+    "language",
+    "authors",
+    "icon",
+    "items",
+  ]);
+  assert.equal(feed.version, "https://jsonfeed.org/version/1.1");
+  assert.equal(feed.title, "Zach424 / Engineering Notes");
+  assert.equal(feed.home_page_url, "https://blog.example.test/");
+  assert.equal(feed.feed_url, "https://blog.example.test/feed.json");
+  assert.equal(feed.language, "zh-CN");
+  assert.deepEqual(feed.authors, [
+    { name: "Zach424", url: "https://github.com/Zach424" },
+  ]);
+  assert.equal(feed.icon, "https://blog.example.test/icon.png");
+  assert.deepEqual(feed.items.map((item) => item.id), [
+    "https://blog.example.test/posts/build-worker",
+    "https://blog.example.test/projects/myblog",
+  ]);
+
+  const [postItem, projectItem] = feed.items;
+  assert.equal(postItem.url, postItem.id);
+  assert.equal(postItem.title, "Build & verify <Worker>");
+  assert.equal(postItem.summary, "A deterministic route & feed.");
+  assert.equal(postItem.content_text, "Build Use evidence & source code.");
+  assert.equal(postItem.date_published, "2026-07-18T00:00:00Z");
+  assert.equal(postItem.date_modified, "2026-07-19T00:00:00Z");
+  assert.deepEqual(postItem.tags, ["TypeScript"]);
+
+  assert.equal(projectItem.content_text, "Visible project evidence");
+  assert.doesNotMatch(projectItem.content_text, /<span>/u);
+  assert.equal("date_modified" in projectItem, false);
+  assert.equal(
+    projectItem.banner_image,
+    "https://blog.example.test/uploads/myblog/cover.webp",
+  );
+  assert.equal("body" in projectItem, false);
+  assert.equal("sourcePath" in projectItem, false);
+  assert.equal("draft" in projectItem, false);
+});
+
+test("sorts JSON Feed items without mutating the caller's public records", () => {
+  const records = [
+    { ...post, title: "Zulu", url: "/posts/zulu" },
+    { ...post, title: "Alpha", url: "/posts/alpha" },
+  ];
+  const originalOrder = records.map((record) => record.url);
+  const feed = JSON.parse(createJsonFeed(new URL("https://blog.example.test"), records));
+
+  assert.deepEqual(records.map((record) => record.url), originalOrder);
+  assert.deepEqual(feed.items.map((item) => item.title), ["Alpha", "Zulu"]);
 });
 
 test("creates a complete sitemap and a linked robots policy", () => {

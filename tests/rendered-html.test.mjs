@@ -42,6 +42,10 @@ test("server-renders the engineering log homepage", async () => {
     html,
     /<link(?=[^>]*rel="alternate")(?=[^>]*type="application\/rss\+xml")(?=[^>]*href="https:\/\/blog\.example\.test\/rss\.xml")[^>]*>/i,
   );
+  assert.match(
+    html,
+    /<link(?=[^>]*rel="alternate")(?=[^>]*type="application\/feed\+json")(?=[^>]*href="https:\/\/blog\.example\.test\/feed\.json")[^>]*>/i,
+  );
   assert.match(html, /<link(?=[^>]*rel="icon")(?=[^>]*href="[^"]*icon\.png[^"]*")[^>]*>/i);
   assert.match(html, /<a class="skip-link" href="#main-content">/i);
   assert.match(html, /<nav class="site-nav" aria-label="主导航">/i);
@@ -54,7 +58,7 @@ test("server-renders the engineering log homepage", async () => {
   assert.match(html, /从零搭建可维护的个人技术博客/);
   assert.match(html, /MyBlog — 把学习记录做成工程资产/);
   assert.match(html, /公开生产上线/);
-  assert.match(html, /Guest · 23 routes · Browser QA/);
+  assert.match(html, /Guest · 24 public URLs · Browser QA/);
   assert.match(html, /持续内容发布与维护/);
   assert.match(html, /权限变更也要做未登录验收/);
   const revisionDate = /REV\. 010 · (\d{4}-\d{2}-\d{2})/u.exec(visibleHtml)?.[1];
@@ -354,12 +358,47 @@ test("server-renders a shareable search query against posts and projects", async
   assert.match(formulaHtml, /MyBlog — 把学习记录做成工程资产/u);
 });
 
-test("publishes RSS, Sitemap and robots from the same public content index", async () => {
-  const [rssResponse, sitemapResponse, robotsResponse] = await Promise.all([
+test("publishes JSON Feed, RSS, Sitemap and robots from the same public content index", async () => {
+  const [jsonFeedResponse, rssResponse, sitemapResponse, robotsResponse] = await Promise.all([
+    render("/feed.json"),
     render("/rss.xml"),
     render("/sitemap.xml"),
     render("/robots.txt"),
   ]);
+
+  assert.equal(jsonFeedResponse.status, 200);
+  assert.match(
+    jsonFeedResponse.headers.get("content-type") ?? "",
+    /^application\/feed\+json;\s*charset=utf-8$/i,
+  );
+  assert.equal(
+    jsonFeedResponse.headers.get("cache-control"),
+    "public, max-age=3600, stale-while-revalidate=86400",
+  );
+  const jsonFeedSource = await jsonFeedResponse.text();
+  const jsonFeed = JSON.parse(jsonFeedSource);
+  assert.equal(jsonFeed.version, "https://jsonfeed.org/version/1.1");
+  assert.equal(jsonFeed.home_page_url, "https://blog.example.test/");
+  assert.equal(jsonFeed.feed_url, "https://blog.example.test/feed.json");
+  assert.equal(jsonFeed.language, "zh-CN");
+  assert.deepEqual(jsonFeed.authors, [
+    { name: "Zach424", url: "https://github.com/Zach424" },
+  ]);
+  assert.ok(jsonFeed.items.every((item) => typeof item.content_text === "string" && item.content_text.length > 0));
+  assert.ok(jsonFeed.items.every((item) => item.id === item.url));
+  assert.ok(jsonFeed.items.every((item) => !Reflect.has(item, "body") && !Reflect.has(item, "draft")));
+  const projectFeedItem = jsonFeed.items.find(
+    (item) => item.id === "https://blog.example.test/projects/myblog",
+  );
+  assert.ok(projectFeedItem);
+  assert.equal(
+    projectFeedItem.banner_image,
+    "https://blog.example.test/uploads/myblog/cover.webp",
+  );
+  assert.match(projectFeedItem.content_text, /证据/u);
+  assert.match(projectFeedItem.date_modified, /^\d{4}-\d{2}-\d{2}T00:00:00Z$/u);
+  const jsonFeedUrls = jsonFeed.items.map((item) => item.id);
+  assert.equal(new Set(jsonFeedUrls).size, jsonFeedUrls.length, "JSON Feed 内容 URL 不能重复");
 
   assert.equal(rssResponse.status, 200);
   assert.match(rssResponse.headers.get("content-type") ?? "", /^application\/rss\+xml/i);
@@ -372,6 +411,7 @@ test("publishes RSS, Sitemap and robots from the same public content index", asy
   );
   assert.ok(rssUrls.length >= 4, "RSS 至少应包含初始公开内容");
   assert.equal(new Set(rssUrls).size, rssUrls.length, "RSS 内容 URL 不能重复");
+  assert.deepEqual(jsonFeedUrls, rssUrls, "JSON Feed 与 RSS 必须保持同一公开顺序");
 
   assert.equal(sitemapResponse.status, 200);
   assert.match(sitemapResponse.headers.get("content-type") ?? "", /^application\/xml/i);
@@ -388,7 +428,7 @@ test("publishes RSS, Sitemap and robots from the same public content index", asy
   assert.deepEqual(
     [...sitemapContentUrls].sort(),
     [...rssUrls].sort(),
-    "RSS 与 Sitemap 必须来自同一份公开内容索引",
+    "JSON Feed、RSS 与 Sitemap 必须来自同一份公开内容索引",
   );
 
   assert.equal(robotsResponse.status, 200);

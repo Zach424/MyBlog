@@ -83,7 +83,7 @@ redirects:
 
 标签来自 `lib/content/contract.ts` 的注册表，Studio 从同一注册表维护等价选项。别名只用于输入归一化，页面始终输出规范名称和 slug。
 
-可见日期按作者时区 `Asia/Shanghai` 在构建时冻结。`draft: true`、发布日期晚于构建日期的记录不会出现在详情、集合、搜索、RSS 或 Sitemap。
+可见日期按作者时区 `Asia/Shanghai` 在构建时冻结。`draft: true`、发布日期晚于构建日期的记录不会出现在详情、集合、搜索、JSON Feed、RSS 或 Sitemap。
 
 ## 内容语境与复核
 
@@ -114,7 +114,7 @@ redirects:
 - `lib/content/index.ts`：使用 Node 文件系统读取 Markdown，并生成公开文章、项目、标签和专题索引；
 - `next.config.ts`：注入构建日期，并通过 `outputFileTracingIncludes` 把 Markdown 纳入 Vercel Serverless 产物；
 - `lib/content/markdown.ts`：生成与正文一致的目录锚点；
-- `lib/search.ts`、`lib/discovery.ts`：从同一公开集合生成搜索文档、RSS 和 Sitemap。
+- `lib/search-index.ts`、`lib/discovery.ts`：从同一公开集合生成搜索纯文本、JSON Feed 1.1、RSS 和 Sitemap。
 
 选择 `yaml` 而不是允许可执行 frontmatter 的解析器，避免把动态执行带进生产包，并让字段约束可审计。
 

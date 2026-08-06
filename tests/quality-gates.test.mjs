@@ -103,7 +103,12 @@ async function directoryStats(url) {
 }
 
 test("applies the production security and cache baseline", async () => {
-  for (const pathname of ["/", "/posts/building-a-maintainable-blog", "/rss.xml"]) {
+  for (const pathname of [
+    "/",
+    "/posts/building-a-maintainable-blog",
+    "/feed.json",
+    "/rss.xml",
+  ]) {
     const response = await request(pathname);
     assert.equal(response.status, 200, pathname);
     assert.equal(response.headers.get("x-content-type-options"), "nosniff", pathname);

@@ -40,6 +40,9 @@ test("connects Vercel verification, maintenance reporting, rollback, and Studio 
   assert.match(smoke, /Sitemap 路由失败/);
   assert.match(smoke, /assertHtmlBudgets/);
   assert.match(smoke, /assertHtmlBudgetCoverage/);
+  assert.match(smoke, /\/feed\.json/);
+  assert.match(smoke, /application\/feed\+json/);
+  assert.match(smoke, /https:\/\/jsonfeed\.org\/version\/1\.1/);
   assert.match(smoke, /formatHtmlBudgetReport/);
   assert.match(smoke, /\/knowledge/);
   assert.match(smoke, /\/blog 永久重定向/);

@@ -1,6 +1,6 @@
 # 搜索与发布发现
 
-- 状态：implemented in iteration 0006
+- 状态：RSS/Sitemap/robots implemented in iteration 0006；JSON Feed 1.1 implemented in iteration 0088
 - 目标：让公开内容可搜索、可订阅、可被搜索引擎发现，同时保持 Git 内容源和无数据库架构。
 
 ## 站内搜索
@@ -22,6 +22,19 @@
 
 RSS 对 XML 特殊字符统一转义，并从公开内容字段生成标题、摘要、分类和链接。根布局同时输出 RSS autodiscovery `<link>`。
 
+## JSON Feed 1.1
+
+- URL：`/feed.json`
+- MIME：`application/feed+json; charset=utf-8`
+- 内容：与 RSS 相同顺序的全部公开文章、TIL 与项目
+- `id` / `url`：内容稳定绝对 URL
+- 正文：复用搜索使用的 Markdown AST 纯文本管线，移除语法和 raw HTML 标签，保留可见文字、代码、公式源码与图片替代文本
+- 日期：`publishedAt` / 可选 `updatedAt` 确定性映射到 UTC 零点 RFC 3339
+- 媒体：站点 256×256 icon；有本地 cover 的 item 输出绝对 `banner_image`
+- 缓存：1 小时 fresh，24 小时 stale-while-revalidate
+
+Feed 顶层声明 JSON Feed 1.1 `version`、站点标题/说明、`home_page_url`、`feed_url`、`language: zh-CN` 和作者。item 只暴露公开阅读字段，不包含 `draft`、源文件路径或原始 Markdown body；若 Markdown 没有可见纯文本，使用公开摘要兜底。生成器、HTTP 和生产冒烟都要求 JSON Feed 与 RSS 的稳定内容 URL 顺序完全一致。根布局使用独立 `application/feed+json` alternate link 供订阅器发现，RSS 链接保持兼容。
+
 ## Sitemap
 
 - URL：`/sitemap.xml`
@@ -29,7 +42,7 @@ RSS 对 XML 特殊字符统一转义，并从公开内容字段生成标题、�
 - `lastmod`：内容使用 `updatedAt` 或 `publishedAt`；集合使用其最新公开内容日期
 - 缓存：1 小时 fresh，24 小时 stale-while-revalidate
 
-当前首批内容生成 23 个 URL。Sitemap 不包含草稿、未来日期、查询参数或 RSS/robots 端点本身。
+当前公开内容生成 24 个 URL。Sitemap 不包含草稿、未来日期、查询参数或 JSON Feed/RSS/robots 端点本身。
 
 ## Robots
 
@@ -37,10 +50,10 @@ RSS 对 XML 特殊字符统一转义，并从公开内容字段生成标题、�
 
 ## 绝对 URL
 
-页面元数据与三个发布端点共用 `lib/site.ts`。解析优先级为：
+页面元数据与四个发布端点共用 `lib/site.ts`。解析优先级为：
 
 1. 托管环境显式设置的 `NEXT_PUBLIC_SITE_URL`；
 2. Vercel/反向代理提供的首个 `x-forwarded-host` 与 `x-forwarded-proto`；
 3. 请求 URL 或本地 `http://localhost:3000` 回退。
 
-因此本地、预览域名和正式域名不需要维护多份 feed 或 Sitemap 配置。
+因此本地、预览域名和正式域名不需要维护多份 Feed 或 Sitemap 配置。

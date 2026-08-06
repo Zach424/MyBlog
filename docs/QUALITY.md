@@ -66,7 +66,7 @@ npm run links:external -- --check --timeout-ms 5000 --concurrency 4 --retries 1
 npm run production:smoke -- https://example.vercel.app --expect-oauth
 ```
 
-检查代表内容、搜索、Studio HTML/配置/媒体清单/媒体预检/稳定 slug 控件/公式预览模块/版本化 KaTeX CSS/同源 CMS 运行时、OAuth、RSS、robots、全 Sitemap、永久重定向、安全头、缓存与随机 404。九条关键 HTML 路由还必须在实际传入的生产域名下逐条输出 raw/gzip 实测、阈值、基线和带正负号的余量；缺失、重复或意外路由失败关闭。线上公式 POST 必须返回两条公式、KaTeX、MathML 与生产管线标记，CSS 必须内联 WOFF2 且不残留 package 相对字体路径。媒体清单必须是 `version: 1`、根为 `public/uploads`，每项包含安全路径、正整数节数与 64 位 SHA-256，并保持 `no-store`。永久重定向检查要求 `/blog` 返回 308、同源 `Location` 直达 `/posts`，且目标只需一次请求即返回 200。`--expect-oauth` 只用于已配置 GitHub OAuth 的生产环境；本地和 Preview 允许 OAuth 以 503 安全关闭。
+检查代表内容、搜索、Studio HTML/配置/媒体清单/媒体预检/稳定 slug 控件/公式预览模块/版本化 KaTeX CSS/同源 CMS 运行时、OAuth、JSON Feed、RSS、robots、全 Sitemap、永久重定向、安全头、缓存与随机 404。JSON Feed 必须使用 1.1 version 和 `application/feed+json`，根 HTML 必须可发现，顶层 origin、作者、语言、icon 正确，item 必须有唯一同值 id/url、纯文本正文、RFC 3339 发布日期且不泄漏内部字段，并与 RSS 保持同一 URL 顺序。九条关键 HTML 路由还必须在实际传入的生产域名下逐条输出 raw/gzip 实测、阈值、基线和带正负号的余量；缺失、重复或意外路由失败关闭。线上公式 POST 必须返回两条公式、KaTeX、MathML 与生产管线标记，CSS 必须内联 WOFF2 且不残留 package 相对字体路径。媒体清单必须是 `version: 1`、根为 `public/uploads`，每项包含安全路径、正整数节数与 64 位 SHA-256，并保持 `no-store`。永久重定向检查要求 `/blog` 返回 308、同源 `Location` 直达 `/posts`，且目标只需一次请求即返回 200。`--expect-oauth` 只用于已配置 GitHub OAuth 的生产环境；本地和 Preview 允许 OAuth 以 503 安全关闭。
 
 ## 永久重定向质量门
 

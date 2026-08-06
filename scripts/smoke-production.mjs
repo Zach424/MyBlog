@@ -69,6 +69,11 @@ export async function runProductionSmoke(originInput, { expectOAuth = false } = 
   for (const header of ["content-security-policy", "x-content-type-options", "referrer-policy"]) {
     invariant(home.response.headers.has(header), `首页缺少 ${header}`);
   }
+  invariant(
+    home.body.includes('type="application/feed+json"') &&
+      home.body.includes(`${origin.origin}/feed.json`),
+    "首页缺少 JSON Feed 发现链接",
+  );
 
   const htmlBudgetReports = [
     measureHtmlBudget({ pathname: "/", html: home.body }),
@@ -373,11 +378,51 @@ export async function runProductionSmoke(originInput, { expectOAuth = false } = 
     invariant([302, 503].includes(oauth.response.status), `OAuth 状态 ${oauth.response.status}`);
   }
 
-  const [rss, robots, sitemap] = await Promise.all([
+  const [jsonFeed, rss, robots, sitemap] = await Promise.all([
+    request(origin, "/feed.json", { accept: "application/feed+json" }),
     request(origin, "/rss.xml", { accept: "application/rss+xml" }),
     request(origin, "/robots.txt", { accept: "text/plain" }),
     request(origin, "/sitemap.xml", { accept: "application/xml" }),
   ]);
+  let jsonFeedPayload;
+  try {
+    jsonFeedPayload = JSON.parse(jsonFeed.body);
+  } catch {
+    throw new Error("JSON Feed 响应不是有效 JSON");
+  }
+  const jsonFeedIds = Array.isArray(jsonFeedPayload.items)
+    ? jsonFeedPayload.items.map((item) => item.id)
+    : [];
+  const rssIds = [...rss.body.matchAll(/<guid isPermaLink="true">([^<]+)<\/guid>/gu)]
+    .map((match) => match[1]);
+  invariant(
+    jsonFeed.response.status === 200 &&
+      jsonFeed.response.headers.get("content-type")?.startsWith("application/feed+json") &&
+      jsonFeed.response.headers.get("cache-control") ===
+        "public, max-age=3600, stale-while-revalidate=86400" &&
+      jsonFeedPayload.version === "https://jsonfeed.org/version/1.1" &&
+      jsonFeedPayload.home_page_url === `${origin.origin}/` &&
+      jsonFeedPayload.feed_url === `${origin.origin}/feed.json` &&
+      jsonFeedPayload.language === "zh-CN" &&
+      jsonFeedPayload.icon === `${origin.origin}/icon.png` &&
+      jsonFeedIds.length >= 4 &&
+      new Set(jsonFeedIds).size === jsonFeedIds.length &&
+      jsonFeedPayload.items.every(
+        (item) =>
+          item.id === item.url &&
+          item.id.startsWith(`${origin.origin}/`) &&
+          typeof item.title === "string" &&
+          typeof item.summary === "string" &&
+          typeof item.content_text === "string" &&
+          item.content_text.length > 0 &&
+          /^\d{4}-\d{2}-\d{2}T00:00:00Z$/u.test(item.date_published) &&
+          !Object.hasOwn(item, "body") &&
+          !Object.hasOwn(item, "draft") &&
+          !Object.hasOwn(item, "sourcePath"),
+      ) &&
+      JSON.stringify(jsonFeedIds) === JSON.stringify(rssIds),
+    "JSON Feed 1.1 公开内容契约异常",
+  );
   invariant(rss.response.status === 200 && (rss.body.match(/<item>/gu) ?? []).length >= 4, "RSS 条目异常");
   invariant(robots.body.includes("Disallow: /studio"), "robots 未排除 Studio");
   invariant(robots.body.includes(`${origin.origin}/sitemap.xml`), "robots Sitemap 主机异常");

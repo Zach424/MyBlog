@@ -10,7 +10,7 @@
 | [ARCHITECTURE.md](./ARCHITECTURE.md) | 技术栈、模块边界、数据流和目录结构 | 架构变化时 |
 | [CONTENT_MODEL.md](./CONTENT_MODEL.md) | 内容类型、字段契约、URL 和校验规则 | 内容契约变化时 |
 | [DESIGN.md](./DESIGN.md) | 视觉概念、Token、排版和交互原则 | 设计系统变化时 |
-| [DISCOVERY.md](./DISCOVERY.md) | 搜索、RSS、Sitemap、robots 与绝对 URL | 发布发现能力变化时 |
+| [DISCOVERY.md](./DISCOVERY.md) | 搜索、JSON Feed、RSS、Sitemap、robots 与绝对 URL | 发布发现能力变化时 |
 | [QUALITY.md](./QUALITY.md) | 发布质量门、安全、缓存、体积预算与依赖审计 | 质量或部署基线变化时 |
 | [OPERATIONS.md](./OPERATIONS.md) | 内容发布、生产验收、监控、故障处理和回滚 | 运维流程或平台变化时 |
 | [MIGRATION.md](./MIGRATION.md) | 所有者账号配置、双入口验收、生产切换和回滚清单 | 迁移或生产 origin 变化时 |

@@ -5,6 +5,7 @@ import type {
   SeriesIndexEntry,
   TagIndexEntry,
 } from "./content";
+import { markdownToPlainText } from "./search-index.ts";
 import { absoluteSiteUrl, SITE_DESCRIPTION, SITE_TITLE } from "./site.ts";
 
 function escapeXml(value: string) {
@@ -28,17 +29,62 @@ function rssDate(date: string) {
   return new Date(`${date}T00:00:00.000Z`).toUTCString();
 }
 
+function jsonFeedDate(date: string) {
+  return `${date}T00:00:00Z`;
+}
+
+function sortContentRecords(records: ContentRecord[]) {
+  return records.slice().sort(
+    (left, right) =>
+      right.publishedAt.localeCompare(left.publishedAt) ||
+      left.title.localeCompare(right.title, "zh-CN"),
+  );
+}
+
+export function createJsonFeed(siteUrl: URL, records: ContentRecord[]) {
+  const items = sortContentRecords(records).map((record) => {
+    const url = absoluteSiteUrl(siteUrl, record.url);
+    const contentText = markdownToPlainText(record.body) || record.description;
+
+    return {
+      id: url,
+      url,
+      title: record.title,
+      summary: record.description,
+      content_text: contentText,
+      date_published: jsonFeedDate(record.publishedAt),
+      ...(record.updatedAt
+        ? { date_modified: jsonFeedDate(record.updatedAt) }
+        : {}),
+      tags: record.tags,
+      ...(record.cover
+        ? { banner_image: absoluteSiteUrl(siteUrl, record.cover) }
+        : {}),
+    };
+  });
+
+  return `${JSON.stringify(
+    {
+      version: "https://jsonfeed.org/version/1.1",
+      title: SITE_TITLE,
+      home_page_url: absoluteSiteUrl(siteUrl, "/"),
+      feed_url: absoluteSiteUrl(siteUrl, "/feed.json"),
+      description: SITE_DESCRIPTION,
+      language: "zh-CN",
+      authors: [{ name: "Zach424", url: "https://github.com/Zach424" }],
+      icon: absoluteSiteUrl(siteUrl, "/icon.png"),
+      items,
+    },
+    null,
+    2,
+  )}\n`;
+}
+
 export function createRssXml(siteUrl: URL, records: ContentRecord[]) {
   const feedUrl = absoluteSiteUrl(siteUrl, "/rss.xml");
   const homeUrl = absoluteSiteUrl(siteUrl, "/");
   const lastBuildDate = newestDate(records) ?? "2026-07-18";
-  const items = records
-    .slice()
-    .sort(
-      (left, right) =>
-        right.publishedAt.localeCompare(left.publishedAt) ||
-        left.title.localeCompare(right.title, "zh-CN"),
-    )
+  const items = sortContentRecords(records)
     .map((record) => {
       const url = absoluteSiteUrl(siteUrl, record.url);
       const categories = [record.kind === "project" ? "Project" : record.type, ...record.tags]

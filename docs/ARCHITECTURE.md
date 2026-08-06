@@ -12,7 +12,7 @@ MyBlog 是 Git-first 个人技术博客。公开阅读不依赖数据库；网�
 | 内容 | Markdown、YAML、Zod | 文章/项目解析、字段校验、草稿过滤与派生索引 |
 | 维护 | Node CLI、GitHub Actions | Current record 日龄、根媒体库存、外链库存、分级队列、摘要与过期门 |
 | 阅读 | react-markdown、remark-gfm、remark-math、rehype、KaTeX | GFM、标题锚点、代码高亮、脚注、数学公式与目录 |
-| 发现 | 本地搜索、RSS、Sitemap、robots、JSON-LD | 检索、订阅与搜索引擎发现 |
+| 发现 | 本地搜索、JSON Feed 1.1、RSS、Sitemap、robots、JSON-LD | 检索、订阅、自动化消费与搜索引擎发现 |
 | 发布 | Decap CMS、Obsidian、GitHub | 两个作者入口，共用同一内容事实源 |
 | 媒体 | Sharp、Markdown AST、`next/image`、Git `public/uploads` | 原图安全解码、WebP 优化、共享固有尺寸、响应式封面/正文图、引用所有权与附件版本化 |
 | 托管 | Vercel | Git 自动预览、`main` 生产部署、环境变量与回滚 |
@@ -26,7 +26,7 @@ app/
   studio/                           Studio HTML、内容复核队列、配置、媒体清单/预检、slug 控件、公式预览与版本化 CMS 运行时路由
   posts/ projects/ series/ tags/   集合与详情页
   knowledge/ search/ about/         知识地图、搜索和关于页
-  rss.xml/ sitemap.xml/ robots.txt/ 发现端点
+  feed.json/ rss.xml/ sitemap.xml/ robots.txt/ 发现端点
 components/                         站点框架、内容视图、Markdown、搜索
   ContentViews.tsx                  详情页事实、目录、引用账本与打印来源
   ContentCover.tsx                  文章/项目共享的响应式封面与 Artifact Rail
@@ -79,7 +79,7 @@ vercel.json                         Vercel Next.js 框架声明
 
 ## 4. 内容与构建
 
-`next.config.ts` 在开发和构建开始时冻结作者时区日期，并行执行内容、媒体文件、内容—媒体关系与永久重定向校验。内容校验器先验证全部 Markdown，再对已公开内容执行关系完整性与新鲜度检查；媒体校验器递归扫描 `public/uploads`，拒绝符号链接、非图片、损坏图片、扩展名伪装和预算超限；媒体关系校验器用标准 Markdown AST 读取正式 posts/projects 的 `cover`、行内图片与引用式图片，核对精确文件路径和 slug 所有权，再拒绝无人引用的已归档附件；重定向校验器交叉检查当前公开 HTML 路由、静态文件、运维命名空间与 `content/redirects.yml`。纯净 Git 检出尚无上传目录时等价于零张图片；目录一旦存在，所有文件和正式引用都必须通过校验。`lib/content/index.ts` 在构建/服务端从 `content/posts` 与 `content/projects` 读取文件，解析为统一记录，过滤草稿和未来内容，再派生专题、标签、搜索、RSS 与 Sitemap。
+`next.config.ts` 在开发和构建开始时冻结作者时区日期，并行执行内容、媒体文件、内容—媒体关系与永久重定向校验。内容校验器先验证全部 Markdown，再对已公开内容执行关系完整性与新鲜度检查；媒体校验器递归扫描 `public/uploads`，拒绝符号链接、非图片、损坏图片、扩展名伪装和预算超限；媒体关系校验器用标准 Markdown AST 读取正式 posts/projects 的 `cover`、行内图片与引用式图片，核对精确文件路径和 slug 所有权，再拒绝无人引用的已归档附件；重定向校验器交叉检查当前公开 HTML 路由、静态文件、运维命名空间与 `content/redirects.yml`。纯净 Git 检出尚无上传目录时等价于零张图片；目录一旦存在，所有文件和正式引用都必须通过校验。`lib/content/index.ts` 在构建/服务端从 `content/posts` 与 `content/projects` 读取文件，解析为统一记录，过滤草稿和未来内容，再派生专题、标签、搜索、JSON Feed、RSS 与 Sitemap。
 
 永久重定向注册表只接受小写 ASCII 精确路径，并要求每条记录包含加入日期和原因。来源不能仍是当前页面、公开静态文件、API/Studio 或 Next 内部路径；目标必须是同一次构建中的公开 HTML 页面。注册表拒绝重复来源、自跳转、链式跳转和环路，再由 Next `redirects()` 输出单跳 `308 Permanent Redirect`。查询参数沿用 Next 原生透传语义，旧地址不进入 Sitemap，也不另建内容副本。
 
@@ -225,7 +225,7 @@ Quality、生产冒烟与回滚工作流均使用 Node 24 runtime 的 checkout/s
 - GitHub 仓库是内容、附件、版本和回滚的唯一事实源。
 - 稳定 URL 来自文件名/slug，不随日期和平台变化。
 - 必要的 URL 迁移必须登记为有日期和原因的单跳永久重定向；来源不能遮蔽现有路由或文件，目标必须在同一构建中公开。
-- 草稿、未来内容不能进入页面、搜索、RSS 或 Sitemap。
+- 草稿、未来内容不能进入页面、搜索、JSON Feed、RSS 或 Sitemap。
 - 公开站内链接必须指向同一构建中的公开文章或项目；详情页 outgoing/backlinks 与 `/knowledge` 的节点、边和孤立状态只能从同一正文链接集合派生。
 - 公开内容必须声明语境和复核日期；Current record 超过 180 天未复核不能进入新部署。
 - Current record 的报告状态与构建硬门必须复用同一日龄计算；Historical、草稿和未来内容不进入维护队列。

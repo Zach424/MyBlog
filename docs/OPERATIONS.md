@@ -30,7 +30,7 @@ Secret 只保存在 Vercel/GitHub 的加密设置中，不进入 `.env.example`�
 5. 逐张确认实际格式、宽高、帧数和体积后，使用 Obsidian 的“发布当前草稿并同步 GitHub”或命令行 `--push`。`--push` 会把 `draft` 改为 `false` 后运行完整质量门、提交并推送；网页方式使用 editorial workflow。若新内容 push 失败，先运行“查看待同步新内容发布”，不要恢复草稿或再次发布；
 6. 让质量门通过，再把提交合并到 `main`；
 7. Vercel 自动创建生产部署，deployment status 工作流检查稳定公开生产域名；
-8. 打开文章、RSS 和 Sitemap，确认新内容可见且绝对 URL 指向当前生产域名。
+8. 打开文章、JSON Feed、RSS 和 Sitemap，确认新内容可见且绝对 URL 指向当前生产域名。
 
 ## URL 迁移
 
@@ -107,7 +107,7 @@ npm run release:check
 npm run production:smoke -- https://your-production.example --expect-oauth
 ```
 
-必须验证：首页、集合、文章、项目、知识地图、搜索、RSS、robots、Sitemap 全部 URL、Studio HTML/配置/媒体清单/媒体预检/稳定 slug 控件/预览/固定版本运行时、OAuth 跳转、安全头、缓存和真实 404；命令还会为九条关键 HTML 路由输出实际生产域名下的 raw/gzip、阈值、基线与余量，任何漏测、重复或超限都会失败。首次上线或域名切换还需用未登录浏览器覆盖桌面、320px、深色和键盘路径；域名变化后必须重新核对预算 origin 与真实生产基线，不能沿用替代主机的假绿。
+必须验证：首页、集合、文章、项目、知识地图、搜索、JSON Feed、RSS、robots、Sitemap 全部 URL、Studio HTML/配置/媒体清单/媒体预检/稳定 slug 控件/预览/固定版本运行时、OAuth 跳转、安全头、缓存和真实 404；JSON Feed 还要与 RSS 保持同一公开 URL 顺序，根页面必须包含实际生产 origin 的发现链接。命令会为九条关键 HTML 路由输出实际生产域名下的 raw/gzip、阈值、基线与余量，任何漏测、重复或超限都会失败。首次上线或域名切换还需用未登录浏览器覆盖桌面、320px、深色和键盘路径；域名变化后必须重新核对 Feed URL、预算 origin 与真实生产基线，不能沿用替代主机的假绿。
 
 ## 故障等级
 
