@@ -88,6 +88,11 @@ test("connects Vercel verification, maintenance reporting, rollback, and Studio 
   assert.match(smoke, /assertHtmlBudgetCoverage/);
   assert.match(smoke, /\/feed\.json/);
   assert.match(smoke, /\/content\.json/);
+  assert.match(smoke, /\/content\.schema\.json/);
+  assert.match(smoke, /application\/schema\+json/);
+  assert.match(smoke, /https:\/\/json-schema\.org\/draft\/2020-12\/schema/);
+  assert.match(smoke, /rel="describedby"/);
+  assert.match(smoke, /rel="describes"/);
   assert.match(smoke, /markdown_etag/);
   assert.match(smoke, /公开内容清单契约异常/);
   assert.match(smoke, /application\/feed\+json/);

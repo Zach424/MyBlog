@@ -91,13 +91,14 @@ function contentManifestHeaders(
   etag: string,
 ) {
   const manifestUrl = absoluteSiteUrl(siteUrl, "/content.json");
+  const schemaUrl = absoluteSiteUrl(siteUrl, "/content.schema.json");
   const homeUrl = absoluteSiteUrl(siteUrl, "/");
   const headers = new Headers({
     "cache-control": PUBLIC_CONDITIONAL_CACHE_CONTROL,
     "content-disposition": 'inline; filename="content.json"',
     "content-type": "application/json; charset=utf-8",
     etag,
-    link: `<${manifestUrl}>; rel="self"; type="application/json", <${homeUrl}>; rel="up"; type="text/html"`,
+    link: `<${manifestUrl}>; rel="self"; type="application/json", <${schemaUrl}>; rel="describedby"; type="application/schema+json", <${homeUrl}>; rel="up"; type="text/html"`,
     "x-robots-tag": "noindex",
   });
   const newestDate = newestPublicDate(records);

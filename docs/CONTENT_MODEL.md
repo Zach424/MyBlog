@@ -116,6 +116,7 @@ redirects:
 - `lib/content/markdown.ts`：生成与正文一致的目录锚点；
 - `lib/search-index.ts`、`lib/discovery.ts`：从同一公开集合生成搜索纯文本、JSON Feed 1.1、RSS 和 Sitemap；
 - `lib/content-manifest.ts`：生成只读公开内容清单，并把每项绑定到同 origin Markdown 源文 ETag；
+- `lib/content-manifest-schema.ts`：生成清单的 Draft 2020-12 JSON Schema 和双向 HTTP Link 关系；
 - `lib/public-markdown.ts`：从单条公开记录生成字段受限、链接可移植的 Markdown 投影。
 
 选择 `yaml` 而不是允许可执行 frontmatter 的解析器，避免把动态执行带进生产包，并让字段约束可审计。
@@ -125,6 +126,8 @@ redirects:
 `/content.json` 是供 Obsidian 和自动化工具批量发现内容的版本 1 只读清单。顶层字段固定为 `version`、`home_url`、`manifest_url`、`language`、`items`；每项固定输出 `id`、`kind`、公开 `type`、`title`、`html_url`、`markdown_url`、`markdown_etag`、`published_at`、可选 `updated_at`、`reviewed_at` 与 `tags`。`id` 等于本站 HTML URL，项目公开 type 固定为 `project`；清单与 JSON Feed 使用同一发布日期倒序、同日标题排序，不改变调用方集合。
 
 `markdown_etag` 不是数据库版本号，而是以清单请求 origin 生成该项最终可移植 Markdown 后得到的强 SHA-256 标签。调用方可以先条件读取小型清单，再只复核发生变化的单篇源文；域名切换会改变绝对 URL，并让所有含当前 origin URL 的源文标签同步变化，这是预期的表示变化。清单本身也有最终 JSON 字节 ETag、最新公开日期 Last-Modified、`noindex` 和分层缓存。正文、description、canonical、`draft`、`featured`、slug、`sourcePath` 及构建派生字段都不输出；清单只接收已经过草稿/未来过滤的公开 getter。
+
+`/content.schema.json` 是清单 version 1 的同源 JSON Schema Draft 2020-12。它固定顶层/条目字段、常量与枚举、同源路由形状、日期和 SHA-256 ETag token、标签唯一性及 kind/type 组合，并拒绝未知字段。清单以 `rel="describedby"` 发现 Schema，Schema 以 `rel="describes"` 指回清单；调用方可用标准 JSON Schema validator 在读取内容前先拦截结构漂移。Schema 无法单独表达全部跨字段和跨条目语义，`id`/`html_url` 同值、Markdown URL 派生、唯一 id、稳定排序和日期日历有效性仍由生产清单解析器校验。
 
 ## 公开可移植 Markdown
 

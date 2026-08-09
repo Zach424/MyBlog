@@ -1,6 +1,6 @@
 # 搜索与发布发现
 
-- 状态：RSS/Sitemap/robots implemented in iteration 0006；JSON Feed 1.1 implemented in iteration 0088；公开内容清单 implemented in iteration 0091
+- 状态：RSS/Sitemap/robots implemented in iteration 0006；JSON Feed 1.1 implemented in iteration 0088；公开内容清单 implemented in iteration 0091；清单 JSON Schema implemented in iteration 0099
 - 目标：让公开内容可搜索、可订阅、可被搜索引擎发现，同时保持 Git 内容源和无数据库架构。
 
 ## 站内搜索
@@ -47,10 +47,22 @@ Feed 顶层声明 JSON Feed 1.1 `version`、站点标题/说明、`home_page_url
 - 缓存：浏览器立即复核、CDN 一小时 fresh/一天 SWR；`If-None-Match` 命中返回空 304
 - 隐私：不输出正文、摘要、canonical、草稿、featured、slug、源文件路径或派生统计
 - 发现：根 HTML 声明 `application/json` alternate；清单端点自身不进入 Sitemap
+- Schema：清单响应以 `rel="describedby"` 指向同源 `/content.schema.json`
 
 清单不是第三个正文 Feed。JSON Feed 面向订阅读者并携带纯文本，`content.json` 面向同步器并携带地址与摘要验证器，单篇 `source.md` 才携带 Markdown 结构。三者从同一公开 getter 和稳定顺序派生；应用测试与生产冒烟逐项请求清单中的源文，要求响应 ETag 与 `markdown_etag` 在强/弱形式归一化后具有相同 opaque digest。
 
 本地 `content:production` 检查器把这个清单作为唯一生产事实：为相同 origin 从正式 Git 内容生成期望文档，在严格验证响应协议后按 id、`markdown_etag` 与其余公开字段输出 deployed/pending/missing/unexpected。传输失败与 schema 漂移不会生成内容状态；命令只读且有意不进入默认构建或 Actions。
+
+### 清单 JSON Schema
+
+- URL：`/content.schema.json`
+- Dialect：JSON Schema Draft 2020-12
+- MIME：`application/schema+json; charset=utf-8`
+- 标识：`$id` 使用当前请求 origin；Schema 响应以 `rel="describes"` 指回同源 `/content.json`
+- 验证范围：顶层与 item 字段白名单、version/language/origin 常量、路由和 token 形状、标签唯一性、post/project kind-type 组合
+- 缓存：与清单相同的分层缓存和 SHA-256 ETag；`If-None-Match` 命中为空 304；`noindex`
+
+Schema 让 Obsidian 插件、脚本与其他客户端无需导入本站 TypeScript 就能先做结构验证。本地契约测试用 Ajv 2020 校验真实清单并覆盖未知字段、必填缺失、kind/type 错配、跨 origin URL、坏 ETag/日期和重复标签等反例。`id === html_url`、Markdown URL 派生、条目 id 唯一、稳定排序和真实日历日期属于关系语义，继续由生产清单解析器失败关闭，不能因为通过通用 Schema 就放宽。
 
 `content:production:wait -- --source <正式 Markdown>` 在同一协议上增加单篇有界收敛。它冻结来源 SHA-256 与目标 `markdown_etag`，首次读取完整清单，随后携带已验证响应 ETag 进行条件 GET；严格 304 复用上一快照，修改响应则重新验证全部清单后再比较目标。只有该 id 与冻结公开记录完全一致才结束为 deployed；pending/missing 继续到总时限，生产多出、来源漂移或协议错误立即失败。作者可以手动运行；Obsidian 1.41.0 也能在可信正常交付或 sealed recovery delivery 的 Git handoff、可能存在的作者事务释放和 Vault reconcile 后自动启动同一只读等待器。它仍不是部署器、Webhook 或默认 CI 门，失败不得反向触发 Git。
 

@@ -373,9 +373,10 @@ test("server-renders a shareable search query against posts and projects", async
   assert.match(formulaHtml, /MyBlog — 把学习记录做成工程资产/u);
 });
 
-test("publishes a content manifest, JSON Feed, RSS, Sitemap and robots from the same public index", async () => {
-  const [manifestResponse, jsonFeedResponse, rssResponse, sitemapResponse, robotsResponse] = await Promise.all([
+test("publishes a content manifest, its schema, JSON Feed, RSS, Sitemap and robots from the same public index", async () => {
+  const [manifestResponse, schemaResponse, jsonFeedResponse, rssResponse, sitemapResponse, robotsResponse] = await Promise.all([
     render("/content.json", { accept: "application/json" }),
+    render("/content.schema.json", { accept: "application/schema+json" }),
     render("/feed.json"),
     render("/rss.xml"),
     render("/sitemap.xml"),
@@ -396,6 +397,10 @@ test("publishes a content manifest, JSON Feed, RSS, Sitemap and robots from the 
     'inline; filename="content.json"',
   );
   assert.equal(manifestResponse.headers.get("x-robots-tag"), "noindex");
+  assert.equal(
+    manifestResponse.headers.get("link"),
+    '<https://blog.example.test/content.json>; rel="self"; type="application/json", <https://blog.example.test/content.schema.json>; rel="describedby"; type="application/schema+json", <https://blog.example.test/>; rel="up"; type="text/html"',
+  );
   const manifestEtag = manifestResponse.headers.get("etag");
   const manifestSource = await manifestResponse.text();
   assert.equal(
@@ -449,6 +454,47 @@ test("publishes a content manifest, JSON Feed, RSS, Sitemap and robots from the 
   assert.equal(conditionalManifest.status, 304);
   assert.equal(await conditionalManifest.text(), "");
   assert.equal(conditionalManifest.headers.get("etag"), manifestEtag);
+
+  assert.equal(schemaResponse.status, 200);
+  assert.match(
+    schemaResponse.headers.get("content-type") ?? "",
+    /^application\/schema\+json;\s*charset=utf-8$/i,
+  );
+  assert.equal(
+    schemaResponse.headers.get("cache-control"),
+    "public, max-age=0, s-maxage=3600, stale-while-revalidate=86400",
+  );
+  assert.equal(
+    schemaResponse.headers.get("content-disposition"),
+    'inline; filename="content.schema.json"',
+  );
+  assert.equal(schemaResponse.headers.get("x-robots-tag"), "noindex");
+  assert.equal(
+    schemaResponse.headers.get("link"),
+    '<https://blog.example.test/content.schema.json>; rel="self"; type="application/schema+json", <https://blog.example.test/content.json>; rel="describes"; type="application/json", <https://blog.example.test/>; rel="up"; type="text/html"',
+  );
+  const schemaEtag = schemaResponse.headers.get("etag");
+  const schemaSource = await schemaResponse.text();
+  assert.equal(
+    schemaEtag,
+    `"sha256-${createHash("sha256").update(schemaSource, "utf8").digest("hex")}"`,
+  );
+  const schema = JSON.parse(schemaSource);
+  assert.equal(schema.$schema, "https://json-schema.org/draft/2020-12/schema");
+  assert.equal(schema.$id, "https://blog.example.test/content.schema.json");
+  assert.deepEqual(schema.properties.version, { const: 1 });
+  assert.deepEqual(schema.properties.manifest_url, {
+    const: "https://blog.example.test/content.json",
+  });
+  assert.equal(schema.additionalProperties, false);
+  assert.equal(schema.$defs.item.additionalProperties, false);
+  const conditionalSchema = await render("/content.schema.json", {
+    accept: "application/schema+json",
+    headers: { "if-none-match": schemaEtag },
+  });
+  assert.equal(conditionalSchema.status, 304);
+  assert.equal(await conditionalSchema.text(), "");
+  assert.equal(conditionalSchema.headers.get("etag"), schemaEtag);
 
   assert.equal(jsonFeedResponse.status, 200);
   assert.match(

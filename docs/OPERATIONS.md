@@ -31,7 +31,7 @@ Secret 只保存在 Vercel/GitHub 的加密设置中，不进入 `.env.example`�
 6. 让质量门通过，再把提交合并到 `main`；
 7. Obsidian 1.41.0 在所有 Git 写入口前先校验运行代码/runtime manifest/磁盘插件版本、main/manifest/styles 的三份 bundle 摘要，以及 bundle/main/manifest/styles 的 Git HEAD/index/worktree provenance；兼容后，正常 `--push` 或两条可信恢复交付成功会校验 receipt/handoff、释放可能存在的作者事务并完成 Vault reconcile，再自动启动单篇生产等待。等待失败不改变已经完成的 Git 交付；Studio 与普通 Git 仍需手动运行“等待当前正式内容上线”；
 8. Vercel 自动创建生产部署，deployment status 工作流检查稳定公开生产域名；
-9. 打开文章、公开内容清单、JSON Feed、RSS 和 Sitemap，确认新内容可见且绝对 URL 指向当前生产域名；清单中的 `markdown_etag` 应与对应源文响应一致。
+9. 打开文章、公开内容清单、清单 Schema、JSON Feed、RSS 和 Sitemap，确认新内容可见且绝对 URL 指向当前生产域名；清单中的 `markdown_etag` 应与对应源文响应一致，`/content.json` 与 `/content.schema.json` 应通过 describedby/describes Link 双向关联。
 
 ## URL 迁移
 
@@ -130,7 +130,7 @@ npm run content:production:wait -- --source content/projects/myblog.md
 npm run production:smoke -- https://your-production.example --expect-oauth
 ```
 
-必须验证：首页、集合、文章、项目、知识地图、搜索、公开内容清单、JSON Feed、RSS、robots、Sitemap 全部 URL、文章/项目 Markdown 源文、Studio HTML/配置/媒体清单/媒体预检/稳定 slug 控件/预览/固定版本运行时、OAuth 跳转、安全头、缓存和真实 404；清单、JSON Feed 与 RSS 要保持同一公开 URL 顺序，根页面必须包含实际生产 origin 的清单/Feed 发现链接。清单必须验证 version 1、字段 allowlist、绝对 HTML/Markdown URL、每项强 SHA-256 `markdown_etag`、全部真实源文强弱等价、MIME、文件名、self/up Link、`noindex`、Last-Modified、Vercel 等价缓存与空 304。源文必须验证详情页 alternate/可见入口、公开 frontmatter、绝对链接/媒体、MIME、文件名、canonical、`noindex`、Vercel 等价缓存、SHA-256 ETag、Last-Modified、携带响应 ETag 的空 304，以及未知 slug 的 `no-store` 404。生产响应允许 Brotli CDN 把强标签弱化并精简 304 metadata，但强/弱 opaque digest 必须相同，Cache-Control 必须安全，仍存在的日期/链接/robots 不能漂移。命令会为九条关键 HTML 路由输出实际生产域名下的 raw/gzip、阈值、基线与余量，任何漏测、重复或超限都会失败。首次上线或域名切换还需用未登录浏览器覆盖桌面、320px、深色和键盘路径；域名变化后必须重新核对 manifest/Feed/source URL、验证器、预算 origin 与真实生产基线，不能沿用替代主机的假绿。
+必须验证：首页、集合、文章、项目、知识地图、搜索、公开内容清单及 Schema、JSON Feed、RSS、robots、Sitemap 全部 URL、文章/项目 Markdown 源文、Studio HTML/配置/媒体清单/媒体预检/稳定 slug 控件/预览/固定版本运行时、OAuth 跳转、安全头、缓存和真实 404；清单、JSON Feed 与 RSS 要保持同一公开 URL 顺序，根页面必须包含实际生产 origin 的清单/Feed 发现链接。清单必须验证 version 1、字段 allowlist、绝对 HTML/Markdown URL、每项强 SHA-256 `markdown_etag`、全部真实源文强弱等价、MIME、文件名、self/describedby/up Link、`noindex`、Last-Modified、Vercel 等价缓存与空 304；Schema 必须验证 Draft 2020-12、同源 `$id`、结构关键字、MIME、文件名、self/describes/up Link、`noindex`、SHA-256 ETag、等价缓存与空 304。源文必须验证详情页 alternate/可见入口、公开 frontmatter、绝对链接/媒体、MIME、文件名、canonical、`noindex`、Vercel 等价缓存、SHA-256 ETag、Last-Modified、携带响应 ETag 的空 304，以及未知 slug 的 `no-store` 404。生产响应允许 Brotli CDN 把强标签弱化并精简 304 metadata，但强/弱 opaque digest 必须相同，Cache-Control 必须安全，仍存在的日期/链接/robots 不能漂移。命令会为九条关键 HTML 路由输出实际生产域名下的 raw/gzip、阈值、基线与余量，任何漏测、重复或超限都会失败。首次上线或域名切换还需用未登录浏览器覆盖桌面、320px、深色和键盘路径；域名变化后必须重新核对 manifest/schema/Feed/source URL、验证器、预算 origin 与真实生产基线，不能沿用替代主机的假绿。
 
 ## 故障等级
 

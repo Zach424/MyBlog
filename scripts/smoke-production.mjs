@@ -525,8 +525,9 @@ export async function runProductionSmoke(originInput, { expectOAuth = false } = 
     invariant([302, 503].includes(oauth.response.status), `OAuth 状态 ${oauth.response.status}`);
   }
 
-  const [contentManifest, jsonFeed, rss, robots, sitemap] = await Promise.all([
+  const [contentManifest, contentSchema, jsonFeed, rss, robots, sitemap] = await Promise.all([
     request(origin, "/content.json", { accept: "application/json" }),
+    request(origin, "/content.schema.json", { accept: "application/schema+json" }),
     request(origin, "/feed.json", { accept: "application/feed+json" }),
     request(origin, "/rss.xml", { accept: "application/rss+xml" }),
     request(origin, "/robots.txt", { accept: "text/plain" }),
@@ -537,6 +538,12 @@ export async function runProductionSmoke(originInput, { expectOAuth = false } = 
     contentManifestPayload = JSON.parse(contentManifest.body);
   } catch {
     throw new Error("公开内容清单响应不是有效 JSON");
+  }
+  let contentSchemaPayload;
+  try {
+    contentSchemaPayload = JSON.parse(contentSchema.body);
+  } catch {
+    throw new Error("公开内容清单 Schema 响应不是有效 JSON");
   }
   let jsonFeedPayload;
   try {
@@ -561,7 +568,7 @@ export async function runProductionSmoke(originInput, { expectOAuth = false } = 
         'inline; filename="content.json"' &&
       contentManifest.response.headers.get("x-robots-tag") === "noindex" &&
       contentManifest.response.headers.get("link") ===
-        `<${origin.origin}/content.json>; rel="self"; type="application/json", <${origin.origin}/>; rel="up"; type="text/html"` &&
+        `<${origin.origin}/content.json>; rel="self"; type="application/json", <${origin.origin}/content.schema.json>; rel="describedby"; type="application/schema+json", <${origin.origin}/>; rel="up"; type="text/html"` &&
       hasMarkdownSourceCachePolicy(
         contentManifest.response.headers.get("cache-control"),
       ) &&
@@ -619,6 +626,56 @@ export async function runProductionSmoke(originInput, { expectOAuth = false } = 
         conditionalManifestLink === contentManifest.response.headers.get("link")) &&
       (conditionalManifestRobots === null || conditionalManifestRobots === "noindex"),
     "公开内容清单条件请求契约异常",
+  );
+  const schemaEtag = contentSchema.response.headers.get("etag");
+  invariant(
+    contentSchema.response.status === 200 &&
+      contentSchema.response.headers.get("content-type")?.startsWith("application/schema+json") &&
+      contentSchema.response.headers.get("content-disposition") ===
+        'inline; filename="content.schema.json"' &&
+      contentSchema.response.headers.get("x-robots-tag") === "noindex" &&
+      contentSchema.response.headers.get("link") ===
+        `<${origin.origin}/content.schema.json>; rel="self"; type="application/schema+json", <${origin.origin}/content.json>; rel="describes"; type="application/json", <${origin.origin}/>; rel="up"; type="text/html"` &&
+      hasMarkdownSourceCachePolicy(
+        contentSchema.response.headers.get("cache-control"),
+      ) &&
+      hasMarkdownSourceEtag(schemaEtag) &&
+      contentSchemaPayload.$schema ===
+        "https://json-schema.org/draft/2020-12/schema" &&
+      contentSchemaPayload.$id === `${origin.origin}/content.schema.json` &&
+      contentSchemaPayload.type === "object" &&
+      contentSchemaPayload.additionalProperties === false &&
+      contentSchemaPayload.properties?.version?.const === 1 &&
+      contentSchemaPayload.properties?.home_url?.const === `${origin.origin}/` &&
+      contentSchemaPayload.properties?.manifest_url?.const ===
+        `${origin.origin}/content.json` &&
+      contentSchemaPayload.properties?.language?.const === "zh-CN" &&
+      contentSchemaPayload.$defs?.item?.additionalProperties === false &&
+      Array.isArray(contentSchemaPayload.$defs?.item?.oneOf) &&
+      contentSchemaPayload.$defs.item.oneOf.length === 2,
+    "公开内容清单 Schema 契约异常",
+  );
+  const conditionalSchema = await request(origin, "/content.schema.json", {
+    accept: "application/schema+json",
+    headers: { "if-none-match": schemaEtag },
+  });
+  const conditionalSchemaLink = conditionalSchema.response.headers.get("link");
+  const conditionalSchemaRobots =
+    conditionalSchema.response.headers.get("x-robots-tag");
+  invariant(
+    conditionalSchema.response.status === 304 &&
+      conditionalSchema.body === "" &&
+      sameMarkdownSourceEtag(
+        conditionalSchema.response.headers.get("etag"),
+        schemaEtag,
+      ) &&
+      hasMarkdownSourceCachePolicy(
+        conditionalSchema.response.headers.get("cache-control"),
+      ) &&
+      (conditionalSchemaLink === null ||
+        conditionalSchemaLink === contentSchema.response.headers.get("link")) &&
+      (conditionalSchemaRobots === null || conditionalSchemaRobots === "noindex"),
+    "公开内容清单 Schema 条件请求契约异常",
   );
   const manifestSourceResponses = await Promise.all(
     manifestItems.map((item) => {

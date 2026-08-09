@@ -179,7 +179,7 @@ test("returns a cache-safe conditional manifest response", async () => {
   );
   assert.equal(
     baseline.headers.get("link"),
-    '<https://blog.example.test/content.json>; rel="self"; type="application/json", <https://blog.example.test/>; rel="up"; type="text/html"',
+    '<https://blog.example.test/content.json>; rel="self"; type="application/json", <https://blog.example.test/content.schema.json>; rel="describedby"; type="application/schema+json", <https://blog.example.test/>; rel="up"; type="text/html"',
   );
   assert.equal(baseline.headers.get("x-robots-tag"), "noindex");
 
