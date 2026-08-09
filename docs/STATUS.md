@@ -1,6 +1,6 @@
 # 当前项目状态
 
-> 更新时间：2026-08-06 · 每轮迭代更新 · 本文件位于仓库根 Obsidian Vault 中
+> 更新时间：2026-08-09 · 每轮迭代更新 · 本文件位于仓库根 Obsidian Vault 中
 
 ## 产品目标
 
@@ -14,7 +14,7 @@ MyBlog 是 Zach424 的个人技术知识库与公开工程日志。它把学习�
 | 公开阅读 | done | 首页、文章、项目、专题、标签、搜索、关于、响应式、深色模式与详情页封面 |
 | 读者分享 | done | 文章/项目服务端规范链接、Web Share、URL/Markdown 引用 Clipboard、全 ASCII 标点转义、取消静默、共享 single-flight、`aria-live` 回执、无 JavaScript 恢复路径与 print 隔离 |
 | Markdown | done | GFM、代码高亮、语言标签、渐进增强的一键复制、与实际渲染一致的 H1–H6 heading id、H2/H3 目录与原生永久链接、Obsidian 兼容脚注/尾注与行内/块级数学公式、A4 打印/PDF 版式、阅读时间、相邻文章与响应式正文图片 |
-| 内容发现 | done | SEO、内容级 OG/Twitter 封面、JSON-LD、RSS、Sitemap、robots、本地全文搜索 |
+| 内容发现 | done | SEO、内容级 OG/Twitter 封面、JSON-LD、JSON Feed 1.1、RSS、Sitemap、robots、本地全文搜索 |
 | 网页写作 | done | `/studio`、GitHub OAuth、Decap workflow、PR、按 slug 归档媒体、稳定 slug 锁定、双层 SHA-256 冲突预检、快速重选 latest-wins、生产规则公式预览与全字段只读发布清单 |
 | Obsidian 写作 | done | Vault、三类受信模板、桌面插件 1.34.0、文件名唯一草稿身份、本地原子新建/安全改名/旧身份取证与严格清理、source-scoped 当前草稿作者意图、原始来源字节 SHA-256 摘要/导航双重绑定、作者意图与身份读取各自独立的 latest-wins generation/卸载失效、作者意图旧活动进程的专属 scope 接管与跨平台终止、媒体 COVER/BODY 来源/逐次替代文本/作者或文件名回退取证/精确变换、ALT 与 LINK occurrence 精确源码行导航、四个新发布/复核事务的 single-flight lease、阶段/输出活动脉冲、会话内最近终态回执与自动 doctor 联锁、13 项本机前置电路、统一只读 Git 交付分诊、版本化维护台账/Author Proof v3、两类安全重送/可信回执、deferred 并行草稿和新稿 `--check-only`/`--push` |
 | Inbox 发布就绪 | done | version 6/read-only 全草稿 ready/scheduled/blocked、每个可读来源的原始字节 SHA-256、Article/TIL/Project、精确站内目标/源码行/重复次数、媒体 COVER/BODY 用途/出现次数/源码行/最终替代文本及来源、空文本与文件名回退阻塞、真实媒体候选、目标/共享附件诊断、CLI 全库或 `--source` 聚焦 JSON 与 Obsidian 当前草稿原生摘要 |
@@ -52,15 +52,15 @@ MyBlog 是 Zach424 的个人技术知识库与公开工程日志。它把学习�
 
 - 仓库：<https://github.com/Zach424/MyBlog>，生产分支 `main`；
 - 生产站：<https://blog-iota-five-59.vercel.app>；
-- 本轮实现提交：`ab5e088e8a6398947daf60f6f63c2d9bb5d88d1a`（可解释的 raw/gzip HTML 双层预算）；
-- 自动交付：实现提交已推送；[Quality Gate #158](https://github.com/Zach424/MyBlog/actions/runs/31089835689) 与 [Verify Vercel production #151](https://github.com/Zach424/MyBlog/actions/runs/31089875181) 均成功，归档提交继续按同一链路独立验证；
-- 最新完成迭代：0087 可解释的 HTML 双层预算；
+- 本轮实现提交：`a55e68bc172c92be26ebdebb456667e6fc25efd4`（JSON Feed 1.1）与 `8114e0859fac883ea77733dbd99968826428c2bb`（Vercel 缓存头归一化验证）；
+- 自动交付：[Quality Gate #159](https://github.com/Zach424/MyBlog/actions/runs/31092156541) 成功；首次 [Production Smoke #152](https://github.com/Zach424/MyBlog/actions/runs/31092209143) 暴露缓存验证器问题，修正后的 [Quality Gate](https://github.com/Zach424/MyBlog/actions/runs/31322381543) 与 [Production Smoke](https://github.com/Zach424/MyBlog/actions/runs/31322410233) 均成功；
+- 最新完成迭代：0088 JSON Feed 1.1；
 - Obsidian 状态：仓库根目录就是 Vault，`docs/STATUS.md` 与 `docs/iterations/*.md` 可直接阅读和维护；
 - 手动外部接入：自定义域名、统计、评论、公开邮箱均暂缓，不阻塞当前开发。
 
 ## 本轮新增能力
 
-旧的统一 raw HTML `<100,000` 门已升级为共享双层模型：九条关键路由保留带日期、来源提交和稳定 origin 的生产 raw/Node gzip 基线；raw 只由 160 KiB 紧急上限保护，gzip 上限由基线加 `max(20%, 2 KiB)` 后向上取整到 1 KiB。本地生产测试使用稳定 Vercel host，部署后冒烟再测实际输入 origin；每条报告包含实测、阈值、基线和正负余量，漏测、重复、意外路由和超限都失败关闭。失败优先 0/1，最终预算/部署定向 9/9、完整 398/398、45 页、19/19 与生产审计 0。稳定生产 24 路由/OAuth 302；最大项目页 raw `100,493/163,840`、gzip `23,385/28,672`，余量 `63,347` 与 `5,287` 字节。
+公开发现层新增规范 JSON Feed 1.1 `/feed.json` 与根页面 autodiscovery。Feed 复用公开内容索引、请求时 origin、RSS 稳定顺序和 Markdown AST 纯文本管线，当前输出 4 条文章/TIL/项目、20,697 字节；item 提供稳定绝对 id/url、摘要、纯文本正文、RFC 3339 日期、tags 与可选封面，不泄漏 draft、源路径或原始 body。完整发布门为 400/400、46 页、19/19、生产依赖审计 0；稳定生产为 24 条 Sitemap URL、OAuth 302、九路 HTML 预算全绿。首次生产冒烟还证明 Vercel CDN 会消费 SWR；验证器现同时接受源响应与官方归一化后的公开缓存策略，并继续拒绝错误 TTL、private/no-store 和错误 SWR。
 
 ## 风险与下一步
 
@@ -76,5 +76,6 @@ MyBlog 是 Zach424 的个人技术知识库与公开工程日志。它把学习�
 10. `decap-cms` 的开发依赖树仍有上游无修复的高危审计项；它不进入公开服务端生产依赖，但其浏览器编辑器包仅对已授权作者开放，后续应单独评估升级或替代方案。
 11. checkout/setup-node v6 的六处移动 tag 风险已关闭：执行 ref 全部固定到从官方仓库核对的完整 SHA，测试与发布前检查共享唯一事实源。不可变 pin 不会自动接收上游修复，自动更新机器人继续暂缓；后续必须主动核对官方 refs，不能把 `# v6` 注释当作执行引用。
 12. 替代主机 raw 100KB 假绿已由双层预算关闭。Node gzip 是确定性传输模拟，不包含 Vercel CDN Brotli、响应头、TLS 或真实用户 Web Vitals；稳定域名变化时必须同步更新 origin 与带来源的生产基线，基线增长也必须经过产品价值复核，不能为单路由临时抬线。
+13. JSON Feed 当前为 4 条、20.7 KiB，全文 `content_text` 会随公开内容线性增长并丢失 Markdown 格式结构；当前不需要分页，达到有证据的体积或生成成本阈值后再评估最近 N 条、分页或摘要策略。Vercel 会消费 SWR，生产验证必须检查等价缓存语义而不是只比较源站字符串。
 
-下一轮唯一主任务：实现 JSON Feed 1.1 的 `/feed.json` 与根页面发现链接。复用现有公开内容索引、请求时 origin、稳定排序与 Markdown 纯文本管线，提供规范 feed/item URL、摘要、`content_text`、发布/修改日期和 tags；响应使用 `application/feed+json` 与现有发现端点缓存语义。先写格式、转义、排序、日期、公开过滤、响应头、metadata 和生产冒烟失败测试，再让现有九路 raw/gzip 门证明新增 `<link>` 在预算内。RSS 保持兼容，不接入外部服务。
+下一轮唯一主任务：实现文章与项目的规范 Markdown 源文端点 `/posts/[slug]/source.md`、`/projects/[slug]/source.md`，并在详情页提供可访问入口和 `text/markdown` alternate。先定义公开 frontmatter allowlist、canonical、绝对化站内链接/本地媒体、安全文件名、缓存、404 与内部字段防泄漏契约，再以失败测试驱动生成器、路由、metadata 和生产冒烟；不接入外部服务。

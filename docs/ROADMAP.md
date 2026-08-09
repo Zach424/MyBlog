@@ -4,15 +4,15 @@
 | --- | --- | --- |
 | 1. 项目与内容契约 | done | 项目章程、严格 schema、稳定 slug、标签/专题索引 |
 | 2. 视觉与阅读路径 | done | Commit Trace、响应式/深色、文章/项目/专题/标签/搜索 |
-| 3. 发布发现与质量 | done | SEO、OG、JSON-LD、RSS、Sitemap、robots、全链路测试 |
+| 3. 发布发现与质量 | done | SEO、OG、JSON-LD、JSON Feed 1.1、RSS、Sitemap、robots、全链路测试 |
 | 4. 作者自助写作 | done | `/studio` OAuth + editorial workflow PR、Obsidian Vault/模板/附件/真实 `--push` |
 | 5. Vercel 原生迁移 | production live | 原生 Next.js、无 Cloudflare 依赖、24 路由生产冒烟通过 |
 | 6. 所有者生产上线 | done | Git 自动 Production、稳定域名自动冒烟、双端发布、回滚与恢复均已验收 |
-| 7. 持续内容与作者体验 | in progress | Iteration 0087 完成稳定生产基线、raw/gzip 双层预算、九路余量诊断与本地/线上双验证 |
+| 7. 持续内容与作者体验 | in progress | Iteration 0088 完成 JSON Feed 1.1、根页面发现、RSS 同序契约与 Vercel 缓存归一化验证 |
 
 ## 当前唯一主线
 
-进入持续内容与作者体验阶段。Iteration 0087 已把统一 raw 100KB 门升级为可解释的双层质量契约：九条路由保存带来源的稳定生产 raw/Node gzip 基线，raw 使用 160 KiB 紧急上限，gzip 由 `max(20%, 2 KiB)` 余量和 1 KiB 取整推导；本地固定稳定 host、部署后测实际 origin，覆盖缺失/重复/意外路由失败关闭并逐条显示余量。稳定生产最大项目页为 raw 100,493/163,840、gzip 23,385/28,672。下一主线复用现有 RSS、公开索引和 Markdown 纯文本管线实现 JSON Feed 1.1 `/feed.json` 与发现链接，并由新预算证明 metadata 增长仍有边界。需要品牌域名时再绑定自定义域名，旧公开站继续只作为迁移历史证据。
+进入持续内容与作者体验阶段。Iteration 0088 已让现有公开索引同时生成 JSON Feed 1.1 与 RSS：`/feed.json` 当前提供 4 条、20,697 字节的绝对 URL、纯文本全文、日期、标签和可选封面；根页面可自动发现，生产契约验证 MIME、缓存、隐私字段以及与 RSS 的完全同序。首次线上失败还把 Vercel 消费 SWR 的平台行为固化为有边界的等价缓存验证。下一主线实现文章/项目的规范 Markdown 源文端点与详情页入口，为 Obsidian、读者和自动化工具提供单篇可移植源文，同时严格限定公开 frontmatter、链接/媒体绝对化和内部字段防泄漏。需要品牌域名时再绑定自定义域名，旧公开站继续只作为迁移历史证据。
 
 ## 已知风险
 
