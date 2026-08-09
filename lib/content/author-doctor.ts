@@ -5,13 +5,21 @@ import {
   PUBLISHER_PLUGIN_BUNDLE_VERSION,
   type PublisherPluginBundleObservation,
 } from "./publisher-plugin-bundle.ts";
+import {
+  clonePublisherPluginProvenance,
+  describePublisherPluginProvenance,
+  isPublisherPluginProvenanceVerified,
+  PUBLISHER_PLUGIN_PROVENANCE_PATHS,
+  type PublisherPluginProvenanceObservation,
+} from "./publisher-plugin-provenance.ts";
 
 export const AUTHOR_DOCTOR_REPORT_VERSION = 1 as const;
 export const AUTHOR_DOCTOR_BUNDLE_REPORT_VERSION = 2 as const;
+export const AUTHOR_DOCTOR_PROVENANCE_REPORT_VERSION = 3 as const;
 export const AUTHOR_DOCTOR_NODE_ENGINE = ">=22.13.0";
 export const AUTHOR_DOCTOR_PACKAGE_NAME = "zach424-myblog";
 export const AUTHOR_DOCTOR_PLUGIN_ID = "myblog-publisher";
-export const AUTHOR_DOCTOR_PLUGIN_VERSION = "1.40.0";
+export const AUTHOR_DOCTOR_PLUGIN_VERSION = "1.41.0";
 
 export const AUTHOR_DOCTOR_REQUIRED_SCRIPTS = [
   "content:author:doctor",
@@ -106,7 +114,8 @@ export type AuthorDoctorCheck = {
     | "content-layout"
     | "obsidian-vault"
     | "publisher-plugin"
-    | "publisher-bundle";
+    | "publisher-bundle"
+    | "publisher-provenance";
   label: string;
   observed: string;
   resolution: string | null;
@@ -138,6 +147,14 @@ export type AuthorDoctorBundleReport = Omit<
 > & {
   version: typeof AUTHOR_DOCTOR_BUNDLE_REPORT_VERSION;
   pluginBundle: PublisherPluginBundleObservation;
+};
+
+export type AuthorDoctorProvenanceReport = Omit<
+  AuthorDoctorBundleReport,
+  "version"
+> & {
+  version: typeof AUTHOR_DOCTOR_PROVENANCE_REPORT_VERSION;
+  pluginProvenance: PublisherPluginProvenanceObservation;
 };
 
 type CheckInput = Omit<AuthorDoctorCheck, "resolution" | "status"> & {
@@ -442,6 +459,36 @@ export function addPublisherPluginBundleEvidence(
     status: attention === 0 ? "ready" : "needs-attention",
     observation: cloneObservation(source.observation),
     pluginBundle,
+    summary: { attention, passed, total: checks.length },
+    checks,
+    safety: { ...source.safety },
+  };
+}
+
+export function addPublisherPluginProvenanceEvidence(
+  source: AuthorDoctorBundleReport,
+  provenanceSource: PublisherPluginProvenanceObservation,
+): AuthorDoctorProvenanceReport {
+  const pluginProvenance = clonePublisherPluginProvenance(provenanceSource);
+  const provenanceCheck = check({
+    expected: `${PUBLISHER_PLUGIN_PROVENANCE_PATHS.length} plugin bundle paths tracked and equal to HEAD/index`,
+    group: "vault",
+    id: "publisher-provenance",
+    label: "Plugin provenance",
+    observed: describePublisherPluginProvenance(pluginProvenance),
+    pass: isPublisherPluginProvenanceVerified(pluginProvenance),
+    repair: "恢复四个插件 bundle 路径与 Git HEAD/index 一致后重载插件",
+  });
+  const checks = [...source.checks.map((item) => ({ ...item })), provenanceCheck];
+  const passed = checks.filter((item) => item.status === "pass").length;
+  const attention = checks.length - passed;
+  return {
+    version: AUTHOR_DOCTOR_PROVENANCE_REPORT_VERSION,
+    mode: source.mode,
+    status: attention === 0 ? "ready" : "needs-attention",
+    observation: cloneObservation(source.observation),
+    pluginBundle: clonePluginBundle(source.pluginBundle),
+    pluginProvenance,
     summary: { attention, passed, total: checks.length },
     checks,
     safety: { ...source.safety },

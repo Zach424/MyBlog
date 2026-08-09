@@ -23,11 +23,12 @@ const CONTENT_REVIEW_DELIVERY_RECEIPT_VERSION = 1;
 const CONTENT_PUBLISH_DELIVERY_REPORT_VERSION = 1;
 const CONTENT_PUBLISH_DELIVERY_RECEIPT_VERSION = 1;
 const CONTENT_DELIVERY_TRIAGE_REPORT_VERSION = 1;
-const AUTHOR_DOCTOR_REPORT_VERSION = 2;
+const AUTHOR_DOCTOR_REPORT_VERSION = 3;
 const AUTHOR_DOCTOR_PLUGIN_BUNDLE_VERSION = 1;
+const AUTHOR_DOCTOR_PLUGIN_PROVENANCE_VERSION = 1;
 const INBOX_READINESS_REPORT_VERSION = 6;
 const AUTHOR_DOCTOR_NODE_ENGINE = ">=22.13.0";
-const AUTHOR_DOCTOR_PLUGIN_VERSION = "1.40.0";
+const AUTHOR_DOCTOR_PLUGIN_VERSION = "1.41.0";
 const CURRENT_DRAFT_INTENT_RUN_SCOPE = Symbol("current-draft-intent");
 const PRODUCTION_CONTENT_CONVERGENCE_RUN_SCOPE = Symbol(
   "production-content-convergence",
@@ -97,6 +98,12 @@ const AUTHOR_DOCTOR_REQUIRED_PATHS = [
 const GIT_OBJECT_ID_PATTERN = /^(?:[a-f0-9]{40}|[a-f0-9]{64})$/u;
 const PLUGIN_VERSION_PATTERN = /^(\d+)\.(\d+)\.(\d+)$/u;
 const PLUGIN_BUNDLE_FILES = ["main.js", "manifest.json", "styles.css"];
+const PLUGIN_PROVENANCE_PATHS = [
+  ".obsidian/plugins/myblog-publisher/bundle.json",
+  ".obsidian/plugins/myblog-publisher/main.js",
+  ".obsidian/plugins/myblog-publisher/manifest.json",
+  ".obsidian/plugins/myblog-publisher/styles.css",
+];
 const CONTENT_REVIEW_DELIVERY_STATUSES = [
   "synchronized",
   "pending-review",
@@ -2727,7 +2734,45 @@ function describeAuthorDoctorPluginBundle(plugin, pluginBundle) {
   return `myblog-publisher@${plugin?.version ?? "unknown"} · ${verified}/${PLUGIN_BUNDLE_FILES.length} SHA-256 verified${failures.length > 0 ? ` · ${failures.join(" · ")}` : ""}`;
 }
 
-function deriveAuthorDoctorChecks(observation, pluginBundle) {
+function isAuthorDoctorPluginProvenanceReady(pluginProvenance) {
+  return (
+    pluginProvenance.version === AUTHOR_DOCTOR_PLUGIN_PROVENANCE_VERSION &&
+    GIT_OBJECT_ID_PATTERN.test(pluginProvenance.headOid) &&
+    pluginProvenance.files.length === PLUGIN_PROVENANCE_PATHS.length &&
+    pluginProvenance.files.every(
+      (file, index) =>
+        file.path === PLUGIN_PROVENANCE_PATHS[index] &&
+        file.present === true &&
+        GIT_OBJECT_ID_PATTERN.test(file.headBlobOid) &&
+        file.indexBlobOid === file.headBlobOid &&
+        file.indexStatus === "clean" &&
+        file.worktreeStatus === "clean" &&
+        file.status === "verified",
+    )
+  );
+}
+
+function describeAuthorDoctorPluginProvenance(pluginProvenance) {
+  const verified = pluginProvenance.files.filter(
+    (file) => file.status === "verified",
+  ).length;
+  const failures = pluginProvenance.files
+    .filter((file) => file.status !== "verified")
+    .map((file) => {
+      const name = file.path.split("/").at(-1) ?? file.path;
+      if (!file.present) return `${name} missing`;
+      if (file.indexStatus !== "clean") {
+        return `${name} index ${file.indexStatus}`;
+      }
+      if (file.worktreeStatus !== "clean") {
+        return `${name} worktree ${file.worktreeStatus}`;
+      }
+      return `${name} HEAD/index mismatch`;
+    });
+  return `HEAD ${pluginProvenance.headOid?.slice(0, 12) ?? "UNAVAILABLE"} · ${verified}/${PLUGIN_PROVENANCE_PATHS.length} tracked clean${failures.length > 0 ? ` · ${failures.join(" · ")}` : ""}`;
+}
+
+function deriveAuthorDoctorChecks(observation, pluginBundle, pluginProvenance) {
   const requiredScripts = new Set(AUTHOR_DOCTOR_REQUIRED_SCRIPTS);
   const scriptNames = new Set(observation.workspace.scriptNames);
   const scriptsReady =
@@ -2908,6 +2953,15 @@ function deriveAuthorDoctorChecks(observation, pluginBundle) {
       pass: isAuthorDoctorPluginBundleReady(plugin, pluginBundle),
       repair: "运行 npm run plugin:bundle -- --write 后重新加载插件",
     },
+    {
+      expected: `${PLUGIN_PROVENANCE_PATHS.length} plugin bundle paths tracked and equal to HEAD/index`,
+      group: "vault",
+      id: "publisher-provenance",
+      label: "Plugin provenance",
+      observed: describeAuthorDoctorPluginProvenance(pluginProvenance),
+      pass: isAuthorDoctorPluginProvenanceReady(pluginProvenance),
+      repair: "恢复四个插件 bundle 路径与 Git HEAD/index 一致后重载插件",
+    },
   ];
   return definitions.map(({ pass, repair, ...evidence }) => ({
     ...evidence,
@@ -2927,7 +2981,7 @@ function parseAuthorDoctorReport(output, expectedRoot) {
   assertPlainObject(report, label);
   assertExactKeys(
     report,
-    ["version", "mode", "status", "observation", "pluginBundle", "summary", "checks", "safety"],
+    ["version", "mode", "status", "observation", "pluginBundle", "pluginProvenance", "summary", "checks", "safety"],
     label,
   );
   if (report.version !== AUTHOR_DOCTOR_REPORT_VERSION) {
@@ -3182,9 +3236,73 @@ function parseAuthorDoctorReport(output, expectedRoot) {
     }
   });
 
-  const expectedChecks = deriveAuthorDoctorChecks(observation, pluginBundle);
+  const pluginProvenance = report.pluginProvenance;
+  assertPlainObject(pluginProvenance, `${label} pluginProvenance`);
+  assertExactKeys(
+    pluginProvenance,
+    ["files", "headOid", "version"],
+    `${label} pluginProvenance`,
+  );
+  if (pluginProvenance.version !== AUTHOR_DOCTOR_PLUGIN_PROVENANCE_VERSION) {
+    valueError(
+      `${label} pluginProvenance.version`,
+      `必须是 ${AUTHOR_DOCTOR_PLUGIN_PROVENANCE_VERSION}`,
+    );
+  }
+  if (pluginProvenance.headOid !== null) {
+    assertGitObjectId(pluginProvenance.headOid, `${label} pluginProvenance.headOid`);
+  }
+  if (pluginProvenance.headOid !== observation.repository.localHead) {
+    valueError(`${label} pluginProvenance.headOid`, "必须等于仓库 observation.localHead");
+  }
+  if (
+    !Array.isArray(pluginProvenance.files) ||
+    pluginProvenance.files.length !== PLUGIN_PROVENANCE_PATHS.length
+  ) {
+    valueError(`${label} pluginProvenance.files`, "必须包含固定的四个插件 bundle 路径");
+  }
+  pluginProvenance.files.forEach((file, index) => {
+    const fileLabel = `${label} pluginProvenance.files[${index}]`;
+    assertPlainObject(file, fileLabel);
+    assertExactKeys(
+      file,
+      ["headBlobOid", "indexBlobOid", "indexStatus", "path", "present", "status", "worktreeStatus"],
+      fileLabel,
+    );
+    if (file.path !== PLUGIN_PROVENANCE_PATHS[index]) {
+      valueError(`${fileLabel}.path`, "与固定插件 bundle 路径顺序不一致");
+    }
+    if (typeof file.present !== "boolean") {
+      valueError(`${fileLabel}.present`, "必须是布尔值");
+    }
+    for (const field of ["headBlobOid", "indexBlobOid"]) {
+      if (file[field] !== null) assertGitObjectId(file[field], `${fileLabel}.${field}`);
+    }
+    for (const field of ["indexStatus", "worktreeStatus"]) {
+      if (!new Set(["clean", "changed", "unavailable"]).has(file[field])) {
+        valueError(`${fileLabel}.${field}`, "不是受支持的 Git 路径状态");
+      }
+    }
+    const expectedStatus =
+      file.present === true &&
+      file.headBlobOid !== null &&
+      file.indexBlobOid === file.headBlobOid &&
+      file.indexStatus === "clean" &&
+      file.worktreeStatus === "clean"
+        ? "verified"
+        : "unverified";
+    if (file.status !== expectedStatus) {
+      valueError(`${fileLabel}.status`, "与 HEAD/index/worktree 证据不一致");
+    }
+  });
+
+  const expectedChecks = deriveAuthorDoctorChecks(
+    observation,
+    pluginBundle,
+    pluginProvenance,
+  );
   if (!Array.isArray(report.checks) || report.checks.length !== expectedChecks.length) {
-    valueError(`${label} checks`, "必须包含固定的 14 项检查");
+    valueError(`${label} checks`, "必须包含固定的 15 项检查");
   }
   expectedChecks.forEach((expected, index) => {
     const actual = report.checks[index];
@@ -3246,6 +3364,7 @@ function createAuthorDoctorPluginVersionHandshake(report, runtimeManifest) {
   if (!diskPlugin || diskPlugin.id !== "myblog-publisher") {
     return Object.freeze({
       pluginBundle: report.pluginBundle,
+      pluginProvenance: report.pluginProvenance,
       diskVersion: null,
       runtimeCodeVersion,
       runtimeManifestVersion,
@@ -3258,14 +3377,17 @@ function createAuthorDoctorPluginVersionHandshake(report, runtimeManifest) {
     runtimeManifestVersion === runtimeCodeVersion;
   return Object.freeze({
     pluginBundle: report.pluginBundle,
+    pluginProvenance: report.pluginProvenance,
     diskVersion,
     runtimeCodeVersion,
     runtimeManifestVersion,
     status: !versionsCompatible
       ? "reload-required"
-      : isAuthorDoctorPluginBundleReady(diskPlugin, report.pluginBundle)
-        ? "compatible"
-        : "bundle-invalid",
+      : !isAuthorDoctorPluginBundleReady(diskPlugin, report.pluginBundle)
+        ? "bundle-invalid"
+        : isAuthorDoctorPluginProvenanceReady(report.pluginProvenance)
+          ? "compatible"
+          : "provenance-unverified",
   });
 }
 
@@ -4415,7 +4537,13 @@ class AuthorDoctorModal extends Modal {
       pluginVersionHandshake?.status === "reload-required";
     const bundleInvalid =
       pluginVersionHandshake?.status === "bundle-invalid";
-    const ready = report.status === "ready" && !reloadRequired && !bundleInvalid;
+    const provenanceUnverified =
+      pluginVersionHandshake?.status === "provenance-unverified";
+    const ready =
+      report.status === "ready" &&
+      !reloadRequired &&
+      !bundleInvalid &&
+      !provenanceUnverified;
     const groups = [
       ["runtime", "RUNTIME"],
       ["git", "GIT"],
@@ -4433,6 +4561,10 @@ class AuthorDoctorModal extends Modal {
     contentEl.setAttr(
       "data-plugin-bundle",
       bundleInvalid ? "invalid" : "verified",
+    );
+    contentEl.setAttr(
+      "data-plugin-provenance",
+      provenanceUnverified ? "unverified" : "verified",
     );
     contentEl.createEl("p", {
       cls: "myblog-author-doctor__eyebrow",
@@ -4506,6 +4638,38 @@ class AuthorDoctorModal extends Modal {
       });
     }
 
+    if (provenanceUnverified) {
+      const provenance = contentEl.createEl("section", {
+        cls: "myblog-author-doctor__plugin-provenance",
+      });
+      provenance.setAttr("aria-label", "插件 bundle 路径与 Git HEAD/index 不一致");
+      provenance.createEl("p", {
+        cls: "myblog-author-doctor__plugin-provenance-label",
+        text: "PLUGIN PROVENANCE UNVERIFIED",
+      });
+      provenance.createEl("p", {
+        cls: "myblog-author-doctor__plugin-provenance-state",
+        text: `HEAD ${pluginVersionHandshake.pluginProvenance.headOid?.slice(0, 12) ?? "UNAVAILABLE"}`,
+      });
+      const files = provenance.createEl("dl", {
+        cls: "myblog-author-doctor__plugin-provenance-files",
+      });
+      for (const file of pluginVersionHandshake.pluginProvenance.files) {
+        const item = files.createEl("div");
+        item.setAttr("data-state", file.status);
+        item.createEl("dt", { text: file.path });
+        const detail = item.createEl("dd");
+        detail.createEl("strong", { text: file.status.toUpperCase() });
+        detail.createEl("code", {
+          text: `HEAD ${file.headBlobOid?.slice(0, 12) ?? "UNAVAILABLE"} · INDEX ${file.indexBlobOid?.slice(0, 12) ?? "UNAVAILABLE"} · INDEX ${file.indexStatus.toUpperCase()} · WORKTREE ${file.worktreeStatus.toUpperCase()}`,
+        });
+      }
+      provenance.createEl("p", {
+        cls: "myblog-author-doctor__plugin-provenance-action",
+        text: "请通过正常 Git 工作流恢复或提交这四个路径，并在同步后重载插件。插件不会自动运行 Git add、commit、push、fetch 或 reset。",
+      });
+    }
+
     if (transaction) {
       const interlock = contentEl.createEl("section", {
         cls: "myblog-author-doctor__interlock",
@@ -4562,7 +4726,7 @@ class AuthorDoctorModal extends Modal {
     });
     circuit.createEl("p", {
       cls: "myblog-author-doctor__summary",
-      text: `${report.summary.passed} PASS / ${report.summary.attention} ATTENTION${reloadRequired ? " · RUNTIME HOLD" : ""}${bundleInvalid ? " · BUNDLE HOLD" : ""}`,
+      text: `${report.summary.passed} PASS / ${report.summary.attention} ATTENTION${reloadRequired ? " · RUNTIME HOLD" : ""}${bundleInvalid ? " · BUNDLE HOLD" : ""}${provenanceUnverified ? " · PROVENANCE HOLD" : ""}`,
     });
 
     const ledger = contentEl.createEl("section", {
@@ -7294,7 +7458,7 @@ module.exports = class MyBlogPublisher extends Plugin {
         "--",
         "--format",
         "json",
-        "--plugin-bundle",
+        "--plugin-provenance",
       ],
       {
         allowedExitCodes: [0, 1],
@@ -7334,7 +7498,7 @@ module.exports = class MyBlogPublisher extends Plugin {
         "--",
         "--format",
         "json",
-        "--plugin-bundle",
+        "--plugin-provenance",
       ],
       {
         allowedExitCodes: [0, 1],
@@ -7400,6 +7564,20 @@ module.exports = class MyBlogPublisher extends Plugin {
       return "held";
     }
 
+    if (pluginVersionHandshake.status === "provenance-unverified") {
+      new AuthorDoctorModal(
+        this.app,
+        report,
+        transaction,
+        pluginVersionHandshake,
+      ).open();
+      new Notice(
+        `MyBlog Publisher 插件 bundle 的 Git 来源未验证；${transaction.label}未启动。请恢复或提交四个固定路径并同步后重载插件。`,
+        12000,
+      );
+      return "held";
+    }
+
     if (report.status !== "ready") {
       new AuthorDoctorModal(
         this.app,
@@ -7435,6 +7613,8 @@ module.exports = class MyBlogPublisher extends Plugin {
           ? "插件磁盘版本已更新；请关闭再启用 MyBlog Publisher 或重启 Obsidian。"
           : pluginVersionHandshake.status === "bundle-invalid"
             ? "插件磁盘发布包摘要不一致；请重新生成或同步完整 bundle 后重载。"
+          : pluginVersionHandshake.status === "provenance-unverified"
+            ? "插件 bundle 的 Git 来源未验证；请恢复或提交四个固定路径并同步后重载。"
           : report.status === "ready"
             ? "本机发布环境已就绪。"
             : `本机发布环境有 ${report.summary.attention} 项需要处理。`,
@@ -7545,7 +7725,7 @@ module.exports = class MyBlogPublisher extends Plugin {
         "--",
         "--format",
         "json",
-        "--plugin-bundle",
+        "--plugin-provenance",
       ],
       {
         allowedExitCodes: [0, 1],
@@ -7583,6 +7763,19 @@ module.exports = class MyBlogPublisher extends Plugin {
             ).open();
             new Notice(
               `MyBlog Publisher 磁盘发布包摘要不一致；${transaction.label}未启动。请重新生成或同步完整 bundle 后重载。`,
+              12000,
+            );
+            return "held";
+          }
+          if (handshake.status === "provenance-unverified") {
+            new AuthorDoctorModal(
+              this.app,
+              report,
+              transaction,
+              handshake,
+            ).open();
+            new Notice(
+              `MyBlog Publisher 插件 bundle 的 Git 来源未验证；${transaction.label}未启动。请恢复或提交四个固定路径并同步后重载插件。`,
               12000,
             );
             return "held";

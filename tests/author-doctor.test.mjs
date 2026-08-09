@@ -60,7 +60,7 @@ function healthyObservation() {
         isDesktopOnly: true,
         mainPresent: true,
         stylesPresent: true,
-      version: "1.40.0",
+      version: "1.41.0",
       },
     },
     workspace: {
@@ -160,14 +160,14 @@ async function createDoctorFixture() {
     scripts,
   }, null, 2)}\n`;
   const pluginManifest =
-    '{"id":"myblog-publisher","version":"1.40.0","isDesktopOnly":true}\n';
+    '{"id":"myblog-publisher","version":"1.41.0","isDesktopOnly":true}\n';
   const pluginMain = "module.exports = {};\n";
   const pluginStyles = ".fixture {}\n";
   const pluginBundle = `${JSON.stringify(
     {
       version: 1,
       algorithm: "sha256",
-      plugin: { id: "myblog-publisher", version: "1.40.0" },
+      plugin: { id: "myblog-publisher", version: "1.41.0" },
       files: [
         ["main.js", pluginMain],
         ["manifest.json", pluginManifest],
@@ -285,7 +285,7 @@ test("reports a real ready repository after its remote becomes unavailable", asy
         path: file.path,
         status: "verified",
       })),
-      plugin: { id: "myblog-publisher", version: "1.40.0" },
+      plugin: { id: "myblog-publisher", version: "1.41.0" },
       version: 1,
     });
     assert.deepEqual(
@@ -303,6 +303,62 @@ test("reports a real ready repository after its remote becomes unavailable", asy
       bundleReport.checks.at(-1).id,
       "publisher-bundle",
     );
+
+    const provenanceResult = run(
+      fixture.root,
+      process.execPath,
+      [
+        "--experimental-strip-types",
+        reportScriptPath,
+        "--format",
+        "json",
+        "--plugin-provenance",
+      ],
+      { allowFailure: true },
+    );
+    assert.equal(
+      provenanceResult.status,
+      0,
+      `${provenanceResult.stdout}\n${provenanceResult.stderr}`,
+    );
+    const provenanceReport = JSON.parse(provenanceResult.stdout);
+    assert.equal(provenanceReport.version, 3);
+    assert.equal(provenanceReport.status, "ready");
+    assert.deepEqual(provenanceReport.summary, {
+      attention: 0,
+      passed: 15,
+      total: 15,
+    });
+    assert.equal(provenanceReport.pluginProvenance.version, 1);
+    assert.match(provenanceReport.pluginProvenance.headOid, /^[a-f0-9]{40}$/u);
+    assert.deepEqual(
+      provenanceReport.pluginProvenance.files.map(
+        ({ indexStatus, path, present, status, worktreeStatus }) => ({
+          indexStatus,
+          path,
+          present,
+          status,
+          worktreeStatus,
+        }),
+      ),
+      ["bundle.json", "main.js", "manifest.json", "styles.css"].map(
+        (name) => ({
+          indexStatus: "clean",
+          path: `.obsidian/plugins/myblog-publisher/${name}`,
+          present: true,
+          status: "verified",
+          worktreeStatus: "clean",
+        }),
+      ),
+    );
+    assert.ok(
+      provenanceReport.pluginProvenance.files.every(
+        (file) =>
+          /^[a-f0-9]{40}$/u.test(file.headBlobOid) &&
+          file.headBlobOid === file.indexBlobOid,
+      ),
+    );
+    assert.equal(provenanceReport.checks.at(-1).id, "publisher-provenance");
 
     const stylesPath = join(
       fixture.root,
@@ -343,7 +399,48 @@ test("reports a real ready repository after its remote becomes unavailable", asy
       partialReport.checks.at(-1).observed,
       /2\/3 SHA-256 verified.*styles\.css mismatch/u,
     );
+    const partialProvenanceResult = run(
+      fixture.root,
+      process.execPath,
+      [
+        "--experimental-strip-types",
+        reportScriptPath,
+        "--format",
+        "json",
+        "--plugin-provenance",
+      ],
+      { allowFailure: true },
+    );
+    assert.equal(partialProvenanceResult.status, 1);
+    const partialProvenance = JSON.parse(partialProvenanceResult.stdout);
+    const dirtyStyles = partialProvenance.pluginProvenance.files.at(-1);
+    assert.equal(dirtyStyles.indexStatus, "clean");
+    assert.equal(dirtyStyles.worktreeStatus, "changed");
+    assert.equal(dirtyStyles.status, "unverified");
+
+    git(fixture.root, "add", ".obsidian/plugins/myblog-publisher/styles.css");
+    const stagedProvenanceResult = run(
+      fixture.root,
+      process.execPath,
+      [
+        "--experimental-strip-types",
+        reportScriptPath,
+        "--format",
+        "json",
+        "--plugin-provenance",
+      ],
+      { allowFailure: true },
+    );
+    assert.equal(stagedProvenanceResult.status, 1);
+    const stagedProvenance = JSON.parse(stagedProvenanceResult.stdout);
+    const stagedStyles = stagedProvenance.pluginProvenance.files.at(-1);
+    assert.equal(stagedStyles.indexStatus, "changed");
+    assert.equal(stagedStyles.worktreeStatus, "clean");
+    assert.notEqual(stagedStyles.headBlobOid, stagedStyles.indexBlobOid);
+    assert.equal(stagedStyles.status, "unverified");
+
     await writeFile(stylesPath, originalStyles);
+    git(fixture.root, "add", ".obsidian/plugins/myblog-publisher/styles.css");
 
     const forgedBundle = JSON.parse(originalBundle);
     forgedBundle.unknown = true;

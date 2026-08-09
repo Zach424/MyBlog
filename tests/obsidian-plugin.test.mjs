@@ -106,7 +106,7 @@ async function createPluginHarness({
   readActiveFilePathAt = 1,
   renameFailure,
   renamePostcondition = "exact",
-  runtimePluginVersion = "1.40.0",
+  runtimePluginVersion = "1.41.0",
   throwSpawnAt = [],
 } = {}) {
   const source = await readFile(pluginUrl, "utf8");
@@ -1174,7 +1174,8 @@ function deliveryTriageReport({
 
 function authorDoctorReport({
   bundleStatus = "verified",
-  pluginVersion = "1.40.0",
+  pluginVersion = "1.41.0",
+  provenanceStatus = "verified",
 } = {}) {
   const bundleFiles = ["main.js", "manifest.json", "styles.css"].map(
     (path, index) => ({
@@ -1191,6 +1192,25 @@ function authorDoctorReport({
     }),
   );
   const bundleReady = bundleStatus === "verified";
+  const provenanceReady = provenanceStatus === "verified";
+  const provenanceFiles = [
+    "bundle.json",
+    "main.js",
+    "manifest.json",
+    "styles.css",
+  ].map((name, index) => {
+    const oid = String.fromCharCode("b".charCodeAt(0) + index).repeat(40);
+    const changed = provenanceStatus === "changed" && name === "styles.css";
+    return {
+      headBlobOid: oid,
+      indexBlobOid: oid,
+      indexStatus: "clean",
+      path: `.obsidian/plugins/myblog-publisher/${name}`,
+      present: true,
+      status: changed ? "unverified" : "verified",
+      worktreeStatus: changed ? "changed" : "clean",
+    };
+  });
   const checkDefinitions = [
     ["node-runtime", "runtime", "Node.js runtime", "v24.14.0", ">=22.13.0"],
     ["npm-cli", "runtime", "npm CLI", "11.9.0", "available semantic version"],
@@ -1213,6 +1233,15 @@ function authorDoctorReport({
         ? `myblog-publisher@${pluginVersion} · 3/3 SHA-256 verified`
         : `myblog-publisher@${pluginVersion} · 2/3 SHA-256 verified · styles.css mismatch`,
       `myblog-publisher ${pluginVersion} bundle v1 · 3 SHA-256 files`,
+    ],
+    [
+      "publisher-provenance",
+      "vault",
+      "Plugin provenance",
+      provenanceReady
+        ? `HEAD ${"a".repeat(12)} · 4/4 tracked clean`
+        : `HEAD ${"a".repeat(12)} · 3/4 tracked clean · styles.css worktree changed`,
+      "4 plugin bundle paths tracked and equal to HEAD/index",
     ],
   ];
   const scripts = [
@@ -1238,9 +1267,10 @@ function authorDoctorReport({
     ["templates/obsidian", "directory"],
   ].map(([path, kind]) => ({ kind, path, present: true }));
   return {
-    version: 2,
+    version: 3,
     mode: "read-only",
-    status: bundleReady ? "ready" : "needs-attention",
+    status:
+      bundleReady && provenanceReady ? "ready" : "needs-attention",
     observation: {
       currentDirectory: "D:/Study/blog",
       gitVersion: "git version 2.37.1.windows.1",
@@ -1281,23 +1311,32 @@ function authorDoctorReport({
       plugin: { id: "myblog-publisher", version: pluginVersion },
       version: 1,
     },
+    pluginProvenance: {
+      files: provenanceFiles,
+      headOid: "a".repeat(40),
+      version: 1,
+    },
     summary: {
-      attention: bundleReady ? 0 : 1,
-      passed: bundleReady ? 14 : 13,
-      total: 14,
+      attention: Number(!bundleReady) + Number(!provenanceReady),
+      passed: 15 - Number(!bundleReady) - Number(!provenanceReady),
+      total: 15,
     },
     checks: checkDefinitions.map(([id, group, label, observed, expected]) => {
-      const failed = id === "publisher-bundle" && !bundleReady;
+      const bundleFailed = id === "publisher-bundle" && !bundleReady;
+      const provenanceFailed =
+        id === "publisher-provenance" && !provenanceReady;
       return {
         expected,
         group,
         id,
         label,
         observed,
-        resolution: failed
+        resolution: bundleFailed
           ? "运行 npm run plugin:bundle -- --write 后重新加载插件"
-          : null,
-        status: failed ? "attention" : "pass",
+          : provenanceFailed
+            ? "恢复四个插件 bundle 路径与 Git HEAD/index 一致后重载插件"
+            : null,
+        status: bundleFailed || provenanceFailed ? "attention" : "pass",
       };
     }),
     safety: {
@@ -1313,7 +1352,7 @@ function authorDoctorAttentionReport() {
   const report = authorDoctorReport();
   report.status = "needs-attention";
   report.observation.identity.emailConfigured = false;
-  report.summary = { attention: 1, passed: 13, total: 14 };
+  report.summary = { attention: 1, passed: 14, total: 15 };
   const identity = report.checks.find((check) => check.id === "author-identity");
   identity.observed = "name configured · email missing";
   identity.resolution = "配置 Git user.name 与 user.email 后重新检查";
@@ -1332,7 +1371,7 @@ const authorDoctorCommandArgs = [
   "--",
   "--format",
   "json",
-  "--plugin-bundle",
+  "--plugin-provenance",
 ];
 
 function finishReadyAuthorPreflight(harness, index) {
@@ -3224,7 +3263,7 @@ test("renders a versioned maintenance ledger and opens an exact Vault note", asy
     createPluginHarness(),
   ]);
   const manifest = JSON.parse(manifestSource);
-  assert.equal(manifest.version, "1.40.0");
+  assert.equal(manifest.version, "1.41.0");
   assert.equal(manifest.minAppVersion, "1.5.7");
   assert.equal(manifest.isDesktopOnly, true);
   assert.match(styles, /^\.myblog-draft-create \{/mu);
@@ -3782,7 +3821,7 @@ test("renders a local-only author preflight circuit without repairing it", async
     text,
     /RUNTIME \/ PASS.*GIT \/ PASS.*WORKSPACE \/ PASS.*VAULT \/ PASS/su,
   );
-  assert.match(text, /14 PASS \/ 0 ATTENTION/u);
+  assert.match(text, /15 PASS \/ 0 ATTENTION/u);
   assert.match(text, /Node\.js runtime/u);
   assert.match(text, /MyBlog Publisher/u);
   assert.match(text, /不会安装依赖、修改配置、读取凭据或访问网络/u);
@@ -3899,7 +3938,7 @@ test("holds every Git writer on an explicit runtime and disk plugin version mism
   await t.test("normal author transaction", async () => {
     const harness = await createPluginHarness({
       activeFilePath: "content/inbox/new-note.md",
-      runtimePluginVersion: "1.39.0",
+      runtimePluginVersion: "1.40.0",
     });
     findCommand(harness, "publish-current-note").checkCallback(false);
     assert.deepEqual(plain(harness.spawned[0].args), authorDoctorCommandArgs);
@@ -3918,14 +3957,14 @@ test("holds every Git writer on an explicit runtime and disk plugin version mism
       .join(" ");
     assert.equal(elementsByTag(modal, "button").length, 0);
     assert.match(text, /PLUGIN RELOAD REQUIRED/u);
-    assert.match(text, /RUNNING CODE.*1\.40\.0.*RUNTIME MANIFEST.*1\.39\.0.*DISK.*1\.40\.0/su);
+    assert.match(text, /RUNNING CODE.*1\.41\.0.*RUNTIME MANIFEST.*1\.40\.0.*DISK.*1\.41\.0/su);
     assert.match(text, /关闭再启用 MyBlog Publisher.*重启 Obsidian/su);
     assert.match(text, /发布当前草稿并同步 GitHub.*未启动/su);
   });
 
   await t.test("recovery delivery outside the author lease", async () => {
     const harness = await createPluginHarness({
-      runtimePluginVersion: "1.39.0",
+      runtimePluginVersion: "1.40.0",
     });
     findCommand(harness, "deliver-pending-review").checkCallback(false);
     assert.deepEqual(plain(harness.spawned[0].args), authorDoctorCommandArgs);
@@ -3948,10 +3987,10 @@ test("holds every Git writer on an explicit runtime and disk plugin version mism
 });
 
 test("keeps future disk patch and minor plugin versions structured for reload guidance", async (t) => {
-  for (const diskVersion of ["1.40.1", "1.41.0"]) {
+  for (const diskVersion of ["1.41.1", "1.42.0"]) {
     await t.test(diskVersion, async () => {
       const harness = await createPluginHarness({
-        runtimePluginVersion: "1.40.0",
+        runtimePluginVersion: "1.41.0",
       });
       findCommand(harness, "inspect-author-environment").checkCallback(false);
       harness.spawned[0].child.stdout.emit(
@@ -3975,9 +4014,9 @@ test("keeps future disk patch and minor plugin versions structured for reload gu
 
   await t.test("forged future version evidence", async () => {
     const harness = await createPluginHarness({
-      runtimePluginVersion: "1.40.0",
+      runtimePluginVersion: "1.41.0",
     });
-    const report = authorDoctorReport({ pluginVersion: "1.40.0" });
+    const report = authorDoctorReport({ pluginVersion: "1.41.0" });
     report.checks.at(-1).observed = "myblog-publisher@9.9.9 · desktop";
     findCommand(harness, "inspect-author-environment").checkCallback(false);
     harness.spawned[0].child.stdout.emit(
@@ -4030,12 +4069,12 @@ test("fails recovery closed when the disk plugin version identity is unavailable
   const report = authorDoctorReport();
   report.status = "needs-attention";
   report.observation.vault.plugin = null;
-  report.summary = { attention: 2, passed: 12, total: 14 };
+  report.summary = { attention: 2, passed: 13, total: 15 };
   const publisher = report.checks.find(
     (check) => check.id === "publisher-plugin",
   );
   publisher.observed = "missing";
-  publisher.resolution = "重新安装或启用 MyBlog Publisher 1.40.0";
+  publisher.resolution = "重新安装或启用 MyBlog Publisher 1.41.0";
   publisher.status = "attention";
   const bundle = report.checks.find(
     (check) => check.id === "publisher-bundle",
@@ -4093,6 +4132,40 @@ test("holds normal and recovery Git writers on a mismatched plugin bundle", asyn
       assert.match(text, /styles\.css.*MISMATCH/su);
       assert.match(text, /npm run plugin:bundle -- --write/u);
       assert.match(text, /不会自动覆盖、重载或启动 Git/su);
+    });
+  }
+});
+
+test("holds normal and recovery Git writers on unverified plugin provenance", async (t) => {
+  for (const commandId of [
+    "publish-current-note",
+    "deliver-pending-review",
+  ]) {
+    await t.test(commandId, async () => {
+      const harness = await createPluginHarness({
+        activeFilePath: "content/inbox/new-note.md",
+      });
+      findCommand(harness, commandId).checkCallback(false);
+      assert.deepEqual(plain(harness.spawned[0].args), authorDoctorCommandArgs);
+      harness.spawned[0].child.stdout.emit(
+        "data",
+        Buffer.from(
+          JSON.stringify(authorDoctorReport({ provenanceStatus: "changed" })),
+        ),
+      );
+      harness.spawned[0].child.emit("close", 1);
+
+      assert.equal(harness.spawned.length, 1);
+      assert.equal(harness.plugin.authorTransactionLease, null);
+      assert.equal(harness.modals.length, 1);
+      assert.equal(elementsByTag(harness.modals[0], "button").length, 0);
+      const text = allElements(harness.modals[0].contentEl)
+        .map((element) => element.text)
+        .join(" ");
+      assert.match(text, /PLUGIN PROVENANCE UNVERIFIED/u);
+      assert.match(text, /styles\.css.*WORKTREE CHANGED/su);
+      assert.match(text, /HEAD.*INDEX/su);
+      assert.match(text, /Git add.*commit.*push.*fetch.*reset/su);
     });
   }
 });

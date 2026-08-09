@@ -31,6 +31,7 @@ try {
     options: {
       format: { default: "text", type: "string" },
       "plugin-bundle": { default: false, type: "boolean" },
+      "plugin-provenance": { default: false, type: "boolean" },
     },
     strict: true,
   });
@@ -41,12 +42,19 @@ if (args.positionals.length !== 0) fail("该命令不接受位置参数");
 if (!new Set(["json", "text"]).has(args.values.format)) {
   fail("--format 只能是 text 或 json");
 }
+if (args.values["plugin-bundle"] && args.values["plugin-provenance"]) {
+  fail("--plugin-bundle 与 --plugin-provenance 不能同时使用");
+}
 
 let report;
 try {
   report = await inspectAuthorEnvironment(process.cwd(), {
     pluginBundle:
-      args.values["plugin-bundle"] || args.values.format === "text",
+      args.values["plugin-bundle"] ||
+      args.values["plugin-provenance"] ||
+      args.values.format === "text",
+    pluginProvenance:
+      args.values["plugin-provenance"] || args.values.format === "text",
   });
 } catch (error) {
   fail(error instanceof Error ? error.message : String(error));

@@ -3,6 +3,7 @@ import { lstat, readFile } from "node:fs/promises";
 import { dirname, join, resolve } from "node:path";
 import {
   addPublisherPluginBundleEvidence,
+  addPublisherPluginProvenanceEvidence,
   analyzeAuthorEnvironment,
   AUTHOR_DOCTOR_REQUIRED_PATHS,
 } from "../lib/content/author-doctor.ts";
@@ -10,6 +11,10 @@ import {
   observePublisherPluginBundle,
   PUBLISHER_PLUGIN_BUNDLE_FILES,
 } from "../lib/content/publisher-plugin-bundle.ts";
+import {
+  PUBLISHER_PLUGIN_PROVENANCE_PATHS,
+  PUBLISHER_PLUGIN_PROVENANCE_VERSION,
+} from "../lib/content/publisher-plugin-provenance.ts";
 import { readContentDeliveryGitSnapshot } from "./delivery-git-snapshot.mjs";
 
 function normalizePath(path) {
@@ -31,6 +36,24 @@ function run(command, args, cwd) {
 
 function git(cwd, args) {
   return run("git", args, cwd);
+}
+
+function gitStatus(cwd, args) {
+  const result = spawnSync("git", args, {
+    cwd,
+    encoding: "utf8",
+    maxBuffer: 2_000_000,
+    shell: false,
+    stdio: "pipe",
+    windowsHide: true,
+  });
+  if (result.error || result.status === null) return null;
+  return result.status;
+}
+
+function diffStatus(cwd, args) {
+  const status = gitStatus(cwd, args);
+  return status === 0 ? "clean" : status === 1 ? "changed" : "unavailable";
 }
 
 async function readJson(path) {
@@ -92,6 +115,38 @@ async function readNpmVersion(cwd) {
   return null;
 }
 
+async function inspectPublisherPluginProvenance(root, headOid) {
+  const files = await Promise.all(
+    PUBLISHER_PLUGIN_PROVENANCE_PATHS.map(async (path) => {
+      const present = await isRegularFile(join(root, ...path.split("/")));
+      const headBlobOid = headOid ? git(root, ["rev-parse", `HEAD:${path}`]) : null;
+      const indexBlobOid = git(root, ["rev-parse", `:${path}`]);
+      const indexStatus = diffStatus(root, ["diff", "--cached", "--quiet", "--", path]);
+      const worktreeStatus = diffStatus(root, ["diff", "--quiet", "--", path]);
+      const verified =
+        present &&
+        headBlobOid !== null &&
+        indexBlobOid === headBlobOid &&
+        indexStatus === "clean" &&
+        worktreeStatus === "clean";
+      return {
+        headBlobOid,
+        indexBlobOid,
+        indexStatus,
+        path,
+        present,
+        status: verified ? "verified" : "unverified",
+        worktreeStatus,
+      };
+    }),
+  );
+  return {
+    files,
+    headOid,
+    version: PUBLISHER_PLUGIN_PROVENANCE_VERSION,
+  };
+}
+
 function deriveRelation(snapshot) {
   if (snapshot.trackingHead === null) return "tracking-missing";
   if (snapshot.ahead === 0 && snapshot.behind === 0) return "synchronized";
@@ -130,7 +185,7 @@ async function readDependencyState(root, packageSource) {
 
 export async function inspectAuthorEnvironment(
   cwd = process.cwd(),
-  { pluginBundle = false } = {},
+  { pluginBundle = false, pluginProvenance = false } = {},
 ) {
   const root = resolve(cwd);
   const packageSource = await readJson(join(root, "package.json"));
@@ -206,7 +261,7 @@ export async function inspectAuthorEnvironment(
       ),
     },
   });
-  if (!pluginBundle) return report;
+  if (!pluginBundle && !pluginProvenance) return report;
   const pluginBundleObservation = observePublisherPluginBundle(
     parseJsonBytes(bundleBytes),
     Object.fromEntries(
@@ -220,5 +275,17 @@ export async function inspectAuthorEnvironment(
       ]),
     ),
   );
-  return addPublisherPluginBundleEvidence(report, pluginBundleObservation);
+  const bundleReport = addPublisherPluginBundleEvidence(
+    report,
+    pluginBundleObservation,
+  );
+  if (!pluginProvenance) return bundleReport;
+  const pluginProvenanceObservation = await inspectPublisherPluginProvenance(
+    root,
+    snapshot?.localHead ?? null,
+  );
+  return addPublisherPluginProvenanceEvidence(
+    bundleReport,
+    pluginProvenanceObservation,
+  );
 }
