@@ -90,6 +90,7 @@ function createElement(tag, options = {}) {
 async function createPluginHarness({
   activeFilePath,
   createFailure,
+  deferReconcile = false,
   deferredVaultReadNumbers = [],
   desktop = true,
   editorLineCount,
@@ -123,6 +124,7 @@ async function createPluginHarness({
   const vaultReads = [];
   const deferredVaultReads = new Map();
   let reconciliations = 0;
+  let reconcileContinuation = null;
   const spawned = [];
   let spawnAttempts = 0;
 
@@ -133,6 +135,11 @@ async function createPluginHarness({
 
     reconcile() {
       reconciliations += 1;
+      if (deferReconcile) {
+        return new Promise((resolve) => {
+          reconcileContinuation = resolve;
+        });
+      }
     }
   }
 
@@ -420,6 +427,14 @@ async function createPluginHarness({
       deferredVaultReads.delete(readNumber);
       continuation.reject(error);
     },
+    resolveReconcile() {
+      if (!reconcileContinuation) {
+        throw new Error("Vault reconcile is not deferred");
+      }
+      const resolve = reconcileContinuation;
+      reconcileContinuation = null;
+      resolve();
+    },
     resolveVaultRead(readNumber) {
       const continuation = deferredVaultReads.get(readNumber);
       if (!continuation) {
@@ -687,6 +702,38 @@ function productionConvergenceReport({
       ...safety,
     },
   };
+}
+
+function postDeliveryHandoff({
+  commitOid = "f".repeat(40),
+  delivery = "review",
+  safety = {},
+  target = {},
+  version = 1,
+} = {}) {
+  return {
+    version,
+    mode: "post-delivery",
+    delivery,
+    commitOid,
+    target: {
+      ...productionConvergenceReport().target,
+      ...target,
+    },
+    safety: {
+      gitDelivered: true,
+      productionChecked: false,
+      waitStarted: false,
+      ...safety,
+    },
+  };
+}
+
+function postDeliveryHandoffOutput(handoff) {
+  return [
+    "[domain] delivery completed",
+    `[post-delivery-handoff] ${JSON.stringify(handoff)}`,
+  ].join("\n");
 }
 
 function inboxReadinessReport({
@@ -1110,7 +1157,7 @@ function authorDoctorReport() {
     ["workspace-dependencies", "workspace", "Workspace dependencies", "35/35 pinned packages", "all declared packages installed at pinned versions"],
     ["content-layout", "workspace", "Content layout", "5/5 required paths", "5 required authoring paths"],
     ["obsidian-vault", "vault", "Obsidian Vault", ".obsidian present", ".obsidian directory present"],
-    ["publisher-plugin", "vault", "MyBlog Publisher", "myblog-publisher@1.36.0 · desktop", "myblog-publisher 1.36.0 desktop plugin"],
+    ["publisher-plugin", "vault", "MyBlog Publisher", "myblog-publisher@1.37.0 · desktop", "myblog-publisher 1.37.0 desktop plugin"],
   ];
   const scripts = [
     "content:author:doctor",
@@ -1159,7 +1206,7 @@ function authorDoctorReport() {
           isDesktopOnly: true,
           mainPresent: true,
           stylesPresent: true,
-          version: "1.36.0",
+          version: "1.37.0",
         },
       },
       workspace: {
@@ -3105,7 +3152,7 @@ test("renders a versioned maintenance ledger and opens an exact Vault note", asy
     createPluginHarness(),
   ]);
   const manifest = JSON.parse(manifestSource);
-  assert.equal(manifest.version, "1.36.0");
+  assert.equal(manifest.version, "1.37.0");
   assert.equal(manifest.minAppVersion, "1.5.7");
   assert.equal(manifest.isDesktopOnly, true);
   assert.match(styles, /^\.myblog-draft-create \{/mu);
@@ -3736,6 +3783,7 @@ test("gates every new publish and review transaction with one ready author prefl
         "--",
         "content/inbox/new-note.md",
         "--push",
+        "--handoff",
       ],
       path: "content/inbox/new-note.md",
     },
@@ -3760,6 +3808,7 @@ test("gates every new publish and review transaction with one ready author prefl
         "--",
         "content/projects/myblog.md",
         "--push",
+        "--handoff",
       ],
       path: "content/projects/myblog.md",
     },
@@ -3780,6 +3829,155 @@ test("gates every new publish and review transaction with one ready author prefl
     ]);
     assert.equal(harness.modals.length, 0, commandId);
   }
+});
+
+test("releases each Git writer and reconciles the Vault before automatic production wait", async (t) => {
+  const cases = [
+    {
+      commandId: "publish-current-note",
+      delivery: "publication",
+      sourcePath: "content/inbox/myblog.md",
+    },
+    {
+      commandId: "review-current-published-note",
+      delivery: "review",
+      sourcePath: "content/projects/myblog.md",
+    },
+  ];
+
+  for (const entry of cases) {
+    await t.test(entry.delivery, async () => {
+      const harness = await createPluginHarness({
+        activeFilePath: entry.sourcePath,
+        deferReconcile: true,
+      });
+      findCommand(harness, entry.commandId).checkCallback(false);
+      finishReadyAuthorPreflight(harness, 0);
+      const handoff = postDeliveryHandoff({ delivery: entry.delivery });
+      harness.spawned[1].child.stdout.emit(
+        "data",
+        Buffer.from(postDeliveryHandoffOutput(handoff)),
+      );
+      harness.spawned[1].child.emit("close", 0);
+      await Promise.resolve();
+
+      assert.equal(harness.plugin.authorTransactionLease, null);
+      assert.equal(harness.plugin.lastAuthorTransactionReceipt.outcome, "completed");
+      assert.equal(harness.reconciliations, 1);
+      assert.equal(harness.spawned.length, 2);
+
+      harness.resolveReconcile();
+      await new Promise((resolve) => setImmediate(resolve));
+      assert.equal(harness.spawned.length, 3);
+      assert.deepEqual(plain(harness.spawned[2].args), [
+        "/d",
+        "/s",
+        "/c",
+        "npm",
+        "--silent",
+        "run",
+        "content:production:wait",
+        "--",
+        "--source",
+        handoff.target.sourcePath,
+        "--format",
+        "json",
+        "--expected-source-sha256",
+        handoff.target.sourceSha256,
+        "--expected-local-etag-sha256",
+        "a".repeat(64),
+      ]);
+      assert.equal(
+        harness.spawned.filter(({ args }) => args.includes("--push")).length,
+        1,
+      );
+
+      harness.spawned[2].child.stdout.emit(
+        "data",
+        Buffer.from(JSON.stringify(productionConvergenceReport())),
+      );
+      harness.spawned[2].child.emit("close", 0);
+      assert.equal(harness.modals.length, 1);
+      const text = allElements(harness.modals[0].contentEl)
+        .map((element) => element.text)
+        .join(" ");
+      assert.match(text, /DELIVERY HANDOFF.*REVIEW|DELIVERY HANDOFF.*PUBLICATION/su);
+      assert.match(text, new RegExp(handoff.commitOid.slice(0, 12), "u"));
+      assert.equal(harness.plugin.authorTransactionLease, null);
+      assert.equal(harness.spawned.length, 3);
+    });
+  }
+});
+
+test("rejects an untrusted post-delivery handoff without reconcile, wait, or another Git action", async () => {
+  const sourcePath = "content/projects/myblog.md";
+  const harness = await createPluginHarness({ activeFilePath: sourcePath });
+  findCommand(harness, "review-current-published-note").checkCallback(false);
+  finishReadyAuthorPreflight(harness, 0);
+  const forged = postDeliveryHandoff({
+    delivery: "review",
+    safety: { productionChecked: true },
+  });
+  harness.spawned[1].child.stdout.emit(
+    "data",
+    Buffer.from(postDeliveryHandoffOutput(forged)),
+  );
+  harness.spawned[1].child.emit("close", 0);
+  await Promise.resolve();
+
+  assert.equal(harness.plugin.authorTransactionLease, null);
+  assert.equal(harness.plugin.lastAuthorTransactionReceipt.outcome, "result-failed");
+  assert.equal(harness.reconciliations, 0);
+  assert.equal(harness.spawned.length, 2);
+  assert.equal(
+    harness.spawned.filter(({ args }) => args.includes("--push")).length,
+    1,
+  );
+  assert.match(
+    harness.notices.at(-1).message,
+    /交付接力证据.*不会重新提交、推送或自动重试/su,
+  );
+});
+
+test("keeps late handoff evidence and post-reconcile unload from starting a wait", async (t) => {
+  await t.test("handoff is not the last stdout evidence", async () => {
+    const sourcePath = "content/projects/myblog.md";
+    const harness = await createPluginHarness({ activeFilePath: sourcePath });
+    findCommand(harness, "review-current-published-note").checkCallback(false);
+    finishReadyAuthorPreflight(harness, 0);
+    harness.spawned[1].child.stdout.emit(
+      "data",
+      Buffer.from(
+        `${postDeliveryHandoffOutput(postDeliveryHandoff())}\n[domain] late output`,
+      ),
+    );
+    harness.spawned[1].child.emit("close", 0);
+    await Promise.resolve();
+    assert.equal(harness.reconciliations, 0);
+    assert.equal(harness.spawned.length, 2);
+    assert.equal(harness.plugin.lastAuthorTransactionReceipt.outcome, "result-failed");
+  });
+
+  await t.test("plugin unloads while Vault reconcile is pending", async () => {
+    const sourcePath = "content/projects/myblog.md";
+    const harness = await createPluginHarness({
+      activeFilePath: sourcePath,
+      deferReconcile: true,
+    });
+    findCommand(harness, "review-current-published-note").checkCallback(false);
+    finishReadyAuthorPreflight(harness, 0);
+    harness.spawned[1].child.stdout.emit(
+      "data",
+      Buffer.from(postDeliveryHandoffOutput(postDeliveryHandoff())),
+    );
+    harness.spawned[1].child.emit("close", 0);
+    await Promise.resolve();
+    assert.equal(harness.reconciliations, 1);
+    harness.plugin.onunload();
+    harness.resolveReconcile();
+    await new Promise((resolve) => setImmediate(resolve));
+    assert.equal(harness.spawned.length, 2);
+  });
 });
 
 test("holds every new publish and review transaction on author attention", async () => {
@@ -4735,9 +4933,16 @@ test("checks or syncs only the active formal content note", async () => {
     "--",
     activeFilePath,
     "--push",
+    "--handoff",
   ]);
+  harness.spawned[3].child.stdout.emit(
+    "data",
+    Buffer.from(postDeliveryHandoffOutput(postDeliveryHandoff())),
+  );
   harness.spawned[3].child.emit("close", 0);
+  await new Promise((resolve) => setImmediate(resolve));
   assert.equal(harness.reconciliations, 1);
+  assert.equal(harness.spawned.length, 5);
 
   const inbox = await createPluginHarness({
     activeFilePath: "content/inbox/draft.md",

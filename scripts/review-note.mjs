@@ -11,6 +11,12 @@ import {
 } from "../lib/content/review-note.ts";
 import { classifyContentReviewWorktree } from "../lib/content/review-worktree.ts";
 import { inspectContentReviewDeliveryFromGit } from "./review-delivery-git.mjs";
+import {
+  createPostDeliveryHandoff,
+  createPostDeliveryHandoffTarget,
+  formatPostDeliveryHandoffLine,
+} from "../lib/content/post-delivery-handoff.ts";
+import { PRODUCTION_CONTENT_DEFAULT_ORIGIN } from "../lib/content/production-sync.ts";
 
 function fail(message) {
   console.error(`[review] ${message}`);
@@ -192,6 +198,7 @@ try {
     options: {
       "check-only": { type: "boolean" },
       format: { type: "string" },
+      handoff: { type: "boolean" },
       push: { type: "boolean" },
     },
     strict: true,
@@ -201,6 +208,7 @@ try {
 }
 const checkOnly = parsedArgs.values["check-only"] === true;
 const push = parsedArgs.values.push === true;
+const handoffRequested = parsedArgs.values.handoff === true;
 const format = parsedArgs.values.format ?? "text";
 if (parsedArgs.positionals.length !== 1 || checkOnly === push) {
   fail(
@@ -209,6 +217,7 @@ if (parsedArgs.positionals.length !== 1 || checkOnly === push) {
 }
 if (!["text", "json"].includes(format)) fail("--format 只能是 text 或 json");
 if (push && format === "json") fail("--format json 只用于 --check-only 证据");
+if (handoffRequested && !push) fail("--handoff 只用于已确认 Git 同步的 --push 交付");
 
 const sourcePath = parsedArgs.positionals[0]
   .replaceAll("\\", "/")
@@ -291,10 +300,18 @@ if (checkOnly) {
 
 let commitCreated = false;
 let commitVerified = false;
+let handoffTarget = null;
 try {
   assertHeadUnchanged(baseHead);
   printCandidateEvidence(candidate);
   printDeferredEvidence(impact);
+  if (handoffRequested) {
+    handoffTarget = createPostDeliveryHandoffTarget({
+      origin: PRODUCTION_CONTENT_DEFAULT_ORIGIN,
+      source: candidate.bytes,
+      sourcePath,
+    });
+  }
   runGit(["add", "--", sourcePath]);
   const staged = nulPaths(
     capturedGit([
@@ -339,8 +356,26 @@ try {
     throw new Error("复核提交内容与通过质量门的候选指纹不一致");
   }
   commitVerified = true;
+  const commitOid = capturedGit(["rev-parse", "HEAD"]).stdout.trim();
   runGit(["push", "origin", "main"]);
+  const delivered = inspectContentReviewDeliveryFromGit();
+  if (
+    delivered.relation.status !== "synchronized" ||
+    delivered.observation.localHead !== commitOid ||
+    delivered.observation.trackingHead !== commitOid
+  ) {
+    throw new Error(
+      "push 可能已完成，但无法证明 local main 与 tracking ref 已同步；请运行 npm run content:review:status",
+    );
+  }
   console.log(`[review] 已提交并同步正式内容复核：${inspection.slug}`);
+  if (handoffRequested) {
+    console.log(formatPostDeliveryHandoffLine(createPostDeliveryHandoff({
+      commitOid,
+      delivery: "review",
+      target: handoffTarget,
+    })));
+  }
 } catch (error) {
   if (commitCreated && !commitVerified) {
     try {

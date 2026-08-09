@@ -29,8 +29,9 @@ Secret 只保存在 Vercel/GitHub 的加密设置中，不进入 `.env.example`�
 4. Obsidian 中可先运行“查看已发布内容复核台账”处理已有 Current 内容；打开正式笔记并人工更新事实与复核日期后，依次运行“检查当前正式内容复核”和“提交并同步当前正式内容复核”。发布新草稿时先运行“查看当前草稿发布意图”快速核对类型、目标、日期、附件与站内链接；需要全库对照时运行“查看全部草稿发布就绪状态”，处理 blocked 并确认 scheduled 日期，再运行 `npm run content:publish -- <note> --check-only`；
 5. 逐张确认实际格式、宽高、帧数和体积后，使用 Obsidian 的“发布当前草稿并同步 GitHub”或命令行 `--push`。`--push` 会把 `draft` 改为 `false` 后运行完整质量门、提交并推送；网页方式使用 editorial workflow。若新内容 push 失败，先运行“查看待同步新内容发布”，不要恢复草稿或再次发布；
 6. 让质量门通过，再把提交合并到 `main`；
-7. Vercel 自动创建生产部署，deployment status 工作流检查稳定公开生产域名；
-8. 打开文章、公开内容清单、JSON Feed、RSS 和 Sitemap，确认新内容可见且绝对 URL 指向当前生产域名；清单中的 `markdown_etag` 应与对应源文响应一致。
+7. Obsidian 1.37.0 在可信 `--push` 成功后先释放作者事务、完成 Vault reconcile，再自动启动单篇生产等待；等待失败不改变已经完成的 Git 交付。Studio、普通 Git 和“重新同步待交付…”恢复入口仍需手动运行“等待当前正式内容上线”；
+8. Vercel 自动创建生产部署，deployment status 工作流检查稳定公开生产域名；
+9. 打开文章、公开内容清单、JSON Feed、RSS 和 Sitemap，确认新内容可见且绝对 URL 指向当前生产域名；清单中的 `markdown_etag` 应与对应源文响应一致。
 
 ## URL 迁移
 
@@ -114,6 +115,8 @@ npm run content:production:wait -- --source content/projects/myblog.md
 该命令受限读取真实 `/content.json`，以本地相同 origin 的公开投影逐项比较 id、Markdown ETag 与清单元数据，并报告 deployed、pending、missing、unexpected。有效报告不代表执行过部署；它只证明特定响应 ETag/Last-Modified 快照与本地内容的关系。网络超时、重定向、非 200、MIME/体积/JSON/schema 错误会以非零退出，且不会转成内容漂移。默认不因有效 drift 返回非零；需要脚本门时显式增加 `--fail-on-drift`。命令不写文件、不提交、不推送，有意不进入 `release:check` 或 Actions，避免把临时网络状态变成本地发布硬门。
 
 `content:production:wait` 只等待 `--source` 指定的一篇正式文章或项目。启动时冻结来源原始 SHA-256 和本地公开 ETag；默认最多等待 180 秒、每 5 秒一次、单请求最多 10 秒，并在后续请求发送 `If-None-Match`。pending/missing 继续等待；deployed 返回 0；到时仍未收敛返回 2；来源漂移、unexpected、网络或协议失败返回 1；取消返回 130。JSON 模式把逐次进度写到 stderr、最终 version 1 回执写到 stdout，适合 Obsidian 严格解析。等待过程只读且不会提交、推送或触发部署。
+
+自动接力时，发布/复核命令额外请求一条 version 1 post-delivery handoff。它必须是 stdout 唯一最后证据行，并同时证明 Git commit 已送达、生产尚未检查、等待尚未开始。插件严格核对 schema、commit、交付类型、inbox/formal slug、最终来源与冻结摘要；无效或迟到证据不 reconcile、不等待。可信证据也要等 author transaction lease 释放和 Vault reconcile 完成后才启动等待；reconcile 期间卸载插件不会留下新子进程。任何后续失败只报告生产取证未完成，不再执行 Git。当前恢复交付命令仍停在 sealed Git receipt，需作者手动运行等待；不要把这解释成 push 未完成。
 
 若终端能访问生产站而 Obsidian 子进程不能，先确认 Obsidian 继承了系统代理环境。Node 24 使用 `HTTP_PROXY`/`HTTPS_PROXY` 时还需要设置 `NODE_USE_ENV_PROXY=1` 后完整重启 Obsidian；不要把代理地址、令牌或凭据写进仓库。代理、DNS 或 CDN 暂时不可用只表示本次取证失败，不应通过扩大时限掩盖协议问题。
 

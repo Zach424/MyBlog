@@ -5,20 +5,20 @@ import { loadContentRepository } from "../build/validate-content.ts";
 import { isPublished } from "../lib/content/contract.ts";
 import {
   PRODUCTION_CONTENT_SYNC_DEFAULTS,
+  PRODUCTION_CONTENT_DEFAULT_ORIGIN,
   compareProductionContent,
   fetchProductionContentManifest,
   formatProductionContentSyncText,
   resolveProductionOrigin,
 } from "../lib/content/production-sync.ts";
 
-const DEFAULT_PRODUCTION_ORIGIN = "https://blog-iota-five-59.vercel.app";
 const ISO_DATE_PATTERN = /^\d{4}-\d{2}-\d{2}$/u;
 
 function help() {
   return `用法：npm run content:production -- [选项]
 
 选项：
-  --origin URL          生产站点 origin（默认：${DEFAULT_PRODUCTION_ORIGIN}）
+  --origin URL          生产站点 origin（默认：${PRODUCTION_CONTENT_DEFAULT_ORIGIN}）
   --date YYYY-MM-DD     本地公开范围日期（默认：Asia/Shanghai 今天）
   --format text|json    输出人类可读文本或 JSON（默认：text）
   --timeout-ms N        生产清单请求超时（500–30000，默认：${PRODUCTION_CONTENT_SYNC_DEFAULTS.timeoutMs}）
@@ -52,7 +52,7 @@ async function main() {
       "fail-on-drift": { type: "boolean", default: false },
       format: { type: "string", default: "text" },
       help: { type: "boolean", short: "h", default: false },
-      origin: { type: "string", default: DEFAULT_PRODUCTION_ORIGIN },
+      origin: { type: "string", default: PRODUCTION_CONTENT_DEFAULT_ORIGIN },
       "timeout-ms": {
         type: "string",
         default: String(PRODUCTION_CONTENT_SYNC_DEFAULTS.timeoutMs),

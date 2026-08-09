@@ -328,6 +328,15 @@ test("the CLI waits through missing and 304 snapshots while author files stay by
   t.after(() => new Promise((resolve) => server.close(resolve)));
   const address = server.address();
   serverOrigin = new URL(`http://127.0.0.1:${address.port}/`);
+  const targetSourceBytes = await readFile(
+    new URL(`../${targetRecord.sourcePath}`, import.meta.url),
+  );
+  const frozenTarget = createProductionContentConvergenceTarget({
+    localRecords: records,
+    origin: serverOrigin,
+    sourcePath: targetRecord.sourcePath,
+    sourceSha256: createHash("sha256").update(targetSourceBytes).digest("hex"),
+  });
 
   const { stdout, stderr } = await execFileAsync(
     process.execPath,
@@ -348,6 +357,10 @@ test("the CLI waits through missing and 304 snapshots while author files stay by
       "250",
       "--request-timeout-ms",
       "2000",
+      "--expected-source-sha256",
+      frozenTarget.sourceSha256,
+      "--expected-local-etag-sha256",
+      frozenTarget.localEtag.slice(8, -1),
     ],
     { cwd: rootPath, timeout: 15_000, windowsHide: true },
   );
@@ -369,4 +382,35 @@ test("the CLI waits through missing and 304 snapshots while author files stay by
     },
     before,
   );
+
+  await assert.rejects(
+    execFileAsync(
+      process.execPath,
+      [
+        "--experimental-strip-types",
+        "scripts/wait-production-content-convergence.mjs",
+        "--source",
+        targetRecord.sourcePath,
+        "--date",
+        buildDate,
+        "--origin",
+        serverOrigin.href,
+        "--timeout-ms",
+        "5000",
+        "--interval-ms",
+        "250",
+        "--request-timeout-ms",
+        "2000",
+        "--expected-source-sha256",
+        "f".repeat(64),
+        "--expected-local-etag-sha256",
+        frozenTarget.localEtag.slice(8, -1),
+      ],
+      { cwd: rootPath, timeout: 15_000, windowsHide: true },
+    ),
+    (error) =>
+      error.code === 1 &&
+      /post-delivery handoff 冻结目标不一致/u.test(error.stderr),
+  );
+  assert.equal(requestCount, 3);
 });

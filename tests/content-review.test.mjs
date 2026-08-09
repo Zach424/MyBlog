@@ -812,7 +812,7 @@ test("commits and pushes exactly the reviewed note", async () => {
         "new image\n",
       ),
     ]);
-    const result = runReviewer(fixture.root, "--push");
+    const result = runReviewer(fixture.root, "--push", "--handoff");
     assert.equal(result.status, 0, `${result.stdout}\n${result.stderr}`);
     assert.match(result.stdout, /已提交并同步正式内容复核/u);
     const head = git(fixture.root, "rev-parse", "HEAD");
@@ -823,6 +823,20 @@ test("commits and pushes exactly the reviewed note", async () => {
       sourcePath,
     );
     assert.equal(git(fixture.remote, "rev-parse", "refs/heads/main"), head);
+    const handoffLines = result.stdout
+      .trim()
+      .split(/\r?\n/u)
+      .filter((line) => line.startsWith("[post-delivery-handoff] "));
+    assert.equal(handoffLines.length, 1);
+    assert.equal(handoffLines[0], result.stdout.trim().split(/\r?\n/u).at(-1));
+    const handoff = JSON.parse(
+      handoffLines[0].slice("[post-delivery-handoff] ".length),
+    );
+    assert.equal(handoff.delivery, "review");
+    assert.equal(handoff.commitOid, head);
+    assert.equal(handoff.target.sourcePath, sourcePath);
+    assert.match(handoff.target.sourceSha256, /^[a-f0-9]{64}$/u);
+    assert.match(handoff.target.localEtag, /^"sha256-[a-f0-9]{64}"$/u);
     assert.equal(
       git(fixture.root, "diff", "--name-only"),
       "content/inbox/parallel-draft.md",

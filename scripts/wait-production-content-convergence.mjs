@@ -15,9 +15,11 @@ import {
   ProductionContentConvergenceCancelledError,
   waitForProductionContentConvergence,
 } from "../lib/content/production-convergence.ts";
-import { resolveProductionOrigin } from "../lib/content/production-sync.ts";
+import {
+  PRODUCTION_CONTENT_DEFAULT_ORIGIN,
+  resolveProductionOrigin,
+} from "../lib/content/production-sync.ts";
 
-const DEFAULT_PRODUCTION_ORIGIN = "https://blog-iota-five-59.vercel.app";
 const PROGRESS_PREFIX = "[production-convergence-progress] ";
 const ISO_DATE_PATTERN = /^\d{4}-\d{2}-\d{2}$/u;
 
@@ -26,9 +28,13 @@ function help() {
 
 选项：
   --source PATH          必填；content/posts|projects/<slug>.md
-  --origin URL           生产站点 origin（默认：${DEFAULT_PRODUCTION_ORIGIN}）
+  --origin URL           生产站点 origin（默认：${PRODUCTION_CONTENT_DEFAULT_ORIGIN}）
   --date YYYY-MM-DD      本地公开范围日期（默认：Asia/Shanghai 今天）
   --format text|json     最终回执格式（默认：text）
+  --expected-source-sha256 HEX
+                        可选；交付 handoff 冻结的来源 SHA-256
+  --expected-local-etag-sha256 HEX
+                        可选；交付 handoff 冻结的公开 Markdown ETag digest
   --timeout-ms N         总等待时限（1000–900000，默认：${PRODUCTION_CONTENT_CONVERGENCE_DEFAULTS.timeoutMs}）
   --interval-ms N        轮询间隔（250–60000，默认：${PRODUCTION_CONTENT_CONVERGENCE_DEFAULTS.intervalMs}）
   --request-timeout-ms N 单次请求时限（500–30000，默认：${PRODUCTION_CONTENT_CONVERGENCE_DEFAULTS.requestTimeoutMs}）
@@ -64,12 +70,14 @@ async function main(signal) {
     options: {
       date: { type: "string" },
       format: { type: "string", default: "text" },
+      "expected-local-etag-sha256": { type: "string" },
+      "expected-source-sha256": { type: "string" },
       help: { type: "boolean", short: "h", default: false },
       "interval-ms": {
         type: "string",
         default: String(PRODUCTION_CONTENT_CONVERGENCE_DEFAULTS.intervalMs),
       },
-      origin: { type: "string", default: DEFAULT_PRODUCTION_ORIGIN },
+      origin: { type: "string", default: PRODUCTION_CONTENT_DEFAULT_ORIGIN },
       "request-timeout-ms": {
         type: "string",
         default: String(PRODUCTION_CONTENT_CONVERGENCE_DEFAULTS.requestTimeoutMs),
@@ -110,6 +118,21 @@ async function main(signal) {
   if (requestTimeoutMs >= timeoutMs) {
     throw new Error("--request-timeout-ms 必须小于 --timeout-ms");
   }
+  const expectedSourceSha256 = values["expected-source-sha256"];
+  const expectedLocalEtagSha256 = values["expected-local-etag-sha256"];
+  if ((expectedSourceSha256 === undefined) !== (expectedLocalEtagSha256 === undefined)) {
+    throw new Error(
+      "--expected-source-sha256 与 --expected-local-etag-sha256 必须同时提供",
+    );
+  }
+  for (const [name, value] of [
+    ["--expected-source-sha256", expectedSourceSha256],
+    ["--expected-local-etag-sha256", expectedLocalEtagSha256],
+  ]) {
+    if (value !== undefined && !/^[a-f0-9]{64}$/u.test(value)) {
+      throw new Error(`${name} 必须是 64 位小写 SHA-256 digest`);
+    }
+  }
 
   const origin = resolveProductionOrigin(values.origin);
   const sourcePath = normalizeProductionConvergenceSourcePath(values.source);
@@ -126,6 +149,17 @@ async function main(signal) {
     sourcePath,
     sourceSha256,
   });
+  if (
+    expectedSourceSha256 !== undefined &&
+    (
+      target.sourceSha256 !== expectedSourceSha256 ||
+      target.localEtag !== `"sha256-${expectedLocalEtagSha256}"`
+    )
+  ) {
+    throw new Error(
+      "当前正式来源与 post-delivery handoff 冻结目标不一致；不会等待另一份内容",
+    );
+  }
   const report = await waitForProductionContentConvergence({
     intervalMs,
     localBuildDate,

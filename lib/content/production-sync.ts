@@ -6,6 +6,8 @@ import { createContentManifestDocument } from "../content-manifest.ts";
 import type { ContentRecord } from "./contract.ts";
 
 export const PRODUCTION_CONTENT_SYNC_VERSION = 1;
+export const PRODUCTION_CONTENT_DEFAULT_ORIGIN =
+  "https://blog-iota-five-59.vercel.app";
 export const PRODUCTION_CONTENT_SYNC_DEFAULTS = Object.freeze({
   maxBytes: 1_048_576,
   timeoutMs: 10_000,

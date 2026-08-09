@@ -132,12 +132,14 @@ H2/H3 由 `MarkdownHeading` 服务端组件接收 `rehype-slug` 已写入的真�
 Obsidian ─────┘                                      │
                                                     ├─ 生产冒烟
                                                     └─ /content.json ─ 全库同步核对
-                                                               └─ 单篇条件轮询 ─ Obsidian 终态回执
+                                                               └─ Git handoff 后单篇条件轮询 ─ Obsidian 终态回执
 ```
 
 全库生产同步与单篇收敛等待共享 `lib/content/production-sync.ts` 的受限网络协议。`content:production` 读取一个完整快照；`content:production:wait` 先通过 `createProductionContentConvergenceTarget()` 冻结精确正式来源的原始 SHA-256、公开 id 和最终 Markdown ETag，再在明确的总时限、间隔与单请求时限内重复读取。第二次起发送上一份清单响应 ETag 作为 `If-None-Match`，只有响应携带同一 SHA-256 opaque validator 与有效 Last-Modified 的严格 304 才复用已验证快照。每次请求前后都会重读目标来源；字节漂移、生产多出、协议失败或取消立即终止，pending/missing 才进入下一轮。
 
-收敛报告是 version 1、`mode: read-only` 的结构化证据，包含冻结目标、时限、每次观测、最终生产快照与固定安全声明。Obsidian 1.36.0 只允许活动文件精确位于 `content/posts|projects/<slug>.md` 时启动；同一 scope 使用 generation 与子进程取消实现 latest-wins，插件卸载也终止在途等待。stderr 只接收带固定前缀的逐行进度，stdout 只接收最终 JSON；插件独立验证键集合、时间、状态、差异、ETag、来源路径和零写入声明后才显示无按钮 Modal。
+收敛报告是 version 1、`mode: read-only` 的结构化证据，包含冻结目标、时限、每次观测、最终生产快照与固定安全声明。Obsidian 1.37.0 既允许活动正式笔记手动启动，也能从新内容发布或正式复核的可信 Git 成功结果自动接力；同一 scope 使用 generation 与子进程取消实现 latest-wins，插件卸载也终止在途等待。stderr 只接收带固定前缀的逐行进度，stdout 只接收最终 JSON；插件独立验证键集合、时间、状态、差异、ETag、来源路径和零写入声明后才显示无按钮 Modal。
+
+自动接力使用独立的 post-delivery handoff version 1。领域脚本只有在 local/tracking ref 都等于已交付 commit 后，才把唯一最后 stdout 行写成 `[post-delivery-handoff] <JSON>`；其中固定 publication/review、commit、最终正式来源、公开 id/URL、来源 SHA-256、Markdown ETag，以及 `gitDelivered: true / productionChecked: false / waitStarted: false`。插件验证行位置、精确 schema、inbox/formal slug 关系和完整目标，再返回内部 post-author-release continuation。`runRepositoryCommand()` 必须先记录终态并释放 author transaction lease，随后异步等待 Vault reconcile；仍未卸载时才用两个纯十六进制预期摘要启动原等待 CLI。CLI 重新读取并重算目标，任何 handoff 漂移都在首次网络请求前失败。生产终态 Modal 追加交付类型和 commit，但网络阶段从不持有 Git 写租约。
 
 Studio 在浏览器中用当前 origin 生成 `base_url`。`/api/cms/auth` 创建十分钟有效、HMAC 签名且绑定 origin 的 state；`/api/cms/callback` 交换 GitHub token，并且只向发起授权的同源窗口发送结果。未设置 `GITHUB_OAUTH_ID` 或 `GITHUB_OAUTH_SECRET` 时返回 503，发布入口安全关闭。
 
@@ -261,7 +263,7 @@ Quality、生产冒烟与回滚工作流均使用 Node 24 runtime 的 checkout/s
 - cover 必须是仓库内图片并同时声明 `coverAlt`；详情页尺寸只能来自已验证文件，文章/项目共享组件与社交元数据选择不能分叉。
 - `/studio` 与 OAuth 永远不缓存、不索引，并维持同源 state 验证；只有版本化 CMS 运行时可不可变缓存。
 - 发布平台不能成为写作前置条件；Obsidian 和 Git 提交在本地仍可完成。
-- 生产同步核对只能在严格验证真实公开清单后输出 deployed/pending/missing/unexpected；单篇收敛等待还必须冻结精确来源 SHA-256 与本地 ETag，只允许 pending/missing 继续，来源漂移、unexpected、网络、HTTP 或协议错误立即终止。两者都不得写作者文件、提交、推送、自动部署或自动重试，也不得进入默认离线发布门。
+- 生产同步核对只能在严格验证真实公开清单后输出 deployed/pending/missing/unexpected；单篇收敛等待还必须冻结精确来源 SHA-256 与本地 ETag，只允许 pending/missing 继续，来源漂移、unexpected、网络、HTTP 或协议错误立即终止。自动接力必须发生在可信 Git 交付、作者事务释放与 Vault reconcile 之后；接力或等待失败不得触发第二次提交、push、回滚或自动重试。两者都不得进入默认离线发布门。
 - Obsidian 新建草稿只能从三个固定 Vault 模板创建一个 `content/inbox/<slug>.md`；输入、模板结构和 inbox/posts/projects 同 slug 路径必须在写入前验证，最终创建必须排他且不得覆盖；文件创建成功后，自动打开失败不得回删新文件。
 - inbox 草稿的 slug 只能来自安全文件名；受信模板不得再声明顶层 `slug`。改名只允许 `draft: true` 且无旧式 slug 的精确 inbox Markdown，目标必须通过三个内容命名空间检查；只调用一次 FileManager，无法证明后置路径时不得自动重试或回滚。
 - 每轮结构、设计、技术、功能、方法、验证、经验和风险必须与代码一起归档。

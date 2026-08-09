@@ -16,6 +16,7 @@ const MAX_CAPTURED_OUTPUT = 200_000;
 const MAINTENANCE_REPORT_VERSION = 1;
 const PRODUCTION_CONTENT_SYNC_REPORT_VERSION = 1;
 const PRODUCTION_CONTENT_CONVERGENCE_REPORT_VERSION = 1;
+const POST_DELIVERY_HANDOFF_VERSION = 1;
 const CONTENT_REVIEW_PROOF_VERSION = 3;
 const CONTENT_REVIEW_DELIVERY_REPORT_VERSION = 1;
 const CONTENT_REVIEW_DELIVERY_RECEIPT_VERSION = 1;
@@ -25,7 +26,7 @@ const CONTENT_DELIVERY_TRIAGE_REPORT_VERSION = 1;
 const AUTHOR_DOCTOR_REPORT_VERSION = 1;
 const INBOX_READINESS_REPORT_VERSION = 6;
 const AUTHOR_DOCTOR_NODE_ENGINE = ">=22.13.0";
-const AUTHOR_DOCTOR_PLUGIN_VERSION = "1.36.0";
+const AUTHOR_DOCTOR_PLUGIN_VERSION = "1.37.0";
 const CURRENT_DRAFT_INTENT_RUN_SCOPE = Symbol("current-draft-intent");
 const PRODUCTION_CONTENT_CONVERGENCE_RUN_SCOPE = Symbol(
   "production-content-convergence",
@@ -153,6 +154,7 @@ const PRODUCTION_CONTENT_SYNC_DIFFERENCES = [
   "manifest-metadata",
 ];
 const SHA256_ETAG_PATTERN = /^"sha256-[a-f0-9]{64}"$/u;
+const SHA256_ETAG_PREFIX = "\"sha256-";
 const RESPONSE_SHA256_ETAG_PATTERN = /^(?:W\/)?"sha256-[a-f0-9]{64}"$/u;
 const SOURCE_SHA256_PATTERN = /^[a-f0-9]{64}$/u;
 const PRODUCTION_CONTENT_CONVERGENCE_STATES = [
@@ -166,6 +168,10 @@ const PRODUCTION_CONTENT_CONVERGENCE_RESPONSES = [
 ];
 const PRODUCTION_CONTENT_CONVERGENCE_PROGRESS_PREFIX =
   "[production-convergence-progress] ";
+const POST_DELIVERY_HANDOFF_PREFIX = "[post-delivery-handoff] ";
+const PRODUCTION_CONTENT_DEFAULT_ORIGIN =
+  "https://blog-iota-five-59.vercel.app";
+const POST_AUTHOR_RELEASE_CONTINUATION = Symbol("post-author-release-continuation");
 
 function valueError(label, expectation) {
   throw new Error(`${label} ${expectation}`);
@@ -1173,6 +1179,152 @@ function opaqueSha256Etag(value) {
   return value.startsWith("W/") ? value.slice(2) : value;
 }
 
+function assertProductionContentConvergenceTarget(target, origin, label) {
+  assertPlainObject(target, label);
+  assertExactKeys(
+    target,
+    [
+      "id",
+      "kind",
+      "localEtag",
+      "markdownUrl",
+      "sourcePath",
+      "sourceSha256",
+      "title",
+      "type",
+    ],
+    label,
+  );
+  assertNonEmptyString(target.id, `${label}.id`);
+  assertNonEmptyString(target.title, `${label}.title`);
+  if (!target.id.startsWith(`${origin}/`)) {
+    valueError(`${label}.id`, "必须属于报告 origin");
+  }
+  const route = target.id.slice(origin.length).match(
+    /^\/(posts|projects)\/([a-z0-9]+(?:-[a-z0-9]+)*)$/u,
+  );
+  if (!route) valueError(`${label}.id`, "必须是稳定的文章或项目 URL");
+  const expectedKind = route[1] === "posts" ? "post" : "project";
+  if (target.kind !== expectedKind) {
+    valueError(`${label}.kind`, `必须是 ${expectedKind}`);
+  }
+  const validType = expectedKind === "post"
+    ? target.type === "article" || target.type === "til"
+    : target.type === "project";
+  if (!validType) valueError(`${label}.type`, "必须与 kind 一致");
+  const expectedSourcePath = `content/${route[1]}/${route[2]}.md`;
+  if (target.sourcePath !== expectedSourcePath) {
+    valueError(`${label}.sourcePath`, `必须是 ${expectedSourcePath}`);
+  }
+  if (target.markdownUrl !== `${target.id}/source.md`) {
+    valueError(`${label}.markdownUrl`, "必须由 id 加 /source.md 得到");
+  }
+  if (
+    typeof target.localEtag !== "string" ||
+    !SHA256_ETAG_PATTERN.test(target.localEtag)
+  ) {
+    valueError(`${label}.localEtag`, "必须是强 SHA-256 ETag");
+  }
+  if (
+    typeof target.sourceSha256 !== "string" ||
+    !SOURCE_SHA256_PATTERN.test(target.sourceSha256)
+  ) {
+    valueError(`${label}.sourceSha256`, "必须是 64 位小写十六进制摘要");
+  }
+  return target;
+}
+
+function sameProductionContentConvergenceTarget(left, right) {
+  return [
+    "id",
+    "kind",
+    "type",
+    "title",
+    "sourcePath",
+    "markdownUrl",
+    "localEtag",
+    "sourceSha256",
+  ].every((key) => left[key] === right[key]);
+}
+
+function parsePostDeliveryHandoffOutput(output, expectedDelivery, authorSourcePath) {
+  const lines = output.trim().split(/\r?\n/u);
+  const handoffLines = lines
+    .map((line, index) => ({ index, line }))
+    .filter(({ line }) => line.startsWith(POST_DELIVERY_HANDOFF_PREFIX));
+  if (
+    handoffLines.length !== 1 ||
+    handoffLines[0].index !== lines.length - 1
+  ) {
+    throw new Error("post-delivery handoff 必须是 stdout 的唯一最后证据行");
+  }
+  let handoff;
+  try {
+    handoff = JSON.parse(
+      handoffLines[0].line.slice(POST_DELIVERY_HANDOFF_PREFIX.length),
+    );
+  } catch {
+    throw new Error("post-delivery handoff 不是有效 JSON");
+  }
+  const label = "交付接力证据";
+  assertPlainObject(handoff, label);
+  assertExactKeys(
+    handoff,
+    ["commitOid", "delivery", "mode", "safety", "target", "version"],
+    label,
+  );
+  if (handoff.version !== POST_DELIVERY_HANDOFF_VERSION) {
+    valueError(`${label}.version`, `必须是 ${POST_DELIVERY_HANDOFF_VERSION}`);
+  }
+  if (handoff.mode !== "post-delivery") {
+    valueError(`${label}.mode`, "必须是 post-delivery");
+  }
+  if (handoff.delivery !== expectedDelivery) {
+    valueError(`${label}.delivery`, `必须是 ${expectedDelivery}`);
+  }
+  if (
+    typeof handoff.commitOid !== "string" ||
+    !GIT_OBJECT_ID_PATTERN.test(handoff.commitOid)
+  ) {
+    valueError(`${label}.commitOid`, "必须是 40 或 64 位小写 Git object id");
+  }
+  assertProductionContentConvergenceTarget(
+    handoff.target,
+    PRODUCTION_CONTENT_DEFAULT_ORIGIN,
+    `${label}.target`,
+  );
+  if (expectedDelivery === "review") {
+    if (handoff.target.sourcePath !== authorSourcePath) {
+      valueError(`${label}.target.sourcePath`, `必须是 ${authorSourcePath}`);
+    }
+  } else {
+    const source = authorSourcePath.match(DRAFT_INBOX_PATH_PATTERN);
+    const target = handoff.target.sourcePath.match(
+      /^content\/(?:posts|projects)\/([a-z0-9]+(?:-[a-z0-9]+)*)\.md$/u,
+    );
+    if (!source || !target || source[1] !== target[1]) {
+      valueError(`${label}.target.sourcePath`, "必须与已发布 inbox slug 一致");
+    }
+  }
+  assertPlainObject(handoff.safety, `${label}.safety`);
+  assertExactKeys(
+    handoff.safety,
+    ["gitDelivered", "productionChecked", "waitStarted"],
+    `${label}.safety`,
+  );
+  if (
+    handoff.safety.gitDelivered !== true ||
+    handoff.safety.productionChecked !== false ||
+    handoff.safety.waitStarted !== false
+  ) {
+    valueError(
+      `${label}.safety`,
+      "必须证明 Git 已交付、生产未检查且等待尚未启动",
+    );
+  }
+  return handoff;
+}
+
 function parseProductionContentConvergenceReport(output) {
   let report;
   try {
@@ -1259,57 +1411,11 @@ function parseProductionContentConvergenceReport(output) {
     );
   }
 
-  assertPlainObject(report.target, `${label}.target`);
-  assertExactKeys(
+  assertProductionContentConvergenceTarget(
     report.target,
-    [
-      "id",
-      "kind",
-      "localEtag",
-      "markdownUrl",
-      "sourcePath",
-      "sourceSha256",
-      "title",
-      "type",
-    ],
+    report.origin,
     `${label}.target`,
   );
-  assertNonEmptyString(report.target.id, `${label}.target.id`);
-  assertNonEmptyString(report.target.title, `${label}.target.title`);
-  if (!report.target.id.startsWith(`${report.origin}/`)) {
-    valueError(`${label}.target.id`, "必须属于报告 origin");
-  }
-  const route = report.target.id.slice(report.origin.length).match(
-    /^\/(posts|projects)\/([a-z0-9]+(?:-[a-z0-9]+)*)$/u,
-  );
-  if (!route) valueError(`${label}.target.id`, "必须是稳定的文章或项目 URL");
-  const expectedKind = route[1] === "posts" ? "post" : "project";
-  if (report.target.kind !== expectedKind) {
-    valueError(`${label}.target.kind`, `必须是 ${expectedKind}`);
-  }
-  const validType = expectedKind === "post"
-    ? report.target.type === "article" || report.target.type === "til"
-    : report.target.type === "project";
-  if (!validType) valueError(`${label}.target.type`, "必须与 kind 一致");
-  const expectedSourcePath = `content/${route[1]}/${route[2]}.md`;
-  if (report.target.sourcePath !== expectedSourcePath) {
-    valueError(`${label}.target.sourcePath`, `必须是 ${expectedSourcePath}`);
-  }
-  if (report.target.markdownUrl !== `${report.target.id}/source.md`) {
-    valueError(`${label}.target.markdownUrl`, "必须由 id 加 /source.md 得到");
-  }
-  if (
-    typeof report.target.localEtag !== "string" ||
-    !SHA256_ETAG_PATTERN.test(report.target.localEtag)
-  ) {
-    valueError(`${label}.target.localEtag`, "必须是强 SHA-256 ETag");
-  }
-  if (
-    typeof report.target.sourceSha256 !== "string" ||
-    !SOURCE_SHA256_PATTERN.test(report.target.sourceSha256)
-  ) {
-    valueError(`${label}.target.sourceSha256`, "必须是 64 位小写十六进制摘要");
-  }
 
   assertPlainObject(report.production, `${label}.production`);
   assertExactKeys(
@@ -4947,9 +5053,10 @@ class ContentReviewProofModal extends Modal {
 }
 
 class ProductionContentConvergenceModal extends Modal {
-  constructor(app, report) {
+  constructor(app, report, handoff = null) {
     super(app);
     this.report = report;
+    this.handoff = handoff;
   }
 
   onOpen() {
@@ -4992,6 +5099,27 @@ class ProductionContentConvergenceModal extends Modal {
       });
       row.createEl("dt", { text: term });
       row.createEl("dd").createEl("code", { text: value });
+    }
+
+    if (this.handoff) {
+      const delivery = contentEl.createEl("section", {
+        cls: "myblog-production-convergence__handoff",
+      });
+      delivery.createEl("p", {
+        cls: "myblog-production-convergence__section-label",
+        text: `DELIVERY HANDOFF / ${this.handoff.delivery.toUpperCase()}`,
+      });
+      const deliveryLedger = delivery.createEl("dl");
+      for (const [term, value] of [
+        ["Commit", this.handoff.commitOid],
+        ["Boundary", "Git writer released · Vault reconciled · read-only wait"],
+      ]) {
+        const row = deliveryLedger.createEl("div", {
+          cls: "myblog-production-convergence__row",
+        });
+        row.createEl("dt", { text: term });
+        row.createEl("dd").createEl("code", { text: value });
+      }
     }
 
     const metrics = contentEl.createEl("dl", {
@@ -5308,6 +5436,7 @@ class ContentMaintenanceModal extends Modal {
 
 module.exports = class MyBlogPublisher extends Plugin {
   onload() {
+    this.unloaded = false;
     this.activeRuns = new Map();
     this.authorTransactionLease = null;
     this.currentDraftIdentityGeneration = null;
@@ -5438,6 +5567,7 @@ module.exports = class MyBlogPublisher extends Plugin {
   }
 
   onunload() {
+    this.unloaded = true;
     this.currentDraftIdentityGeneration = null;
     this.currentDraftIntentGeneration = null;
     this.productionContentConvergenceGeneration = null;
@@ -6483,6 +6613,29 @@ module.exports = class MyBlogPublisher extends Plugin {
     return true;
   }
 
+  createPostAuthorReleaseContinuation(run, failure) {
+    return Object.freeze({
+      [POST_AUTHOR_RELEASE_CONTINUATION]: true,
+      failure,
+      run,
+    });
+  }
+
+  schedulePostAuthorReleaseContinuation(continuation) {
+    Promise.resolve()
+      .then(() => {
+        if (this.unloaded) return undefined;
+        return continuation.run();
+      })
+      .catch((error) => {
+        if (this.unloaded) return;
+        new Notice(
+          `${continuation.failure}: ${error.message}；Git 交付保持不变，不会重新提交、推送或自动重试。`,
+          15000,
+        );
+      });
+  }
+
   runRepositoryCommand(
     npmArgs,
     messages,
@@ -6606,9 +6759,15 @@ module.exports = class MyBlogPublisher extends Plugin {
       const allowedExitCodes = messages.allowedExitCodes ?? [0];
       if (allowedExitCodes.includes(code)) {
         let terminalOutcome = "completed";
+        let postAuthorReleaseContinuation = null;
         try {
-          if (onSuccess(report(true), code) === "held") {
+          const successResult = onSuccess(report(true), code);
+          if (successResult === "held") {
             terminalOutcome = "held";
+          } else if (
+            successResult?.[POST_AUTHOR_RELEASE_CONTINUATION] === true
+          ) {
+            postAuthorReleaseContinuation = successResult;
           }
           if (messages.success) {
             new Notice(messages.success, messages.successDuration ?? 5000);
@@ -6617,7 +6776,19 @@ module.exports = class MyBlogPublisher extends Plugin {
           terminalOutcome = "result-failed";
           new Notice(`${messages.failure}: ${error.message}`, 15000);
         } finally {
-          this.releaseAuthorTransactionLease(authorLease, child, terminalOutcome);
+          const released = this.releaseAuthorTransactionLease(
+            authorLease,
+            child,
+            terminalOutcome,
+          );
+          if (
+            postAuthorReleaseContinuation &&
+            (!authorLease || released)
+          ) {
+            this.schedulePostAuthorReleaseContinuation(
+              postAuthorReleaseContinuation,
+            );
+          }
         }
         return;
       }
@@ -6701,11 +6872,21 @@ module.exports = class MyBlogPublisher extends Plugin {
       );
     if (!isPublishedNote || !this.isDesktopVault()) return false;
     if (checking) return true;
+    return this.startProductionContentConvergence(file.path);
+  }
 
-    const sourcePath = file.path;
+  startProductionContentConvergence(sourcePath, handoff = null) {
     const generation = Symbol(`production-convergence:${sourcePath}`);
     this.productionContentConvergenceGeneration = generation;
     this.supersedeRepositoryRuns(PRODUCTION_CONTENT_CONVERGENCE_RUN_SCOPE);
+    const expectedArguments = handoff
+      ? [
+          "--expected-source-sha256",
+          handoff.target.sourceSha256,
+          "--expected-local-etag-sha256",
+          handoff.target.localEtag.slice(SHA256_ETAG_PREFIX.length, -1),
+        ]
+      : [];
     return this.runRepositoryCommand(
       [
         "--silent",
@@ -6716,6 +6897,7 @@ module.exports = class MyBlogPublisher extends Plugin {
         sourcePath,
         "--format",
         "json",
+        ...expectedArguments,
       ],
       {
         allowedExitCodes: [0, 2],
@@ -6739,6 +6921,7 @@ module.exports = class MyBlogPublisher extends Plugin {
         output,
         sourcePath,
         generation,
+        handoff,
       ),
       null,
       () => this.productionContentConvergenceGeneration === generation,
@@ -7126,7 +7309,12 @@ module.exports = class MyBlogPublisher extends Plugin {
     }
   }
 
-  openStructuredProductionContentConvergence(output, sourcePath, generation) {
+  openStructuredProductionContentConvergence(
+    output,
+    sourcePath,
+    generation,
+    handoff = null,
+  ) {
     if (this.productionContentConvergenceGeneration !== generation) return;
     this.productionContentConvergenceGeneration = null;
     try {
@@ -7134,7 +7322,13 @@ module.exports = class MyBlogPublisher extends Plugin {
       if (report.target.sourcePath !== sourcePath) {
         throw new Error(`目标来源必须是 ${sourcePath}`);
       }
-      new ProductionContentConvergenceModal(this.app, report).open();
+      if (
+        handoff &&
+        !sameProductionContentConvergenceTarget(report.target, handoff.target)
+      ) {
+        throw new Error("生产回执目标必须与 post-delivery handoff 完全一致");
+      }
+      new ProductionContentConvergenceModal(this.app, report, handoff).open();
       new Notice(
         report.status === "deployed"
           ? "当前正式内容已在生产环境收敛。"
@@ -7203,6 +7397,32 @@ module.exports = class MyBlogPublisher extends Plugin {
     );
   }
 
+  createPostDeliveryWaitContinuation(output, delivery, authorSourcePath) {
+    let handoff;
+    try {
+      handoff = parsePostDeliveryHandoffOutput(
+        output,
+        delivery,
+        authorSourcePath,
+      );
+    } catch (error) {
+      throw new Error(
+        `交付接力证据不可用：${error.message}；不会重新提交、推送或自动重试`,
+      );
+    }
+    return this.createPostAuthorReleaseContinuation(
+      async () => {
+        await this.app.vault.adapter.reconcile?.();
+        if (this.unloaded) return;
+        this.startProductionContentConvergence(
+          handoff.target.sourcePath,
+          handoff,
+        );
+      },
+      "Vault 刷新或生产等待接力未完成",
+    );
+  }
+
   runContentReview(sourcePath, push, authorLease = null) {
     if (!push) {
       return this.runRepositoryCommand(
@@ -7230,15 +7450,20 @@ module.exports = class MyBlogPublisher extends Plugin {
     }
 
     return this.runRepositoryCommand(
-      ["run", "content:review", "--", sourcePath, "--push"],
+      ["run", "content:review", "--", sourcePath, "--push", "--handoff"],
       {
+        captureStdoutOnly: true,
         failure: "正式内容复核未完成",
         progress: "正在执行完整检查、提交并同步复核…",
         startFailure: "正式内容复核命令无法启动",
         success: "正式内容复核已提交并同步，等待线上部署完成。",
         successDuration: 8000,
       },
-      () => this.app.vault.adapter.reconcile?.(),
+      (output) => this.createPostDeliveryWaitContinuation(
+        output,
+        "review",
+        sourcePath,
+      ),
       authorLease,
     );
   }
@@ -7302,15 +7527,23 @@ module.exports = class MyBlogPublisher extends Plugin {
         "--",
         sourcePath,
         push ? "--push" : "--check-only",
+        ...(push ? ["--handoff"] : []),
       ],
       {
+        captureStdoutOnly: push,
         failure: "发布未完成",
         progress: push ? "正在检查、提交并发布…" : "正在检查当前草稿…",
         startFailure: "发布命令无法启动",
         success: push ? "已提交并同步，等待线上部署完成。" : "草稿通过发布前检查。",
         successDuration: 8000,
       },
-      () => this.app.vault.adapter.reconcile?.(),
+      (output) => push
+        ? this.createPostDeliveryWaitContinuation(
+            output,
+            "publication",
+            sourcePath,
+          )
+        : this.app.vault.adapter.reconcile?.(),
       authorLease,
     );
   }

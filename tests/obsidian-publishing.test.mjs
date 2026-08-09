@@ -130,6 +130,12 @@ function runPublisher(root, ...args) {
   );
 }
 
+function runGit(root, ...args) {
+  const result = spawnSync("git", args, { cwd: root, encoding: "utf8" });
+  assert.equal(result.status, 0, `${result.stdout}\n${result.stderr}`);
+  return result.stdout.trim();
+}
+
 test("prepares an Obsidian article for the existing content contract", () => {
   const result = prepareObsidianNote("content/inbox/obsidian-publishing.md", article);
   assert.equal(result.kind, "post");
@@ -619,6 +625,64 @@ test("previews and publishes an optimized attachment through the real CLI transa
   }
 });
 
+test("pushes one exact publication and emits its final frozen handoff", async () => {
+  const [{ root }, remote] = await Promise.all([
+    createPublisherFixture(0),
+    mkdtemp(join(tmpdir(), "myblog-publisher-remote-")),
+  ]);
+  try {
+    runGit(root, "init", "-b", "main");
+    runGit(root, "config", "user.name", "Publisher Test");
+    runGit(root, "config", "user.email", "publisher@example.test");
+    runGit(
+      root,
+      "add",
+      "package.json",
+      "content/inbox/obsidian-publishing.md",
+    );
+    runGit(root, "commit", "-m", "fixture");
+    runGit(remote, "init", "--bare");
+    runGit(root, "remote", "add", "origin", remote);
+    runGit(root, "push", "-u", "origin", "main");
+
+    const publish = runPublisher(root, "--push", "--handoff");
+    assert.equal(publish.status, 0, `${publish.stdout}\n${publish.stderr}`);
+    const lines = publish.stdout.trim().split(/\r?\n/u);
+    const evidence = lines.filter((line) =>
+      line.startsWith("[post-delivery-handoff] "),
+    );
+    assert.equal(evidence.length, 1);
+    assert.equal(evidence[0], lines.at(-1));
+    const handoff = JSON.parse(
+      evidence[0].slice("[post-delivery-handoff] ".length),
+    );
+    assert.equal(handoff.version, 1);
+    assert.equal(handoff.mode, "post-delivery");
+    assert.equal(handoff.delivery, "publication");
+    assert.equal(handoff.commitOid, runGit(root, "rev-parse", "HEAD"));
+    assert.equal(
+      runGit(remote, "rev-parse", "refs/heads/main"),
+      handoff.commitOid,
+    );
+    assert.equal(
+      handoff.target.sourcePath,
+      "content/posts/obsidian-publishing.md",
+    );
+    assert.match(handoff.target.sourceSha256, /^[a-f0-9]{64}$/u);
+    assert.match(handoff.target.localEtag, /^"sha256-[a-f0-9]{64}"$/u);
+    assert.deepEqual(handoff.safety, {
+      gitDelivered: true,
+      productionChecked: false,
+      waitStarted: false,
+    });
+  } finally {
+    await Promise.all([
+      rm(root, { recursive: true, force: true }),
+      rm(remote, { recursive: true, force: true }),
+    ]);
+  }
+});
+
 test("restores the draft and every original attachment when the real quality gate fails", async () => {
   const { draftContent, root, secondImage, sourceImage } = await createPublisherFixture(7, true);
   try {
@@ -684,7 +748,7 @@ test("ships a desktop Obsidian command without hidden shell interpolation", asyn
     readFile(new URL("../.obsidian/plugins/myblog-publisher/main.js", import.meta.url), "utf8"),
   ]);
   assert.equal(JSON.parse(manifest).isDesktopOnly, true);
-  assert.equal(JSON.parse(manifest).version, "1.36.0");
+  assert.equal(JSON.parse(manifest).version, "1.37.0");
   assert.equal(JSON.parse(manifest).minAppVersion, "1.5.7");
   assert.match(plugin, /FileSystemAdapter/);
   assert.match(plugin, /create-blog-draft/);

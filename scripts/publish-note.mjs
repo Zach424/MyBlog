@@ -18,6 +18,12 @@ import {
   formatMediaPreparation,
   prepareMediaForPublishing,
 } from "../lib/media-policy.ts";
+import {
+  createPostDeliveryHandoff,
+  createPostDeliveryHandoffTarget,
+  formatPostDeliveryHandoffLine,
+} from "../lib/content/post-delivery-handoff.ts";
+import { PRODUCTION_CONTENT_DEFAULT_ORIGIN } from "../lib/content/production-sync.ts";
 import { inspectContentPublishDeliveryFromGit } from "./publish-delivery-git.mjs";
 
 function fail(message) {
@@ -29,6 +35,8 @@ function run(command, args, options = {}) {
   const result = spawnSync(command, args, {
     cwd: process.cwd(),
     encoding: "utf8",
+    input: options.input,
+    maxBuffer: 5_000_000,
     stdio: options.capture ? "pipe" : "inherit",
     shell: false,
   });
@@ -65,11 +73,13 @@ const args = process.argv.slice(2);
 const sourceArgument = args.find((argument) => !argument.startsWith("--"));
 const checkOnly = args.includes("--check-only");
 const push = args.includes("--push");
+const handoffRequested = args.includes("--handoff");
 const kindFlag = args.indexOf("--kind");
 const requestedKind = kindFlag >= 0 ? args[kindFlag + 1] : undefined;
 
-if (!sourceArgument) fail("用法：npm run content:publish -- content/inbox/<slug>.md [--check-only|--push]");
+if (!sourceArgument) fail("用法：npm run content:publish -- content/inbox/<slug>.md [--check-only|--push] [--handoff]");
 if (requestedKind && !["post", "project"].includes(requestedKind)) fail("--kind 只能是 post 或 project");
+if (handoffRequested && !push) fail("--handoff 只用于已确认 Git 同步的 --push 交付");
 
 let deliveryBaseline = null;
 if (push) {
@@ -197,6 +207,7 @@ if (checkOnly) {
 
 let noteWritten = false;
 let sourceRemoved = false;
+let handoffTarget = null;
 const installedAttachments = [];
 try {
   writeFileSync(resolve(process.cwd(), prepared.targetPath), prepared.content, { flag: "wx" });
@@ -236,6 +247,13 @@ try {
         "完整质量门期间 main 或 tracking ref 发生变化；未创建发布提交",
       );
     }
+  }
+  if (handoffRequested) {
+    handoffTarget = createPostDeliveryHandoffTarget({
+      origin: PRODUCTION_CONTENT_DEFAULT_ORIGIN,
+      source: readFileSync(resolve(process.cwd(), prepared.targetPath)),
+      sourcePath: prepared.targetPath,
+    });
   }
 } catch (error) {
   const rollbackErrors = [];
@@ -301,6 +319,27 @@ try {
     );
   }
   const pendingHead = pending.pendingPublication.commitOid;
+  if (handoffRequested) {
+    const currentBytes = readFileSync(resolve(process.cwd(), prepared.targetPath));
+    const currentTarget = createPostDeliveryHandoffTarget({
+      origin: PRODUCTION_CONTENT_DEFAULT_ORIGIN,
+      source: currentBytes,
+      sourcePath: prepared.targetPath,
+    });
+    const filteredBlobOid = run(
+      "git",
+      ["hash-object", `--path=${prepared.targetPath}`, "--stdin"],
+      { capture: true, input: currentBytes },
+    ).stdout.trim();
+    if (
+      JSON.stringify(currentTarget) !== JSON.stringify(handoffTarget) ||
+      filteredBlobOid !== pending.pendingPublication.targetBlobOid
+    ) {
+      throw new Error(
+        "发布提交与 post-delivery handoff 冻结来源不一致；未执行 push",
+      );
+    }
+  }
   run("git", ["push", "origin", `${pendingHead}:refs/heads/main`]);
   const delivered = inspectContentPublishDeliveryFromGit();
   if (
@@ -313,6 +352,13 @@ try {
     );
   }
   console.log(`[publish] 已同步 GitHub：${prepared.slug}`);
+  if (handoffRequested) {
+    console.log(formatPostDeliveryHandoffLine(createPostDeliveryHandoff({
+      commitOid: pendingHead,
+      delivery: "publication",
+      target: handoffTarget,
+    })));
+  }
 } catch (error) {
   fail(`发布提交已保留在本地，但 Git 同步失败；请运行 npm run content:publish:status。${error instanceof Error ? ` ${error.message}` : ""}`);
 }

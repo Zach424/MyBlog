@@ -52,7 +52,7 @@ Feed 顶层声明 JSON Feed 1.1 `version`、站点标题/说明、`home_page_url
 
 本地 `content:production` 检查器把这个清单作为唯一生产事实：为相同 origin 从正式 Git 内容生成期望文档，在严格验证响应协议后按 id、`markdown_etag` 与其余公开字段输出 deployed/pending/missing/unexpected。传输失败与 schema 漂移不会生成内容状态；命令只读且有意不进入默认构建或 Actions。
 
-`content:production:wait -- --source <正式 Markdown>` 在同一协议上增加单篇有界收敛。它冻结来源 SHA-256 与目标 `markdown_etag`，首次读取完整清单，随后携带已验证响应 ETag 进行条件 GET；严格 304 复用上一快照，修改响应则重新验证全部清单后再比较目标。只有该 id 与冻结公开记录完全一致才结束为 deployed；pending/missing 继续到总时限，生产多出、来源漂移或协议错误立即失败。它仍是作者主动运行的只读观察，不是部署器、Webhook 或默认 CI 门。
+`content:production:wait -- --source <正式 Markdown>` 在同一协议上增加单篇有界收敛。它冻结来源 SHA-256 与目标 `markdown_etag`，首次读取完整清单，随后携带已验证响应 ETag 进行条件 GET；严格 304 复用上一快照，修改响应则重新验证全部清单后再比较目标。只有该 id 与冻结公开记录完全一致才结束为 deployed；pending/missing 继续到总时限，生产多出、来源漂移或协议错误立即失败。作者可以手动运行；Obsidian 1.37.0 也能在可信发布/复核 Git handoff、作者事务释放和 Vault reconcile 后自动启动同一只读等待器。它仍不是部署器、Webhook 或默认 CI 门，失败不得反向触发 Git。
 
 ## 单篇 Markdown 源文
 
