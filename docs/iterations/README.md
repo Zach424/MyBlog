@@ -106,6 +106,7 @@
 0099-content-manifest-json-schema.md
 0100-structured-discovery-transfer-budgets.md
 0101-structured-discovery-conditional-reads.md
+0102-opensearch-discovery.md
 ```
 
 ## 必填结构

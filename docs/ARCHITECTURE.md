@@ -12,7 +12,7 @@ MyBlog 是 Git-first 个人技术博客。公开阅读不依赖数据库；网�
 | 内容 | Markdown、YAML、Zod | 文章/项目解析、字段校验、草稿过滤与派生索引 |
 | 维护 | Node CLI、GitHub Actions | Current record 日龄、根媒体库存、外链库存、分级队列、摘要与过期门 |
 | 阅读 | react-markdown、remark-gfm、remark-math、rehype、KaTeX | GFM、标题锚点、代码高亮、脚注、数学公式与目录 |
-| 发现 | 本地搜索、公开内容清单及 JSON Schema、JSON Feed 1.1、RSS、单篇 Markdown 源文、Sitemap、robots、JSON-LD | 检索、订阅、批量发现、机器校验、可移植源文、自动化消费与搜索引擎发现 |
+| 发现 | 本地搜索、OpenSearch 1.1、公开内容清单及 JSON Schema、JSON Feed 1.1、RSS、单篇 Markdown 源文、Sitemap、robots、JSON-LD | 检索、订阅、批量发现、机器校验、可移植源文、自动化消费与搜索引擎发现 |
 | 发布 | Decap CMS、Obsidian、GitHub | 两个作者入口，共用同一内容事实源 |
 | 媒体 | Sharp、Markdown AST、`next/image`、Git `public/uploads` | 原图安全解码、WebP 优化、共享固有尺寸、响应式封面/正文图、引用所有权与附件版本化 |
 | 托管 | Vercel | Git 自动预览、`main` 生产部署、环境变量与回滚 |
@@ -26,7 +26,7 @@ app/
   studio/                           Studio HTML、内容复核队列、配置、媒体清单/预检、slug 控件、公式预览与版本化 CMS 运行时路由
   posts/ projects/ series/ tags/   集合、详情页与嵌套 source.md Route Handler
   knowledge/ search/ about/         知识地图、搜索和关于页
-  content.json/ content.schema.json/ feed.json/ rss.xml/ sitemap.xml/ robots.txt/ 站点级发现端点
+  content.json/ content.schema.json/ feed.json/ rss.xml/ sitemap.xml/ robots.txt/ opensearch.xml/ 站点级发现端点
 components/                         站点框架、内容视图、Markdown、搜索
   ContentViews.tsx                  详情页事实、目录、引用账本与打印来源
   ContentCover.tsx                  文章/项目共享的响应式封面与 Artifact Rail
@@ -232,15 +232,15 @@ Obsidian 草稿中的 Wiki 图片嵌入、指向 `public/uploads` 的 Markdown �
 
 ## 6. 安全与缓存
 
-`next.config.ts` 为所有响应声明 CSP、HSTS、`nosniff`、`DENY`、权限策略、来源策略和 COOP，并关闭 `X-Powered-By`。公开 HTML 使用浏览器复核、CDN 一小时缓存与一天 stale-while-revalidate；公开内容清单、清单 Schema 与 Markdown 源文使用浏览器零 fresh、CDN 一小时 fresh 与一天 stale-while-revalidate，并声明准确 MIME、安全内联文件名、源站强 ETag 和 `X-Robots-Tag: noindex`，有内容日期事实的清单/源文还声明 Last-Modified。JSON Feed、RSS 与 Sitemap 保留一小时 fresh/一天 SWR，robots 保留一天 fresh；四者也以最终响应正文计算 SHA-256 ETag，并通过同一条件响应助手返回空 304，不引入无法统一证明的 Last-Modified。客户端可用强或边缘弱化后的 `If-None-Match` 复核缓存，匹配时只接收 304 缓存元数据；不存在的源文必须 `no-store` 且不生成公开验证器。Studio HTML、配置、预览 CSS、OAuth 和未知 Studio 路径也必须包含 `no-store`。版本化且带 SRI 的 CMS 运行时使用一年不可变缓存。
+`next.config.ts` 为所有响应声明 CSP、HSTS、`nosniff`、`DENY`、权限策略、来源策略和 COOP，并关闭 `X-Powered-By`。公开 HTML 使用浏览器复核、CDN 一小时缓存与一天 stale-while-revalidate；公开内容清单、清单 Schema 与 Markdown 源文使用浏览器零 fresh、CDN 一小时 fresh 与一天 stale-while-revalidate，并声明准确 MIME、安全内联文件名、源站强 ETag 和 `X-Robots-Tag: noindex`，有内容日期事实的清单/源文还声明 Last-Modified。JSON Feed、RSS、Sitemap 与 OpenSearch 描述保留一小时 fresh/一天 SWR，robots 保留一天 fresh；五者也以最终响应正文计算 SHA-256 ETag，并通过同一条件响应助手返回空 304，不引入无法统一证明的 Last-Modified。OpenSearch 额外声明准确 XML MIME、安全内联文件名与 `noindex`。客户端可用强或边缘弱化后的 `If-None-Match` 复核缓存，匹配时只接收 304 缓存元数据；不存在的源文必须 `no-store` 且不生成公开验证器。Studio HTML、配置、预览 CSS、OAuth 和未知 Studio 路径也必须包含 `no-store`。版本化且带 SRI 的 CMS 运行时使用一年不可变缓存。
 
 一般页面的 COOP 为 `same-origin`；Studio 与 OAuth 为 `same-origin-allow-popups`，以允许 GitHub OAuth 弹窗完成握手。Studio CSP 不允许第三方脚本源，只额外允许 GitHub API、GitHub 授权页和头像来源；`unsafe-eval` 例外被限制在 Studio 路由，因为固定版本 Decap 编辑器/解析器需要运行时求值。
 
-`scripts/discovery-budget.mjs` 冻结稳定生产 origin、测量日期、来源提交和六个结构化发现端点的完整 UTF-8/raw 与 Node zlib gzip 基线。每个端点的 raw 上限由 `baseline + max(50%, 4096 B)` 向上取整到 1 KiB，gzip 上限由 `baseline + max(50%, 1024 B)` 向上取整到 512 B；高度可压缩但异常膨胀的正文和 raw 尚小但传输熵异常的正文都能独立失败。真实 Next 应用和生产冒烟复用同一测量器，并要求清单、Schema、JSON Feed、RSS、Sitemap、robots 恰好各出现一次；基线不自动跟随当前输出。
+`scripts/discovery-budget.mjs` 冻结稳定生产 origin、测量日期、来源提交和七个结构化发现端点的完整 UTF-8/raw 与 Node zlib gzip 基线。每个端点的 raw 上限由 `baseline + max(50%, 4096 B)` 向上取整到 1 KiB，gzip 上限由 `baseline + max(50%, 1024 B)` 向上取整到 512 B；高度可压缩但异常膨胀的正文和 raw 尚小但传输熵异常的正文都能独立失败。真实 Next 应用和生产冒烟复用同一测量器，并要求清单、Schema、JSON Feed、RSS、Sitemap、robots、OpenSearch 恰好各出现一次；Iteration 0102 的稳定生产基线固定到 `e5bb2a8`，不会自动跟随当前输出。
 
 ## 7. 部署与回滚
 
-Vercel GitHub Integration 负责每个分支的 Preview 和 `main` 的 Production，不再维护重复的部署 Action。GitHub `deployment_status` 成功事件触发生产冒烟，检查代表页面、全 Sitemap、Studio/OAuth、Feed、公开内容清单及 Schema、文章/项目 Markdown 源文、安全头和 404；清单、Schema、JSON Feed、RSS、Sitemap、robots 的最终正文验证器及条件读取也在线复核，并逐项输出九条 HTML 与六个结构化发现端点的 raw/gzip 基线、上限和余量。
+Vercel GitHub Integration 负责每个分支的 Preview 和 `main` 的 Production，不再维护重复的部署 Action。GitHub `deployment_status` 成功事件触发生产冒烟，检查代表页面、全 Sitemap、Studio/OAuth、Feed、公开内容清单及 Schema、OpenSearch、文章/项目 Markdown 源文、安全头和 404；清单、Schema、JSON Feed、RSS、Sitemap、robots、OpenSearch 的最终正文验证器及条件读取也在线复核，并逐项输出九条 HTML 与七个结构化发现端点的 raw/gzip 基线、上限和余量。
 
 Quality、生产冒烟与回滚工作流均使用 Node 24 runtime 的 checkout/setup-node v6，但实际执行仓库脚本时仍固定 Node.js 22。显式 `cache: npm` 避免 setup-node major 的自动缓存探测改变现有行为；GitHub-hosted runner 由平台维护，不引入自托管 runner 版本责任。升级 action 时必须先更新结构契约测试，再同时验证 push、定时触发结构、deployment status 与手动回滚权限。
 

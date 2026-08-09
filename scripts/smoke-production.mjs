@@ -603,6 +603,10 @@ export async function runProductionSmoke(originInput, { expectOAuth = false } = 
     measureDiscoveryBudget({ pathname: "/rss.xml", body: rss.body }),
     measureDiscoveryBudget({ pathname: "/sitemap.xml", body: sitemap.body }),
     measureDiscoveryBudget({ pathname: "/robots.txt", body: robots.body }),
+    measureDiscoveryBudget({
+      pathname: "/opensearch.xml",
+      body: openSearch.body,
+    }),
   ];
   assertDiscoveryBudgetCoverage(discoveryBudgetReports);
   assertDiscoveryBudgets(discoveryBudgetReports);

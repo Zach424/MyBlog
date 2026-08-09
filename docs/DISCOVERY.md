@@ -1,6 +1,6 @@
 # 搜索与发布发现
 
-- 状态：RSS/Sitemap/robots implemented in iteration 0006；JSON Feed 1.1 implemented in iteration 0088；公开内容清单 implemented in iteration 0091；清单 JSON Schema implemented in iteration 0099；全部结构化端点条件读取 completed in iteration 0101
+- 状态：RSS/Sitemap/robots implemented in iteration 0006；JSON Feed 1.1 implemented in iteration 0088；公开内容清单 implemented in iteration 0091；清单 JSON Schema implemented in iteration 0099；既有结构化端点条件读取 completed in iteration 0101；OpenSearch 1.1 discovery completed in iteration 0102
 - 目标：让公开内容可搜索、可订阅、可被搜索引擎发现，同时保持 Git 内容源和无数据库架构。
 
 ## 站内搜索
@@ -10,6 +10,18 @@
 查询先经过 Unicode NFKC 与小写规范化，空格分隔的多个词使用 AND 语义。排序权重依次偏向标题、标签、摘要和正文；同分时按发布日期与标题稳定排序。空查询返回全部公开内容，未知查询返回明确的空状态。
 
 搜索页通过 `?q=` 接收初始查询并服务端输出首屏结果。后续输入在浏览器本地匹配，同时用 `history.replaceState` 更新可分享 URL，不产生网络搜索请求，也不使用分析服务。
+
+## OpenSearch 1.1
+
+- URL：`/opensearch.xml`
+- MIME：`application/opensearchdescription+xml; charset=utf-8`
+- 查询模板：同一生产 origin 下的 `/search?q={searchTerms}`
+- 描述：唯一 `ShortName`、唯一 `Description`、HTML results URL、同源 self URL、示例查询、`zh-CN` 与 UTF-8 输入/输出编码
+- 发现：根布局在首页和搜索结果等页面输出绝对地址的 `rel="search"`；原有 favicon 同时显式保留
+- 响应：安全内联文件名、`X-Robots-Tag: noindex`；描述端点不进入 Sitemap
+- 缓存：1 小时 fresh、24 小时 stale-while-revalidate；最终 XML 的 SHA-256 ETag；`If-None-Match` 命中返回空 304
+
+OpenSearch 只描述现有无数据库搜索能力，不建立新的搜索后端或公开内部索引。查询仍在 `/search` 服务端输出首屏、浏览器本地继续筛选；描述中的 `{searchTerms}` 是标准占位符，origin 由站点公开 URL 解析，不能指向第三方。测试同时锁定 XML namespace、唯一必填元素、同源 template/self、HTML 自动发现、MIME、缓存、验证器与 Sitemap 排除。
 
 ## RSS
 
@@ -72,9 +84,9 @@ Schema 让 Obsidian 插件、脚本与其他客户端无需导入本站 TypeScri
 
 ## 结构化发现传输预算
 
-`/content.json`、`/content.schema.json`、`/feed.json`、`/rss.xml`、`/sitemap.xml` 与 `/robots.txt` 共用独立的确定性传输预算。Iteration 0100 以稳定生产提交 `67e7848` 在 2026-08-10 的完整响应为基线；按固定顺序记录 raw UTF-8 与 Node zlib gzip 字节。raw 上限为 `baseline + max(50%, 4096 B)` 后按 1 KiB 取整，gzip 上限为 `baseline + max(50%, 1024 B)` 后按 512 B 取整。
+`/content.json`、`/content.schema.json`、`/feed.json`、`/rss.xml`、`/sitemap.xml`、`/robots.txt` 与 `/opensearch.xml` 共用独立的确定性传输预算。Iteration 0102 以稳定生产提交 `e5bb2a8` 在 2026-08-10 的完整响应为基线；按固定顺序记录 raw UTF-8 与 Node zlib gzip 字节。raw 上限为 `baseline + max(50%, 4096 B)` 后按 1 KiB 取整，gzip 上限为 `baseline + max(50%, 1024 B)` 后按 512 B 取整。
 
-预算检查不依赖 CDN 是否实际协商 gzip/Brotli；它用同一响应正文生成可复现的传输代理。本地真实 Next 测试使用较短的固定测试 origin，生产冒烟使用实际传入 origin，因此两者共享上限但各自报告真实字节。六个端点必须恰好覆盖一次，漏测、重复、意外端点、raw 超限或 gzip 超限都会失败。基线只能在确认增长属于有价值的内容/协议变化、重新测量真实生产并记录来源提交后更新；不能为了让门变绿自动读取当前输出重置自己。
+预算检查不依赖 CDN 是否实际协商 gzip/Brotli；它用同一响应正文生成可复现的传输代理。本地真实 Next 测试使用较短的固定测试 origin，生产冒烟使用实际传入 origin，因此两者共享上限但各自报告真实字节。七个端点必须恰好覆盖一次，漏测、重复、意外端点、raw 超限或 gzip 超限都会失败。稳定生产基线依次为 3009/921、3278/755、20697/9876、3238/1241、4527/504、155/127、700/462 B（raw/gzip）。基线只能在确认增长属于有价值的内容/协议变化、重新测量真实生产并记录来源提交后更新；不能为了让门变绿自动读取当前输出重置自己。
 
 ## 单篇 Markdown 源文
 

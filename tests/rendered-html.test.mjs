@@ -666,6 +666,7 @@ test("publishes the structured discovery suite from one public origin", async (c
     measureDiscoveryBudget({ pathname: "/rss.xml", body: rss }),
     measureDiscoveryBudget({ pathname: "/sitemap.xml", body: sitemap }),
     measureDiscoveryBudget({ pathname: "/robots.txt", body: robots }),
+    measureDiscoveryBudget({ pathname: "/opensearch.xml", body: openSearch }),
   ];
   context.diagnostic(formatDiscoveryBudgetReport(discoveryBudgetReports));
   assertDiscoveryBudgetCoverage(discoveryBudgetReports);

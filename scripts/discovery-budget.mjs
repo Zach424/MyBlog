@@ -6,7 +6,7 @@ export const DISCOVERY_BUDGET_ORIGIN = new URL(
 
 export const DISCOVERY_BUDGET_BASELINE_PROVENANCE = Object.freeze({
   measuredAt: "2026-08-10",
-  sourceRevision: "67e7848ad116c0c919e630acba834d81fd4b3514",
+  sourceRevision: "e5bb2a89439a4e6ef2435200e2735ce225163832",
 });
 
 export const DISCOVERY_BUDGET_POLICY = Object.freeze({
@@ -25,6 +25,7 @@ const measuredRouteBaselines = {
   "/rss.xml": { rawBytes: 3_238, gzipBytes: 1_241 },
   "/sitemap.xml": { rawBytes: 4_527, gzipBytes: 504 },
   "/robots.txt": { rawBytes: 155, gzipBytes: 127 },
+  "/opensearch.xml": { rawBytes: 700, gzipBytes: 462 },
 };
 
 function assertPositiveInteger(value, label) {
