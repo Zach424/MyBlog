@@ -100,6 +100,7 @@
 0093-production-content-convergence-wait.md
 0094-post-delivery-production-handoff.md
 0095-recovered-delivery-production-handoff.md
+0096-obsidian-plugin-version-handshake.md
 ```
 
 ## 必填结构
