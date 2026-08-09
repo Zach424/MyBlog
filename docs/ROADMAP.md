@@ -8,11 +8,11 @@
 | 4. 作者自助写作 | done | `/studio` OAuth + editorial workflow PR、Obsidian Vault/模板/附件/真实 `--push` |
 | 5. Vercel 原生迁移 | production live | 原生 Next.js、无 Cloudflare 依赖、24 路由生产冒烟通过 |
 | 6. 所有者生产上线 | done | Git 自动 Production、稳定域名自动冒烟、双端发布、回滚与恢复均已验收 |
-| 7. 持续内容与作者体验 | in progress | Iteration 0098 用协商式 doctor v3 把四个插件 bundle 路径绑定到冻结 Git HEAD tree/index/worktree，六个 Git writer 均保持零自动修复 |
+| 7. 持续内容与作者体验 | in progress | Iteration 0099 为 version 1 公开内容清单发布同源 Draft 2020-12 Schema、双向 Link relation 与生产契约验证 |
 
 ## 当前唯一主线
 
-进入持续内容与作者体验阶段。Iteration 0098 已让 MyBlog Publisher 1.41.0 在版本与 bundle 摘要之外，证明 bundle/main/manifest/styles 都来自同一冻结 localHead tree、index 相等且 worktree clean。legacy v1 与 bundle v2 保持原 schema；当前六个 Git writer 使用 15 项 v3，来源异常显示 `PLUGIN PROVENANCE UNVERIFIED`，不执行任何自动 Git 修复。真实 v3 为 15/15，Vercel 以冻结摘要在 1 次、1244 ms 内收敛。下一主线是首次真实 Obsidian 人机验收，集中观察三个 interlock、连续 Modal 与本机代理；需要品牌域名时再绑定自定义域名。
+进入持续内容与作者体验阶段。Iteration 0099 已为 `/content.json` 增加同源 `/content.schema.json`，用 Draft 2020-12、`application/schema+json`、describedby/describes、SHA-256 ETag、空 304 和 Ajv 反例测试把项目内 TypeScript 契约转成外部客户端可消费的机器结构；生产 3278 B Schema 与 24 路由冒烟均通过。下一主线是给清单、Schema、JSON Feed、RSS、Sitemap 与 robots 建立确定性 raw/gzip 传输预算，先量化增长再决定是否需要分页或派生缓存；首次真实 Obsidian 人机验收继续保留为所有者可执行事项，需要品牌域名时再绑定自定义域名。
 
 ## 已知风险
 
@@ -36,8 +36,9 @@
 - 内部链接支持内容页和严格标题锚点，行内/引用式/自引用共享实际渲染 slug 规则，详情页与公开知识地图共享 outgoing/backlinks；明确不支持 Obsidian 块引用，标题改名必须同步深链，当前双列 SVG 为小型内容库优化，内容规模增长后需要过滤/分组；
 - 正文普通 HTTPS 与结构化 repository/demo/canonical 已有统一确定性库存和受控实时报告；实时 DNS/网络结果有意不进 Actions，timeout/限流不能冒充内容错误；
 - 文章与项目已有完整 A4 打印版式，但 PDF 仍由读者通过浏览器打印生成，仓库不把二进制 PDF 当作发布源，也不提供服务端 PDF 缓存；后续版式变化仍需重新做真实 PDF 全页复核；
-- 单篇 Markdown 源文是公开投影而非作者文件的无损 round-trip：字段顺序、注释和写作字段有意不保留，项目 `type: project` 只属于公开 schema；raw HTML 属性不参与 URL 改写。源文 ETag/条件 GET 与 version 1 批量清单已闭环；清单尚无独立 JSON Schema，源站生成成本随全部公开 Markdown 线性增长，达到实测阈值后再评估派生缓存或分页；
-- Git/Obsidian sealed receipt、version 1 handoff、生产清单四态、单篇有界收敛、runtime/disk 版本、bundle 完整性与 Git provenance 已覆盖正常和恢复交付；网络、协议、版本、摘要或来源错误不能冒充内容差异或触发二次 Git 动作。下一轮只做真实 Obsidian 人机验收与证据归档，不改变交付协议；
+- 单篇 Markdown 源文是公开投影而非作者文件的无损 round-trip：字段顺序、注释和写作字段有意不保留，项目 `type: project` 只属于公开 schema；raw HTML 属性不参与 URL 改写。源文 ETag/条件 GET、version 1 批量清单与独立 Draft 2020-12 Schema 已闭环；Schema 不表达跨字段相等、跨条目排序/唯一或真实日历语义，严格生产解析器仍是这些不变量的权威；
+- Git/Obsidian sealed receipt、version 1 handoff、生产清单四态、单篇有界收敛、runtime/disk 版本、bundle 完整性与 Git provenance 已覆盖正常和恢复交付；网络、协议、版本、摘要或来源错误不能冒充内容差异或触发二次 Git 动作。首次真实 Obsidian 人机验收继续等待所有者操作，不用自动化假证据替代；
+- 当前 `/content.json` 3009 B、`/content.schema.json` 3278 B、`/feed.json` 20697 B，尚无结构化发现端点的确定性传输预算；下一轮只建立 raw/gzip 基线、余量公式和本地/生产覆盖，不在缺少规模证据时提前改变 Feed/清单协议；
 - 自定义域名、公开邮箱、统计和评论尚未选择，但不阻塞生产上线。
 
 ## 平台历史
