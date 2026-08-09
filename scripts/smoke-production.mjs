@@ -130,6 +130,11 @@ export async function runProductionSmoke(originInput, { expectOAuth = false } = 
       home.body.includes(`${origin.origin}/feed.json`),
     "首页缺少 JSON Feed 发现链接",
   );
+  invariant(
+    home.body.includes('type="application/json"') &&
+      home.body.includes(`${origin.origin}/content.json`),
+    "首页缺少公开内容清单发现链接",
+  );
 
   const htmlBudgetReports = [
     measureHtmlBudget({ pathname: "/", html: home.body }),
@@ -520,12 +525,19 @@ export async function runProductionSmoke(originInput, { expectOAuth = false } = 
     invariant([302, 503].includes(oauth.response.status), `OAuth 状态 ${oauth.response.status}`);
   }
 
-  const [jsonFeed, rss, robots, sitemap] = await Promise.all([
+  const [contentManifest, jsonFeed, rss, robots, sitemap] = await Promise.all([
+    request(origin, "/content.json", { accept: "application/json" }),
     request(origin, "/feed.json", { accept: "application/feed+json" }),
     request(origin, "/rss.xml", { accept: "application/rss+xml" }),
     request(origin, "/robots.txt", { accept: "text/plain" }),
     request(origin, "/sitemap.xml", { accept: "application/xml" }),
   ]);
+  let contentManifestPayload;
+  try {
+    contentManifestPayload = JSON.parse(contentManifest.body);
+  } catch {
+    throw new Error("公开内容清单响应不是有效 JSON");
+  }
   let jsonFeedPayload;
   try {
     jsonFeedPayload = JSON.parse(jsonFeed.body);
@@ -535,8 +547,97 @@ export async function runProductionSmoke(originInput, { expectOAuth = false } = 
   const jsonFeedIds = Array.isArray(jsonFeedPayload.items)
     ? jsonFeedPayload.items.map((item) => item.id)
     : [];
+  const manifestItems = Array.isArray(contentManifestPayload.items)
+    ? contentManifestPayload.items
+    : [];
+  const manifestIds = manifestItems.map((item) => item.id);
   const rssIds = [...rss.body.matchAll(/<guid isPermaLink="true">([^<]+)<\/guid>/gu)]
     .map((match) => match[1]);
+  const manifestEtag = contentManifest.response.headers.get("etag");
+  invariant(
+    contentManifest.response.status === 200 &&
+      contentManifest.response.headers.get("content-type")?.startsWith("application/json") &&
+      contentManifest.response.headers.get("content-disposition") ===
+        'inline; filename="content.json"' &&
+      contentManifest.response.headers.get("x-robots-tag") === "noindex" &&
+      contentManifest.response.headers.get("link") ===
+        `<${origin.origin}/content.json>; rel="self"; type="application/json", <${origin.origin}/>; rel="up"; type="text/html"` &&
+      hasMarkdownSourceCachePolicy(
+        contentManifest.response.headers.get("cache-control"),
+      ) &&
+      hasMarkdownSourceEtag(manifestEtag) &&
+      Number.isFinite(
+        Date.parse(contentManifest.response.headers.get("last-modified") ?? ""),
+      ) &&
+      contentManifestPayload.version === 1 &&
+      contentManifestPayload.home_url === `${origin.origin}/` &&
+      contentManifestPayload.manifest_url === `${origin.origin}/content.json` &&
+      contentManifestPayload.language === "zh-CN" &&
+      manifestIds.length >= 4 &&
+      new Set(manifestIds).size === manifestIds.length &&
+      manifestItems.every(
+        (item) =>
+          item.id === item.html_url &&
+          item.id.startsWith(`${origin.origin}/`) &&
+          item.markdown_url === `${item.html_url}/source.md` &&
+          /^(?:post|project)$/u.test(item.kind) &&
+          /^(?:article|til|project)$/u.test(item.type) &&
+          /^"sha256-[0-9a-f]{64}"$/u.test(item.markdown_etag) &&
+          typeof item.title === "string" &&
+          /^\d{4}-\d{2}-\d{2}$/u.test(item.published_at) &&
+          /^\d{4}-\d{2}-\d{2}$/u.test(item.reviewed_at) &&
+          Array.isArray(item.tags) &&
+          !Object.hasOwn(item, "body") &&
+          !Object.hasOwn(item, "draft") &&
+          !Object.hasOwn(item, "sourcePath"),
+      ),
+    "公开内容清单契约异常",
+  );
+  const conditionalManifest = await request(origin, "/content.json", {
+    accept: "application/json",
+    headers: { "if-none-match": manifestEtag },
+  });
+  const conditionalManifestLastModified =
+    conditionalManifest.response.headers.get("last-modified");
+  const conditionalManifestLink = conditionalManifest.response.headers.get("link");
+  const conditionalManifestRobots =
+    conditionalManifest.response.headers.get("x-robots-tag");
+  invariant(
+    conditionalManifest.response.status === 304 &&
+      conditionalManifest.body === "" &&
+      sameMarkdownSourceEtag(
+        conditionalManifest.response.headers.get("etag"),
+        manifestEtag,
+      ) &&
+      hasMarkdownSourceCachePolicy(
+        conditionalManifest.response.headers.get("cache-control"),
+      ) &&
+      (conditionalManifestLastModified === null ||
+        conditionalManifestLastModified ===
+          contentManifest.response.headers.get("last-modified")) &&
+      (conditionalManifestLink === null ||
+        conditionalManifestLink === contentManifest.response.headers.get("link")) &&
+      (conditionalManifestRobots === null || conditionalManifestRobots === "noindex"),
+    "公开内容清单条件请求契约异常",
+  );
+  const manifestSourceResponses = await Promise.all(
+    manifestItems.map((item) => {
+      const sourceUrl = new URL(item.markdown_url);
+      invariant(sourceUrl.origin === origin.origin, "公开内容清单源文 URL 跨越站点 origin");
+      return request(origin, sourceUrl.pathname, { accept: "text/markdown" });
+    }),
+  );
+  invariant(
+    manifestSourceResponses.every(
+      (source, index) =>
+        source.response.status === 200 &&
+        sameMarkdownSourceEtag(
+          source.response.headers.get("etag"),
+          manifestItems[index].markdown_etag,
+        ),
+    ),
+    "公开内容清单的 Markdown 验证器与真实源文不一致",
+  );
   invariant(
       jsonFeed.response.status === 200 &&
       jsonFeed.response.headers.get("content-type")?.startsWith("application/feed+json") &&
@@ -561,7 +662,8 @@ export async function runProductionSmoke(originInput, { expectOAuth = false } = 
           !Object.hasOwn(item, "draft") &&
           !Object.hasOwn(item, "sourcePath"),
       ) &&
-      JSON.stringify(jsonFeedIds) === JSON.stringify(rssIds),
+      JSON.stringify(jsonFeedIds) === JSON.stringify(rssIds) &&
+      JSON.stringify(manifestIds) === JSON.stringify(jsonFeedIds),
     "JSON Feed 1.1 公开内容契约异常",
   );
   invariant(rss.response.status === 200 && (rss.body.match(/<item>/gu) ?? []).length >= 4, "RSS 条目异常");

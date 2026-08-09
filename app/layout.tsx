@@ -24,6 +24,7 @@ export async function generateMetadata(): Promise<Metadata> {
     alternates: {
       canonical: "/",
       types: {
+        "application/json": "/content.json",
         "application/feed+json": "/feed.json",
         "application/rss+xml": "/rss.xml",
       },

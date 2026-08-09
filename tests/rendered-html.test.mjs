@@ -49,6 +49,10 @@ test("server-renders the engineering log homepage", async () => {
     html,
     /<link(?=[^>]*rel="alternate")(?=[^>]*type="application\/feed\+json")(?=[^>]*href="https:\/\/blog\.example\.test\/feed\.json")[^>]*>/i,
   );
+  assert.match(
+    html,
+    /<link(?=[^>]*rel="alternate")(?=[^>]*type="application\/json")(?=[^>]*href="https:\/\/blog\.example\.test\/content\.json")[^>]*>/i,
+  );
   assert.match(html, /<link(?=[^>]*rel="icon")(?=[^>]*href="[^"]*icon\.png[^"]*")[^>]*>/i);
   assert.match(html, /<a class="skip-link" href="#main-content">/i);
   assert.match(html, /<nav class="site-nav" aria-label="主导航">/i);
@@ -369,13 +373,82 @@ test("server-renders a shareable search query against posts and projects", async
   assert.match(formulaHtml, /MyBlog — 把学习记录做成工程资产/u);
 });
 
-test("publishes JSON Feed, RSS, Sitemap and robots from the same public content index", async () => {
-  const [jsonFeedResponse, rssResponse, sitemapResponse, robotsResponse] = await Promise.all([
+test("publishes a content manifest, JSON Feed, RSS, Sitemap and robots from the same public index", async () => {
+  const [manifestResponse, jsonFeedResponse, rssResponse, sitemapResponse, robotsResponse] = await Promise.all([
+    render("/content.json", { accept: "application/json" }),
     render("/feed.json"),
     render("/rss.xml"),
     render("/sitemap.xml"),
     render("/robots.txt"),
   ]);
+
+  assert.equal(manifestResponse.status, 200);
+  assert.match(
+    manifestResponse.headers.get("content-type") ?? "",
+    /^application\/json;\s*charset=utf-8$/i,
+  );
+  assert.equal(
+    manifestResponse.headers.get("cache-control"),
+    "public, max-age=0, s-maxage=3600, stale-while-revalidate=86400",
+  );
+  assert.equal(
+    manifestResponse.headers.get("content-disposition"),
+    'inline; filename="content.json"',
+  );
+  assert.equal(manifestResponse.headers.get("x-robots-tag"), "noindex");
+  const manifestEtag = manifestResponse.headers.get("etag");
+  const manifestSource = await manifestResponse.text();
+  assert.equal(
+    manifestEtag,
+    `"sha256-${createHash("sha256").update(manifestSource, "utf8").digest("hex")}"`,
+  );
+  assert.ok(Number.isFinite(Date.parse(manifestResponse.headers.get("last-modified") ?? "")));
+  const manifest = JSON.parse(manifestSource);
+  assert.deepEqual(Object.keys(manifest), [
+    "version",
+    "home_url",
+    "manifest_url",
+    "language",
+    "items",
+  ]);
+  assert.equal(manifest.version, 1);
+  assert.equal(manifest.home_url, "https://blog.example.test/");
+  assert.equal(manifest.manifest_url, "https://blog.example.test/content.json");
+  assert.equal(manifest.language, "zh-CN");
+  assert.ok(manifest.items.length >= 4);
+  assert.ok(
+    manifest.items.every(
+      (item) =>
+        item.id === item.html_url &&
+        item.markdown_url === `${item.html_url}/source.md` &&
+        /^(?:post|project)$/u.test(item.kind) &&
+        /^(?:article|til|project)$/u.test(item.type) &&
+        /^"sha256-[0-9a-f]{64}"$/u.test(item.markdown_etag) &&
+        /^\d{4}-\d{2}-\d{2}$/u.test(item.published_at) &&
+        /^\d{4}-\d{2}-\d{2}$/u.test(item.reviewed_at) &&
+        Array.isArray(item.tags) &&
+        !Reflect.has(item, "body") &&
+        !Reflect.has(item, "draft") &&
+        !Reflect.has(item, "sourcePath"),
+    ),
+  );
+  const manifestSourceResponses = await Promise.all(
+    manifest.items.map((item) =>
+      render(new URL(item.markdown_url).pathname, { accept: "text/markdown" }),
+    ),
+  );
+  for (const [index, response] of manifestSourceResponses.entries()) {
+    assert.equal(response.status, 200, manifest.items[index].markdown_url);
+    assert.equal(response.headers.get("etag"), manifest.items[index].markdown_etag);
+    await response.body?.cancel();
+  }
+  const conditionalManifest = await render("/content.json", {
+    accept: "application/json",
+    headers: { "if-none-match": manifestEtag },
+  });
+  assert.equal(conditionalManifest.status, 304);
+  assert.equal(await conditionalManifest.text(), "");
+  assert.equal(conditionalManifest.headers.get("etag"), manifestEtag);
 
   assert.equal(jsonFeedResponse.status, 200);
   assert.match(
@@ -409,6 +482,11 @@ test("publishes JSON Feed, RSS, Sitemap and robots from the same public content 
   assert.match(projectFeedItem.content_text, /证据/u);
   assert.match(projectFeedItem.date_modified, /^\d{4}-\d{2}-\d{2}T00:00:00Z$/u);
   const jsonFeedUrls = jsonFeed.items.map((item) => item.id);
+  assert.deepEqual(
+    manifest.items.map((item) => item.id),
+    jsonFeedUrls,
+    "公开内容清单与 JSON Feed 必须保持同一公开顺序",
+  );
   assert.equal(new Set(jsonFeedUrls).size, jsonFeedUrls.length, "JSON Feed 内容 URL 不能重复");
 
   assert.equal(rssResponse.status, 200);

@@ -1,6 +1,6 @@
 # 搜索与发布发现
 
-- 状态：RSS/Sitemap/robots implemented in iteration 0006；JSON Feed 1.1 implemented in iteration 0088
+- 状态：RSS/Sitemap/robots implemented in iteration 0006；JSON Feed 1.1 implemented in iteration 0088；公开内容清单 implemented in iteration 0091
 - 目标：让公开内容可搜索、可订阅、可被搜索引擎发现，同时保持 Git 内容源和无数据库架构。
 
 ## 站内搜索
@@ -35,6 +35,21 @@ RSS 对 XML 特殊字符统一转义，并从公开内容字段生成标题、�
 
 Feed 顶层声明 JSON Feed 1.1 `version`、站点标题/说明、`home_page_url`、`feed_url`、`language: zh-CN` 和作者。item 只暴露公开阅读字段，不包含 `draft`、源文件路径或原始 Markdown body；若 Markdown 没有可见纯文本，使用公开摘要兜底。生成器、HTTP 和生产冒烟都要求 JSON Feed 与 RSS 的稳定内容 URL 顺序完全一致。根布局使用独立 `application/feed+json` alternate link 供订阅器发现，RSS 链接保持兼容。
 
+## 公开内容清单
+
+- URL：`/content.json`
+- MIME：`application/json; charset=utf-8`
+- 版本：整数 `1`
+- 内容：与 JSON Feed/RSS 同序的全部公开文章、TIL 与项目，不含正文
+- 地址：同一请求 origin 下的 `html_url` 与相邻 `markdown_url`
+- 验证器：每项 `markdown_etag` 等于对应最终 Markdown 的源站强 SHA-256；清单自身也有最终 JSON 字节 ETag
+- 日期：每项发布日、可选更新日、复核日；响应 Last-Modified 取全部公开日期事实的最新日
+- 缓存：浏览器立即复核、CDN 一小时 fresh/一天 SWR；`If-None-Match` 命中返回空 304
+- 隐私：不输出正文、摘要、canonical、草稿、featured、slug、源文件路径或派生统计
+- 发现：根 HTML 声明 `application/json` alternate；清单端点自身不进入 Sitemap
+
+清单不是第三个正文 Feed。JSON Feed 面向订阅读者并携带纯文本，`content.json` 面向同步器并携带地址与摘要验证器，单篇 `source.md` 才携带 Markdown 结构。三者从同一公开 getter 和稳定顺序派生；应用测试与生产冒烟逐项请求清单中的源文，要求响应 ETag 与 `markdown_etag` 在强/弱形式归一化后具有相同 opaque digest。
+
 ## 单篇 Markdown 源文
 
 - URL：文章 `/posts/<slug>/source.md`，项目 `/projects/<slug>/source.md`
@@ -47,7 +62,7 @@ Feed 顶层声明 JSON Feed 1.1 `version`、站点标题/说明、`home_page_url
 - 验证器：最终 UTF-8 表示的 SHA-256 源站强 ETag；Last-Modified 为最新公开日期事实的 UTC 零点；Vercel 可为 Brotli 表示增加 `W/` 而不改变 opaque digest
 - 条件读取：`If-None-Match` 支持精确/弱标签、列表与 `*`，命中返回空 304；源站保留共享头，边缘可按 HTTP 语义只转发 ETag、Cache-Control 等缓存更新元数据
 
-源文是公开阅读投影，不是 Git 作者原稿下载。它不包含 `draft`、`featured`、slug/sourcePath、统计派生字段或未公开记录；未知、草稿和未来内容统一返回 plain-text 404、`no-store` 与 `noindex`。JSON Feed 继续提供聚合纯文本，单篇源文提供 Markdown 结构，两者用途不同。
+源文是公开阅读投影，不是 Git 作者原稿下载。它不包含 `draft`、`featured`、slug/sourcePath、统计派生字段或未公开记录；未知、草稿和未来内容统一返回 plain-text 404、`no-store` 与 `noindex`。公开内容清单负责批量发现和变更判断，JSON Feed 提供聚合纯文本，单篇源文提供 Markdown 结构，三者用途不同。
 
 ## Sitemap
 

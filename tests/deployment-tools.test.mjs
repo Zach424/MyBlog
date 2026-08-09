@@ -87,6 +87,9 @@ test("connects Vercel verification, maintenance reporting, rollback, and Studio 
   assert.match(smoke, /assertHtmlBudgets/);
   assert.match(smoke, /assertHtmlBudgetCoverage/);
   assert.match(smoke, /\/feed\.json/);
+  assert.match(smoke, /\/content\.json/);
+  assert.match(smoke, /markdown_etag/);
+  assert.match(smoke, /公开内容清单契约异常/);
   assert.match(smoke, /application\/feed\+json/);
   assert.match(smoke, /https:\/\/jsonfeed\.org\/version\/1\.1/);
   assert.match(smoke, /\/posts\/building-a-maintainable-blog\/source\.md/);

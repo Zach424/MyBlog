@@ -1,7 +1,11 @@
-import { createHash } from "node:crypto";
 import { stringify as stringifyYaml } from "yaml";
 import type { ContentRecord } from "./content";
 import { parseMarkdown, walkMarkdown } from "./content/markdown.ts";
+import {
+  createSha256Etag,
+  matchesIfNoneMatch,
+  PUBLIC_CONDITIONAL_CACHE_CONTROL,
+} from "./http-validators.ts";
 import { absoluteSiteUrl, resolveSiteUrl } from "./site.ts";
 
 type MarkdownUrlReplacement = {
@@ -9,10 +13,6 @@ type MarkdownUrlReplacement = {
   start: number;
   value: string;
 };
-
-const PUBLIC_MARKDOWN_CACHE_CONTROL =
-  "public, max-age=0, s-maxage=3600, stale-while-revalidate=86400";
-const ENTITY_TAG = /^(?:W\/)?"[\x21\x23-\x7e\x80-\xff]*"$/u;
 
 function canonicalRecordUrl(siteUrl: URL, record: ContentRecord) {
   return record.kind === "post" && record.canonical
@@ -126,46 +126,11 @@ function publicFrontmatter(siteUrl: URL, record: ContentRecord) {
   };
 }
 
-function publicMarkdownEtag(body: string) {
-  return `"sha256-${createHash("sha256").update(body, "utf8").digest("hex")}"`;
-}
-
 function publicMarkdownLastModified(record: ContentRecord) {
   const dates = [record.publishedAt, record.reviewedAt];
   if (record.updatedAt) dates.push(record.updatedAt);
   const latest = dates.reduce((left, right) => (left > right ? left : right));
   return new Date(`${latest}T00:00:00.000Z`).toUTCString();
-}
-
-function parseEntityTagList(value: string) {
-  const tags: string[] = [];
-  let start = 0;
-  let quoted = false;
-
-  for (let index = 0; index < value.length; index += 1) {
-    const character = value[index];
-    if (character === '"') {
-      quoted = !quoted;
-    } else if (character === "," && !quoted) {
-      tags.push(value.slice(start, index).trim());
-      start = index + 1;
-    }
-  }
-  if (quoted) return undefined;
-  tags.push(value.slice(start).trim());
-  return tags.length > 0 && tags.every((tag) => ENTITY_TAG.test(tag))
-    ? tags
-    : undefined;
-}
-
-function matchesIfNoneMatch(value: string | null, etag: string) {
-  if (value === null) return false;
-  const normalized = value.trim();
-  if (normalized === "*") return true;
-  const tags = parseEntityTagList(normalized);
-  return (
-    tags?.some((tag) => tag.replace(/^W\//u, "") === etag) ?? false
-  );
 }
 
 function publicMarkdownHeaders(
@@ -174,7 +139,7 @@ function publicMarkdownHeaders(
   etag: string,
 ) {
   return new Headers({
-    "cache-control": PUBLIC_MARKDOWN_CACHE_CONTROL,
+    "cache-control": PUBLIC_CONDITIONAL_CACHE_CONTROL,
     "content-disposition": `inline; filename="${record.slug}.md"`,
     "content-type": "text/markdown; charset=utf-8",
     etag,
@@ -201,7 +166,7 @@ export function createPublicMarkdownResponse(request: Request, record: ContentRe
   const siteUrl = resolveSiteUrl(request.headers, request.url);
   const canonical = canonicalRecordUrl(siteUrl, record);
   const body = createPublicMarkdown(siteUrl, record);
-  const etag = publicMarkdownEtag(body);
+  const etag = createSha256Etag(body);
   const headers = publicMarkdownHeaders(canonical, record, etag);
 
   return matchesIfNoneMatch(request.headers.get("if-none-match"), etag)
