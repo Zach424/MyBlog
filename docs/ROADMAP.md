@@ -8,11 +8,11 @@
 | 4. 作者自助写作 | done | `/studio` OAuth + editorial workflow PR、Obsidian Vault/模板/附件/真实 `--push` |
 | 5. Vercel 原生迁移 | production live | 原生 Next.js、无 Cloudflare 依赖、24 路由生产冒烟通过 |
 | 6. 所有者生产上线 | done | Git 自动 Production、稳定域名自动冒烟、双端发布、回滚与恢复均已验收 |
-| 7. 持续内容与作者体验 | in progress | Iteration 0091 完成 version 1 公开内容清单、逐项 Markdown ETag、首页发现与 Vercel 全量源文一致性验证 |
+| 7. 持续内容与作者体验 | in progress | Iteration 0092 完成只读生产内容四态对比、严格网络协议、真实 Vercel 快照与 Obsidian 1.35.0 原生台账 |
 
 ## 当前唯一主线
 
-进入持续内容与作者体验阶段。Iteration 0091 已提供确定性的 `/content.json` version 1：从同一公开 getter 一次列出全部文章/TIL/项目、同 origin HTML/Markdown URL 和逐项最终源文 SHA-256，并让清单自身具备 ETag、Last-Modified、条件 304、分层缓存、`noindex` 与根 HTML alternate。真实 Vercel 冒烟逐项读取全部源文，并以相同 opaque digest 接受 Brotli 强弱标签归一化。下一主线是只读生产内容同步检查器及 Obsidian 命令，把本地期望清单与真实生产清单比较为 deployed/pending/missing/unexpected，补齐“Git 已推送”到“内容已上线”的作者证据。需要品牌域名时再绑定自定义域名，旧公开站继续只作为迁移历史证据。
+进入持续内容与作者体验阶段。Iteration 0092 已把 `/content.json` 生产事实接到本地作者链路：`content:production` 复用相同 origin 的公开投影，受限流式读取真实清单，只有 HTTP/MIME/响应验证器与 version 1 schema 全部可信时才按 id、源文 ETag 和公开元数据输出 deployed/pending/missing/unexpected；Obsidian 1.35.0 严格重算计数/状态/路径/ETag/差异/安全声明后展示无动作台账。真实 Vercel 快照为 4/0/0/0，网络和协议错误不会冒充 drift。下一主线是对活动正式笔记进行 source-scoped、有界且可取消的生产收敛等待，让作者在 push 后获得单篇上线终态，同时继续保持零写入、无账号/数据库/API/通知。需要品牌域名时再绑定自定义域名，旧公开站继续只作为迁移历史证据。
 
 ## 已知风险
 
@@ -32,12 +32,12 @@
 - slug 迁移已有构建验证的精确单跳 redirect 注册表，但仍是需要作者审阅的 Git 操作；不支持通配参数或自动推断，迁移必须同步处理内容、附件和引用；
 - Obsidian 已有全 inbox readiness 总览，但该报告有意只代表本地单篇写入事务，不替代正式发布的完整仓库门禁，也不进入看不到未跟踪草稿的 Actions；
 - Current record 已有 Studio 实时只读队列、每周 60/30 天 Actions 提醒和过期门；队列数据只随新 Production 接收内容变更，且仍不发送外部消息；若未来需要邮件/聊天通知，必须由所有者选择渠道后再接入；
-- Obsidian 维护/Author Proof/交付状态与回执 1.34.0 保留四事务 owner-checked single-flight lease、phase/output activity pulse、会话内 terminal receipt、统一分诊及版本化 JSON；当前草稿作者意图使用 source-scoped version 6 inbox JSON，显示媒体 COVER/BODY、出现次数/来源行/逐次 alt/作者来源、精确变换与链接 trace，并以原始来源字节 SHA-256 绑定摘要和每次导航，同时用 latest-wins generation 约束命令、报告终态、异步读取和卸载。新运行还会先结算并终止同一 Symbol scope 的旧活动子进程，旧进度立即隐藏，其他 scope-null 命令保持独立；身份检查继续用独立 generation 约束 `vault.read`/Modal，后续清理 lease 不变。仍只为当前附件生成真实候选、轻量解析全草稿和读取已发布链接目标以保留全局正确性。模板驱动向导、文件名唯一身份、FileManager 改名与 `Vault.process` 严格旧字段清理已闭合新旧草稿身份。ALT 与 LINK occurrence 现都能在路径、`TFile`、完整摘要和双重行界复核后定位编辑器；真实 Obsidian 主题下的 Modal 版式和交互仍需首次使用观察。带注释、引号、anchor/tag、缩进、重复键或不匹配值的旧 slug 保持只读；新内容 Commit Envelope 的真实主题组合、超长 object id/path 和大量媒体仍需随使用观察；tracking ref 明确只是最后本地观察，inspect 路由不会猜测修复；
+- Obsidian 1.35.0 保留既有草稿身份、作者意图、四事务联锁、Git 交付恢复和维护能力，并新增全库生产同步台账。台账已覆盖严格 schema、路径/ETag/计数闭合、Windows/POSIX spawn、卸载清理和无自动重试；真实主题下长 URL/ETag、大量记录密度与本机代理继承仍需首次使用观察。当前检查只取一个生产快照，不等待部署收敛；下一步只为活动正式笔记增加有界 latest-wins 等待，不把轮询塞进默认发布门；
 - 内部链接支持内容页和严格标题锚点，行内/引用式/自引用共享实际渲染 slug 规则，详情页与公开知识地图共享 outgoing/backlinks；明确不支持 Obsidian 块引用，标题改名必须同步深链，当前双列 SVG 为小型内容库优化，内容规模增长后需要过滤/分组；
 - 正文普通 HTTPS 与结构化 repository/demo/canonical 已有统一确定性库存和受控实时报告；实时 DNS/网络结果有意不进 Actions，timeout/限流不能冒充内容错误；
 - 文章与项目已有完整 A4 打印版式，但 PDF 仍由读者通过浏览器打印生成，仓库不把二进制 PDF 当作发布源，也不提供服务端 PDF 缓存；后续版式变化仍需重新做真实 PDF 全页复核；
 - 单篇 Markdown 源文是公开投影而非作者文件的无损 round-trip：字段顺序、注释和写作字段有意不保留，项目 `type: project` 只属于公开 schema；raw HTML 属性不参与 URL 改写。源文 ETag/条件 GET 与 version 1 批量清单已闭环；清单尚无独立 JSON Schema，源站生成成本随全部公开 Markdown 线性增长，达到实测阈值后再评估派生缓存或分页；
-- Git/Obsidian 交付回执尚不直接证明生产内容已接收；下一轮以公开清单为生产事实增加只读对比器，网络与协议错误不能冒充内容差异；
+- Git/Obsidian 交付回执与生产清单四态对比已经形成两段证据；全库快照不会自动等待单篇上线，下一轮以精确来源/Etag 和条件 GET 增加有界收敛等待，网络与协议错误仍不能冒充内容差异；
 - 自定义域名、公开邮箱、统计和评论尚未选择，但不阻塞生产上线。
 
 ## 平台历史
