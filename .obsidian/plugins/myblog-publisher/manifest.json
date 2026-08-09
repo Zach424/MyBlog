@@ -1,9 +1,9 @@
 {
   "id": "myblog-publisher",
   "name": "MyBlog Publisher",
-  "version": "1.35.0",
+  "version": "1.36.0",
   "minAppVersion": "1.5.7",
-  "description": "Create filename-owned drafts, inspect local author intent and production content sync, then validate and deliver publishing and review transactions.",
+  "description": "Create filename-owned drafts, inspect production sync, wait for one frozen formal note to deploy, then validate and deliver publishing and review transactions.",
   "author": "Zach424",
   "isDesktopOnly": true
 }

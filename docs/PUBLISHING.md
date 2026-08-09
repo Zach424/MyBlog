@@ -43,7 +43,7 @@
 9. 确认当前内容已经可以公开后，运行“发布当前草稿并同步 GitHub”；该命令会把 `draft` 改为 `false`，未来日期内容会保持计划状态；
 10. 阅读预检摘要，确认目标路径、附件源/产物格式、宽高、帧数、体积变化、站内链接、内容语境和 frontmatter；
 11. 发布器运行完整质量门、创建内容提交并 push `main`；Vercel Git 连接完成后会自动上线。若团队改用 PR 流程，则不要运行同步命令，改由普通 Git 客户端创建分支和 PR。
-12. Vercel 部署完成后，运行“MyBlog Publisher: 检查生产内容同步状态”，确认本地公开内容全部显示“已上线”。
+12. 推送成功后打开对应的正式笔记，运行“MyBlog Publisher: 等待当前正式内容上线”，取得该篇内容的有界生产终态；需要核对全库时，再运行“检查生产内容同步状态”。
 
 ### 用受信模板新建一个 inbox 草稿
 
@@ -136,6 +136,21 @@ npm run content:production -- --fail-on-drift
 ```
 
 `--origin` 只接受 HTTPS origin；测试夹具可使用 HTTP loopback。`--date` 固定本地公开范围，`--timeout-ms` 接受 500–30000。该实时检查有意不进入 `release:check` 或 GitHub Actions：网络、代理、限流和 CDN 暂时不可达只能表示当前无法取证，不能阻断一份本地正确的提交。仓库更新后 Obsidian 已经打开时，重启 Obsidian，或先关闭再启用 MyBlog Publisher，才能加载 1.35.0 命令。
+
+### 等待当前正式内容上线
+
+推送文章或项目后，在 Obsidian 打开精确的 `content/posts/<slug>.md` 或 `content/projects/<slug>.md`，从命令面板运行“等待当前正式内容上线”。MyBlog Publisher 1.36.0 会先冻结当前来源的原始 SHA-256、公开 id、标题和本地最终 Markdown ETag，再以默认三分钟总时限、五秒间隔和十秒单请求时限等待该 id 在稳定生产 `/content.json` 中变为 deployed。持续 Notice 显示当前尝试、待部署/生产缺失状态和剩余秒数；成功或合法超时会打开只读回执，列出冻结目标、观测次数、最终清单 ETag/Last-Modified 与零写入安全声明。
+
+第二次请求开始使用上一份可信清单 ETag 发出 `If-None-Match`；只有验证器和 Last-Modified 都严格成立的 304 才复用快照。pending 与 missing 表示继续等待；任何生产多出、响应/协议错误、活动来源字节漂移都会立即失败，绝不把错误改写成“还没部署”。同一命令再次运行时只保留最新一轮，旧进程和旧结果静默取消；关闭插件也会取消在途等待。命令不修改笔记、不运行 Git、不提交、不推送、不触发部署，也不会在失败后自动重试。
+
+终端等价操作如下：
+
+```bash
+npm run content:production:wait -- --source content/projects/myblog.md
+npm run content:production:wait -- --source content/posts/example.md --format json
+```
+
+可选参数包括 `--origin`、`--date`、`--timeout-ms`、`--interval-ms` 与 `--request-timeout-ms`。退出码 `0` 表示 deployed，`2` 表示在合法时限内仍 pending/missing，`1` 表示输入、来源、生产或协议失败，`130` 表示取消。该命令依赖真实网络，不进入本地发布硬门或 Actions；仓库更新后 Obsidian 已经打开时，需要重启 Obsidian，或关闭再启用 MyBlog Publisher，才能加载 1.36.0。
 
 ### 在 Obsidian 完成正式内容复核
 

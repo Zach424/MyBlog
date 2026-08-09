@@ -14,6 +14,7 @@ import { isPublished } from "../lib/content/contract.ts";
 import {
   compareProductionContent,
   fetchProductionContentManifest,
+  fetchProductionContentManifestConditional,
   formatProductionContentSyncText,
 } from "../lib/content/production-sync.ts";
 
@@ -227,6 +228,66 @@ test("times out without converting an unavailable deployment into content drift"
     }),
     /请求在 5ms 后超时/u,
   );
+});
+
+test("uses a matching If-None-Match validator and accepts only a strict 304", async (t) => {
+  const origin = new URL("https://blog.example.test/");
+  const validator =
+    'W/"sha256-aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa"';
+  const result = await fetchProductionContentManifestConditional(origin, {
+    fetchImpl: async (url, init) => {
+      assert.equal(url.href, "https://blog.example.test/content.json");
+      assert.equal(init.headers["if-none-match"], validator);
+      return new Response(null, {
+        status: 304,
+        headers: {
+          etag: '"sha256-aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa"',
+          "last-modified": "Mon, 10 Aug 2026 00:00:00 GMT",
+        },
+      });
+    },
+    ifNoneMatch: validator,
+    timeoutMs: 100,
+  });
+  assert.deepEqual(result, {
+    status: "not-modified",
+    etag: '"sha256-aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa"',
+    lastModified: "Mon, 10 Aug 2026 00:00:00 GMT",
+    manifest: null,
+  });
+
+  for (const [name, response, pattern] of [
+    [
+      "missing validator",
+      new Response(null, {
+        status: 304,
+        headers: { "last-modified": "Mon, 10 Aug 2026 00:00:00 GMT" },
+      }),
+      /304 响应缺少受支持的 SHA-256 ETag/u,
+    ],
+    [
+      "mismatched validator",
+      new Response(null, {
+        status: 304,
+        headers: {
+          etag: '"sha256-bbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbb"',
+          "last-modified": "Mon, 10 Aug 2026 00:00:00 GMT",
+        },
+      }),
+      /304 响应 ETag 与条件请求不一致/u,
+    ],
+  ]) {
+    await t.test(name, async () => {
+      await assert.rejects(
+        fetchProductionContentManifestConditional(origin, {
+          fetchImpl: async () => response,
+          ifNoneMatch: validator,
+          timeoutMs: 100,
+        }),
+        pattern,
+      );
+    });
+  }
 });
 
 test("cancels a chunked production body as soon as the byte ceiling is crossed", async () => {

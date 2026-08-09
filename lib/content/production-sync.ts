@@ -59,9 +59,25 @@ export interface ProductionContentSyncReport {
 
 interface FetchProductionContentManifestOptions {
   fetchImpl?: typeof fetch;
+  ifNoneMatch?: string;
   maxBytes?: number;
+  signal?: AbortSignal;
   timeoutMs?: number;
 }
+
+export type ProductionContentManifestFetchResult =
+  | {
+      status: "modified";
+      etag: string;
+      lastModified: string;
+      manifest: ContentManifestDocument;
+    }
+  | {
+      status: "not-modified";
+      etag: string;
+      lastModified: string;
+      manifest: null;
+    };
 
 interface CompareProductionContentOptions {
   checkedAt: string;
@@ -301,6 +317,31 @@ function assertResponseMetadata(response: Response, maxBytes: number) {
   return { etag, lastModified };
 }
 
+function opaqueEtag(value: string) {
+  return value.startsWith("W/") ? value.slice(2) : value;
+}
+
+function assertNotModifiedResponseMetadata(
+  response: Response,
+  ifNoneMatch: string,
+) {
+  if (response.status !== 304) {
+    throw new Error(`生产清单必须返回 HTTP 200 或条件命中的 304，收到 ${response.status}`);
+  }
+  const etag = response.headers.get("etag");
+  if (!etag || !RESPONSE_ETAG_PATTERN.test(etag)) {
+    throw new Error("生产清单 304 响应缺少受支持的 SHA-256 ETag");
+  }
+  if (opaqueEtag(etag) !== opaqueEtag(ifNoneMatch)) {
+    throw new Error("生产清单 304 响应 ETag 与条件请求不一致");
+  }
+  const lastModified = response.headers.get("last-modified");
+  if (!lastModified || Number.isNaN(Date.parse(lastModified))) {
+    throw new Error("生产清单 304 响应缺少有效 Last-Modified");
+  }
+  return { etag, lastModified };
+}
+
 async function readBoundedResponseBody(response: Response, maxBytes: number) {
   if (!response.body) return "";
   const reader = response.body.getReader();
@@ -334,10 +375,10 @@ async function readBoundedResponseBody(response: Response, maxBytes: number) {
   }
 }
 
-export async function fetchProductionContentManifest(
+export async function fetchProductionContentManifestConditional(
   originValue: string | URL,
   options: FetchProductionContentManifestOptions = {},
-) {
+): Promise<ProductionContentManifestFetchResult> {
   const origin = normalizeOrigin(originValue);
   const timeoutMs = options.timeoutMs ?? PRODUCTION_CONTENT_SYNC_DEFAULTS.timeoutMs;
   const maxBytes = options.maxBytes ?? PRODUCTION_CONTENT_SYNC_DEFAULTS.maxBytes;
@@ -347,18 +388,47 @@ export async function fetchProductionContentManifest(
   if (!Number.isInteger(maxBytes) || maxBytes < 1 || maxBytes > 10_485_760) {
     throw new Error("生产清单 maxBytes 必须是 1–10485760 的整数");
   }
+  if (
+    options.ifNoneMatch !== undefined &&
+    !RESPONSE_ETAG_PATTERN.test(options.ifNoneMatch)
+  ) {
+    throw new Error("生产清单 ifNoneMatch 必须是受支持的 SHA-256 ETag");
+  }
   const controller = new AbortController();
-  const timeout = setTimeout(() => controller.abort(), timeoutMs);
+  let timedOut = false;
+  const timeout = setTimeout(() => {
+    timedOut = true;
+    controller.abort();
+  }, timeoutMs);
+  const abortFromCaller = () => controller.abort();
+  if (options.signal?.aborted) {
+    abortFromCaller();
+  } else {
+    options.signal?.addEventListener("abort", abortFromCaller, { once: true });
+  }
   let response: Response;
   try {
     response = await (options.fetchImpl ?? fetch)(new URL("content.json", origin), {
       headers: {
         accept: "application/json",
+        ...(options.ifNoneMatch ? { "if-none-match": options.ifNoneMatch } : {}),
         "user-agent": `MyBlog-Production-Sync/${PRODUCTION_CONTENT_SYNC_VERSION}`,
       },
       redirect: "manual",
       signal: controller.signal,
     });
+    if (response.status === 304 && options.ifNoneMatch) {
+      const { etag, lastModified } = assertNotModifiedResponseMetadata(
+        response,
+        options.ifNoneMatch,
+      );
+      return {
+        status: "not-modified",
+        etag,
+        lastModified,
+        manifest: null,
+      };
+    }
     const { etag, lastModified } = assertResponseMetadata(response, maxBytes);
     const body = await readBoundedResponseBody(response, maxBytes);
     let parsed: unknown;
@@ -368,18 +438,36 @@ export async function fetchProductionContentManifest(
       throw new Error("生产清单不是有效 JSON");
     }
     return {
+      status: "modified",
       etag,
       lastModified,
       manifest: validateProductionManifest(parsed, origin),
     };
   } catch (error) {
-    if (controller.signal.aborted) {
+    if (timedOut) {
       throw new Error(`生产清单请求在 ${timeoutMs}ms 后超时`);
     }
+    if (options.signal?.aborted) throw new Error("生产清单请求已取消");
     throw error;
   } finally {
     clearTimeout(timeout);
+    options.signal?.removeEventListener("abort", abortFromCaller);
   }
+}
+
+export async function fetchProductionContentManifest(
+  originValue: string | URL,
+  options: Omit<FetchProductionContentManifestOptions, "ifNoneMatch"> = {},
+) {
+  const result = await fetchProductionContentManifestConditional(originValue, options);
+  if (result.status !== "modified") {
+    throw new Error("无条件生产清单请求不得返回 304");
+  }
+  return {
+    etag: result.etag,
+    lastModified: result.lastModified,
+    manifest: result.manifest,
+  };
 }
 
 function metadataWithoutEtag(item: ContentManifestItem) {

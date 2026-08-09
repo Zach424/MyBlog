@@ -64,7 +64,7 @@ lib/
   studio-assets.ts                  构建期 Studio 资源响应
 studio/                             Decap CMS、浏览器媒体预检、稳定 slug 与公式 preview template 源文件（不放入 public）
 templates/obsidian/                 不重复写入 slug 的文章、TIL、项目受信模板
-scripts/                            作者环境自检、发布、统一交付分诊、发布/复核交付、inbox/内容/生产同步/暂存媒体/外链报告、冒烟、迁移和生产测试器
+scripts/                            作者环境自检、发布、统一交付分诊、发布/复核交付、inbox/内容/生产同步与收敛等待/暂存媒体/外链报告、冒烟、迁移和生产测试器
 build/validate-media.ts             构建前递归扫描全部公开上传图片
 build/validate-media-references.ts  正式内容图片存在性、slug 所有权和孤儿附件门禁
 build/validate-redirects.ts         当前公开路由、静态文件与重定向关系门禁
@@ -131,8 +131,13 @@ H2/H3 由 `MarkdownHeading` 服务端组件接收 `rehype-slug` 已写入的真�
               ├─ GitHub 提交/PR ─ 质量门 ─ main ─ Vercel 自动生产部署
 Obsidian ─────┘                                      │
                                                     ├─ 生产冒烟
-                                                    └─ /content.json ─ 只读同步核对 ─ Obsidian
+                                                    └─ /content.json ─ 全库同步核对
+                                                               └─ 单篇条件轮询 ─ Obsidian 终态回执
 ```
+
+全库生产同步与单篇收敛等待共享 `lib/content/production-sync.ts` 的受限网络协议。`content:production` 读取一个完整快照；`content:production:wait` 先通过 `createProductionContentConvergenceTarget()` 冻结精确正式来源的原始 SHA-256、公开 id 和最终 Markdown ETag，再在明确的总时限、间隔与单请求时限内重复读取。第二次起发送上一份清单响应 ETag 作为 `If-None-Match`，只有响应携带同一 SHA-256 opaque validator 与有效 Last-Modified 的严格 304 才复用已验证快照。每次请求前后都会重读目标来源；字节漂移、生产多出、协议失败或取消立即终止，pending/missing 才进入下一轮。
+
+收敛报告是 version 1、`mode: read-only` 的结构化证据，包含冻结目标、时限、每次观测、最终生产快照与固定安全声明。Obsidian 1.36.0 只允许活动文件精确位于 `content/posts|projects/<slug>.md` 时启动；同一 scope 使用 generation 与子进程取消实现 latest-wins，插件卸载也终止在途等待。stderr 只接收带固定前缀的逐行进度，stdout 只接收最终 JSON；插件独立验证键集合、时间、状态、差异、ETag、来源路径和零写入声明后才显示无按钮 Modal。
 
 Studio 在浏览器中用当前 origin 生成 `base_url`。`/api/cms/auth` 创建十分钟有效、HMAC 签名且绑定 origin 的 state；`/api/cms/callback` 交换 GitHub token，并且只向发起授权的同源窗口发送结果。未设置 `GITHUB_OAUTH_ID` 或 `GITHUB_OAUTH_SECRET` 时返回 503，发布入口安全关闭。
 
@@ -256,7 +261,7 @@ Quality、生产冒烟与回滚工作流均使用 Node 24 runtime 的 checkout/s
 - cover 必须是仓库内图片并同时声明 `coverAlt`；详情页尺寸只能来自已验证文件，文章/项目共享组件与社交元数据选择不能分叉。
 - `/studio` 与 OAuth 永远不缓存、不索引，并维持同源 state 验证；只有版本化 CMS 运行时可不可变缓存。
 - 发布平台不能成为写作前置条件；Obsidian 和 Git 提交在本地仍可完成。
-- 生产同步核对只能在严格验证真实公开清单后输出 deployed/pending/missing/unexpected；网络、HTTP 或协议错误不得冒充内容差异，检查器不得写作者文件、提交、推送或自动部署，也不得进入默认离线发布门。
+- 生产同步核对只能在严格验证真实公开清单后输出 deployed/pending/missing/unexpected；单篇收敛等待还必须冻结精确来源 SHA-256 与本地 ETag，只允许 pending/missing 继续，来源漂移、unexpected、网络、HTTP 或协议错误立即终止。两者都不得写作者文件、提交、推送、自动部署或自动重试，也不得进入默认离线发布门。
 - Obsidian 新建草稿只能从三个固定 Vault 模板创建一个 `content/inbox/<slug>.md`；输入、模板结构和 inbox/posts/projects 同 slug 路径必须在写入前验证，最终创建必须排他且不得覆盖；文件创建成功后，自动打开失败不得回删新文件。
 - inbox 草稿的 slug 只能来自安全文件名；受信模板不得再声明顶层 `slug`。改名只允许 `draft: true` 且无旧式 slug 的精确 inbox Markdown，目标必须通过三个内容命名空间检查；只调用一次 FileManager，无法证明后置路径时不得自动重试或回滚。
 - 每轮结构、设计、技术、功能、方法、验证、经验和风险必须与代码一起归档。

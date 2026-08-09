@@ -108,9 +108,14 @@ npm run release:check
 ```bash
 npm run content:production
 npm run content:production -- --format json
+npm run content:production:wait -- --source content/projects/myblog.md
 ```
 
 该命令受限读取真实 `/content.json`，以本地相同 origin 的公开投影逐项比较 id、Markdown ETag 与清单元数据，并报告 deployed、pending、missing、unexpected。有效报告不代表执行过部署；它只证明特定响应 ETag/Last-Modified 快照与本地内容的关系。网络超时、重定向、非 200、MIME/体积/JSON/schema 错误会以非零退出，且不会转成内容漂移。默认不因有效 drift 返回非零；需要脚本门时显式增加 `--fail-on-drift`。命令不写文件、不提交、不推送，有意不进入 `release:check` 或 Actions，避免把临时网络状态变成本地发布硬门。
+
+`content:production:wait` 只等待 `--source` 指定的一篇正式文章或项目。启动时冻结来源原始 SHA-256 和本地公开 ETag；默认最多等待 180 秒、每 5 秒一次、单请求最多 10 秒，并在后续请求发送 `If-None-Match`。pending/missing 继续等待；deployed 返回 0；到时仍未收敛返回 2；来源漂移、unexpected、网络或协议失败返回 1；取消返回 130。JSON 模式把逐次进度写到 stderr、最终 version 1 回执写到 stdout，适合 Obsidian 严格解析。等待过程只读且不会提交、推送或触发部署。
+
+若终端能访问生产站而 Obsidian 子进程不能，先确认 Obsidian 继承了系统代理环境。Node 24 使用 `HTTP_PROXY`/`HTTPS_PROXY` 时还需要设置 `NODE_USE_ENV_PROXY=1` 后完整重启 Obsidian；不要把代理地址、令牌或凭据写进仓库。代理、DNS 或 CDN 暂时不可用只表示本次取证失败，不应通过扩大时限掩盖协议问题。
 
 ```bash
 npm run production:smoke -- https://your-production.example --expect-oauth

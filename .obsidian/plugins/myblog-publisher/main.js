@@ -15,6 +15,7 @@ const { createHash } = require("node:crypto");
 const MAX_CAPTURED_OUTPUT = 200_000;
 const MAINTENANCE_REPORT_VERSION = 1;
 const PRODUCTION_CONTENT_SYNC_REPORT_VERSION = 1;
+const PRODUCTION_CONTENT_CONVERGENCE_REPORT_VERSION = 1;
 const CONTENT_REVIEW_PROOF_VERSION = 3;
 const CONTENT_REVIEW_DELIVERY_REPORT_VERSION = 1;
 const CONTENT_REVIEW_DELIVERY_RECEIPT_VERSION = 1;
@@ -24,8 +25,11 @@ const CONTENT_DELIVERY_TRIAGE_REPORT_VERSION = 1;
 const AUTHOR_DOCTOR_REPORT_VERSION = 1;
 const INBOX_READINESS_REPORT_VERSION = 6;
 const AUTHOR_DOCTOR_NODE_ENGINE = ">=22.13.0";
-const AUTHOR_DOCTOR_PLUGIN_VERSION = "1.35.0";
+const AUTHOR_DOCTOR_PLUGIN_VERSION = "1.36.0";
 const CURRENT_DRAFT_INTENT_RUN_SCOPE = Symbol("current-draft-intent");
+const PRODUCTION_CONTENT_CONVERGENCE_RUN_SCOPE = Symbol(
+  "production-content-convergence",
+);
 const DRAFT_TITLE_MAX_LENGTH = 120;
 const DRAFT_SLUG_MAX_LENGTH = 80;
 const DRAFT_SLUG_PATTERN = /^[a-z0-9]+(?:-[a-z0-9]+)*$/u;
@@ -78,6 +82,7 @@ const AUTHOR_DOCTOR_REQUIRED_SCRIPTS = [
   "content:review:status",
   "content:status",
   "content:production",
+  "content:production:wait",
   "release:check",
 ];
 const AUTHOR_DOCTOR_REQUIRED_PATHS = [
@@ -149,6 +154,18 @@ const PRODUCTION_CONTENT_SYNC_DIFFERENCES = [
 ];
 const SHA256_ETAG_PATTERN = /^"sha256-[a-f0-9]{64}"$/u;
 const RESPONSE_SHA256_ETAG_PATTERN = /^(?:W\/)?"sha256-[a-f0-9]{64}"$/u;
+const SOURCE_SHA256_PATTERN = /^[a-f0-9]{64}$/u;
+const PRODUCTION_CONTENT_CONVERGENCE_STATES = [
+  "deployed",
+  "pending",
+  "missing",
+];
+const PRODUCTION_CONTENT_CONVERGENCE_RESPONSES = [
+  "modified",
+  "not-modified",
+];
+const PRODUCTION_CONTENT_CONVERGENCE_PROGRESS_PREFIX =
+  "[production-convergence-progress] ";
 
 function valueError(label, expectation) {
   throw new Error(`${label} ${expectation}`);
@@ -1139,6 +1156,454 @@ function parseProductionContentSyncReport(output) {
   }
 
   return report;
+}
+
+function parseCanonicalIsoTimestamp(value, label) {
+  if (typeof value !== "string") {
+    valueError(label, "必须是规范 ISO 时间戳");
+  }
+  const date = new Date(value);
+  if (Number.isNaN(date.getTime()) || date.toISOString() !== value) {
+    valueError(label, "必须是规范 ISO 时间戳");
+  }
+  return date.getTime();
+}
+
+function opaqueSha256Etag(value) {
+  return value.startsWith("W/") ? value.slice(2) : value;
+}
+
+function parseProductionContentConvergenceReport(output) {
+  let report;
+  try {
+    report = JSON.parse(output);
+  } catch {
+    throw new Error("生产收敛证据不是有效 JSON");
+  }
+
+  const label = "生产收敛证据";
+  assertPlainObject(report, label);
+  assertExactKeys(
+    report,
+    [
+      "attemptCount",
+      "completedAt",
+      "elapsedMs",
+      "intervalMs",
+      "localBuildDate",
+      "manifestUrl",
+      "mode",
+      "observations",
+      "origin",
+      "production",
+      "requestTimeoutMs",
+      "safety",
+      "startedAt",
+      "status",
+      "target",
+      "timeoutMs",
+      "version",
+    ],
+    label,
+  );
+  if (report.version !== PRODUCTION_CONTENT_CONVERGENCE_REPORT_VERSION) {
+    valueError(
+      `${label}.version`,
+      `必须是 ${PRODUCTION_CONTENT_CONVERGENCE_REPORT_VERSION}`,
+    );
+  }
+  if (report.mode !== "read-only") valueError(`${label}.mode`, "必须是 read-only");
+  if (report.status !== "deployed" && report.status !== "timeout") {
+    valueError(`${label}.status`, "必须是 deployed 或 timeout");
+  }
+  if (
+    typeof report.origin !== "string" ||
+    !/^https:\/\/[a-z0-9](?:[a-z0-9.-]*[a-z0-9])?(?::[1-9]\d{0,4})?$/u.test(
+      report.origin,
+    )
+  ) {
+    valueError(`${label}.origin`, "必须是无凭据、路径、查询或片段的 HTTPS origin");
+  }
+  if (report.manifestUrl !== `${report.origin}/content.json`) {
+    valueError(`${label}.manifestUrl`, "必须是 origin 下的 /content.json");
+  }
+  parseIsoDate(report.localBuildDate, `${label}.localBuildDate`);
+  const startedAtMs = parseCanonicalIsoTimestamp(report.startedAt, `${label}.startedAt`);
+  const completedAtMs = parseCanonicalIsoTimestamp(
+    report.completedAt,
+    `${label}.completedAt`,
+  );
+  if (completedAtMs < startedAtMs) {
+    valueError(`${label}.completedAt`, "不能早于 startedAt");
+  }
+  assertInteger(report.elapsedMs, `${label}.elapsedMs`, 0);
+  if (report.elapsedMs !== completedAtMs - startedAtMs) {
+    valueError(`${label}.elapsedMs`, "必须等于 completedAt 与 startedAt 的毫秒差");
+  }
+  assertInteger(report.timeoutMs, `${label}.timeoutMs`, 1_000);
+  if (report.timeoutMs > 900_000) {
+    valueError(`${label}.timeoutMs`, "不能超过 900000");
+  }
+  assertInteger(report.intervalMs, `${label}.intervalMs`, 250);
+  if (report.intervalMs > 60_000 || report.intervalMs >= report.timeoutMs) {
+    valueError(`${label}.intervalMs`, "必须不超过 60000 且小于 timeoutMs");
+  }
+  assertInteger(report.requestTimeoutMs, `${label}.requestTimeoutMs`, 500);
+  if (
+    report.requestTimeoutMs > 30_000 ||
+    report.requestTimeoutMs >= report.timeoutMs
+  ) {
+    valueError(
+      `${label}.requestTimeoutMs`,
+      "必须不超过 30000 且小于 timeoutMs",
+    );
+  }
+
+  assertPlainObject(report.target, `${label}.target`);
+  assertExactKeys(
+    report.target,
+    [
+      "id",
+      "kind",
+      "localEtag",
+      "markdownUrl",
+      "sourcePath",
+      "sourceSha256",
+      "title",
+      "type",
+    ],
+    `${label}.target`,
+  );
+  assertNonEmptyString(report.target.id, `${label}.target.id`);
+  assertNonEmptyString(report.target.title, `${label}.target.title`);
+  if (!report.target.id.startsWith(`${report.origin}/`)) {
+    valueError(`${label}.target.id`, "必须属于报告 origin");
+  }
+  const route = report.target.id.slice(report.origin.length).match(
+    /^\/(posts|projects)\/([a-z0-9]+(?:-[a-z0-9]+)*)$/u,
+  );
+  if (!route) valueError(`${label}.target.id`, "必须是稳定的文章或项目 URL");
+  const expectedKind = route[1] === "posts" ? "post" : "project";
+  if (report.target.kind !== expectedKind) {
+    valueError(`${label}.target.kind`, `必须是 ${expectedKind}`);
+  }
+  const validType = expectedKind === "post"
+    ? report.target.type === "article" || report.target.type === "til"
+    : report.target.type === "project";
+  if (!validType) valueError(`${label}.target.type`, "必须与 kind 一致");
+  const expectedSourcePath = `content/${route[1]}/${route[2]}.md`;
+  if (report.target.sourcePath !== expectedSourcePath) {
+    valueError(`${label}.target.sourcePath`, `必须是 ${expectedSourcePath}`);
+  }
+  if (report.target.markdownUrl !== `${report.target.id}/source.md`) {
+    valueError(`${label}.target.markdownUrl`, "必须由 id 加 /source.md 得到");
+  }
+  if (
+    typeof report.target.localEtag !== "string" ||
+    !SHA256_ETAG_PATTERN.test(report.target.localEtag)
+  ) {
+    valueError(`${label}.target.localEtag`, "必须是强 SHA-256 ETag");
+  }
+  if (
+    typeof report.target.sourceSha256 !== "string" ||
+    !SOURCE_SHA256_PATTERN.test(report.target.sourceSha256)
+  ) {
+    valueError(`${label}.target.sourceSha256`, "必须是 64 位小写十六进制摘要");
+  }
+
+  assertPlainObject(report.production, `${label}.production`);
+  assertExactKeys(
+    report.production,
+    ["etag", "lastModified"],
+    `${label}.production`,
+  );
+  if (
+    typeof report.production.etag !== "string" ||
+    !RESPONSE_SHA256_ETAG_PATTERN.test(report.production.etag)
+  ) {
+    valueError(`${label}.production.etag`, "必须是生产清单响应 SHA-256 ETag");
+  }
+  if (
+    typeof report.production.lastModified !== "string" ||
+    Number.isNaN(Date.parse(report.production.lastModified))
+  ) {
+    valueError(`${label}.production.lastModified`, "必须是有效 HTTP 日期");
+  }
+
+  assertInteger(report.attemptCount, `${label}.attemptCount`, 1);
+  if (!Array.isArray(report.observations) || report.observations.length === 0) {
+    valueError(`${label}.observations`, "必须是非空数组");
+  }
+  if (report.attemptCount !== report.observations.length) {
+    valueError(`${label}.attemptCount`, "必须等于 observations 数量");
+  }
+  let previous = null;
+  for (const [index, observation] of report.observations.entries()) {
+    const observationLabel = `${label}.observations[${index}]`;
+    assertPlainObject(observation, observationLabel);
+    assertExactKeys(
+      observation,
+      [
+        "attempt",
+        "checkedAt",
+        "differences",
+        "elapsedMs",
+        "manifestEtag",
+        "productionEtag",
+        "remainingMs",
+        "response",
+        "state",
+      ],
+      observationLabel,
+    );
+    assertInteger(observation.attempt, `${observationLabel}.attempt`, 1);
+    if (observation.attempt !== index + 1) {
+      valueError(`${observationLabel}.attempt`, `必须是 ${index + 1}`);
+    }
+    const checkedAtMs = parseCanonicalIsoTimestamp(
+      observation.checkedAt,
+      `${observationLabel}.checkedAt`,
+    );
+    assertInteger(observation.elapsedMs, `${observationLabel}.elapsedMs`, 0);
+    if (observation.elapsedMs !== checkedAtMs - startedAtMs) {
+      valueError(`${observationLabel}.elapsedMs`, "必须等于 checkedAt 与 startedAt 的毫秒差");
+    }
+    if (observation.elapsedMs > report.elapsedMs) {
+      valueError(`${observationLabel}.elapsedMs`, "不能超过报告总耗时");
+    }
+    assertInteger(observation.remainingMs, `${observationLabel}.remainingMs`, 0);
+    if (
+      observation.remainingMs !==
+      Math.max(0, report.timeoutMs - observation.elapsedMs)
+    ) {
+      valueError(`${observationLabel}.remainingMs`, "必须由 timeoutMs 与 elapsedMs 推导");
+    }
+    if (!PRODUCTION_CONTENT_CONVERGENCE_STATES.includes(observation.state)) {
+      valueError(`${observationLabel}.state`, "不是受支持的状态");
+    }
+    if (!PRODUCTION_CONTENT_CONVERGENCE_RESPONSES.includes(observation.response)) {
+      valueError(`${observationLabel}.response`, "不是受支持的条件请求结果");
+    }
+    if (
+      typeof observation.manifestEtag !== "string" ||
+      !RESPONSE_SHA256_ETAG_PATTERN.test(observation.manifestEtag)
+    ) {
+      valueError(`${observationLabel}.manifestEtag`, "必须是清单响应 SHA-256 ETag");
+    }
+    if (observation.response === "not-modified") {
+      if (
+        !previous ||
+        opaqueSha256Etag(previous.manifestEtag) !==
+          opaqueSha256Etag(observation.manifestEtag)
+      ) {
+        valueError(
+          `${observationLabel}.manifestEtag`,
+          "304 必须复用上一有效快照的 ETag",
+        );
+      }
+    }
+    if (!Array.isArray(observation.differences)) {
+      valueError(`${observationLabel}.differences`, "必须是数组");
+    }
+    const differenceSet = new Set();
+    for (const [differenceIndex, difference] of observation.differences.entries()) {
+      const allowed = [
+        ...PRODUCTION_CONTENT_SYNC_DIFFERENCES,
+        "missing-production",
+      ];
+      if (!allowed.includes(difference)) {
+        valueError(
+          `${observationLabel}.differences[${differenceIndex}]`,
+          "不是受支持的目标差异",
+        );
+      }
+      if (differenceSet.has(difference)) {
+        valueError(`${observationLabel}.differences`, "不能重复");
+      }
+      differenceSet.add(difference);
+    }
+    const productionEtagValid =
+      typeof observation.productionEtag === "string" &&
+      SHA256_ETAG_PATTERN.test(observation.productionEtag);
+    if (observation.state === "deployed") {
+      if (
+        !productionEtagValid ||
+        observation.productionEtag !== report.target.localEtag ||
+        observation.differences.length !== 0
+      ) {
+        valueError(observationLabel, "已上线观测必须匹配冻结 ETag 且没有差异");
+      }
+    } else if (observation.state === "pending") {
+      if (
+        !productionEtagValid ||
+        observation.differences.length === 0 ||
+        observation.differences.some(
+          (difference) => !PRODUCTION_CONTENT_SYNC_DIFFERENCES.includes(difference),
+        )
+      ) {
+        valueError(observationLabel, "待部署观测必须有生产 ETag 和受支持差异");
+      }
+      const etagDiffers = observation.productionEtag !== report.target.localEtag;
+      if (differenceSet.has("markdown-etag") !== etagDiffers) {
+        valueError(`${observationLabel}.differences`, "必须与冻结 ETag 比较一致");
+      }
+    } else if (
+      observation.productionEtag !== null ||
+      observation.differences.length !== 1 ||
+      observation.differences[0] !== "missing-production"
+    ) {
+      valueError(observationLabel, "生产缺失观测证据不一致");
+    }
+    if (index < report.observations.length - 1 && observation.state === "deployed") {
+      valueError(observationLabel, "已上线必须是最后一条观测");
+    }
+    if (previous && checkedAtMs < previous.checkedAtMs) {
+      valueError(`${observationLabel}.checkedAt`, "不能早于上一条观测");
+    }
+    previous = { checkedAtMs, manifestEtag: observation.manifestEtag };
+  }
+
+  const finalObservation = report.observations.at(-1);
+  if (
+    opaqueSha256Etag(finalObservation.manifestEtag) !==
+    opaqueSha256Etag(report.production.etag)
+  ) {
+    valueError(`${label}.production.etag`, "必须匹配最后一条观测");
+  }
+  if (report.status === "deployed") {
+    if (
+      finalObservation.state !== "deployed" ||
+      report.completedAt !== finalObservation.checkedAt ||
+      report.elapsedMs !== finalObservation.elapsedMs
+    ) {
+      valueError(label, "deployed 回执必须在最终已上线观测处结束");
+    }
+  } else if (
+    finalObservation.state === "deployed" ||
+    report.elapsedMs < report.timeoutMs
+  ) {
+    valueError(label, "timeout 回执必须耗尽总时限且目标仍未上线");
+  }
+
+  assertPlainObject(report.safety, `${label}.safety`);
+  assertExactKeys(
+    report.safety,
+    [
+      "authorFilesChanged",
+      "commitCreated",
+      "networkChecked",
+      "pushExecuted",
+      "sourceFrozen",
+    ],
+    `${label}.safety`,
+  );
+  if (report.safety.networkChecked !== true || report.safety.sourceFrozen !== true) {
+    valueError(`${label}.safety`, "networkChecked 与 sourceFrozen 必须为 true");
+  }
+  for (const field of ["authorFilesChanged", "commitCreated", "pushExecuted"]) {
+    if (report.safety[field] !== false) {
+      valueError(`${label}.safety.${field}`, "必须为 false");
+    }
+  }
+  return report;
+}
+
+function parseProductionContentConvergenceProgressLine(line) {
+  if (!line.startsWith(PRODUCTION_CONTENT_CONVERGENCE_PROGRESS_PREFIX)) return null;
+  let observation;
+  try {
+    observation = JSON.parse(
+      line.slice(PRODUCTION_CONTENT_CONVERGENCE_PROGRESS_PREFIX.length),
+    );
+  } catch {
+    return null;
+  }
+  if (!observation || typeof observation !== "object" || Array.isArray(observation)) {
+    return null;
+  }
+  const expectedKeys = [
+    "attempt",
+    "checkedAt",
+    "differences",
+    "elapsedMs",
+    "manifestEtag",
+    "productionEtag",
+    "remainingMs",
+    "response",
+    "state",
+  ].sort();
+  const actualKeys = Object.keys(observation).sort();
+  if (
+    actualKeys.length !== expectedKeys.length ||
+    actualKeys.some((key, index) => key !== expectedKeys[index]) ||
+    !Number.isInteger(observation.attempt) ||
+    observation.attempt < 1 ||
+    !Number.isInteger(observation.elapsedMs) ||
+    observation.elapsedMs < 0 ||
+    !Number.isInteger(observation.remainingMs) ||
+    observation.remainingMs < 0 ||
+    !PRODUCTION_CONTENT_CONVERGENCE_STATES.includes(observation.state) ||
+    !PRODUCTION_CONTENT_CONVERGENCE_RESPONSES.includes(observation.response) ||
+    typeof observation.manifestEtag !== "string" ||
+    !RESPONSE_SHA256_ETAG_PATTERN.test(observation.manifestEtag)
+  ) {
+    return null;
+  }
+  if (observation.response === "not-modified" && observation.attempt === 1) {
+    return null;
+  }
+  if (!Array.isArray(observation.differences)) return null;
+  const allowedDifferences = [
+    ...PRODUCTION_CONTENT_SYNC_DIFFERENCES,
+    "missing-production",
+  ];
+  const differenceSet = new Set();
+  for (const difference of observation.differences) {
+    if (
+      !allowedDifferences.includes(difference) ||
+      differenceSet.has(difference)
+    ) {
+      return null;
+    }
+    differenceSet.add(difference);
+  }
+  const productionEtagValid =
+    typeof observation.productionEtag === "string" &&
+    SHA256_ETAG_PATTERN.test(observation.productionEtag);
+  if (
+    observation.state === "deployed" &&
+    (!productionEtagValid || observation.differences.length !== 0)
+  ) {
+    return null;
+  }
+  if (
+    observation.state === "pending" &&
+    (
+      !productionEtagValid ||
+      observation.differences.length === 0 ||
+      observation.differences.some(
+        (difference) => !PRODUCTION_CONTENT_SYNC_DIFFERENCES.includes(difference),
+      )
+    )
+  ) {
+    return null;
+  }
+  if (
+    observation.state === "missing" &&
+    (
+      observation.productionEtag !== null ||
+      observation.differences.length !== 1 ||
+      observation.differences[0] !== "missing-production"
+    )
+  ) {
+    return null;
+  }
+  try {
+    parseCanonicalIsoTimestamp(observation.checkedAt, "生产收敛进度 checkedAt");
+  } catch {
+    return null;
+  }
+  return observation;
 }
 
 function parseContentReviewProof(output, expectedSourcePath) {
@@ -4481,6 +4946,115 @@ class ContentReviewProofModal extends Modal {
   }
 }
 
+class ProductionContentConvergenceModal extends Modal {
+  constructor(app, report) {
+    super(app);
+    this.report = report;
+  }
+
+  onOpen() {
+    const { contentEl, report } = this;
+    const latest = report.observations.at(-1);
+    contentEl.empty();
+    contentEl.addClass("myblog-production-convergence");
+    contentEl.setAttr("data-status", report.status);
+    contentEl.createEl("p", {
+      cls: "myblog-production-convergence__eyebrow",
+      text: `PRODUCTION CONVERGENCE / ${report.status.toUpperCase()}`,
+    });
+    contentEl.createEl("h2", {
+      cls: "myblog-production-convergence__title",
+      text: report.status === "deployed"
+        ? "当前正式内容已上线"
+        : "生产等待已到达时限",
+    });
+    contentEl.createEl("p", {
+      cls: "myblog-production-convergence__boundary",
+      text: "冻结精确来源字节与本地公开 ETag，只读等待生产 content.json；零写入、零提交、零推送。协议错误、生产多出或来源漂移会立即停止。",
+    });
+
+    const target = contentEl.createEl("section", {
+      cls: "myblog-production-convergence__target",
+    });
+    target.createEl("p", {
+      cls: "myblog-production-convergence__section-label",
+      text: "FROZEN SOURCE TARGET",
+    });
+    target.createEl("h3", { text: report.target.title });
+    const targetLedger = target.createEl("dl");
+    for (const [term, value] of [
+      ["Source", report.target.sourcePath],
+      ["Local ETag", report.target.localEtag],
+      ["Source SHA-256", report.target.sourceSha256],
+    ]) {
+      const row = targetLedger.createEl("div", {
+        cls: "myblog-production-convergence__row",
+      });
+      row.createEl("dt", { text: term });
+      row.createEl("dd").createEl("code", { text: value });
+    }
+
+    const metrics = contentEl.createEl("dl", {
+      cls: "myblog-production-convergence__metrics",
+    });
+    for (const [term, value] of [
+      ["最终状态", PRODUCTION_CONTENT_SYNC_LABELS[latest.state]],
+      ["请求次数", `${report.attemptCount} 次尝试`],
+      ["实际耗时", `${report.elapsedMs} ms`],
+      ["总时限", `${report.timeoutMs} ms`],
+    ]) {
+      const metric = metrics.createEl("div");
+      metric.createEl("dt", { text: term });
+      metric.createEl("dd", { text: value });
+    }
+
+    const timeline = contentEl.createEl("section", {
+      cls: "myblog-production-convergence__timeline-section",
+    });
+    timeline.createEl("p", {
+      cls: "myblog-production-convergence__section-label",
+      text: `BOUNDED ATTEMPTS / ${report.attemptCount}`,
+    });
+    const list = timeline.createEl("ol", {
+      cls: "myblog-production-convergence__timeline",
+    });
+    for (const observation of report.observations) {
+      const item = list.createEl("li", {
+        cls: "myblog-production-convergence__attempt",
+      });
+      item.setAttr("data-state", observation.state);
+      item.createEl("p", {
+        cls: "myblog-production-convergence__attempt-state",
+        text: `#${observation.attempt} · ${PRODUCTION_CONTENT_SYNC_LABELS[observation.state]} · ${observation.response.toUpperCase()}`,
+      });
+      item.createEl("p", {
+        cls: "myblog-production-convergence__attempt-time",
+        text: `${observation.checkedAt} · 剩余 ${Math.ceil(observation.remainingMs / 1000)} 秒`,
+      });
+      const validators = item.createEl("dl", {
+        cls: "myblog-production-convergence__validators",
+      });
+      for (const [term, value] of [
+        ["MANIFEST", observation.manifestEtag],
+        ["CONTENT", observation.productionEtag ?? "NONE"],
+      ]) {
+        const row = validators.createEl("div");
+        row.createEl("dt", { text: term });
+        row.createEl("dd").createEl("code", { text: value });
+      }
+    }
+
+    contentEl.createEl("p", {
+      cls: "myblog-production-convergence__snapshot",
+      text: `最终生产快照 ${report.production.etag} · ${report.production.lastModified}`,
+    });
+    contentEl.createEl("p", {
+      cls: "myblog-production-convergence__stamp",
+      text: `结构版本 v${report.version} · ${report.startedAt} → ${report.completedAt}`,
+    });
+  }
+}
+
 class ProductionContentSyncModal extends Modal {
   constructor(app, report) {
     super(app);
@@ -4738,6 +5312,7 @@ module.exports = class MyBlogPublisher extends Plugin {
     this.authorTransactionLease = null;
     this.currentDraftIdentityGeneration = null;
     this.currentDraftIntentGeneration = null;
+    this.productionContentConvergenceGeneration = null;
     this.draftRenameLease = null;
     this.draftIdentityCleanupLease = null;
     this.lastAuthorTransactionReceipt = null;
@@ -4813,6 +5388,13 @@ module.exports = class MyBlogPublisher extends Plugin {
     });
 
     this.addCommand({
+      id: "wait-current-production-content",
+      name: "等待当前正式内容上线",
+      checkCallback: (checking) =>
+        this.waitForCurrentProductionContent(checking),
+    });
+
+    this.addCommand({
       id: "inspect-author-environment",
       name: "检查本机发布环境",
       checkCallback: (checking) => this.inspectAuthorEnvironment(checking),
@@ -4858,6 +5440,7 @@ module.exports = class MyBlogPublisher extends Plugin {
   onunload() {
     this.currentDraftIdentityGeneration = null;
     this.currentDraftIntentGeneration = null;
+    this.productionContentConvergenceGeneration = null;
     this.draftRenameLease = null;
     this.draftIdentityCleanupLease = null;
     const authorLease = this.authorTransactionLease;
@@ -5939,21 +6522,61 @@ module.exports = class MyBlogPublisher extends Plugin {
 
     let output = "";
     let outputTruncated = false;
+    let stdoutOutput = "";
+    let stdoutOutputTruncated = false;
+    let stderrLineBuffer = "";
     let settled = false;
-    const appendOutput = (chunk) => {
-      this.recordAuthorTransactionOutput(authorLease, child);
-      if (output.length >= MAX_CAPTURED_OUTPUT) {
-        outputTruncated = true;
-        return;
+    const emitStderrLine = (line) => {
+      if (!messages.onStderrLine || settled) return;
+      try {
+        messages.onStderrLine(line, progressNotice);
+      } catch {
+        if (typeof progressNotice.setMessage === "function") {
+          progressNotice.setMessage("生产等待进度证据不可用；继续等待最终可信回执…");
+        }
       }
-      const text = chunk.toString();
-      const remaining = MAX_CAPTURED_OUTPUT - output.length;
-      output += text.slice(0, remaining);
-      if (text.length > remaining) outputTruncated = true;
     };
-    const report = () => {
-      const captured = output.trim();
-      if (!outputTruncated) return captured;
+    const appendOutput = (chunk, stream) => {
+      if (settled) return;
+      this.recordAuthorTransactionOutput(authorLease, child);
+      const text = chunk.toString();
+      if (stream === "stderr" && messages.onStderrLine) {
+        stderrLineBuffer += text;
+        let newline = stderrLineBuffer.indexOf("\n");
+        while (newline >= 0) {
+          emitStderrLine(stderrLineBuffer.slice(0, newline).replace(/\r$/u, ""));
+          stderrLineBuffer = stderrLineBuffer.slice(newline + 1);
+          newline = stderrLineBuffer.indexOf("\n");
+        }
+        if (stderrLineBuffer.length > 20_000) {
+          stderrLineBuffer = "";
+          if (typeof progressNotice.setMessage === "function") {
+            progressNotice.setMessage("生产等待进度行超过安全上限；继续等待最终可信回执…");
+          }
+        }
+      }
+      if (output.length < MAX_CAPTURED_OUTPUT) {
+        const remaining = MAX_CAPTURED_OUTPUT - output.length;
+        output += text.slice(0, remaining);
+        if (text.length > remaining) outputTruncated = true;
+      } else {
+        outputTruncated = true;
+      }
+      if (stream === "stdout") {
+        if (stdoutOutput.length < MAX_CAPTURED_OUTPUT) {
+          const remaining = MAX_CAPTURED_OUTPUT - stdoutOutput.length;
+          stdoutOutput += text.slice(0, remaining);
+          if (text.length > remaining) stdoutOutputTruncated = true;
+        } else {
+          stdoutOutputTruncated = true;
+        }
+      }
+    };
+    const report = (successOutput = false) => {
+      const stdoutOnly = successOutput && messages.captureStdoutOnly;
+      const captured = (stdoutOnly ? stdoutOutput : output).trim();
+      const truncated = stdoutOnly ? stdoutOutputTruncated : outputTruncated;
+      if (!truncated) return captured;
       return `${captured}\n[plugin] 输出超过 ${MAX_CAPTURED_OUTPUT} 字符，后续内容已截断。`;
     };
     const cancel = () => {
@@ -5965,8 +6588,8 @@ module.exports = class MyBlogPublisher extends Plugin {
     };
 
     this.activeRuns.set(child, { cancel, progressNotice, scope: runScope });
-    child.stdout.on("data", appendOutput);
-    child.stderr.on("data", appendOutput);
+    child.stdout.on("data", (chunk) => appendOutput(chunk, "stdout"));
+    child.stderr.on("data", (chunk) => appendOutput(chunk, "stderr"));
     child.on("error", (error) => {
       if (!cancel()) return;
       this.releaseAuthorTransactionLease(authorLease, child, "start-failed");
@@ -5974,13 +6597,17 @@ module.exports = class MyBlogPublisher extends Plugin {
       new Notice(`${messages.startFailure}: ${error.message}`, 10000);
     });
     child.on("close", (code) => {
+      if (stderrLineBuffer && !settled) {
+        emitStderrLine(stderrLineBuffer.replace(/\r$/u, ""));
+        stderrLineBuffer = "";
+      }
       if (!cancel()) return;
       if (!canContinue()) return;
       const allowedExitCodes = messages.allowedExitCodes ?? [0];
       if (allowedExitCodes.includes(code)) {
         let terminalOutcome = "completed";
         try {
-          if (onSuccess(report(), code) === "held") {
+          if (onSuccess(report(true), code) === "held") {
             terminalOutcome = "held";
           }
           if (messages.success) {
@@ -6062,6 +6689,60 @@ module.exports = class MyBlogPublisher extends Plugin {
         startFailure: "生产内容同步检查无法启动",
       },
       (output) => this.openStructuredProductionContentSync(output),
+    );
+  }
+
+  waitForCurrentProductionContent(checking) {
+    const file = this.app.workspace.getActiveFile();
+    const isPublishedNote =
+      file?.extension === "md" &&
+      /^content\/(?:posts|projects)\/[a-z0-9]+(?:-[a-z0-9]+)*\.md$/u.test(
+        file.path,
+      );
+    if (!isPublishedNote || !this.isDesktopVault()) return false;
+    if (checking) return true;
+
+    const sourcePath = file.path;
+    const generation = Symbol(`production-convergence:${sourcePath}`);
+    this.productionContentConvergenceGeneration = generation;
+    this.supersedeRepositoryRuns(PRODUCTION_CONTENT_CONVERGENCE_RUN_SCOPE);
+    return this.runRepositoryCommand(
+      [
+        "--silent",
+        "run",
+        "content:production:wait",
+        "--",
+        "--source",
+        sourcePath,
+        "--format",
+        "json",
+      ],
+      {
+        allowedExitCodes: [0, 2],
+        captureStdoutOnly: true,
+        failure: "生产内容收敛等待未完成",
+        onStderrLine: (line, progressNotice) => {
+          const observation = parseProductionContentConvergenceProgressLine(line);
+          if (!observation) return;
+          const message = [
+            `正在等待 ${sourcePath} 上线…`,
+            `第 ${observation.attempt} 次 · ${PRODUCTION_CONTENT_SYNC_LABELS[observation.state]} · 剩余 ${Math.ceil(observation.remainingMs / 1000)} 秒`,
+          ].join("\n");
+          if (typeof progressNotice.setMessage === "function") {
+            progressNotice.setMessage(message);
+          }
+        },
+        progress: `正在冻结 ${sourcePath} 并等待生产部署…`,
+        startFailure: "生产内容收敛等待无法启动",
+      },
+      (output) => this.openStructuredProductionContentConvergence(
+        output,
+        sourcePath,
+        generation,
+      ),
+      null,
+      () => this.productionContentConvergenceGeneration === generation,
+      PRODUCTION_CONTENT_CONVERGENCE_RUN_SCOPE,
     );
   }
 
@@ -6440,6 +7121,29 @@ module.exports = class MyBlogPublisher extends Plugin {
     } catch (error) {
       new Notice(
         `生产同步证据不可用：${error.message}；不会自动重试。`,
+        15000,
+      );
+    }
+  }
+
+  openStructuredProductionContentConvergence(output, sourcePath, generation) {
+    if (this.productionContentConvergenceGeneration !== generation) return;
+    this.productionContentConvergenceGeneration = null;
+    try {
+      const report = parseProductionContentConvergenceReport(output);
+      if (report.target.sourcePath !== sourcePath) {
+        throw new Error(`目标来源必须是 ${sourcePath}`);
+      }
+      new ProductionContentConvergenceModal(this.app, report).open();
+      new Notice(
+        report.status === "deployed"
+          ? "当前正式内容已在生产环境收敛。"
+          : "生产等待已到达时限；目标仍未上线，可稍后重新运行。",
+        8000,
+      );
+    } catch (error) {
+      new Notice(
+        `生产收敛证据不可用：${error.message}；不会自动重试。`,
         15000,
       );
     }

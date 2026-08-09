@@ -187,6 +187,11 @@ async function createPluginHarness({
     hide() {
       this.hidden = true;
     }
+
+    setMessage(message) {
+      this.message = message;
+      return this;
+    }
   }
 
   class Plugin {
@@ -582,6 +587,100 @@ function productionSyncReport({ records, safety = {}, status, version = 1 } = {}
     records: resolvedRecords,
     safety: {
       networkChecked: true,
+      authorFilesChanged: false,
+      commitCreated: false,
+      pushExecuted: false,
+      ...safety,
+    },
+  };
+}
+
+function productionConvergenceObservation({
+  attempt = 1,
+  checkedAt = "2026-08-10T12:00:00.000Z",
+  differences = ["markdown-etag"],
+  elapsedMs = 0,
+  manifestEtag =
+    'W/"sha256-cccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccc"',
+  productionEtag =
+    '"sha256-bbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbb"',
+  remainingMs = 180_000,
+  response = "modified",
+  state = "pending",
+} = {}) {
+  return {
+    attempt,
+    checkedAt,
+    elapsedMs,
+    remainingMs,
+    state,
+    response,
+    manifestEtag,
+    productionEtag,
+    differences,
+  };
+}
+
+function productionConvergenceReport({
+  observations,
+  safety = {},
+  status = "deployed",
+  target = {},
+  version = 1,
+} = {}) {
+  const resolvedObservations = observations ?? [
+    productionConvergenceObservation(),
+    productionConvergenceObservation({
+      attempt: 2,
+      checkedAt: "2026-08-10T12:00:05.000Z",
+      differences: [],
+      elapsedMs: 5_000,
+      manifestEtag:
+        'W/"sha256-dddddddddddddddddddddddddddddddddddddddddddddddddddddddddddddddd"',
+      productionEtag:
+        '"sha256-aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa"',
+      remainingMs: 175_000,
+      state: "deployed",
+    }),
+  ];
+  const last = resolvedObservations.at(-1);
+  return {
+    version,
+    mode: "read-only",
+    status,
+    startedAt: "2026-08-10T12:00:00.000Z",
+    completedAt: status === "timeout"
+      ? "2026-08-10T12:03:00.000Z"
+      : last.checkedAt,
+    elapsedMs: status === "timeout" ? 180_000 : last.elapsedMs,
+    timeoutMs: 180_000,
+    intervalMs: 5_000,
+    requestTimeoutMs: 10_000,
+    attemptCount: resolvedObservations.length,
+    origin: "https://blog-iota-five-59.vercel.app",
+    manifestUrl: "https://blog-iota-five-59.vercel.app/content.json",
+    localBuildDate: "2026-08-10",
+    target: {
+      id: "https://blog-iota-five-59.vercel.app/projects/myblog",
+      kind: "project",
+      type: "project",
+      title: "MyBlog",
+      sourcePath: "content/projects/myblog.md",
+      markdownUrl:
+        "https://blog-iota-five-59.vercel.app/projects/myblog/source.md",
+      localEtag:
+        '"sha256-aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa"',
+      sourceSha256: "e".repeat(64),
+      ...target,
+    },
+    production: {
+      etag: last.manifestEtag,
+      lastModified: "Mon, 10 Aug 2026 00:00:00 GMT",
+    },
+    observations: resolvedObservations,
+    safety: {
+      networkChecked: true,
+      sourceFrozen: true,
       authorFilesChanged: false,
       commitCreated: false,
       pushExecuted: false,
@@ -1007,11 +1106,11 @@ function authorDoctorReport() {
     ["delivery-baseline", "git", "Delivery baseline", "origin/main · synchronized", "main -> origin/main synchronized"],
     ["author-identity", "git", "Author identity", "name configured · email configured", "user.name and user.email configured"],
     ["workspace-contract", "workspace", "Workspace contract", "zach424-myblog · node >=22.13.0", "zach424-myblog · node >=22.13.0"],
-    ["npm-scripts", "workspace", "Author scripts", "12/12 required scripts", "12 required author scripts"],
+    ["npm-scripts", "workspace", "Author scripts", "13/13 required scripts", "13 required author scripts"],
     ["workspace-dependencies", "workspace", "Workspace dependencies", "35/35 pinned packages", "all declared packages installed at pinned versions"],
     ["content-layout", "workspace", "Content layout", "5/5 required paths", "5 required authoring paths"],
     ["obsidian-vault", "vault", "Obsidian Vault", ".obsidian present", ".obsidian directory present"],
-    ["publisher-plugin", "vault", "MyBlog Publisher", "myblog-publisher@1.35.0 · desktop", "myblog-publisher 1.35.0 desktop plugin"],
+    ["publisher-plugin", "vault", "MyBlog Publisher", "myblog-publisher@1.36.0 · desktop", "myblog-publisher 1.36.0 desktop plugin"],
   ];
   const scripts = [
     "content:author:doctor",
@@ -1025,6 +1124,7 @@ function authorDoctorReport() {
     "content:review:status",
     "content:status",
     "content:production",
+    "content:production:wait",
     "release:check",
   ];
   const paths = [
@@ -1059,7 +1159,7 @@ function authorDoctorReport() {
           isDesktopOnly: true,
           mainPresent: true,
           stylesPresent: true,
-          version: "1.35.0",
+          version: "1.36.0",
         },
       },
       workspace: {
@@ -3005,7 +3105,7 @@ test("renders a versioned maintenance ledger and opens an exact Vault note", asy
     createPluginHarness(),
   ]);
   const manifest = JSON.parse(manifestSource);
-  assert.equal(manifest.version, "1.35.0");
+  assert.equal(manifest.version, "1.36.0");
   assert.equal(manifest.minAppVersion, "1.5.7");
   assert.equal(manifest.isDesktopOnly, true);
   assert.match(styles, /^\.myblog-draft-create \{/mu);
@@ -3021,6 +3121,7 @@ test("renders a versioned maintenance ledger and opens an exact Vault note", asy
   assert.match(styles, /myblog-draft-intent__signature/u);
   assert.match(styles, /^\.myblog-maintenance \{/mu);
   assert.match(styles, /^\.myblog-production-sync \{/mu);
+  assert.match(styles, /^\.myblog-production-convergence \{/mu);
   assert.match(styles, /\[data-status="overdue"\]/u);
   assert.match(styles, /font-family: var\(--font-interface\)/u);
   assert.match(styles, /^\.myblog-review-proof \{/mu);
@@ -3201,6 +3302,138 @@ test("keeps production transport failures separate from content drift", async ()
   assert.equal(harness.modals.length, 0);
   assert.match(harness.notices.at(-1).message, /请求在 10000ms 后超时/u);
   assert.doesNotMatch(harness.notices.at(-1).message, /待部署|生产缺失|生产多出/u);
+});
+
+test("waits for the active formal note with visible bounded progress and a strict receipt", async () => {
+  const sourcePath = "content/projects/myblog.md";
+  const harness = await createPluginHarness({ activeFilePath: sourcePath });
+  const command = findCommand(harness, "wait-current-production-content");
+  assert.equal(command.checkCallback(true), true);
+  assert.equal(command.checkCallback(false), true);
+  assert.deepEqual(plain(harness.spawned[0].args), [
+    "/d",
+    "/s",
+    "/c",
+    "npm",
+    "--silent",
+    "run",
+    "content:production:wait",
+    "--",
+    "--source",
+    sourcePath,
+    "--format",
+    "json",
+  ]);
+
+  const initialProgressMessage = harness.notices[0].message;
+  const forgedProgress = productionConvergenceObservation({
+    differences: ["markdown-etag", "markdown-etag"],
+  });
+  harness.spawned[0].child.stderr.emit(
+    "data",
+    Buffer.from(
+      `[production-convergence-progress] ${JSON.stringify(forgedProgress)}\n`,
+    ),
+  );
+  assert.equal(harness.notices[0].message, initialProgressMessage);
+
+  const progress = productionConvergenceObservation();
+  const progressLine = `[production-convergence-progress] ${JSON.stringify(progress)}\n`;
+  harness.spawned[0].child.stderr.emit("data", Buffer.from(progressLine.slice(0, 37)));
+  harness.spawned[0].child.stderr.emit("data", Buffer.from(progressLine.slice(37)));
+  assert.match(harness.notices[0].message, /第 1 次.*待部署.*剩余 180 秒/u);
+
+  harness.spawned[0].child.stdout.emit(
+    "data",
+    Buffer.from(JSON.stringify(productionConvergenceReport())),
+  );
+  harness.spawned[0].child.emit("close", 0);
+  assert.equal(harness.notices[0].hidden, true);
+  assert.equal(harness.modals.length, 1);
+  const modal = harness.modals[0];
+  assert.equal(modal.contentEl.classes.has("myblog-production-convergence"), true);
+  assert.equal(modal.contentEl.attributes["data-status"], "deployed");
+  assert.equal(elementsByTag(modal, "button").length, 0);
+  const text = allElements(modal.contentEl).map((element) => element.text).join(" ");
+  assert.match(text, /PRODUCTION CONVERGENCE \/ DEPLOYED/u);
+  assert.match(text, /content\/projects\/myblog\.md/u);
+  assert.match(text, /2 次尝试.*5000 ms/su);
+  assert.match(text, /零写入.*零提交.*零推送/su);
+
+  const mobile = await createPluginHarness({
+    activeFilePath: sourcePath,
+    desktop: false,
+  });
+  assert.equal(
+    findCommand(mobile, "wait-current-production-content").checkCallback(true),
+    false,
+  );
+});
+
+test("treats a new convergence wait as latest-wins and unload cancellation as silent", async () => {
+  const sourcePath = "content/projects/myblog.md";
+  const harness = await createPluginHarness({
+    activeFilePath: sourcePath,
+    platform: "linux",
+  });
+  const command = findCommand(harness, "wait-current-production-content");
+  command.checkCallback(false);
+  command.checkCallback(false);
+  assert.equal(harness.spawned.length, 2);
+  assert.equal(harness.spawned[0].child.killed, true);
+  assert.equal(harness.notices[0].hidden, true);
+  assert.equal(harness.plugin.activeRuns.size, 1);
+
+  const noticeCount = harness.notices.length;
+  harness.spawned[0].child.stdout.emit(
+    "data",
+    Buffer.from(JSON.stringify(productionConvergenceReport())),
+  );
+  harness.spawned[0].child.emit("close", 0);
+  assert.equal(harness.modals.length, 0);
+  assert.equal(harness.notices.length, noticeCount);
+
+  harness.plugin.onunload();
+  assert.equal(harness.spawned[1].child.killed, true);
+  assert.equal(harness.plugin.activeRuns.size, 0);
+  harness.spawned[1].child.emit("close", 0);
+  assert.equal(harness.modals.length, 0);
+});
+
+test("renders timeout as a valid final state but rejects forged convergence evidence", async () => {
+  const sourcePath = "content/projects/myblog.md";
+  const timeoutObservations = [productionConvergenceObservation({
+    checkedAt: "2026-08-10T12:02:59.000Z",
+    elapsedMs: 179_000,
+    remainingMs: 1_000,
+    state: "missing",
+    productionEtag: null,
+    differences: ["missing-production"],
+  })];
+  const timeoutReport = productionConvergenceReport({
+    observations: timeoutObservations,
+    status: "timeout",
+  });
+  const harness = await createPluginHarness({ activeFilePath: sourcePath });
+  findCommand(harness, "wait-current-production-content").checkCallback(false);
+  harness.spawned[0].child.stdout.emit("data", Buffer.from(JSON.stringify(timeoutReport)));
+  harness.spawned[0].child.emit("close", 2);
+  assert.equal(harness.modals.length, 1);
+  assert.equal(
+    harness.modals[0].contentEl.attributes["data-status"],
+    "timeout",
+  );
+
+  const forged = productionConvergenceReport();
+  forged.target.sourcePath = "content/projects/../private.md";
+  findCommand(harness, "wait-current-production-content").checkCallback(false);
+  harness.spawned[1].child.stdout.emit("data", Buffer.from(JSON.stringify(forged)));
+  harness.spawned[1].child.emit("close", 0);
+  assert.equal(harness.modals.length, 1);
+  assert.match(
+    harness.notices.at(-1).message,
+    /生产收敛证据不可用.*不会自动重试/su,
+  );
 });
 
 test("shows a local-only pending review delivery rail without executing recovery", async () => {
