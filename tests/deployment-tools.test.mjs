@@ -4,6 +4,7 @@ import test from "node:test";
 import {
   extractSitemapUrls,
   hasJsonFeedCachePolicy,
+  hasMarkdownSourceCachePolicy,
 } from "../scripts/smoke-production.mjs";
 
 test("extracts exact production routes from a Sitemap", () => {
@@ -22,6 +23,22 @@ test("accepts the JSON Feed cache policy before and after Vercel consumes SWR", 
   assert.equal(hasJsonFeedCachePolicy("public, max-age=60"), false);
   assert.equal(hasJsonFeedCachePolicy("private, max-age=3600"), false);
   assert.equal(hasJsonFeedCachePolicy("public, max-age=3600, stale-while-revalidate=60"), false);
+});
+
+test("accepts the Markdown source cache policy before and after Vercel consumes CDN directives", () => {
+  assert.equal(
+    hasMarkdownSourceCachePolicy(
+      "public, max-age=0, s-maxage=3600, stale-while-revalidate=86400",
+    ),
+    true,
+  );
+  assert.equal(hasMarkdownSourceCachePolicy("public, max-age=0"), true);
+  assert.equal(hasMarkdownSourceCachePolicy("public, max-age=3600"), false);
+  assert.equal(
+    hasMarkdownSourceCachePolicy("public, max-age=0, s-maxage=60"),
+    false,
+  );
+  assert.equal(hasMarkdownSourceCachePolicy("private, max-age=0"), false);
 });
 
 test("connects Vercel verification, maintenance reporting, rollback, and Studio routing without Cloudflare", async () => {
@@ -57,6 +74,9 @@ test("connects Vercel verification, maintenance reporting, rollback, and Studio 
   assert.match(smoke, /\/feed\.json/);
   assert.match(smoke, /application\/feed\+json/);
   assert.match(smoke, /https:\/\/jsonfeed\.org\/version\/1\.1/);
+  assert.match(smoke, /\/posts\/building-a-maintainable-blog\/source\.md/);
+  assert.match(smoke, /\/projects\/myblog\/source\.md/);
+  assert.match(smoke, /text\/markdown/);
   assert.match(smoke, /formatHtmlBudgetReport/);
   assert.match(smoke, /\/knowledge/);
   assert.match(smoke, /\/blog 永久重定向/);

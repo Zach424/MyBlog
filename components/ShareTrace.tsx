@@ -56,10 +56,12 @@ function feedbackStatus(feedback: ShareFeedback) {
 }
 
 export function ShareTrace({
+  sourceUrl,
   text,
   title,
   url,
 }: {
+  sourceUrl: string;
   text: string;
   title: string;
   url: string;
@@ -181,14 +183,24 @@ export function ShareTrace({
         <span>Share trace</span>
         <strong>Canonical</strong>
       </div>
-      <a
-        aria-label={`“${title}”的规范链接`}
-        className="share-url"
-        href={url}
-      >
-        <span>Source</span>
-        <code>{url}</code>
-      </a>
+      <div className="share-sources">
+        <a
+          aria-label={`“${title}”的规范链接`}
+          className="share-url"
+          href={url}
+        >
+          <span>Source</span>
+          <code>{url}</code>
+        </a>
+        <a
+          aria-label={`查看“${title}”的 Markdown 源文`}
+          className="markdown-source-url"
+          href={sourceUrl}
+        >
+          <span>Portable source</span>
+          <code>VIEW .MD →</code>
+        </a>
+      </div>
       <div className="share-ops" hidden ref={actionRef}>
         <button
           aria-describedby={statusId}

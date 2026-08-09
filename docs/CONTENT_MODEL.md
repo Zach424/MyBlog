@@ -114,9 +114,18 @@ redirects:
 - `lib/content/index.ts`：使用 Node 文件系统读取 Markdown，并生成公开文章、项目、标签和专题索引；
 - `next.config.ts`：注入构建日期，并通过 `outputFileTracingIncludes` 把 Markdown 纳入 Vercel Serverless 产物；
 - `lib/content/markdown.ts`：生成与正文一致的目录锚点；
-- `lib/search-index.ts`、`lib/discovery.ts`：从同一公开集合生成搜索纯文本、JSON Feed 1.1、RSS 和 Sitemap。
+- `lib/search-index.ts`、`lib/discovery.ts`：从同一公开集合生成搜索纯文本、JSON Feed 1.1、RSS 和 Sitemap；
+- `lib/public-markdown.ts`：从单条公开记录生成字段受限、链接可移植的 Markdown 投影。
 
 选择 `yaml` 而不是允许可执行 frontmatter 的解析器，避免把动态执行带进生产包，并让字段约束可审计。
+
+## 公开可移植 Markdown
+
+每篇已公开内容都有与 HTML 详情页相邻的源文地址：文章为 `/posts/<slug>/source.md`，项目为 `/projects/<slug>/source.md`。它服务读者保存、Obsidian 导入和只读自动化，不是仓库作者文件的逐字镜像，也不能用于无损回写。
+
+公开 YAML 使用显式 allowlist：共同字段为 `title`、`description`、`type`、`publishedAt`、可选 `updatedAt`、`freshness`、`reviewedAt`、`tags`、`canonical`、可选绝对 `cover`/`coverAlt`；文章可增加 `series`，项目可增加 `status`、`stack`、`repository` 与 `demo`。项目导出中的 `type: project` 是公开投影类型，不替代仓库作者 schema。`draft`、`featured`、`slug`、`sourcePath`、`body`、`readingMinutes`、`wordCount` 等工作流或派生字段禁止输出。
+
+正文保留 Markdown 结构、代码和公式；共享 AST 只把根相对 link/image/definition 与当前页面 fragment 转为绝对公开 URL。HTTPS 外链、`mailto:` 等已有协议地址和代码示例保持原样。raw HTML 属性不是当前可移植改写契约的一部分，作者应继续使用受校验的 Markdown 链接/图片语法。源文只通过已过滤的公开 getter 获取记录；草稿、未来日期和未知 slug 返回 `404`，不能因知道文件名而绕过公开边界。
 
 ## Obsidian inbox 就绪状态
 

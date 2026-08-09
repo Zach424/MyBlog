@@ -23,6 +23,7 @@ import {
 } from "@/lib/content";
 import { extractTableOfContents } from "@/lib/content/markdown";
 import { getContentCover } from "@/lib/content/media";
+import { getPublicMarkdownPath } from "@/lib/public-markdown";
 import { absoluteSiteUrl, resolveSiteUrl } from "@/lib/site";
 
 type PostPageProps = {
@@ -51,7 +52,10 @@ export async function generateMetadata({ params }: PostPageProps): Promise<Metad
   return {
     title: post.title,
     description: post.description,
-    alternates: { canonical: post.canonical ?? post.url },
+    alternates: {
+      canonical: post.canonical ?? post.url,
+      types: { "text/markdown": getPublicMarkdownPath(post) },
+    },
     openGraph: {
       type: "article",
       title: post.title,
@@ -87,6 +91,7 @@ export default async function PostPage({ params }: PostPageProps) {
   const outgoing = getOutgoingReferencesFor(post);
   const siteUrl = resolveSiteUrl(await headers());
   const canonicalUrl = post.canonical ?? absoluteSiteUrl(siteUrl, post.url);
+  const sourceUrl = absoluteSiteUrl(siteUrl, getPublicMarkdownPath(post));
   const tags = post.tags.map((name) => ({
     name,
     href: `/tags/${getTagSlug(name) ?? ""}`,
@@ -142,6 +147,7 @@ export default async function PostPage({ params }: PostPageProps) {
       />
       <ShareTrace
         text={post.description}
+        sourceUrl={sourceUrl}
         title={post.title}
         url={canonicalUrl}
       />

@@ -1,6 +1,7 @@
 import assert from "node:assert/strict";
 import { access, readFile } from "node:fs/promises";
 import test from "node:test";
+import { parse as parseYaml } from "yaml";
 
 const developmentPreviewMeta =
   /<meta(?=[^>]*\bname=["']codex-preview["'])(?=[^>]*\bcontent=["']development["'])[^>]*>/i;
@@ -202,6 +203,14 @@ test("renders Markdown articles with metadata, anchors, code and navigation", as
   assert.match(
     html,
     /<link rel="canonical" href="https:\/\/blog\.example\.test\/posts\/building-a-maintainable-blog"/,
+  );
+  assert.match(
+    html,
+    /<link(?=[^>]*rel="alternate")(?=[^>]*type="text\/markdown")(?=[^>]*href="https:\/\/blog\.example\.test\/posts\/building-a-maintainable-blog\/source\.md")[^>]*>/u,
+  );
+  assert.match(
+    html,
+    /<a(?=[^>]*class="markdown-source-url")(?=[^>]*href="https:\/\/blog\.example\.test\/posts\/building-a-maintainable-blog\/source\.md")[^>]*>/u,
   );
   assert.match(
     html.replaceAll("<!-- -->", ""),
@@ -435,6 +444,72 @@ test("publishes JSON Feed, RSS, Sitemap and robots from the same public content 
   const robots = await robotsResponse.text();
   assert.match(robots, /User-agent: \*/);
   assert.match(robots, /Sitemap: https:\/\/blog\.example\.test\/sitemap\.xml/);
+});
+
+test("publishes portable Markdown sources without author-only fields", async () => {
+  const [postResponse, projectResponse, missingResponse] = await Promise.all([
+    render("/posts/building-a-maintainable-blog/source.md"),
+    render("/projects/myblog/source.md"),
+    render("/posts/not-a-public-record/source.md"),
+  ]);
+
+  for (const [response, slug, canonical] of [
+    [
+      postResponse,
+      "building-a-maintainable-blog",
+      "https://blog.example.test/posts/building-a-maintainable-blog",
+    ],
+    [projectResponse, "myblog", "https://blog.example.test/projects/myblog"],
+  ]) {
+    assert.equal(response.status, 200);
+    assert.match(response.headers.get("content-type") ?? "", /^text\/markdown;\s*charset=utf-8$/iu);
+    assert.equal(
+      response.headers.get("content-disposition"),
+      `inline; filename="${slug}.md"`,
+    );
+    assert.equal(
+      response.headers.get("cache-control"),
+      "public, max-age=0, s-maxage=3600, stale-while-revalidate=86400",
+    );
+    assert.equal(
+      response.headers.get("link"),
+      `<${canonical}>; rel="canonical"; type="text/html"`,
+    );
+  }
+
+  const postSource = await postResponse.text();
+  const postMatch = /^---\n([\s\S]*?)\n---\n\n([\s\S]*)$/u.exec(postSource);
+  assert.ok(postMatch);
+  const postFrontmatter = parseYaml(postMatch[1]);
+  assert.equal(
+    postFrontmatter.canonical,
+    "https://blog.example.test/posts/building-a-maintainable-blog",
+  );
+  assert.equal(postFrontmatter.draft, undefined);
+  assert.equal(postFrontmatter.featured, undefined);
+  assert.equal(postFrontmatter.sourcePath, undefined);
+  assert.match(
+    postMatch[2],
+    /https:\/\/blog\.example\.test\/projects\/myblog#vercel-/u,
+  );
+  assert.match(
+    postMatch[2],
+    /https:\/\/blog\.example\.test\/uploads\/building-a-maintainable-blog\/content-delivery-pipeline\.webp/u,
+  );
+
+  const projectSource = await projectResponse.text();
+  const projectMatch = /^---\n([\s\S]*?)\n---\n\n([\s\S]*)$/u.exec(projectSource);
+  assert.ok(projectMatch);
+  const projectFrontmatter = parseYaml(projectMatch[1]);
+  assert.equal(projectFrontmatter.type, "project");
+  assert.equal(projectFrontmatter.canonical, "https://blog.example.test/projects/myblog");
+  assert.equal(
+    projectFrontmatter.cover,
+    "https://blog.example.test/uploads/myblog/cover.webp",
+  );
+  assert.equal(projectFrontmatter.draft, undefined);
+  assert.equal(missingResponse.status, 404);
+  assert.equal(missingResponse.headers.get("cache-control"), "no-store");
 });
 
 test("removes starter artifacts and keeps the Vercel-native design contract explicit", async () => {

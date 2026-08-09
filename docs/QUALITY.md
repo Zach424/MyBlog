@@ -6,7 +6,7 @@
 npm run check
 ```
 
-顺序为 ESLint → 137 项内容/维护/inbox/暂存媒体/关系/标题锚点与永久链接/脚注/数学公式/打印版式/知识图/外链库存与检查/搜索/OAuth/Studio/Obsidian/媒体/重定向/代码复制/交付单元测试 → Next 路由类型生成与 TypeScript → 原生 Next.js 生产构建（40 条路由）→ 18 项真实生产 HTTP 与质量审计。任何一步失败都阻止合并和生产部署。
+顺序为 ESLint → 404 项内容/维护/inbox/暂存媒体/关系/标题锚点与永久链接/脚注/数学公式/打印版式/知识图/外链库存与检查/搜索/公开 Markdown/OAuth/Studio/Obsidian/媒体/重定向/代码复制/交付单元测试 → Next 路由类型生成与 TypeScript → 原生 Next.js 生产构建（46 个静态页面，并包含动态 Route Handler）→ 20 项真实生产 HTTP 与质量审计。任何一步失败都阻止合并和生产部署。
 
 发布候选额外执行：
 
@@ -88,6 +88,8 @@ npm run production:smoke -- https://example.vercel.app --expect-oauth
 
 - 每页一个 `<main>` 和 `<h1>`，`lang=zh-CN`；
 - 页面具有 description、canonical、跳转主内容链接和唯一 id；
+- 文章/项目详情必须服务端输出无 JavaScript 可见的 canonical 与 Markdown 源文链接，并声明 `text/markdown` alternate；分享与复制控件只能渐进增强，不能成为唯一访问路径；
+- 公开 Markdown 源文必须验证字段 allowlist、正文结构、站内链接/媒体绝对化、外链/代码稳定、MIME、安全文件名、HTML canonical `Link`、`noindex` 和公开缓存；草稿、未来内容与未知 slug 必须返回不缓存的 404；
 - 所有可见内部导航目标返回成功；
 - 有站内关系的文章/项目必须服务端渲染语义独立的 outgoing/backlinks 分组；两侧都为空时不渲染空账本；
 - `/knowledge` 必须从同一关系值服务端输出 SVG 节点/有向边、HTML 关系账本和孤立记录；节点为原生链接，不用 Canvas 或客户端脚本承担唯一语义；

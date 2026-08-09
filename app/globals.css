@@ -1095,6 +1095,7 @@ input:focus-visible {
 
 .share-trace span,
 .share-url span,
+.markdown-source-url span,
 .share-status {
   color: var(--faint);
   font-family: var(--mono);
@@ -1118,6 +1119,12 @@ input:focus-visible {
   text-decoration: none;
 }
 
+.share-sources {
+  min-width: 0;
+  display: grid;
+  gap: 0.75rem;
+}
+
 .share-url code {
   color: var(--muted);
   font-family: var(--mono);
@@ -1129,6 +1136,30 @@ input:focus-visible {
 
 .share-url:hover code {
   color: var(--signal);
+}
+
+.markdown-source-url {
+  min-width: 0;
+  display: flex;
+  align-items: baseline;
+  justify-content: space-between;
+  gap: 1rem;
+  padding-top: 0.625rem;
+  border-top: 0.0625rem solid var(--rule);
+  text-decoration: none;
+}
+
+.markdown-source-url code {
+  flex: 0 0 auto;
+  color: var(--signal);
+  font-family: var(--mono);
+  font-size: 0.625rem;
+  font-weight: 700;
+  letter-spacing: 0.06em;
+}
+
+.markdown-source-url:hover code {
+  color: var(--ink);
 }
 
 .share-ops {

@@ -21,6 +21,7 @@ import {
 } from "@/lib/content";
 import { extractTableOfContents } from "@/lib/content/markdown";
 import { getContentCover } from "@/lib/content/media";
+import { getPublicMarkdownPath } from "@/lib/public-markdown";
 import { absoluteSiteUrl, resolveSiteUrl } from "@/lib/site";
 
 type ProjectPageProps = {
@@ -50,7 +51,10 @@ export async function generateMetadata({
   return {
     title: project.title,
     description: project.description,
-    alternates: { canonical: project.url },
+    alternates: {
+      canonical: project.url,
+      types: { "text/markdown": getPublicMarkdownPath(project) },
+    },
     openGraph: {
       type: "website",
       title: project.title,
@@ -78,6 +82,7 @@ export default async function ProjectPage({ params }: ProjectPageProps) {
   const outgoing = getOutgoingReferencesFor(project);
   const siteUrl = resolveSiteUrl(await headers());
   const projectUrl = absoluteSiteUrl(siteUrl, project.url);
+  const sourceUrl = absoluteSiteUrl(siteUrl, getPublicMarkdownPath(project));
   const tags = project.tags.map((name) => ({
     name,
     href: `/tags/${getTagSlug(name) ?? ""}`,
@@ -141,6 +146,7 @@ export default async function ProjectPage({ params }: ProjectPageProps) {
       />
       <ShareTrace
         text={project.description}
+        sourceUrl={sourceUrl}
         title={project.title}
         url={projectUrl}
       />

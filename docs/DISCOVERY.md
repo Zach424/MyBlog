@@ -35,6 +35,18 @@ RSS 对 XML 特殊字符统一转义，并从公开内容字段生成标题、�
 
 Feed 顶层声明 JSON Feed 1.1 `version`、站点标题/说明、`home_page_url`、`feed_url`、`language: zh-CN` 和作者。item 只暴露公开阅读字段，不包含 `draft`、源文件路径或原始 Markdown body；若 Markdown 没有可见纯文本，使用公开摘要兜底。生成器、HTTP 和生产冒烟都要求 JSON Feed 与 RSS 的稳定内容 URL 顺序完全一致。根布局使用独立 `application/feed+json` alternate link 供订阅器发现，RSS 链接保持兼容。
 
+## 单篇 Markdown 源文
+
+- URL：文章 `/posts/<slug>/source.md`，项目 `/projects/<slug>/source.md`
+- MIME：`text/markdown; charset=utf-8`
+- 发现：每个详情页 metadata 输出 `text/markdown` alternate，并在 Share Trace 中保留无需 JavaScript 的 `Portable source / VIEW .MD →` 链接
+- 内容：公开字段 allowlist 的 YAML frontmatter + 保留结构的 Markdown 正文
+- 可移植性：canonical、站内页面、当前页 fragment 与本地媒体使用当前请求 origin 的绝对 URL；外链和代码保持原样
+- 响应：安全 ASCII 文件名、指向 HTML 页的 canonical `Link`、`X-Robots-Tag: noindex`
+- 缓存：浏览器立即复核，CDN 一小时 fresh、24 小时 stale-while-revalidate；Vercel 消费 CDN 指令后，客户端可只看到 `public, max-age=0`
+
+源文是公开阅读投影，不是 Git 作者原稿下载。它不包含 `draft`、`featured`、slug/sourcePath、统计派生字段或未公开记录；未知、草稿和未来内容统一返回 plain-text 404、`no-store` 与 `noindex`。JSON Feed 继续提供聚合纯文本，单篇源文提供 Markdown 结构，两者用途不同。
+
 ## Sitemap
 
 - URL：`/sitemap.xml`

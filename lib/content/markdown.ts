@@ -43,8 +43,12 @@ export type MarkdownNode = {
   depth?: number;
   identifier?: string;
   position?: {
+    end?: {
+      offset?: number;
+    };
     start?: {
       line?: number;
+      offset?: number;
     };
   };
   type: string;

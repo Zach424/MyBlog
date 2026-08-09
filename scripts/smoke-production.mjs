@@ -43,7 +43,7 @@ export function extractSitemapUrls(xml) {
   return [...xml.matchAll(/<loc>([^<]+)<\/loc>/gu)].map((match) => match[1]);
 }
 
-export function hasJsonFeedCachePolicy(value) {
+function cacheDirectives(value) {
   if (typeof value !== "string") return false;
 
   const directives = new Map();
@@ -53,6 +53,13 @@ export function hasJsonFeedCachePolicy(value) {
     directives.set(name, directiveValue);
   }
 
+  return directives;
+}
+
+export function hasJsonFeedCachePolicy(value) {
+  const directives = cacheDirectives(value);
+  if (!directives) return false;
+
   const staleWhileRevalidate = directives.get("stale-while-revalidate");
   return (
     directives.has("public") &&
@@ -60,6 +67,23 @@ export function hasJsonFeedCachePolicy(value) {
     !directives.has("private") &&
     !directives.has("no-store") &&
     (staleWhileRevalidate === undefined || staleWhileRevalidate === "86400")
+  );
+}
+
+export function hasMarkdownSourceCachePolicy(value) {
+  const directives = cacheDirectives(value);
+  if (!directives) return false;
+
+  const hasCdnDirectives =
+    directives.has("s-maxage") || directives.has("stale-while-revalidate");
+  return (
+    directives.has("public") &&
+    directives.get("max-age") === "0" &&
+    !directives.has("private") &&
+    !directives.has("no-store") &&
+    (!hasCdnDirectives ||
+      (directives.get("s-maxage") === "3600" &&
+        directives.get("stale-while-revalidate") === "86400"))
   );
 }
 
@@ -98,6 +122,7 @@ export async function runProductionSmoke(originInput, { expectOAuth = false } = 
   const htmlBudgetReports = [
     measureHtmlBudget({ pathname: "/", html: home.body }),
   ];
+  const htmlPages = new Map([["/", home]]);
 
   for (const [pathname, marker] of [
     ["/posts", "文章与 TIL"],
@@ -113,12 +138,72 @@ export async function runProductionSmoke(originInput, { expectOAuth = false } = 
     const page = await request(origin, pathname);
     invariant(page.response.status === 200, `${pathname} 状态 ${page.response.status}`);
     invariant(page.body.includes(marker), `${pathname} 缺少预期内容`);
+    htmlPages.set(pathname, page);
     if (HTML_ROUTE_BASELINES[pathname]) {
       htmlBudgetReports.push(measureHtmlBudget({ pathname, html: page.body }));
     }
   }
   assertHtmlBudgetCoverage(htmlBudgetReports);
   assertHtmlBudgets(htmlBudgetReports);
+
+  const markdownSources = [
+    {
+      canonical: `${origin.origin}/posts/building-a-maintainable-blog`,
+      pathname: "/posts/building-a-maintainable-blog/source.md",
+      slug: "building-a-maintainable-blog",
+    },
+    {
+      canonical: `${origin.origin}/projects/myblog`,
+      pathname: "/projects/myblog/source.md",
+      slug: "myblog",
+    },
+  ];
+  const sourceResponses = await Promise.all(
+    markdownSources.map(({ pathname }) =>
+      request(origin, pathname, { accept: "text/markdown" }),
+    ),
+  );
+  for (const [index, source] of sourceResponses.entries()) {
+    const expectation = markdownSources[index];
+    const detail = htmlPages.get(expectation.canonical.slice(origin.origin.length));
+    invariant(
+      detail?.body.includes('type="text/markdown"') &&
+        detail.body.includes(`${origin.origin}${expectation.pathname}`),
+      `${expectation.slug} 详情页缺少 Markdown 发现与入口`,
+    );
+    invariant(
+      source.response.status === 200 &&
+        source.response.headers.get("content-type")?.startsWith("text/markdown") &&
+        source.response.headers.get("content-disposition") ===
+          `inline; filename="${expectation.slug}.md"` &&
+        source.response.headers.get("link") ===
+          `<${expectation.canonical}>; rel="canonical"; type="text/html"` &&
+        source.response.headers.get("x-robots-tag") === "noindex" &&
+        hasMarkdownSourceCachePolicy(source.response.headers.get("cache-control")) &&
+        source.body.startsWith("---\n") &&
+        source.body.includes(`canonical: ${expectation.canonical}`) &&
+        !/^\s*(?:draft|featured|sourcePath|body):/mu.test(source.body),
+      `${expectation.slug} Markdown 公开源文契约异常`,
+    );
+  }
+  invariant(
+    sourceResponses[0].body.includes(`${origin.origin}/projects/myblog`) &&
+      sourceResponses[0].body.includes(
+        `${origin.origin}/uploads/building-a-maintainable-blog/content-delivery-pipeline.webp`,
+      ) &&
+      sourceResponses[1].body.includes(`${origin.origin}/uploads/myblog/cover.webp`),
+    "Markdown 源文没有绝对化站内链接与本地媒体",
+  );
+  const missingMarkdownSource = await request(
+    origin,
+    "/posts/not-a-public-record/source.md",
+    { accept: "text/markdown", redirect: "manual" },
+  );
+  invariant(
+    missingMarkdownSource.response.status === 404 &&
+      missingMarkdownSource.response.headers.get("cache-control") === "no-store",
+    "未知 Markdown 源文没有返回 no-store 404",
+  );
 
   const legacyBlog = await request(origin, "/blog", { redirect: "manual" });
   invariant(legacyBlog.response.status === 308, `/blog 永久重定向状态 ${legacyBlog.response.status}`);

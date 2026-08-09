@@ -106,6 +106,7 @@ test("applies the production security and cache baseline", async () => {
   for (const pathname of [
     "/",
     "/posts/building-a-maintainable-blog",
+    "/posts/building-a-maintainable-blog/source.md",
     "/feed.json",
     "/rss.xml",
   ]) {

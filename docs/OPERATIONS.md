@@ -107,7 +107,7 @@ npm run release:check
 npm run production:smoke -- https://your-production.example --expect-oauth
 ```
 
-必须验证：首页、集合、文章、项目、知识地图、搜索、JSON Feed、RSS、robots、Sitemap 全部 URL、Studio HTML/配置/媒体清单/媒体预检/稳定 slug 控件/预览/固定版本运行时、OAuth 跳转、安全头、缓存和真实 404；JSON Feed 还要与 RSS 保持同一公开 URL 顺序，根页面必须包含实际生产 origin 的发现链接。命令会为九条关键 HTML 路由输出实际生产域名下的 raw/gzip、阈值、基线与余量，任何漏测、重复或超限都会失败。首次上线或域名切换还需用未登录浏览器覆盖桌面、320px、深色和键盘路径；域名变化后必须重新核对 Feed URL、预算 origin 与真实生产基线，不能沿用替代主机的假绿。
+必须验证：首页、集合、文章、项目、知识地图、搜索、JSON Feed、RSS、robots、Sitemap 全部 URL、文章/项目 Markdown 源文、Studio HTML/配置/媒体清单/媒体预检/稳定 slug 控件/预览/固定版本运行时、OAuth 跳转、安全头、缓存和真实 404；JSON Feed 还要与 RSS 保持同一公开 URL 顺序，根页面必须包含实际生产 origin 的发现链接。源文必须验证详情页 alternate/可见入口、公开 frontmatter、绝对链接/媒体、MIME、文件名、canonical、`noindex`、Vercel 等价缓存和未知 slug 的 `no-store` 404。命令会为九条关键 HTML 路由输出实际生产域名下的 raw/gzip、阈值、基线与余量，任何漏测、重复或超限都会失败。首次上线或域名切换还需用未登录浏览器覆盖桌面、320px、深色和键盘路径；域名变化后必须重新核对 Feed/source URL、预算 origin 与真实生产基线，不能沿用替代主机的假绿。
 
 ## 故障等级
 

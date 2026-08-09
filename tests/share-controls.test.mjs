@@ -170,6 +170,8 @@ test("keeps the canonical share trace progressive, accessible, and print-free", 
   assert.match(source, /copyMarkdownCitation/u);
   assert.doesNotMatch(source, /content-share-buttons/u);
   assert.match(source, /className="share-button share-button-md"/u);
+  assert.match(source, /className="markdown-source-url"/u);
+  assert.match(source, /sourceUrl/u);
   assert.match(source, /"COPY MD"/u);
   assert.doesNotMatch(source, /facebook|twitter|weibo|shortlink|analytics/iu);
 
@@ -180,6 +182,6 @@ test("keeps the canonical share trace progressive, accessible, and print-free", 
   assert.match(styles, /data-action="citation"/u);
   assert.match(styles, /@media \(max-width: 42rem\)[\s\S]*?\.content-share/u);
   assert.match(styles, /@media print[\s\S]*?\.content-share[\s\S]*?display:\s*none !important/u);
-  assert.match(postPage, /<ShareTrace[\s\S]*?url=\{canonicalUrl\}/u);
-  assert.match(projectPage, /<ShareTrace[\s\S]*?url=\{projectUrl\}/u);
+  assert.match(postPage, /<ShareTrace[\s\S]*?sourceUrl=\{sourceUrl\}[\s\S]*?url=\{canonicalUrl\}/u);
+  assert.match(projectPage, /<ShareTrace[\s\S]*?sourceUrl=\{sourceUrl\}[\s\S]*?url=\{projectUrl\}/u);
 });
