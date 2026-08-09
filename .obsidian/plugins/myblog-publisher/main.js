@@ -26,7 +26,7 @@ const CONTENT_DELIVERY_TRIAGE_REPORT_VERSION = 1;
 const AUTHOR_DOCTOR_REPORT_VERSION = 1;
 const INBOX_READINESS_REPORT_VERSION = 6;
 const AUTHOR_DOCTOR_NODE_ENGINE = ">=22.13.0";
-const AUTHOR_DOCTOR_PLUGIN_VERSION = "1.37.0";
+const AUTHOR_DOCTOR_PLUGIN_VERSION = "1.38.0";
 const CURRENT_DRAFT_INTENT_RUN_SCOPE = Symbol("current-draft-intent");
 const PRODUCTION_CONTENT_CONVERGENCE_RUN_SCOPE = Symbol(
   "production-content-convergence",
@@ -1323,6 +1323,19 @@ function parsePostDeliveryHandoffOutput(output, expectedDelivery, authorSourcePa
     );
   }
   return handoff;
+}
+
+function extractRecoveryDeliveryReceiptOutput(output) {
+  const lines = output.trim().split(/\r?\n/u);
+  if (
+    lines.length < 2 ||
+    !lines.at(-1).startsWith(POST_DELIVERY_HANDOFF_PREFIX)
+  ) {
+    throw new Error("sealed receipt 后必须有唯一 post-delivery handoff");
+  }
+  const receiptOutput = lines.slice(0, -1).join("\n").trim();
+  if (!receiptOutput) throw new Error("sealed receipt 不能为空");
+  return receiptOutput;
 }
 
 function parseProductionContentConvergenceReport(output) {
@@ -7223,24 +7236,35 @@ module.exports = class MyBlogPublisher extends Plugin {
         "--",
         "--format",
         "json",
+        "--handoff",
       ],
       {
+        captureStdoutOnly: true,
         failure: "待交付正式内容重新同步未完成",
         progress: "正在重新验证并同步精确复核提交…",
         startFailure: "待交付正式内容重新同步命令无法启动",
       },
       (output) => {
         let receipt;
+        let continuation;
         try {
-          receipt = parseContentReviewDeliveryReceipt(output);
+          receipt = parseContentReviewDeliveryReceipt(
+            extractRecoveryDeliveryReceiptOutput(output),
+          );
+          continuation = this.createPostDeliveryWaitContinuation(
+            output,
+            "review",
+            receipt.review.sourcePath,
+            receipt.review.commitOid,
+          );
         } catch (error) {
           throw new Error(
-            `重新同步未能生成可信回执：${error.message}；请运行“查看待同步正式内容复核”重新取证`,
+            `重新同步未能生成可信回执或交付接力证据：${error.message}；请运行“查看待同步正式内容复核”重新取证；不会重新提交、推送或自动重试`,
           );
         }
         new ContentReviewDeliveryReceiptModal(this.app, receipt).open();
-        this.app.vault.adapter.reconcile?.();
         new Notice("待交付正式内容复核已重新同步。", 8000);
+        return continuation;
       },
     );
   }
@@ -7256,24 +7280,35 @@ module.exports = class MyBlogPublisher extends Plugin {
         "--",
         "--format",
         "json",
+        "--handoff",
       ],
       {
+        captureStdoutOnly: true,
         failure: "待交付新内容发布重新同步未完成",
         progress: "正在重新验证并同步精确发布包…",
         startFailure: "待交付新内容发布重新同步命令无法启动",
       },
       (output) => {
         let receipt;
+        let continuation;
         try {
-          receipt = parseContentPublishDeliveryReceipt(output);
+          receipt = parseContentPublishDeliveryReceipt(
+            extractRecoveryDeliveryReceiptOutput(output),
+          );
+          continuation = this.createPostDeliveryWaitContinuation(
+            output,
+            "publication",
+            receipt.publication.inboxSourcePath,
+            receipt.publication.commitOid,
+          );
         } catch (error) {
           throw new Error(
-            `重新同步未能生成可信发布回执：${error.message}；请运行“查看待同步新内容发布”重新取证`,
+            `重新同步未能生成可信发布回执或交付接力证据：${error.message}；请运行“查看待同步新内容发布”重新取证；不会重新提交、推送或自动重试`,
           );
         }
         new ContentPublishDeliveryReceiptModal(this.app, receipt).open();
-        this.app.vault.adapter.reconcile?.();
         new Notice("待交付新内容发布已重新同步。", 8000);
+        return continuation;
       },
     );
   }
@@ -7397,7 +7432,12 @@ module.exports = class MyBlogPublisher extends Plugin {
     );
   }
 
-  createPostDeliveryWaitContinuation(output, delivery, authorSourcePath) {
+  createPostDeliveryWaitContinuation(
+    output,
+    delivery,
+    authorSourcePath,
+    expectedCommitOid = null,
+  ) {
     let handoff;
     try {
       handoff = parsePostDeliveryHandoffOutput(
@@ -7405,6 +7445,11 @@ module.exports = class MyBlogPublisher extends Plugin {
         delivery,
         authorSourcePath,
       );
+      if (expectedCommitOid && handoff.commitOid !== expectedCommitOid) {
+        throw new Error(
+          "post-delivery handoff commit 必须与 sealed receipt 完全一致",
+        );
+      }
     } catch (error) {
       throw new Error(
         `交付接力证据不可用：${error.message}；不会重新提交、推送或自动重试`,

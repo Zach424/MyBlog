@@ -1,6 +1,12 @@
 import { spawnSync } from "node:child_process";
 import { parseArgs } from "node:util";
+import {
+  createPostDeliveryHandoff,
+  createPostDeliveryHandoffTarget,
+  formatPostDeliveryHandoffLine,
+} from "../lib/content/post-delivery-handoff.ts";
 import { createContentPublishDeliveryReceipt } from "../lib/content/publish-delivery.ts";
+import { PRODUCTION_CONTENT_DEFAULT_ORIGIN } from "../lib/content/production-sync.ts";
 import {
   inspectContentPublishDeliveryFromGit,
   readContentPublishCommitFromGit,
@@ -69,7 +75,10 @@ function formatText(receipt) {
 let args;
 try {
   args = parseArgs({
-    options: { format: { type: "string", default: "text" } },
+    options: {
+      format: { type: "string", default: "text" },
+      handoff: { type: "boolean", default: false },
+    },
     strict: true,
   });
 } catch (error) {
@@ -162,8 +171,33 @@ try {
   );
 }
 
+let handoff = null;
+if (args.values.handoff) {
+  try {
+    const source = git(
+      ["cat-file", "blob", receipt.publication.targetBlobOid],
+      { buffer: true },
+    ).stdout;
+    const target = createPostDeliveryHandoffTarget({
+      origin: PRODUCTION_CONTENT_DEFAULT_ORIGIN,
+      source,
+      sourcePath: receipt.publication.targetPath,
+    });
+    handoff = createPostDeliveryHandoff({
+      commitOid: receipt.publication.commitOid,
+      delivery: "publication",
+      target,
+    });
+  } catch (error) {
+    stop(
+      `Git 交付已经完成，但无法从已交付 commit 生成生产等待接力；请手动运行等待命令，不会重新提交或推送。${error instanceof Error ? ` ${error.message}` : ""}`,
+    );
+  }
+}
+
 console.log(
   args.values.format === "json"
     ? JSON.stringify(receipt, null, 2)
     : formatText(receipt),
 );
+if (handoff) console.log(formatPostDeliveryHandoffLine(handoff));

@@ -84,6 +84,16 @@ function runDelivery(root, ...args) {
   );
 }
 
+function parseRecoveryDeliveryOutput(output) {
+  const lines = output.trim().split(/\r?\n/u);
+  const handoffLine = lines.at(-1);
+  assert.match(handoffLine, /^\[post-delivery-handoff\] /u);
+  return {
+    receipt: JSON.parse(lines.slice(0, -1).join("\n")),
+    handoff: JSON.parse(handoffLine.slice("[post-delivery-handoff] ".length)),
+  };
+}
+
 function publishCommit({ changes, subject = "content: publish publish-proof" } = {}) {
   return {
     changes:
@@ -444,9 +454,14 @@ test("reports an exact failed publication push and blocks a second publish", asy
     );
 
     await rm(fixture.hookPath, { force: true });
-    const delivered = runDelivery(fixture.root, "--format", "json");
+    const delivered = runDelivery(
+      fixture.root,
+      "--format",
+      "json",
+      "--handoff",
+    );
     assert.equal(delivered.status, 0, `${delivered.stdout}\n${delivered.stderr}`);
-    const receipt = JSON.parse(delivered.stdout);
+    const { handoff, receipt } = parseRecoveryDeliveryOutput(delivered.stdout);
     assert.equal(receipt.mode, "delivered");
     assert.equal(receipt.publication.commitOid, pendingHead);
     assert.equal(receipt.publication.changes.length, 3);
@@ -462,6 +477,21 @@ test("reports an exact failed publication push and blocks a second publish", asy
       rebaseExecuted: false,
       resetExecuted: false,
       worktreeStable: true,
+    });
+    assert.equal(handoff.version, 1);
+    assert.equal(handoff.mode, "post-delivery");
+    assert.equal(handoff.delivery, "publication");
+    assert.equal(handoff.commitOid, pendingHead);
+    assert.equal(
+      handoff.target.sourcePath,
+      "content/posts/obsidian-publishing.md",
+    );
+    assert.match(handoff.target.sourceSha256, /^[a-f0-9]{64}$/u);
+    assert.match(handoff.target.localEtag, /^"sha256-[a-f0-9]{64}"$/u);
+    assert.deepEqual(handoff.safety, {
+      gitDelivered: true,
+      productionChecked: false,
+      waitStarted: false,
     });
     const synchronized = runReport(fixture.root, "--format", "json");
     assert.equal(

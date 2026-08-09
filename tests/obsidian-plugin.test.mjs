@@ -736,6 +736,30 @@ function postDeliveryHandoffOutput(handoff) {
   ].join("\n");
 }
 
+function recoveryDeliveryOutput(receipt, handoff) {
+  return [
+    JSON.stringify(receipt),
+    `[post-delivery-handoff] ${JSON.stringify(handoff)}`,
+  ].join("\n");
+}
+
+function publicationDeliveryHandoff(receipt, overrides = {}) {
+  return postDeliveryHandoff({
+    commitOid: receipt.publication.commitOid,
+    delivery: "publication",
+    target: {
+      id: "https://blog-iota-five-59.vercel.app/posts/new-delivery",
+      kind: "post",
+      type: "article",
+      title: receipt.publication.title,
+      sourcePath: receipt.publication.targetPath,
+      markdownUrl:
+        "https://blog-iota-five-59.vercel.app/posts/new-delivery/source.md",
+      ...overrides,
+    },
+  });
+}
+
 function inboxReadinessReport({
   entry = {},
   reportDate = "2026-08-06",
@@ -1157,7 +1181,7 @@ function authorDoctorReport() {
     ["workspace-dependencies", "workspace", "Workspace dependencies", "35/35 pinned packages", "all declared packages installed at pinned versions"],
     ["content-layout", "workspace", "Content layout", "5/5 required paths", "5 required authoring paths"],
     ["obsidian-vault", "vault", "Obsidian Vault", ".obsidian present", ".obsidian directory present"],
-    ["publisher-plugin", "vault", "MyBlog Publisher", "myblog-publisher@1.37.0 · desktop", "myblog-publisher 1.37.0 desktop plugin"],
+    ["publisher-plugin", "vault", "MyBlog Publisher", "myblog-publisher@1.38.0 · desktop", "myblog-publisher 1.38.0 desktop plugin"],
   ];
   const scripts = [
     "content:author:doctor",
@@ -1206,7 +1230,7 @@ function authorDoctorReport() {
           isDesktopOnly: true,
           mainPresent: true,
           stylesPresent: true,
-          version: "1.37.0",
+          version: "1.38.0",
         },
       },
       workspace: {
@@ -3152,7 +3176,7 @@ test("renders a versioned maintenance ledger and opens an exact Vault note", asy
     createPluginHarness(),
   ]);
   const manifest = JSON.parse(manifestSource);
-  assert.equal(manifest.version, "1.37.0");
+  assert.equal(manifest.version, "1.38.0");
   assert.equal(manifest.minAppVersion, "1.5.7");
   assert.equal(manifest.isDesktopOnly, true);
   assert.match(styles, /^\.myblog-draft-create \{/mu);
@@ -4531,8 +4555,8 @@ test("falls back without executing a route when triage evidence is inconsistent"
   );
 });
 
-test("delivers an exact pending review and renders a sealed receipt", async () => {
-  const harness = await createPluginHarness();
+test("delivers an exact pending review, renders its receipt, and waits after reconcile", async () => {
+  const harness = await createPluginHarness({ deferReconcile: true });
   const command = findCommand(harness, "deliver-pending-review");
   assert.equal(command.checkCallback(true), true);
   command.checkCallback(false);
@@ -4547,11 +4571,21 @@ test("delivers an exact pending review and renders a sealed receipt", async () =
     "--",
     "--format",
     "json",
+    "--handoff",
   ]);
   const receipt = reviewDeliveryReceipt();
-  harness.spawned[0].child.stdout.emit("data", Buffer.from(JSON.stringify(receipt)));
+  const handoff = postDeliveryHandoff({
+    commitOid: receipt.review.commitOid,
+    delivery: "review",
+  });
+  harness.spawned[0].child.stdout.emit(
+    "data",
+    Buffer.from(recoveryDeliveryOutput(receipt, handoff)),
+  );
   harness.spawned[0].child.emit("close", 0);
+  await Promise.resolve();
   assert.equal(harness.reconciliations, 1);
+  assert.equal(harness.spawned.length, 1);
   assert.equal(harness.modals.length, 1);
   const modal = harness.modals[0];
   assert.equal(
@@ -4574,6 +4608,39 @@ test("delivers an exact pending review and renders a sealed receipt", async () =
     ),
   );
 
+  harness.resolveReconcile();
+  await new Promise((resolve) => setImmediate(resolve));
+  assert.equal(harness.spawned.length, 2);
+  assert.deepEqual(plain(harness.spawned[1].args), [
+    "/d",
+    "/s",
+    "/c",
+    "npm",
+    "--silent",
+    "run",
+    "content:production:wait",
+    "--",
+    "--source",
+    receipt.review.sourcePath,
+    "--format",
+    "json",
+    "--expected-source-sha256",
+    handoff.target.sourceSha256,
+    "--expected-local-etag-sha256",
+    "a".repeat(64),
+  ]);
+  harness.spawned[1].child.stdout.emit(
+    "data",
+    Buffer.from(JSON.stringify(productionConvergenceReport())),
+  );
+  harness.spawned[1].child.emit("close", 0);
+  assert.equal(harness.modals.length, 2);
+  assert.equal(
+    harness.spawned.filter(({ args }) => args.includes("content:review:deliver"))
+      .length,
+    1,
+  );
+
   const mobile = await createPluginHarness({ desktop: false });
   assert.equal(findCommand(mobile, "deliver-pending-review").checkCallback(true), false);
 });
@@ -4582,8 +4649,15 @@ test("does not retry delivery or reconcile when its success receipt is invalid",
   const harness = await createPluginHarness();
   const receipt = reviewDeliveryReceipt();
   receipt.transition.after.trackingHead = "e".repeat(40);
+  const handoff = postDeliveryHandoff({
+    commitOid: receipt.review.commitOid,
+    delivery: "review",
+  });
   findCommand(harness, "deliver-pending-review").checkCallback(false);
-  harness.spawned[0].child.stdout.emit("data", Buffer.from(JSON.stringify(receipt)));
+  harness.spawned[0].child.stdout.emit(
+    "data",
+    Buffer.from(recoveryDeliveryOutput(receipt, handoff)),
+  );
   harness.spawned[0].child.emit("close", 0);
   assert.equal(harness.spawned.length, 1);
   assert.equal(harness.modals.length, 0);
@@ -4595,8 +4669,8 @@ test("does not retry delivery or reconcile when its success receipt is invalid",
   );
 });
 
-test("delivers an exact pending publication and renders a sealed envelope receipt", async () => {
-  const harness = await createPluginHarness();
+test("delivers an exact pending publication, renders its receipt, and waits after reconcile", async () => {
+  const harness = await createPluginHarness({ deferReconcile: true });
   const command = findCommand(harness, "deliver-pending-publication");
   assert.equal(command.checkCallback(true), true);
   command.checkCallback(false);
@@ -4611,12 +4685,19 @@ test("delivers an exact pending publication and renders a sealed envelope receip
     "--",
     "--format",
     "json",
+    "--handoff",
   ]);
   const receipt = publishDeliveryReceipt();
-  harness.spawned[0].child.stdout.emit("data", Buffer.from(JSON.stringify(receipt)));
+  const handoff = publicationDeliveryHandoff(receipt);
+  harness.spawned[0].child.stdout.emit(
+    "data",
+    Buffer.from(recoveryDeliveryOutput(receipt, handoff)),
+  );
   harness.spawned[0].child.emit("close", 0);
+  await Promise.resolve();
 
   assert.equal(harness.reconciliations, 1);
+  assert.equal(harness.spawned.length, 1);
   assert.equal(harness.modals.length, 1);
   const modal = harness.modals[0];
   assert.equal(
@@ -4643,6 +4724,45 @@ test("delivers an exact pending publication and renders a sealed envelope receip
   );
   assert.ok(text.includes(receipt.transition.command));
 
+  harness.resolveReconcile();
+  await new Promise((resolve) => setImmediate(resolve));
+  assert.equal(harness.spawned.length, 2);
+  assert.deepEqual(plain(harness.spawned[1].args), [
+    "/d",
+    "/s",
+    "/c",
+    "npm",
+    "--silent",
+    "run",
+    "content:production:wait",
+    "--",
+    "--source",
+    receipt.publication.targetPath,
+    "--format",
+    "json",
+    "--expected-source-sha256",
+    handoff.target.sourceSha256,
+    "--expected-local-etag-sha256",
+    "a".repeat(64),
+  ]);
+  harness.spawned[1].child.stdout.emit(
+    "data",
+    Buffer.from(
+      JSON.stringify(
+        productionConvergenceReport({
+          target: handoff.target,
+        }),
+      ),
+    ),
+  );
+  harness.spawned[1].child.emit("close", 0);
+  assert.equal(harness.modals.length, 2);
+  assert.equal(
+    harness.spawned.filter(({ args }) => args.includes("content:publish:deliver"))
+      .length,
+    1,
+  );
+
   const mobile = await createPluginHarness({ desktop: false });
   assert.equal(
     findCommand(mobile, "deliver-pending-publication").checkCallback(true),
@@ -4654,8 +4774,12 @@ test("does not retry or reconcile an untrusted publication receipt", async () =>
   const harness = await createPluginHarness();
   const receipt = publishDeliveryReceipt();
   receipt.safety.manifestStable = false;
+  const handoff = publicationDeliveryHandoff(receipt);
   findCommand(harness, "deliver-pending-publication").checkCallback(false);
-  harness.spawned[0].child.stdout.emit("data", Buffer.from(JSON.stringify(receipt)));
+  harness.spawned[0].child.stdout.emit(
+    "data",
+    Buffer.from(recoveryDeliveryOutput(receipt, handoff)),
+  );
   harness.spawned[0].child.emit("close", 0);
   assert.equal(harness.spawned.length, 1);
   assert.equal(harness.modals.length, 0);
@@ -4664,6 +4788,29 @@ test("does not retry or reconcile an untrusted publication receipt", async () =>
     harness.notices.some((notice) =>
       /重新同步未能生成可信发布回执.*查看待同步新内容发布/u.test(notice.message),
     ),
+  );
+});
+
+test("rejects a recovery handoff that is not bound to the sealed receipt", async () => {
+  const harness = await createPluginHarness();
+  const receipt = reviewDeliveryReceipt();
+  const handoff = postDeliveryHandoff({
+    commitOid: "e".repeat(40),
+    delivery: "review",
+  });
+  findCommand(harness, "deliver-pending-review").checkCallback(false);
+  harness.spawned[0].child.stdout.emit(
+    "data",
+    Buffer.from(recoveryDeliveryOutput(receipt, handoff)),
+  );
+  harness.spawned[0].child.emit("close", 0);
+  await Promise.resolve();
+  assert.equal(harness.spawned.length, 1);
+  assert.equal(harness.reconciliations, 0);
+  assert.equal(harness.modals.length, 0);
+  assert.match(
+    harness.notices.at(-1).message,
+    /交付接力证据.*commit.*sealed.*不会重新提交、推送或自动重试/isu,
   );
 });
 

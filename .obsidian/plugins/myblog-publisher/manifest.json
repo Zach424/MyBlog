@@ -1,9 +1,9 @@
 {
   "id": "myblog-publisher",
   "name": "MyBlog Publisher",
-  "version": "1.37.0",
+  "version": "1.38.0",
   "minAppVersion": "1.5.7",
-  "description": "Create filename-owned drafts, deliver trusted publishing and review transactions, then hand verified Git delivery evidence to a bounded production convergence wait.",
+  "description": "Create filename-owned drafts and hand both primary and recovered Git deliveries to a bounded production convergence wait.",
   "author": "Zach424",
   "isDesktopOnly": true
 }

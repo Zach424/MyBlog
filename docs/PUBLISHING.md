@@ -43,7 +43,7 @@
 9. 确认当前内容已经可以公开后，运行“发布当前草稿并同步 GitHub”；该命令会把 `draft` 改为 `false`，未来日期内容会保持计划状态；
 10. 阅读预检摘要，确认目标路径、附件源/产物格式、宽高、帧数、体积变化、站内链接、内容语境和 frontmatter；
 11. 发布器运行完整质量门、创建内容提交并 push `main`；Vercel Git 连接完成后会自动上线。若团队改用 PR 流程，则不要运行同步命令，改由普通 Git 客户端创建分支和 PR。
-12. 推送成功后，MyBlog Publisher 1.37.0 会在释放 Git 写事务并完成 Vault reconcile 后自动等待该篇正式内容上线；只在使用网页、普通 Git 或恢复交付入口时，才手动打开正式笔记运行“等待当前正式内容上线”。需要核对全库时运行“检查生产内容同步状态”。
+12. 推送成功后，MyBlog Publisher 1.38.0 会在校验 Git 交付证据、释放可能存在的写事务并完成 Vault reconcile 后自动等待该篇正式内容上线；push 失败后使用两条“重新同步待交付…”恢复成功也会自动接力。只在使用网页或普通 Git 时，才手动打开正式笔记运行“等待当前正式内容上线”。需要核对全库时运行“检查生产内容同步状态”。
 
 ### 用受信模板新建一个 inbox 草稿
 
@@ -139,9 +139,9 @@ npm run content:production -- --fail-on-drift
 
 ### 自动接力或手动等待当前正式内容上线
 
-MyBlog Publisher 1.37.0 从“发布当前草稿并同步 GitHub”或“提交并同步当前正式内容复核”得到可信成功结果后，会自动继续等待生产上线。交付脚本只在 Git local/tracking 都证明同一个 commit 已送达后输出 version 1 handoff；它冻结最终正式来源、commit、原始 SHA-256、公开 id/标题/URL 与 Markdown ETag，并明确生产尚未检查、等待尚未开始。插件必须先释放作者事务，再等待 Vault reconcile 完成，随后才启动原只读等待器。因此三分钟网络等待不占用发布/复核 Git 写锁；交付已经完成后出现 timeout、网络/协议错误、取消或插件卸载，也不会回滚、重新提交、重复 push 或自动重试。
+MyBlog Publisher 1.38.0 从正常发布/复核或两条“重新同步待交付…”恢复命令得到可信成功结果后，会自动继续等待生产上线。交付脚本只在 Git local/tracking 都证明同一个 commit 已送达后输出 version 1 handoff；它冻结最终正式来源、commit、原始 SHA-256、公开 id/标题/URL 与 Markdown ETag，并明确生产尚未检查、等待尚未开始。恢复命令先生成原 sealed receipt，再从其中的 commit blob 而不是可变工作区派生 handoff；插件要求两者 commit、交付类型和目标严格一致。插件必须先释放可能存在的作者事务，再等待 Vault reconcile 完成，随后才启动原只读等待器。因此三分钟网络等待不占用 Git 写锁；交付已经完成后出现 timeout、网络/协议错误、取消或插件卸载，也不会回滚、重新提交、重复 push 或自动重试。
 
-使用网页 Studio、普通 Git，或本轮尚未自动接力的“重新同步待交付…”恢复入口时，在 Obsidian 打开精确的 `content/posts/<slug>.md` 或 `content/projects/<slug>.md`，运行“等待当前正式内容上线”。手动入口会现场冻结相同目标。两种入口都以默认三分钟总时限、五秒间隔和十秒单请求时限等待该 id 在稳定生产 `/content.json` 中变为 deployed。持续 Notice 显示当前尝试、待部署/生产缺失状态和剩余秒数；成功或合法超时打开只读回执。自动入口额外显示 `DELIVERY HANDOFF / PUBLICATION|REVIEW` 与精确 commit。
+使用网页 Studio 或普通 Git 时，在 Obsidian 打开精确的 `content/posts/<slug>.md` 或 `content/projects/<slug>.md`，运行“等待当前正式内容上线”。手动入口会现场冻结相同目标。手动与自动入口都以默认三分钟总时限、五秒间隔和十秒单请求时限等待该 id 在稳定生产 `/content.json` 中变为 deployed。持续 Notice 显示当前尝试、待部署/生产缺失状态和剩余秒数；成功或合法超时打开只读回执。自动入口额外显示 `DELIVERY HANDOFF / PUBLICATION|REVIEW` 与精确 commit。
 
 第二次请求开始使用上一份可信清单 ETag 发出 `If-None-Match`；只有验证器和 Last-Modified 都严格成立的 304 才复用快照。pending 与 missing 表示继续等待；任何生产多出、响应/协议错误、活动来源字节漂移都会立即失败，绝不把错误改写成“还没部署”。同一命令再次运行时只保留最新一轮，旧进程和旧结果静默取消；关闭插件也会取消在途等待。命令不修改笔记、不运行 Git、不提交、不推送、不触发部署，也不会在失败后自动重试。
 
@@ -152,7 +152,7 @@ npm run content:production:wait -- --source content/projects/myblog.md
 npm run content:production:wait -- --source content/posts/example.md --format json
 ```
 
-可选参数包括 `--origin`、`--date`、`--timeout-ms`、`--interval-ms` 与 `--request-timeout-ms`。`--expected-source-sha256` 和 `--expected-local-etag-sha256` 是自动 handoff 使用的成对冻结参数，日常手动运行不需要填写；它们只接受无引号的 64 位小写十六进制值，适合 Windows 固定参数调用。退出码 `0` 表示 deployed，`2` 表示在合法时限内仍 pending/missing，`1` 表示输入、handoff、来源、生产或协议失败，`130` 表示取消。该命令依赖真实网络，不进入本地发布硬门或 Actions；仓库更新后 Obsidian 已经打开时，需要重启 Obsidian，或关闭再启用 MyBlog Publisher，才能加载 1.37.0。
+可选参数包括 `--origin`、`--date`、`--timeout-ms`、`--interval-ms` 与 `--request-timeout-ms`。`--expected-source-sha256` 和 `--expected-local-etag-sha256` 是自动 handoff 使用的成对冻结参数，日常手动运行不需要填写；它们只接受无引号的 64 位小写十六进制值，适合 Windows 固定参数调用。退出码 `0` 表示 deployed，`2` 表示在合法时限内仍 pending/missing，`1` 表示输入、handoff、来源、生产或协议失败，`130` 表示取消。该命令依赖真实网络，不进入本地发布硬门或 Actions；仓库更新后 Obsidian 已经打开时，需要重启 Obsidian，或关闭再启用 MyBlog Publisher，才能加载 1.38.0。
 
 ### 在 Obsidian 完成正式内容复核
 
@@ -160,7 +160,7 @@ npm run content:production:wait -- --source content/posts/example.md --format js
 
 保存笔记后运行“MyBlog Publisher: 检查当前正式内容复核”。MyBlog Publisher 1.30.0 会先自动运行 author doctor；只有 ready 才要求 `main`、本地 main 与最后观察到的 origin/main synchronized、目标已被 Git 跟踪且暂存区完全为空。工作区除目标外，可以保留稳定的 inbox 草稿和未跟踪根图片。完整 `npm run check` 前后使用同一个 impact classifier 重算，并要求 HEAD、tracking 关系与目标原始字节的 SHA-256 不变。成功 Proof 会显示 `CANDIDATE / GATE-STABLE` 短指纹，把并行工作列为 `DEFERRED / NOT IN COMMIT`，并继续显示日期迁移、事实变化、updatedAt、质量门和唯一可提交路径。已跟踪根媒体、嵌套归档媒体、其他正式内容、代码或未知路径不会 deferred，而会直接阻断。确认后运行“提交并同步当前正式内容复核”，它再次先运行 doctor，再执行同样门禁；只暂存该 Markdown，核对 index 与提交 tree 的 Git-clean blob 后以 `content: review <slug>` 提交并推送 `origin main`，并行草稿保持原状态。
 
-如果最后一步提示 push 失败，不要再次提交复核。先由统一分诊确认 `REVIEW / MATCHED`，再运行“查看待同步正式内容复核”；只有 rail 仍证明同一个精确 pending-review 时，才运行“重新同步待交付正式内容复核”。该命令调用 `content:review:deliver`，以已验证 commit OID 作为 push 源，不接受路径或分支参数。服务器拒绝、远端抢先推进、错误分支和本地状态漂移都会失败并保留提交；成功后弹出的 sealed receipt 必须同时列出相同的 local/tracking OID、commit/tree/blob、精确 refspec 与 HEAD/INDEX/WORKTREE STABLE。回执只证明 Git 交付，Production 仍看 GitHub/Vercel 检查；回执解析失败时不会自动再推一次。
+如果最后一步提示 push 失败，不要再次提交复核。先由统一分诊确认 `REVIEW / MATCHED`，再运行“查看待同步正式内容复核”；只有 rail 仍证明同一个精确 pending-review 时，才运行“重新同步待交付正式内容复核”。该命令调用 `content:review:deliver`，以已验证 commit OID 作为 push 源，不接受路径或分支参数。服务器拒绝、远端抢先推进、错误分支和本地状态漂移都会失败并保留提交；成功后弹出的 sealed receipt 必须同时列出相同的 local/tracking OID、commit/tree/blob、精确 refspec 与 HEAD/INDEX/WORKTREE STABLE。回执只证明 Git 交付；插件另行校验同 commit handoff、reconcile Vault 并启动 Production 等待。任一证据解析失败都不会自动再推一次，可改用手动等待。
 
 命令行等价操作如下：
 

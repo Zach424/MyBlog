@@ -1026,13 +1026,24 @@ test("reports and blocks a verified review commit whose push is still pending", 
     );
     git(fixture.root, "switch", "main");
 
-    const deliveredAction = runReviewDelivery(fixture.root, "--format", "json");
+    const deliveredAction = runReviewDelivery(
+      fixture.root,
+      "--format",
+      "json",
+      "--handoff",
+    );
     assert.equal(
       deliveredAction.status,
       0,
       `${deliveredAction.stdout}\n${deliveredAction.stderr}`,
     );
-    const receipt = JSON.parse(deliveredAction.stdout);
+    const deliveryLines = deliveredAction.stdout.trim().split(/\r?\n/u);
+    const handoffLine = deliveryLines.at(-1);
+    assert.match(handoffLine, /^\[post-delivery-handoff\] /u);
+    const receipt = JSON.parse(deliveryLines.slice(0, -1).join("\n"));
+    const handoff = JSON.parse(
+      handoffLine.slice("[post-delivery-handoff] ".length),
+    );
     assert.equal(receipt.mode, "delivered");
     assert.equal(receipt.review.commitOid, pendingHead);
     assert.equal(receipt.review.sourcePath, sourcePath);
@@ -1047,6 +1058,18 @@ test("reports and blocks a verified review commit whose push is still pending", 
     assert.equal(receipt.safety.fetchExecuted, false);
     assert.equal(receipt.safety.rebaseExecuted, false);
     assert.equal(receipt.safety.resetExecuted, false);
+    assert.equal(handoff.version, 1);
+    assert.equal(handoff.mode, "post-delivery");
+    assert.equal(handoff.delivery, "review");
+    assert.equal(handoff.commitOid, pendingHead);
+    assert.equal(handoff.target.sourcePath, sourcePath);
+    assert.match(handoff.target.sourceSha256, /^[a-f0-9]{64}$/u);
+    assert.match(handoff.target.localEtag, /^"sha256-[a-f0-9]{64}"$/u);
+    assert.deepEqual(handoff.safety, {
+      gitDelivered: true,
+      productionChecked: false,
+      waitStarted: false,
+    });
     assert.equal(git(fixture.root, "rev-parse", "HEAD"), pendingHead);
     assert.equal(
       git(fixture.remote, "rev-parse", "refs/heads/main"),
