@@ -2,6 +2,7 @@ import assert from "node:assert/strict";
 import test from "node:test";
 import {
   createJsonFeed,
+  createOpenSearchDescription,
   createRobotsText,
   createRssXml,
   createSitemapXml,
@@ -43,6 +44,37 @@ test("resolves the public origin from trusted proxy headers", () => {
   });
 
   assert.equal(resolveSiteUrl(requestHeaders).href, "https://blog.example.test/");
+});
+
+test("creates one bounded same-origin OpenSearch 1.1 description", () => {
+  const xml = createOpenSearchDescription(
+    new URL("https://blog.example.test"),
+  );
+
+  assert.match(
+    xml,
+    /^<\?xml version="1\.0" encoding="UTF-8"\?>\n<OpenSearchDescription xmlns="http:\/\/a9\.com\/-\/spec\/opensearch\/1\.1\/">/u,
+  );
+  assert.match(xml, /<ShortName>Zach424 Notes<\/ShortName>/u);
+  assert.match(
+    xml,
+    /<Description>记录学习路径、技术取舍和项目复盘，把写过的代码变成可复用的判断。<\/Description>/u,
+  );
+  assert.match(
+    xml,
+    /<Url type="text\/html" rel="results" template="https:\/\/blog\.example\.test\/search\?q=\{searchTerms\}" \/>/u,
+  );
+  assert.match(
+    xml,
+    /<Url type="application\/opensearchdescription\+xml" rel="self" template="https:\/\/blog\.example\.test\/opensearch\.xml" \/>/u,
+  );
+  assert.match(xml, /<Query role="example" searchTerms="typescript" \/>/u);
+  assert.match(xml, /<Language>zh-CN<\/Language>/u);
+  assert.match(xml, /<InputEncoding>UTF-8<\/InputEncoding>/u);
+  assert.match(xml, /<OutputEncoding>UTF-8<\/OutputEncoding>/u);
+  assert.equal((xml.match(/<ShortName>/gu) ?? []).length, 1);
+  assert.equal((xml.match(/<Description>/gu) ?? []).length, 1);
+  assert.equal(xml.endsWith("\n"), true);
 });
 
 test("creates escaped RSS with stable absolute item URLs", () => {

@@ -158,6 +158,12 @@ export async function runProductionSmoke(originInput, { expectOAuth = false } = 
       home.body.includes(`${origin.origin}/content.json`),
     "首页缺少公开内容清单发现链接",
   );
+  invariant(
+    home.body.includes('rel="search"') &&
+      home.body.includes('type="application/opensearchdescription+xml"') &&
+      home.body.includes(`${origin.origin}/opensearch.xml`),
+    "首页缺少 OpenSearch 发现链接",
+  );
 
   const htmlBudgetReports = [
     measureHtmlBudget({ pathname: "/", html: home.body }),
@@ -178,6 +184,13 @@ export async function runProductionSmoke(originInput, { expectOAuth = false } = 
     const page = await request(origin, pathname);
     invariant(page.response.status === 200, `${pathname} 状态 ${page.response.status}`);
     invariant(page.body.includes(marker), `${pathname} 缺少预期内容`);
+    if (pathname.startsWith("/search")) {
+      invariant(
+        page.body.includes('rel="search"') &&
+          page.body.includes(`${origin.origin}/opensearch.xml`),
+        "搜索结果页缺少 OpenSearch 发现链接",
+      );
+    }
     htmlPages.set(pathname, page);
     if (HTML_ROUTE_BASELINES[pathname]) {
       htmlBudgetReports.push(measureHtmlBudget({ pathname, html: page.body }));
@@ -548,13 +561,16 @@ export async function runProductionSmoke(originInput, { expectOAuth = false } = 
     invariant([302, 503].includes(oauth.response.status), `OAuth 状态 ${oauth.response.status}`);
   }
 
-  const [contentManifest, contentSchema, jsonFeed, rss, robots, sitemap] = await Promise.all([
+  const [contentManifest, contentSchema, jsonFeed, rss, robots, sitemap, openSearch] = await Promise.all([
     request(origin, "/content.json", { accept: "application/json" }),
     request(origin, "/content.schema.json", { accept: "application/schema+json" }),
     request(origin, "/feed.json", { accept: "application/feed+json" }),
     request(origin, "/rss.xml", { accept: "application/rss+xml" }),
     request(origin, "/robots.txt", { accept: "text/plain" }),
     request(origin, "/sitemap.xml", { accept: "application/xml" }),
+    request(origin, "/opensearch.xml", {
+      accept: "application/opensearchdescription+xml",
+    }),
   ]);
   let contentManifestPayload;
   try {
@@ -735,6 +751,41 @@ export async function runProductionSmoke(originInput, { expectOAuth = false } = 
     "公开内容清单的 Markdown 验证器与真实源文不一致",
   );
   invariant(
+    openSearch.response.status === 200 &&
+      openSearch.response.headers
+        .get("content-type")
+        ?.startsWith("application/opensearchdescription+xml") &&
+      openSearch.response.headers.get("content-disposition") ===
+        'inline; filename="opensearch.xml"' &&
+      openSearch.response.headers.get("x-robots-tag") === "noindex" &&
+      hasJsonFeedCachePolicy(
+        openSearch.response.headers.get("cache-control"),
+      ) &&
+      sameMarkdownSourceEtag(
+        openSearch.response.headers.get("etag"),
+        sha256Etag(openSearch.body),
+      ) &&
+      openSearch.body.includes(
+        '<OpenSearchDescription xmlns="http://a9.com/-/spec/opensearch/1.1/">',
+      ) &&
+      (openSearch.body.match(/<ShortName>/gu) ?? []).length === 1 &&
+      (openSearch.body.match(/<Description>/gu) ?? []).length === 1 &&
+      openSearch.body.includes("<ShortName>Zach424 Notes</ShortName>") &&
+      openSearch.body.includes(
+        `type="text/html" rel="results" template="${origin.origin}/search?q={searchTerms}"`,
+      ) &&
+      openSearch.body.includes(
+        `type="application/opensearchdescription+xml" rel="self" template="${origin.origin}/opensearch.xml"`,
+      ) &&
+      openSearch.body.includes(
+        '<Query role="example" searchTerms="typescript" />',
+      ) &&
+      openSearch.body.includes("<Language>zh-CN</Language>") &&
+      openSearch.body.includes("<InputEncoding>UTF-8</InputEncoding>") &&
+      openSearch.body.includes("<OutputEncoding>UTF-8</OutputEncoding>"),
+    "OpenSearch 描述或条件验证器异常",
+  );
+  invariant(
       jsonFeed.response.status === 200 &&
       jsonFeed.response.headers.get("content-type")?.startsWith("application/feed+json") &&
       hasJsonFeedCachePolicy(jsonFeed.response.headers.get("cache-control")) &&
@@ -802,12 +853,21 @@ export async function runProductionSmoke(originInput, { expectOAuth = false } = 
       sitemapUrls.length >= 23,
     "Sitemap URL 数量或条件验证器异常",
   );
+  invariant(
+    !sitemap.body.includes("/opensearch.xml"),
+    "OpenSearch 描述不应进入 Sitemap",
+  );
   const conditionalDiscoveryResponses = await Promise.all(
     [
       ["/feed.json", "application/feed+json", jsonFeed],
       ["/rss.xml", "application/rss+xml", rss],
       ["/sitemap.xml", "application/xml", sitemap],
       ["/robots.txt", "text/plain", robots],
+      [
+        "/opensearch.xml",
+        "application/opensearchdescription+xml",
+        openSearch,
+      ],
     ].map(([pathname, accept, source]) =>
       request(origin, pathname, {
         accept,
@@ -821,6 +881,12 @@ export async function runProductionSmoke(originInput, { expectOAuth = false } = 
       ["/rss.xml", "application/rss+xml", rss, hasJsonFeedCachePolicy],
       ["/sitemap.xml", "application/xml", sitemap, hasJsonFeedCachePolicy],
       ["/robots.txt", "text/plain", robots, hasRobotsCachePolicy],
+      [
+        "/opensearch.xml",
+        "application/opensearchdescription+xml",
+        openSearch,
+        hasJsonFeedCachePolicy,
+      ],
     ][index];
     const conditionalType = conditional.response.headers.get("content-type");
     invariant(

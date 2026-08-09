@@ -41,6 +41,24 @@ function sortContentRecords(records: ContentRecord[]) {
   );
 }
 
+export function createOpenSearchDescription(siteUrl: URL) {
+  const searchTemplate = `${absoluteSiteUrl(siteUrl, "/search")}?q={searchTerms}`;
+  const selfUrl = absoluteSiteUrl(siteUrl, "/opensearch.xml");
+
+  return `<?xml version="1.0" encoding="UTF-8"?>
+<OpenSearchDescription xmlns="http://a9.com/-/spec/opensearch/1.1/">
+  <ShortName>Zach424 Notes</ShortName>
+  <Description>${escapeXml(SITE_DESCRIPTION)}</Description>
+  <Url type="text/html" rel="results" template="${escapeXml(searchTemplate)}" />
+  <Url type="application/opensearchdescription+xml" rel="self" template="${escapeXml(selfUrl)}" />
+  <Query role="example" searchTerms="typescript" />
+  <Language>zh-CN</Language>
+  <InputEncoding>UTF-8</InputEncoding>
+  <OutputEncoding>UTF-8</OutputEncoding>
+</OpenSearchDescription>
+`;
+}
+
 export function createJsonFeed(siteUrl: URL, records: ContentRecord[]) {
   const items = sortContentRecords(records).map((record) => {
     const url = absoluteSiteUrl(siteUrl, record.url);

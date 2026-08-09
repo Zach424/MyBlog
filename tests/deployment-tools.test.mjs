@@ -104,6 +104,10 @@ test("connects Vercel verification, maintenance reporting, rollback, and Studio 
   assert.match(smoke, /markdown_etag/);
   assert.match(smoke, /公开内容清单契约异常/);
   assert.match(smoke, /application\/feed\+json/);
+  assert.match(smoke, /application\/opensearchdescription\+xml/);
+  assert.match(smoke, /OpenSearch 描述或条件验证器异常/u);
+  assert.match(smoke, /首页缺少 OpenSearch 发现链接/u);
+  assert.match(smoke, /搜索结果页缺少 OpenSearch 发现链接/u);
   assert.match(smoke, /https:\/\/jsonfeed\.org\/version\/1\.1/);
   assert.match(smoke, /\/posts\/building-a-maintainable-blog\/source\.md/);
   assert.match(smoke, /\/projects\/myblog\/source\.md/);

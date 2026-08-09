@@ -21,6 +21,17 @@ export async function generateMetadata(): Promise<Metadata> {
     description: SITE_DESCRIPTION,
     authors: [{ name: "Zach424", url: "https://github.com/Zach424" }],
     creator: "Zach424",
+    icons: {
+      icon: {
+        type: "image/png",
+        url: "/icon.png",
+      },
+      other: {
+        rel: "search",
+        type: "application/opensearchdescription+xml",
+        url: new URL("/opensearch.xml", siteUrl),
+      },
+    },
     alternates: {
       canonical: "/",
       types: {

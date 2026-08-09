@@ -59,6 +59,10 @@ test("server-renders the engineering log homepage", async () => {
     html,
     /<link(?=[^>]*rel="alternate")(?=[^>]*type="application\/json")(?=[^>]*href="https:\/\/blog\.example\.test\/content\.json")[^>]*>/i,
   );
+  assert.match(
+    html,
+    /<link(?=[^>]*rel="search")(?=[^>]*type="application\/opensearchdescription\+xml")(?=[^>]*href="https:\/\/blog\.example\.test\/opensearch\.xml")[^>]*>/i,
+  );
   assert.match(html, /<link(?=[^>]*rel="icon")(?=[^>]*href="[^"]*icon\.png[^"]*")[^>]*>/i);
   assert.match(html, /<a class="skip-link" href="#main-content">/i);
   assert.match(html, /<nav class="site-nav" aria-label="主导航">/i);
@@ -371,6 +375,10 @@ test("server-renders a shareable search query against posts and projects", async
   assert.match(html, /Cloudflare/);
   assert.match(html, /MyBlog — 把学习记录做成工程资产/);
   assert.match(html, /NO TRACKING/);
+  assert.match(
+    html,
+    /<link(?=[^>]*rel="search")(?=[^>]*type="application\/opensearchdescription\+xml")(?=[^>]*href="https:\/\/blog\.example\.test\/opensearch\.xml")[^>]*>/i,
+  );
 
   const formulaResponse = await render("/search?q=B_i");
   assert.equal(formulaResponse.status, 200);
@@ -379,14 +387,15 @@ test("server-renders a shareable search query against posts and projects", async
   assert.match(formulaHtml, /MyBlog — 把学习记录做成工程资产/u);
 });
 
-test("publishes a content manifest, its schema, JSON Feed, RSS, Sitemap and robots from the same public index", async (context) => {
-  const [manifestResponse, schemaResponse, jsonFeedResponse, rssResponse, sitemapResponse, robotsResponse] = await Promise.all([
+test("publishes the structured discovery suite from one public origin", async (context) => {
+  const [manifestResponse, schemaResponse, jsonFeedResponse, rssResponse, sitemapResponse, robotsResponse, openSearchResponse] = await Promise.all([
     render("/content.json", { accept: "application/json" }),
     render("/content.schema.json", { accept: "application/schema+json" }),
     render("/feed.json"),
     render("/rss.xml"),
     render("/sitemap.xml"),
     render("/robots.txt"),
+    render("/opensearch.xml"),
   ]);
 
   assert.equal(manifestResponse.status, 200);
@@ -584,6 +593,7 @@ test("publishes a content manifest, its schema, JSON Feed, RSS, Sitemap and robo
   assert.match(sitemap, /https:\/\/blog\.example\.test\/knowledge/);
   assert.match(sitemap, /https:\/\/blog\.example\.test\/tags\/typescript/);
   assert.match(sitemap, /https:\/\/blog\.example\.test\/series\/build-my-blog/);
+  assert.doesNotMatch(sitemap, /opensearch\.xml/u);
   const sitemapContentUrls = [
     ...sitemap.matchAll(
       /<loc>(https:\/\/blog\.example\.test\/(?:posts|projects)\/[^<]+)<\/loc>/gu,
@@ -610,6 +620,42 @@ test("publishes a content manifest, its schema, JSON Feed, RSS, Sitemap and robo
   assert.match(robots, /User-agent: \*/);
   assert.match(robots, /Sitemap: https:\/\/blog\.example\.test\/sitemap\.xml/);
 
+  assert.equal(openSearchResponse.status, 200);
+  assert.equal(
+    openSearchResponse.headers.get("content-type"),
+    "application/opensearchdescription+xml; charset=utf-8",
+  );
+  assert.equal(
+    openSearchResponse.headers.get("cache-control"),
+    "public, max-age=3600, stale-while-revalidate=86400",
+  );
+  assert.equal(
+    openSearchResponse.headers.get("content-disposition"),
+    'inline; filename="opensearch.xml"',
+  );
+  assert.equal(openSearchResponse.headers.get("x-robots-tag"), "noindex");
+  const openSearch = await openSearchResponse.text();
+  const openSearchEtag = openSearchResponse.headers.get("etag");
+  assert.equal(
+    openSearchEtag,
+    `"sha256-${createHash("sha256").update(openSearch, "utf8").digest("hex")}"`,
+  );
+  assert.match(
+    openSearch,
+    /<OpenSearchDescription xmlns="http:\/\/a9\.com\/-\/spec\/opensearch\/1\.1\/">/u,
+  );
+  assert.match(openSearch, /<ShortName>Zach424 Notes<\/ShortName>/u);
+  assert.match(
+    openSearch,
+    /<Url type="text\/html" rel="results" template="https:\/\/blog\.example\.test\/search\?q=\{searchTerms\}" \/>/u,
+  );
+  assert.match(
+    openSearch,
+    /<Url type="application\/opensearchdescription\+xml" rel="self" template="https:\/\/blog\.example\.test\/opensearch\.xml" \/>/u,
+  );
+  assert.match(openSearch, /<Query role="example" searchTerms="typescript" \/>/u);
+  assert.match(openSearch, /<Language>zh-CN<\/Language>/u);
+
   const discoveryBudgetReports = [
     measureDiscoveryBudget({ pathname: "/content.json", body: manifestSource }),
     measureDiscoveryBudget({
@@ -624,6 +670,26 @@ test("publishes a content manifest, its schema, JSON Feed, RSS, Sitemap and robo
   context.diagnostic(formatDiscoveryBudgetReport(discoveryBudgetReports));
   assertDiscoveryBudgetCoverage(discoveryBudgetReports);
   assertDiscoveryBudgets(discoveryBudgetReports);
+
+  const conditionalOpenSearch = await render("/opensearch.xml", {
+    headers: { "if-none-match": `W/${openSearchEtag}` },
+  });
+  assert.equal(conditionalOpenSearch.status, 304);
+  assert.equal(await conditionalOpenSearch.text(), "");
+  assert.equal(conditionalOpenSearch.headers.get("etag"), openSearchEtag);
+  assert.equal(
+    conditionalOpenSearch.headers.get("cache-control"),
+    "public, max-age=3600, stale-while-revalidate=86400",
+  );
+  assert.equal(
+    conditionalOpenSearch.headers.get("content-type"),
+    "application/opensearchdescription+xml; charset=utf-8",
+  );
+  assert.equal(
+    conditionalOpenSearch.headers.get("content-disposition"),
+    'inline; filename="opensearch.xml"',
+  );
+  assert.equal(conditionalOpenSearch.headers.get("x-robots-tag"), "noindex");
 
   const conditionalDiscoveryResponses = await Promise.all([
     render("/feed.json", {
