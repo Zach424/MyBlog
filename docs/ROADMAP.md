@@ -8,11 +8,11 @@
 | 4. 作者自助写作 | done | `/studio` OAuth + editorial workflow PR、Obsidian Vault/模板/附件/真实 `--push` |
 | 5. Vercel 原生迁移 | production live | 原生 Next.js、无 Cloudflare 依赖、24 路由生产冒烟通过 |
 | 6. 所有者生产上线 | done | Git 自动 Production、稳定域名自动冒烟、双端发布、回滚与恢复均已验收 |
-| 7. 持续内容与作者体验 | in progress | Iteration 0090 完成源文 SHA-256 ETag、Last-Modified、`If-None-Match` 条件读取与 Vercel 边缘等价验证 |
+| 7. 持续内容与作者体验 | in progress | Iteration 0091 完成 version 1 公开内容清单、逐项 Markdown ETag、首页发现与 Vercel 全量源文一致性验证 |
 
 ## 当前唯一主线
 
-进入持续内容与作者体验阶段。Iteration 0090 已让每篇公开文章/项目 `source.md` 用最终 UTF-8 SHA-256 ETag 和最新公开日期 Last-Modified 表达新鲜度；`If-None-Match` 以 GET 弱比较处理强/弱标签、列表和 `*`，命中只返回空 304。真实 Vercel 的 Brotli 弱化标签和最小边缘 304 已作为等价协议进入生产冒烟。下一主线为确定性的公开 `/content.json` 清单，让 Obsidian/自动化工具一次发现全部公开内容、HTML/Markdown 地址和同 origin 源文 ETag，而不再组合猜测 Sitemap、Feed 与页面。需要品牌域名时再绑定自定义域名，旧公开站继续只作为迁移历史证据。
+进入持续内容与作者体验阶段。Iteration 0091 已提供确定性的 `/content.json` version 1：从同一公开 getter 一次列出全部文章/TIL/项目、同 origin HTML/Markdown URL 和逐项最终源文 SHA-256，并让清单自身具备 ETag、Last-Modified、条件 304、分层缓存、`noindex` 与根 HTML alternate。真实 Vercel 冒烟逐项读取全部源文，并以相同 opaque digest 接受 Brotli 强弱标签归一化。下一主线是只读生产内容同步检查器及 Obsidian 命令，把本地期望清单与真实生产清单比较为 deployed/pending/missing/unexpected，补齐“Git 已推送”到“内容已上线”的作者证据。需要品牌域名时再绑定自定义域名，旧公开站继续只作为迁移历史证据。
 
 ## 已知风险
 
@@ -36,7 +36,8 @@
 - 内部链接支持内容页和严格标题锚点，行内/引用式/自引用共享实际渲染 slug 规则，详情页与公开知识地图共享 outgoing/backlinks；明确不支持 Obsidian 块引用，标题改名必须同步深链，当前双列 SVG 为小型内容库优化，内容规模增长后需要过滤/分组；
 - 正文普通 HTTPS 与结构化 repository/demo/canonical 已有统一确定性库存和受控实时报告；实时 DNS/网络结果有意不进 Actions，timeout/限流不能冒充内容错误；
 - 文章与项目已有完整 A4 打印版式，但 PDF 仍由读者通过浏览器打印生成，仓库不把二进制 PDF 当作发布源，也不提供服务端 PDF 缓存；后续版式变化仍需重新做真实 PDF 全页复核；
-- 单篇 Markdown 源文是公开投影而非作者文件的无损 round-trip：字段顺序、注释和写作字段有意不保留，项目 `type: project` 只属于公开 schema；raw HTML 属性不参与 URL 改写。源文 ETag/条件 GET 已闭环，但自动化工具还没有一次枚举全部公开内容、Markdown URL 和验证器的机器可读清单；
+- 单篇 Markdown 源文是公开投影而非作者文件的无损 round-trip：字段顺序、注释和写作字段有意不保留，项目 `type: project` 只属于公开 schema；raw HTML 属性不参与 URL 改写。源文 ETag/条件 GET 与 version 1 批量清单已闭环；清单尚无独立 JSON Schema，源站生成成本随全部公开 Markdown 线性增长，达到实测阈值后再评估派生缓存或分页；
+- Git/Obsidian 交付回执尚不直接证明生产内容已接收；下一轮以公开清单为生产事实增加只读对比器，网络与协议错误不能冒充内容差异；
 - 自定义域名、公开邮箱、统计和评论尚未选择，但不阻塞生产上线。
 
 ## 平台历史

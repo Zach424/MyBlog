@@ -95,6 +95,7 @@
 0088-json-feed-1-1.md
 0089-portable-markdown-sources.md
 0090-markdown-source-conditional-reads.md
+0091-public-content-manifest.md
 ```
 
 ## 必填结构
