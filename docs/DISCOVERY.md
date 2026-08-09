@@ -1,6 +1,6 @@
 # 搜索与发布发现
 
-- 状态：RSS/Sitemap/robots implemented in iteration 0006；JSON Feed 1.1 implemented in iteration 0088；公开内容清单 implemented in iteration 0091；清单 JSON Schema implemented in iteration 0099
+- 状态：RSS/Sitemap/robots implemented in iteration 0006；JSON Feed 1.1 implemented in iteration 0088；公开内容清单 implemented in iteration 0091；清单 JSON Schema implemented in iteration 0099；全部结构化端点条件读取 completed in iteration 0101
 - 目标：让公开内容可搜索、可订阅、可被搜索引擎发现，同时保持 Git 内容源和无数据库架构。
 
 ## 站内搜索
@@ -34,6 +34,10 @@ RSS 对 XML 特殊字符统一转义，并从公开内容字段生成标题、�
 - 缓存：1 小时 fresh，24 小时 stale-while-revalidate
 
 Feed 顶层声明 JSON Feed 1.1 `version`、站点标题/说明、`home_page_url`、`feed_url`、`language: zh-CN` 和作者。item 只暴露公开阅读字段，不包含 `draft`、源文件路径或原始 Markdown body；若 Markdown 没有可见纯文本，使用公开摘要兜底。生成器、HTTP 和生产冒烟都要求 JSON Feed 与 RSS 的稳定内容 URL 顺序完全一致。根布局使用独立 `application/feed+json` alternate link 供订阅器发现，RSS 链接保持兼容。
+
+### Feed、Sitemap 与 robots 条件读取
+
+`/feed.json`、`/rss.xml`、`/sitemap.xml` 与 `/robots.txt` 都以最终发送的 UTF-8 正文计算强 SHA-256 ETag。共享响应助手按 GET 弱比较语义处理精确标签、`W/`、逗号列表与 `*`；命中时返回正文为空的 304，并保留 ETag、原 MIME 与原 Cache-Control。错值或畸形条件头继续返回完整 200。该能力不改变正文、公开内容集合和已有 TTL，也不为 robots 人工制造日期事实；Vercel 若因压缩表示把标签弱化，生产验证只要求 opaque SHA-256 身份保持一致。
 
 ## 公开内容清单
 
@@ -92,12 +96,13 @@ Schema 让 Obsidian 插件、脚本与其他客户端无需导入本站 TypeScri
 - 包含：首页、文章、项目、专题、标签、搜索、关于、全部详情与派生索引页
 - `lastmod`：内容使用 `updatedAt` 或 `publishedAt`；集合使用其最新公开内容日期
 - 缓存：1 小时 fresh，24 小时 stale-while-revalidate
+- 验证器：最终 XML 字节的 SHA-256 ETag；条件命中返回空 304
 
 当前公开内容生成 24 个 URL。Sitemap 不包含草稿、未来日期、查询参数或 JSON Feed/RSS/robots 端点本身。
 
 ## Robots
 
-`/robots.txt` 允许抓取公开内容，声明当前请求主机和绝对 Sitemap URL，缓存 24 小时。`/studio` 与 `/api/cms/` 是作者发布工具而不是阅读内容，显式 `Disallow` 且不进入 Sitemap；访问控制仍由 GitHub OAuth 和仓库权限负责，robots 不被当作安全边界。
+`/robots.txt` 允许抓取公开内容，声明当前请求主机和绝对 Sitemap URL，缓存 24 小时，并以最终文本字节生成 SHA-256 ETag；条件命中返回空 304。`/studio` 与 `/api/cms/` 是作者发布工具而不是阅读内容，显式 `Disallow` 且不进入 Sitemap；访问控制仍由 GitHub OAuth 和仓库权限负责，robots 不被当作安全边界。
 
 ## 绝对 URL
 

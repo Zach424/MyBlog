@@ -1,3 +1,4 @@
+import { createHash } from "node:crypto";
 import { fileURLToPath } from "node:url";
 import { resolve } from "node:path";
 import {
@@ -102,6 +103,22 @@ export function sameMarkdownSourceEtag(left, right) {
     hasMarkdownSourceEtag(left) &&
     hasMarkdownSourceEtag(right) &&
     left.replace(/^W\//u, "") === right.replace(/^W\//u, "")
+  );
+}
+
+function sha256Etag(body) {
+  return `"sha256-${createHash("sha256").update(body, "utf8").digest("hex")}"`;
+}
+
+export function hasRobotsCachePolicy(value) {
+  const directives = cacheDirectives(value);
+  if (!directives) return false;
+
+  return (
+    directives.has("public") &&
+    directives.get("max-age") === "86400" &&
+    !directives.has("private") &&
+    !directives.has("no-store")
   );
 }
 
@@ -721,6 +738,10 @@ export async function runProductionSmoke(originInput, { expectOAuth = false } = 
       jsonFeed.response.status === 200 &&
       jsonFeed.response.headers.get("content-type")?.startsWith("application/feed+json") &&
       hasJsonFeedCachePolicy(jsonFeed.response.headers.get("cache-control")) &&
+      sameMarkdownSourceEtag(
+        jsonFeed.response.headers.get("etag"),
+        sha256Etag(jsonFeed.body),
+      ) &&
       jsonFeedPayload.version === "https://jsonfeed.org/version/1.1" &&
       jsonFeedPayload.home_page_url === `${origin.origin}/` &&
       jsonFeedPayload.feed_url === `${origin.origin}/feed.json` &&
@@ -745,12 +766,76 @@ export async function runProductionSmoke(originInput, { expectOAuth = false } = 
       JSON.stringify(manifestIds) === JSON.stringify(jsonFeedIds),
     "JSON Feed 1.1 公开内容契约异常",
   );
-  invariant(rss.response.status === 200 && (rss.body.match(/<item>/gu) ?? []).length >= 4, "RSS 条目异常");
-  invariant(robots.body.includes("Disallow: /studio"), "robots 未排除 Studio");
-  invariant(robots.body.includes(`${origin.origin}/sitemap.xml`), "robots Sitemap 主机异常");
+  invariant(
+    rss.response.status === 200 &&
+      rss.response.headers.get("content-type")?.startsWith("application/rss+xml") &&
+      hasJsonFeedCachePolicy(rss.response.headers.get("cache-control")) &&
+      sameMarkdownSourceEtag(
+        rss.response.headers.get("etag"),
+        sha256Etag(rss.body),
+      ) &&
+      (rss.body.match(/<item>/gu) ?? []).length >= 4,
+    "RSS 条目或条件验证器异常",
+  );
+  invariant(
+    robots.response.status === 200 &&
+      robots.response.headers.get("content-type")?.startsWith("text/plain") &&
+      hasRobotsCachePolicy(robots.response.headers.get("cache-control")) &&
+      sameMarkdownSourceEtag(
+        robots.response.headers.get("etag"),
+        sha256Etag(robots.body),
+      ) &&
+      robots.body.includes("Disallow: /studio") &&
+      robots.body.includes(`${origin.origin}/sitemap.xml`),
+    "robots 正文或条件验证器异常",
+  );
 
   const sitemapUrls = extractSitemapUrls(sitemap.body);
-  invariant(sitemap.response.status === 200 && sitemapUrls.length >= 23, "Sitemap URL 数量异常");
+  invariant(
+    sitemap.response.status === 200 &&
+      sitemap.response.headers.get("content-type")?.startsWith("application/xml") &&
+      hasJsonFeedCachePolicy(sitemap.response.headers.get("cache-control")) &&
+      sameMarkdownSourceEtag(
+        sitemap.response.headers.get("etag"),
+        sha256Etag(sitemap.body),
+      ) &&
+      sitemapUrls.length >= 23,
+    "Sitemap URL 数量或条件验证器异常",
+  );
+  const conditionalDiscoveryResponses = await Promise.all(
+    [
+      ["/feed.json", "application/feed+json", jsonFeed],
+      ["/rss.xml", "application/rss+xml", rss],
+      ["/sitemap.xml", "application/xml", sitemap],
+      ["/robots.txt", "text/plain", robots],
+    ].map(([pathname, accept, source]) =>
+      request(origin, pathname, {
+        accept,
+        headers: { "if-none-match": source.response.headers.get("etag") },
+      }),
+    ),
+  );
+  for (const [index, conditional] of conditionalDiscoveryResponses.entries()) {
+    const [pathname, , source, cachePolicy] = [
+      ["/feed.json", "application/feed+json", jsonFeed, hasJsonFeedCachePolicy],
+      ["/rss.xml", "application/rss+xml", rss, hasJsonFeedCachePolicy],
+      ["/sitemap.xml", "application/xml", sitemap, hasJsonFeedCachePolicy],
+      ["/robots.txt", "text/plain", robots, hasRobotsCachePolicy],
+    ][index];
+    const conditionalType = conditional.response.headers.get("content-type");
+    invariant(
+      conditional.response.status === 304 &&
+        conditional.body === "" &&
+        sameMarkdownSourceEtag(
+          conditional.response.headers.get("etag"),
+          source.response.headers.get("etag"),
+        ) &&
+        cachePolicy(conditional.response.headers.get("cache-control")) &&
+        (conditionalType === null ||
+          conditionalType === source.response.headers.get("content-type")),
+      `${pathname} 条件请求契约异常`,
+    );
+  }
   const routeResponses = await Promise.all(
     sitemapUrls.map((url) => fetchWithRetry(url, { redirect: "manual" })),
   );

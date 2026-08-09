@@ -232,7 +232,7 @@ Obsidian 草稿中的 Wiki 图片嵌入、指向 `public/uploads` 的 Markdown �
 
 ## 6. 安全与缓存
 
-`next.config.ts` 为所有响应声明 CSP、HSTS、`nosniff`、`DENY`、权限策略、来源策略和 COOP，并关闭 `X-Powered-By`。公开 HTML 使用浏览器复核、CDN 一小时缓存与一天 stale-while-revalidate；公开内容清单、清单 Schema 与 Markdown 源文使用浏览器零 fresh、CDN 一小时 fresh 与一天 stale-while-revalidate，并声明准确 MIME、安全内联文件名、源站强 ETag 和 `X-Robots-Tag: noindex`，有内容日期事实的清单/源文还声明 Last-Modified。客户端可用强或边缘弱化后的 `If-None-Match` 复核缓存，匹配时只接收 304 缓存元数据；不存在的源文必须 `no-store` 且不生成公开验证器。Studio HTML、配置、预览 CSS、OAuth 和未知 Studio 路径也必须包含 `no-store`。版本化且带 SRI 的 CMS 运行时使用一年不可变缓存。
+`next.config.ts` 为所有响应声明 CSP、HSTS、`nosniff`、`DENY`、权限策略、来源策略和 COOP，并关闭 `X-Powered-By`。公开 HTML 使用浏览器复核、CDN 一小时缓存与一天 stale-while-revalidate；公开内容清单、清单 Schema 与 Markdown 源文使用浏览器零 fresh、CDN 一小时 fresh 与一天 stale-while-revalidate，并声明准确 MIME、安全内联文件名、源站强 ETag 和 `X-Robots-Tag: noindex`，有内容日期事实的清单/源文还声明 Last-Modified。JSON Feed、RSS 与 Sitemap 保留一小时 fresh/一天 SWR，robots 保留一天 fresh；四者也以最终响应正文计算 SHA-256 ETag，并通过同一条件响应助手返回空 304，不引入无法统一证明的 Last-Modified。客户端可用强或边缘弱化后的 `If-None-Match` 复核缓存，匹配时只接收 304 缓存元数据；不存在的源文必须 `no-store` 且不生成公开验证器。Studio HTML、配置、预览 CSS、OAuth 和未知 Studio 路径也必须包含 `no-store`。版本化且带 SRI 的 CMS 运行时使用一年不可变缓存。
 
 一般页面的 COOP 为 `same-origin`；Studio 与 OAuth 为 `same-origin-allow-popups`，以允许 GitHub OAuth 弹窗完成握手。Studio CSP 不允许第三方脚本源，只额外允许 GitHub API、GitHub 授权页和头像来源；`unsafe-eval` 例外被限制在 Studio 路由，因为固定版本 Decap 编辑器/解析器需要运行时求值。
 
@@ -240,7 +240,7 @@ Obsidian 草稿中的 Wiki 图片嵌入、指向 `public/uploads` 的 Markdown �
 
 ## 7. 部署与回滚
 
-Vercel GitHub Integration 负责每个分支的 Preview 和 `main` 的 Production，不再维护重复的部署 Action。GitHub `deployment_status` 成功事件触发生产冒烟，检查代表页面、全 Sitemap、Studio/OAuth、Feed、公开内容清单及 Schema、文章/项目 Markdown 源文、安全头和 404，并逐项输出九条 HTML 与六个结构化发现端点的 raw/gzip 基线、上限和余量。
+Vercel GitHub Integration 负责每个分支的 Preview 和 `main` 的 Production，不再维护重复的部署 Action。GitHub `deployment_status` 成功事件触发生产冒烟，检查代表页面、全 Sitemap、Studio/OAuth、Feed、公开内容清单及 Schema、文章/项目 Markdown 源文、安全头和 404；清单、Schema、JSON Feed、RSS、Sitemap、robots 的最终正文验证器及条件读取也在线复核，并逐项输出九条 HTML 与六个结构化发现端点的 raw/gzip 基线、上限和余量。
 
 Quality、生产冒烟与回滚工作流均使用 Node 24 runtime 的 checkout/setup-node v6，但实际执行仓库脚本时仍固定 Node.js 22。显式 `cache: npm` 避免 setup-node major 的自动缓存探测改变现有行为；GitHub-hosted runner 由平台维护，不引入自托管 runner 版本责任。升级 action 时必须先更新结构契约测试，再同时验证 push、定时触发结构、deployment status 与手动回滚权限。
 

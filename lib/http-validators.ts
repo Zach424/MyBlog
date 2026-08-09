@@ -38,3 +38,17 @@ export function matchesIfNoneMatch(value: string | null, etag: string) {
   const expected = etag.replace(/^W\//u, "");
   return tags?.some((tag) => tag.replace(/^W\//u, "") === expected) ?? false;
 }
+
+export function createSha256ConditionalResponse(
+  request: Request,
+  body: string,
+  headersInit: HeadersInit,
+) {
+  const etag = createSha256Etag(body);
+  const headers = new Headers(headersInit);
+  headers.set("etag", etag);
+
+  return matchesIfNoneMatch(request.headers.get("if-none-match"), etag)
+    ? new Response(null, { status: 304, headers })
+    : new Response(body, { headers });
+}

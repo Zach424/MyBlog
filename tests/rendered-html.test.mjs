@@ -512,6 +512,11 @@ test("publishes a content manifest, its schema, JSON Feed, RSS, Sitemap and robo
     "public, max-age=3600, stale-while-revalidate=86400",
   );
   const jsonFeedSource = await jsonFeedResponse.text();
+  const jsonFeedEtag = jsonFeedResponse.headers.get("etag");
+  assert.equal(
+    jsonFeedEtag,
+    `"sha256-${createHash("sha256").update(jsonFeedSource, "utf8").digest("hex")}"`,
+  );
   const jsonFeed = JSON.parse(jsonFeedSource);
   assert.equal(jsonFeed.version, "https://jsonfeed.org/version/1.1");
   assert.equal(jsonFeed.home_page_url, "https://blog.example.test/");
@@ -543,7 +548,16 @@ test("publishes a content manifest, its schema, JSON Feed, RSS, Sitemap and robo
 
   assert.equal(rssResponse.status, 200);
   assert.match(rssResponse.headers.get("content-type") ?? "", /^application\/rss\+xml/i);
+  assert.equal(
+    rssResponse.headers.get("cache-control"),
+    "public, max-age=3600, stale-while-revalidate=86400",
+  );
   const rss = await rssResponse.text();
+  const rssEtag = rssResponse.headers.get("etag");
+  assert.equal(
+    rssEtag,
+    `"sha256-${createHash("sha256").update(rss, "utf8").digest("hex")}"`,
+  );
   assert.match(rss, /https:\/\/blog\.example\.test\/rss\.xml/);
   assert.match(rss, /从零搭建可维护的个人技术博客/);
   assert.match(rss, /MyBlog — 把学习记录做成工程资产/);
@@ -556,7 +570,16 @@ test("publishes a content manifest, its schema, JSON Feed, RSS, Sitemap and robo
 
   assert.equal(sitemapResponse.status, 200);
   assert.match(sitemapResponse.headers.get("content-type") ?? "", /^application\/xml/i);
+  assert.equal(
+    sitemapResponse.headers.get("cache-control"),
+    "public, max-age=3600, stale-while-revalidate=86400",
+  );
   const sitemap = await sitemapResponse.text();
+  const sitemapEtag = sitemapResponse.headers.get("etag");
+  assert.equal(
+    sitemapEtag,
+    `"sha256-${createHash("sha256").update(sitemap, "utf8").digest("hex")}"`,
+  );
   assert.match(sitemap, /https:\/\/blog\.example\.test\/search/);
   assert.match(sitemap, /https:\/\/blog\.example\.test\/knowledge/);
   assert.match(sitemap, /https:\/\/blog\.example\.test\/tags\/typescript/);
@@ -573,7 +596,17 @@ test("publishes a content manifest, its schema, JSON Feed, RSS, Sitemap and robo
   );
 
   assert.equal(robotsResponse.status, 200);
+  assert.match(robotsResponse.headers.get("content-type") ?? "", /^text\/plain/i);
+  assert.equal(
+    robotsResponse.headers.get("cache-control"),
+    "public, max-age=86400",
+  );
   const robots = await robotsResponse.text();
+  const robotsEtag = robotsResponse.headers.get("etag");
+  assert.equal(
+    robotsEtag,
+    `"sha256-${createHash("sha256").update(robots, "utf8").digest("hex")}"`,
+  );
   assert.match(robots, /User-agent: \*/);
   assert.match(robots, /Sitemap: https:\/\/blog\.example\.test\/sitemap\.xml/);
 
@@ -591,6 +624,49 @@ test("publishes a content manifest, its schema, JSON Feed, RSS, Sitemap and robo
   context.diagnostic(formatDiscoveryBudgetReport(discoveryBudgetReports));
   assertDiscoveryBudgetCoverage(discoveryBudgetReports);
   assertDiscoveryBudgets(discoveryBudgetReports);
+
+  const conditionalDiscoveryResponses = await Promise.all([
+    render("/feed.json", {
+      headers: { "if-none-match": `W/${jsonFeedEtag}` },
+    }),
+    render("/rss.xml", {
+      headers: { "if-none-match": `W/${rssEtag}` },
+    }),
+    render("/sitemap.xml", {
+      headers: { "if-none-match": `W/${sitemapEtag}` },
+    }),
+    render("/robots.txt", {
+      headers: { "if-none-match": `W/${robotsEtag}` },
+    }),
+  ]);
+  for (const [index, response] of conditionalDiscoveryResponses.entries()) {
+    const [pathname, etag, cacheControl, contentType] = [
+      [
+        "/feed.json",
+        jsonFeedEtag,
+        "public, max-age=3600, stale-while-revalidate=86400",
+        "application/feed+json; charset=utf-8",
+      ],
+      [
+        "/rss.xml",
+        rssEtag,
+        "public, max-age=3600, stale-while-revalidate=86400",
+        "application/rss+xml; charset=utf-8",
+      ],
+      [
+        "/sitemap.xml",
+        sitemapEtag,
+        "public, max-age=3600, stale-while-revalidate=86400",
+        "application/xml; charset=utf-8",
+      ],
+      ["/robots.txt", robotsEtag, "public, max-age=86400", "text/plain; charset=utf-8"],
+    ][index];
+    assert.equal(response.status, 304, pathname);
+    assert.equal(await response.text(), "", pathname);
+    assert.equal(response.headers.get("etag"), etag, pathname);
+    assert.equal(response.headers.get("cache-control"), cacheControl, pathname);
+    assert.equal(response.headers.get("content-type"), contentType, pathname);
+  }
 });
 
 test("publishes portable Markdown sources without author-only fields", async () => {

@@ -6,6 +6,7 @@ import {
   hasJsonFeedCachePolicy,
   hasMarkdownSourceCachePolicy,
   hasMarkdownSourceEtag,
+  hasRobotsCachePolicy,
   sameMarkdownSourceEtag,
 } from "../scripts/smoke-production.mjs";
 
@@ -41,6 +42,13 @@ test("accepts the Markdown source cache policy before and after Vercel consumes 
     false,
   );
   assert.equal(hasMarkdownSourceCachePolicy("private, max-age=0"), false);
+});
+
+test("accepts only the explicit daily public robots cache policy", () => {
+  assert.equal(hasRobotsCachePolicy("public, max-age=86400"), true);
+  assert.equal(hasRobotsCachePolicy("public, max-age=3600"), false);
+  assert.equal(hasRobotsCachePolicy("private, max-age=86400"), false);
+  assert.equal(hasRobotsCachePolicy("public, max-age=86400, no-store"), false);
 });
 
 test("accepts Vercel weakening without losing the Markdown source digest identity", () => {
@@ -108,6 +116,10 @@ test("connects Vercel verification, maintenance reporting, rollback, and Studio 
   assert.match(smoke, /assertDiscoveryBudgetCoverage/);
   assert.match(smoke, /assertDiscoveryBudgets/);
   assert.match(smoke, /discoveryBudgetReports/);
+  assert.match(smoke, /RSS 条目或条件验证器异常/u);
+  assert.match(smoke, /robots 正文或条件验证器异常/u);
+  assert.match(smoke, /Sitemap URL 数量或条件验证器异常/u);
+  assert.match(smoke, /条件请求契约异常/u);
   assert.match(smoke, /\/knowledge/);
   assert.match(smoke, /\/blog 永久重定向/);
   assert.match(smoke, /same-origin-allow-popups/);
