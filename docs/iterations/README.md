@@ -101,6 +101,7 @@
 0094-post-delivery-production-handoff.md
 0095-recovered-delivery-production-handoff.md
 0096-obsidian-plugin-version-handshake.md
+0097-obsidian-plugin-bundle-integrity.md
 ```
 
 ## 必填结构
