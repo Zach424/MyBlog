@@ -103,6 +103,15 @@ npm run release:check
 
 ## 发布后检查
 
+作者只需要判断本地正式内容是否已经到达稳定生产站时，运行：
+
+```bash
+npm run content:production
+npm run content:production -- --format json
+```
+
+该命令受限读取真实 `/content.json`，以本地相同 origin 的公开投影逐项比较 id、Markdown ETag 与清单元数据，并报告 deployed、pending、missing、unexpected。有效报告不代表执行过部署；它只证明特定响应 ETag/Last-Modified 快照与本地内容的关系。网络超时、重定向、非 200、MIME/体积/JSON/schema 错误会以非零退出，且不会转成内容漂移。默认不因有效 drift 返回非零；需要脚本门时显式增加 `--fail-on-drift`。命令不写文件、不提交、不推送，有意不进入 `release:check` 或 Actions，避免把临时网络状态变成本地发布硬门。
+
 ```bash
 npm run production:smoke -- https://your-production.example --expect-oauth
 ```

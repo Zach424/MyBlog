@@ -43,6 +43,7 @@
 9. 确认当前内容已经可以公开后，运行“发布当前草稿并同步 GitHub”；该命令会把 `draft` 改为 `false`，未来日期内容会保持计划状态；
 10. 阅读预检摘要，确认目标路径、附件源/产物格式、宽高、帧数、体积变化、站内链接、内容语境和 frontmatter；
 11. 发布器运行完整质量门、创建内容提交并 push `main`；Vercel Git 连接完成后会自动上线。若团队改用 PR 流程，则不要运行同步命令，改由普通 Git 客户端创建分支和 PR。
+12. Vercel 部署完成后，运行“MyBlog Publisher: 检查生产内容同步状态”，确认本地公开内容全部显示“已上线”。
 
 ### 用受信模板新建一个 inbox 草稿
 
@@ -119,6 +120,22 @@ npm run content:inbox -- --format json --source content/inbox/my-draft.md
 打开命令面板并运行“查看已发布内容复核台账”。MyBlog Publisher 1.30.0 会在仓库根目录隐藏运行 `npm --silent run content:status -- --format json`，验证版本化报告后，用原生 deadline ledger 显示报告日期、Current/Historical/未公开数量、healthy/review-soon/due-soon/overdue 四档计数、源笔记路径、review-by、剩余天数和复核清单。每条记录的“打开笔记”只打开 Vault 中精确存在的 `content/posts|projects/<slug>.md`。该命令不读取网络、不修改 `reviewedAt`、不保存文件、不提交也不推送；它和 Studio 队列、每周 Actions 复用同一维护规则。
 
 检查期间的持续 Notice 会在成功、降级、失败或插件卸载时关闭。维护 CLI 用退出码 1 表达“存在逾期内容”时，插件仍会展示通过 schema 的结构化报告；JSON、schema、安全路径或 UI 渲染不可信时，插件自动再读一次纯文本报告，而不是打开半可信交互。命令无法启动时仍只显示诊断；可在仓库终端运行 `npm run content:status` 取得完整输出。仓库更新了插件版本而 Obsidian 已经打开时，需要重启 Obsidian，或先关闭再启用 MyBlog Publisher，才能加载 1.30.0 代码。
+
+### 在 Obsidian 核对生产内容同步
+
+打开命令面板并运行“检查生产内容同步状态”。MyBlog Publisher 1.35.0 会隐藏运行 `npm --silent run content:production -- --format json`：先按 `Asia/Shanghai` 当天从本地正式内容生成目标生产 origin 的期望清单，再以 10 秒超时、1 MiB 上限、禁止自动重定向的 GET 读取真实 `/content.json`。只有 HTTP 200、JSON MIME、响应 SHA-256 ETag、有效 Last-Modified、严格 version 1 字段、同源 URL、稳定路由、逐项强 Markdown ETag、唯一 id 和稳定排序全部成立，才进入比较。
+
+原生只读台账按 id 对齐内容：相同公开字段和 ETag 为“已上线”；同 id 但 Markdown ETag 或清单字段不同为“待部署”；本地有而生产没有为“生产缺失”；生产有而本地没有为“生产多出”。每项保留本地 Vault 路径、生产 URL、两侧 ETag 与差异原因；总览同时固定本地公开日期、生产清单响应 ETag 和 Last-Modified，便于证明比较的是哪一次生产快照。该命令只读本地正式 Markdown 并访问公开清单，不改文章、不暂存、不提交、不推送，也不执行部署。
+
+网络超时、非 200、重定向、错误 MIME、超限正文、无效 JSON 或协议漂移属于“检查未完成”，不会伪装成待部署/缺失/多出；不可信的 CLI JSON 也不会打开 Modal、改读第二次网络或自动重试。命令行等价操作如下：
+
+```bash
+npm run content:production
+npm run content:production -- --format json
+npm run content:production -- --fail-on-drift
+```
+
+`--origin` 只接受 HTTPS origin；测试夹具可使用 HTTP loopback。`--date` 固定本地公开范围，`--timeout-ms` 接受 500–30000。该实时检查有意不进入 `release:check` 或 GitHub Actions：网络、代理、限流和 CDN 暂时不可达只能表示当前无法取证，不能阻断一份本地正确的提交。仓库更新后 Obsidian 已经打开时，重启 Obsidian，或先关闭再启用 MyBlog Publisher，才能加载 1.35.0 命令。
 
 ### 在 Obsidian 完成正式内容复核
 

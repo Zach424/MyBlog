@@ -44,6 +44,7 @@ lib/
     inbox-readiness.ts              全部 Obsidian 草稿的只读发布就绪聚合
     delivery-triage.ts              同一 Git 观察上的互斥恢复路由与 version 1 报告
     publish-delivery.ts              新内容多路径待交付身份与六态只读报告
+    production-sync.ts               本地公开投影与受信生产清单的四态只读对比器
     external-links.ts               GFM 外链库存、受控 HEAD 检查与公网目标防护
     knowledge-graph.ts              公开节点、有向边、邻接与孤立状态派生
     media.ts                        封面与正文图共享的固有尺寸描述器
@@ -63,7 +64,7 @@ lib/
   studio-assets.ts                  构建期 Studio 资源响应
 studio/                             Decap CMS、浏览器媒体预检、稳定 slug 与公式 preview template 源文件（不放入 public）
 templates/obsidian/                 不重复写入 slug 的文章、TIL、项目受信模板
-scripts/                            作者环境自检、发布、统一交付分诊、发布/复核交付、inbox/内容/暂存媒体/外链报告、冒烟、迁移和生产测试器
+scripts/                            作者环境自检、发布、统一交付分诊、发布/复核交付、inbox/内容/生产同步/暂存媒体/外链报告、冒烟、迁移和生产测试器
 build/validate-media.ts             构建前递归扫描全部公开上传图片
 build/validate-media-references.ts  正式内容图片存在性、slug 所有权和孤儿附件门禁
 build/validate-redirects.ts         当前公开路由、静态文件与重定向关系门禁
@@ -84,6 +85,8 @@ vercel.json                         Vercel Next.js 框架声明
 `lib/public-markdown.ts` 把同一公开 `ContentRecord` 投影为可移植 Markdown，而不是读取并透传作者原文件。YAML 只按文章/项目显式白名单输出公开阅读字段、canonical 与可选封面；`draft`、`featured`、源文件路径和构建派生字段不会进入响应。正文复用共享 GFM + math AST 的节点位置，只改写真实 link/image/definition URL：根相对站内地址、媒体地址与自页面 fragment 转为当前请求 origin 下的绝对 URL，外部 URL、代码和围栏代码保持不变，无法证明节点位置时失败关闭。最终 UTF-8 表示生成 `"sha256-<64 hex>"` 源站强 ETag；`Last-Modified` 取 published/updated/reviewed 中最新日期的 UTC 零点。`If-None-Match` 按 GET 弱比较语义接受单值、列表、`W/` 与 `*`，源站命中返回带共享响应头的空 304，畸形条件头按普通 200 处理。Vercel 对 Brotli 表示可把同一 opaque tag 弱化为 `W/`，并按 HTTP 语义把边缘 304 收敛为 ETag、Cache-Control 等缓存更新元数据；生产验证比较强弱标签中的相同 SHA-256 身份，并只校验仍出现的可选元数据不能漂移。文章与项目的嵌套 `source.md` Route Handler 只调用公开 getter，因此草稿、未来内容和未知 slug 都返回不可缓存的 404。
 
 `lib/content-manifest.ts` 把同一个公开记录集合投影为版本 1 的 `/content.json`。顶层只声明站点、清单、语言和稳定排序 items；每项只含公开 kind/type、标题、HTML/Markdown 绝对 URL、发布/更新/复核日、标签，以及用同一 origin 最终源文字节计算的强 `markdown_etag`。清单不含正文、摘要、canonical、草稿、featured、slug 或源文件路径；根布局以 `application/json` alternate 公开发现入口。`lib/http-validators.ts` 为源文和清单共享 SHA-256、实体标签列表解析、GET 弱比较和浏览器复核/CDN 缓存策略；清单自身也以最终 JSON 字节生成 ETag，最新公开日期事实生成 Last-Modified，命中返回空 304。
+
+`lib/content/production-sync.ts` 复用 `createContentManifestDocument`，为指定生产 origin 生成本地期望清单，再把受信生产清单按 id 对齐。完整条目相等为 deployed；同 id 的源文 ETag 或其余公开元数据不同为 pending；仅本地存在为 missing；仅生产存在为 unexpected。请求器禁止自动重定向，限制 1 MiB/30 秒上界，并在比较前验证 200、JSON MIME、响应 SHA-256 ETag、Last-Modified、顶层/逐项精确字段、同源路由、强源文 ETag、日期、标签、唯一 id 与稳定顺序。传输或协议错误直接失败，不构造 drift 报告。`scripts/report-production-content-sync.mjs` 只读正式内容并显式联网；Obsidian 1.35.0 只接受 version 1、计数/状态/路径/ETag/差异/安全声明闭合的 JSON，显示无动作按钮的四态台账。该实时命令不进入本地 `release:check` 或 Actions。
 
 永久重定向注册表只接受小写 ASCII 精确路径，并要求每条记录包含加入日期和原因。来源不能仍是当前页面、公开静态文件、API/Studio 或 Next 内部路径；目标必须是同一次构建中的公开 HTML 页面。注册表拒绝重复来源、自跳转、链式跳转和环路，再由 Next `redirects()` 输出单跳 `308 Permanent Redirect`。查询参数沿用 Next 原生透传语义，旧地址不进入 Sitemap，也不另建内容副本。
 
@@ -127,7 +130,8 @@ H2/H3 由 `MarkdownHeading` 服务端组件接收 `rehype-slug` 已写入的真�
 网页 /studio ─┐
               ├─ GitHub 提交/PR ─ 质量门 ─ main ─ Vercel 自动生产部署
 Obsidian ─────┘                                      │
-                                                    └─ 生产冒烟
+                                                    ├─ 生产冒烟
+                                                    └─ /content.json ─ 只读同步核对 ─ Obsidian
 ```
 
 Studio 在浏览器中用当前 origin 生成 `base_url`。`/api/cms/auth` 创建十分钟有效、HMAC 签名且绑定 origin 的 state；`/api/cms/callback` 交换 GitHub token，并且只向发起授权的同源窗口发送结果。未设置 `GITHUB_OAUTH_ID` 或 `GITHUB_OAUTH_SECRET` 时返回 503，发布入口安全关闭。
@@ -252,6 +256,7 @@ Quality、生产冒烟与回滚工作流均使用 Node 24 runtime 的 checkout/s
 - cover 必须是仓库内图片并同时声明 `coverAlt`；详情页尺寸只能来自已验证文件，文章/项目共享组件与社交元数据选择不能分叉。
 - `/studio` 与 OAuth 永远不缓存、不索引，并维持同源 state 验证；只有版本化 CMS 运行时可不可变缓存。
 - 发布平台不能成为写作前置条件；Obsidian 和 Git 提交在本地仍可完成。
+- 生产同步核对只能在严格验证真实公开清单后输出 deployed/pending/missing/unexpected；网络、HTTP 或协议错误不得冒充内容差异，检查器不得写作者文件、提交、推送或自动部署，也不得进入默认离线发布门。
 - Obsidian 新建草稿只能从三个固定 Vault 模板创建一个 `content/inbox/<slug>.md`；输入、模板结构和 inbox/posts/projects 同 slug 路径必须在写入前验证，最终创建必须排他且不得覆盖；文件创建成功后，自动打开失败不得回删新文件。
 - inbox 草稿的 slug 只能来自安全文件名；受信模板不得再声明顶层 `slug`。改名只允许 `draft: true` 且无旧式 slug 的精确 inbox Markdown，目标必须通过三个内容命名空间检查；只调用一次 FileManager，无法证明后置路径时不得自动重试或回滚。
 - 每轮结构、设计、技术、功能、方法、验证、经验和风险必须与代码一起归档。

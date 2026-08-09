@@ -7,6 +7,28 @@ import {
 } from "./http-validators.ts";
 import { absoluteSiteUrl, resolveSiteUrl } from "./site.ts";
 
+export interface ContentManifestItem {
+  id: string;
+  kind: ContentRecord["kind"];
+  type: "article" | "project" | "til";
+  title: string;
+  html_url: string;
+  markdown_url: string;
+  markdown_etag: string;
+  published_at: string;
+  updated_at?: string;
+  reviewed_at: string;
+  tags: string[];
+}
+
+export interface ContentManifestDocument {
+  version: 1;
+  home_url: string;
+  manifest_url: string;
+  language: "zh-CN";
+  items: ContentManifestItem[];
+}
+
 function sortContentRecords(records: ContentRecord[]) {
   return records.slice().sort(
     (left, right) =>
@@ -25,7 +47,7 @@ function newestPublicDate(records: ContentRecord[]) {
     .sort((left, right) => right.localeCompare(left))[0];
 }
 
-function manifestItem(siteUrl: URL, record: ContentRecord) {
+function manifestItem(siteUrl: URL, record: ContentRecord): ContentManifestItem {
   const htmlUrl = absoluteSiteUrl(siteUrl, record.url);
   const markdownUrl = absoluteSiteUrl(siteUrl, getPublicMarkdownPath(record));
 
@@ -44,20 +66,23 @@ function manifestItem(siteUrl: URL, record: ContentRecord) {
   };
 }
 
+export function createContentManifestDocument(
+  siteUrl: URL,
+  records: ContentRecord[],
+): ContentManifestDocument {
+  return {
+    version: 1,
+    home_url: absoluteSiteUrl(siteUrl, "/"),
+    manifest_url: absoluteSiteUrl(siteUrl, "/content.json"),
+    language: "zh-CN",
+    items: sortContentRecords(records).map((record) =>
+      manifestItem(siteUrl, record),
+    ),
+  };
+}
+
 export function createContentManifest(siteUrl: URL, records: ContentRecord[]) {
-  return `${JSON.stringify(
-    {
-      version: 1,
-      home_url: absoluteSiteUrl(siteUrl, "/"),
-      manifest_url: absoluteSiteUrl(siteUrl, "/content.json"),
-      language: "zh-CN",
-      items: sortContentRecords(records).map((record) =>
-        manifestItem(siteUrl, record),
-      ),
-    },
-    null,
-    2,
-  )}\n`;
+  return `${JSON.stringify(createContentManifestDocument(siteUrl, records), null, 2)}\n`;
 }
 
 function contentManifestHeaders(

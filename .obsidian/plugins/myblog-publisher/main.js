@@ -14,6 +14,7 @@ const { createHash } = require("node:crypto");
 
 const MAX_CAPTURED_OUTPUT = 200_000;
 const MAINTENANCE_REPORT_VERSION = 1;
+const PRODUCTION_CONTENT_SYNC_REPORT_VERSION = 1;
 const CONTENT_REVIEW_PROOF_VERSION = 3;
 const CONTENT_REVIEW_DELIVERY_REPORT_VERSION = 1;
 const CONTENT_REVIEW_DELIVERY_RECEIPT_VERSION = 1;
@@ -23,7 +24,7 @@ const CONTENT_DELIVERY_TRIAGE_REPORT_VERSION = 1;
 const AUTHOR_DOCTOR_REPORT_VERSION = 1;
 const INBOX_READINESS_REPORT_VERSION = 6;
 const AUTHOR_DOCTOR_NODE_ENGINE = ">=22.13.0";
-const AUTHOR_DOCTOR_PLUGIN_VERSION = "1.34.0";
+const AUTHOR_DOCTOR_PLUGIN_VERSION = "1.35.0";
 const CURRENT_DRAFT_INTENT_RUN_SCOPE = Symbol("current-draft-intent");
 const DRAFT_TITLE_MAX_LENGTH = 120;
 const DRAFT_SLUG_MAX_LENGTH = 80;
@@ -76,6 +77,7 @@ const AUTHOR_DOCTOR_REQUIRED_SCRIPTS = [
   "content:review:deliver",
   "content:review:status",
   "content:status",
+  "content:production",
   "release:check",
 ];
 const AUTHOR_DOCTOR_REQUIRED_PATHS = [
@@ -129,6 +131,24 @@ const STATUS_ORDER = {
   "review-soon": 2,
   healthy: 3,
 };
+const PRODUCTION_CONTENT_SYNC_STATES = [
+  "deployed",
+  "pending",
+  "missing",
+  "unexpected",
+];
+const PRODUCTION_CONTENT_SYNC_LABELS = {
+  deployed: "已上线",
+  pending: "待部署",
+  missing: "生产缺失",
+  unexpected: "生产多出",
+};
+const PRODUCTION_CONTENT_SYNC_DIFFERENCES = [
+  "markdown-etag",
+  "manifest-metadata",
+];
+const SHA256_ETAG_PATTERN = /^"sha256-[a-f0-9]{64}"$/u;
+const RESPONSE_SHA256_ETAG_PATTERN = /^(?:W\/)?"sha256-[a-f0-9]{64}"$/u;
 
 function valueError(label, expectation) {
   throw new Error(`${label} ${expectation}`);
@@ -870,6 +890,252 @@ function parseMaintenanceReport(output) {
     if (outOfOrder) {
       valueError("维护报告 records", "必须按紧急程度、剩余天数和来源路径排序");
     }
+  }
+
+  return report;
+}
+
+function parseProductionContentSyncReport(output) {
+  let report;
+  try {
+    report = JSON.parse(output);
+  } catch {
+    throw new Error("生产同步证据不是有效 JSON");
+  }
+
+  const label = "生产同步证据";
+  assertPlainObject(report, label);
+  assertExactKeys(
+    report,
+    [
+      "checkedAt",
+      "counts",
+      "localBuildDate",
+      "manifestUrl",
+      "mode",
+      "origin",
+      "productionEtag",
+      "productionLastModified",
+      "records",
+      "safety",
+      "status",
+      "version",
+    ],
+    label,
+  );
+  if (report.version !== PRODUCTION_CONTENT_SYNC_REPORT_VERSION) {
+    valueError(
+      `${label} version`,
+      `必须是 ${PRODUCTION_CONTENT_SYNC_REPORT_VERSION}`,
+    );
+  }
+  if (report.mode !== "read-only") valueError(`${label} mode`, "必须是 read-only");
+  if (report.status !== "synchronized" && report.status !== "attention") {
+    valueError(`${label}.status`, "必须是 synchronized 或 attention");
+  }
+  if (
+    typeof report.origin !== "string" ||
+    !/^https:\/\/[a-z0-9](?:[a-z0-9.-]*[a-z0-9])?(?::[1-9]\d{0,4})?$/u.test(
+      report.origin,
+    )
+  ) {
+    valueError(`${label}.origin`, "必须是无凭据、路径、查询或片段的 HTTPS origin");
+  }
+  if (report.manifestUrl !== `${report.origin}/content.json`) {
+    valueError(`${label}.manifestUrl`, "必须是 origin 下的 /content.json");
+  }
+  parseIsoDate(report.localBuildDate, `${label}.localBuildDate`);
+  if (typeof report.checkedAt !== "string") {
+    valueError(`${label}.checkedAt`, "必须是规范 ISO 时间戳");
+  }
+  const checkedAt = new Date(report.checkedAt);
+  if (
+    Number.isNaN(checkedAt.getTime()) ||
+    checkedAt.toISOString() !== report.checkedAt
+  ) {
+    valueError(`${label}.checkedAt`, "必须是规范 ISO 时间戳");
+  }
+  if (
+    typeof report.productionEtag !== "string" ||
+    !RESPONSE_SHA256_ETAG_PATTERN.test(report.productionEtag)
+  ) {
+    valueError(`${label}.productionEtag`, "必须是生产清单响应 SHA-256 ETag");
+  }
+  if (
+    typeof report.productionLastModified !== "string" ||
+    Number.isNaN(Date.parse(report.productionLastModified))
+  ) {
+    valueError(`${label}.productionLastModified`, "必须是有效 HTTP 日期");
+  }
+
+  assertPlainObject(report.safety, `${label}.safety`);
+  assertExactKeys(
+    report.safety,
+    ["authorFilesChanged", "commitCreated", "networkChecked", "pushExecuted"],
+    `${label}.safety`,
+  );
+  if (report.safety.networkChecked !== true) {
+    valueError(`${label}.safety.networkChecked`, "必须为 true");
+  }
+  for (const field of ["authorFilesChanged", "commitCreated", "pushExecuted"]) {
+    if (report.safety[field] !== false) {
+      valueError(`${label}.safety.${field}`, "必须为 false");
+    }
+  }
+
+  assertPlainObject(report.counts, `${label}.counts`);
+  assertExactKeys(report.counts, PRODUCTION_CONTENT_SYNC_STATES, `${label}.counts`);
+  const countedStates = Object.fromEntries(
+    PRODUCTION_CONTENT_SYNC_STATES.map((state) => [state, 0]),
+  );
+  for (const state of PRODUCTION_CONTENT_SYNC_STATES) {
+    assertInteger(report.counts[state], `${label}.counts.${state}`, 0);
+  }
+
+  if (!Array.isArray(report.records)) valueError(`${label}.records`, "必须是数组");
+  const ids = new Set();
+  const sources = new Set();
+  for (const [index, record] of report.records.entries()) {
+    const recordLabel = `${label}.records[${index}]`;
+    assertPlainObject(record, recordLabel);
+    assertExactKeys(
+      record,
+      [
+        "differences",
+        "id",
+        "kind",
+        "localEtag",
+        "markdownUrl",
+        "productionEtag",
+        "sourcePath",
+        "state",
+        "title",
+        "type",
+      ],
+      recordLabel,
+    );
+    if (!PRODUCTION_CONTENT_SYNC_STATES.includes(record.state)) {
+      valueError(`${recordLabel}.state`, "不是受支持的同步状态");
+    }
+    assertNonEmptyString(record.id, `${recordLabel}.id`);
+    assertNonEmptyString(record.title, `${recordLabel}.title`);
+    if (!record.id.startsWith(`${report.origin}/`)) {
+      valueError(`${recordLabel}.id`, "必须属于报告 origin");
+    }
+    const route = record.id.slice(report.origin.length).match(
+      /^\/(posts|projects)\/([a-z0-9]+(?:-[a-z0-9]+)*)$/u,
+    );
+    if (!route) valueError(`${recordLabel}.id`, "必须是稳定的文章或项目 URL");
+    const expectedKind = route[1] === "posts" ? "post" : "project";
+    if (record.kind !== expectedKind) {
+      valueError(`${recordLabel}.kind`, `必须是 ${expectedKind}`);
+    }
+    const validType = expectedKind === "post"
+      ? record.type === "article" || record.type === "til"
+      : record.type === "project";
+    if (!validType) valueError(`${recordLabel}.type`, "必须与 kind 一致");
+    if (record.markdownUrl !== `${record.id}/source.md`) {
+      valueError(`${recordLabel}.markdownUrl`, "必须由 id 加 /source.md 得到");
+    }
+    if (ids.has(record.id)) valueError(`${recordLabel}.id`, "不能重复");
+    ids.add(record.id);
+
+    const expectedSourcePath = `content/${route[1]}/${route[2]}.md`;
+    if (record.state === "unexpected") {
+      if (record.sourcePath !== null) {
+        valueError(`${recordLabel}.sourcePath`, "生产多出记录必须为 null");
+      }
+    } else {
+      if (record.sourcePath !== expectedSourcePath) {
+        valueError(`${recordLabel}.sourcePath`, `必须是 ${expectedSourcePath}`);
+      }
+      if (sources.has(record.sourcePath)) {
+        valueError(`${recordLabel}.sourcePath`, "不能重复");
+      }
+      sources.add(record.sourcePath);
+    }
+
+    if (!Array.isArray(record.differences)) {
+      valueError(`${recordLabel}.differences`, "必须是数组");
+    }
+    const differences = new Set();
+    for (const [differenceIndex, difference] of record.differences.entries()) {
+      const allowed = [
+        ...PRODUCTION_CONTENT_SYNC_DIFFERENCES,
+        "missing-production",
+        "unexpected-production",
+      ];
+      if (!allowed.includes(difference)) {
+        valueError(
+          `${recordLabel}.differences[${differenceIndex}]`,
+          "不是受支持的差异",
+        );
+      }
+      if (differences.has(difference)) {
+        valueError(`${recordLabel}.differences`, "不能重复");
+      }
+      differences.add(difference);
+    }
+
+    const localEtagValid =
+      typeof record.localEtag === "string" && SHA256_ETAG_PATTERN.test(record.localEtag);
+    const productionEtagValid =
+      typeof record.productionEtag === "string" &&
+      SHA256_ETAG_PATTERN.test(record.productionEtag);
+    if (record.state === "deployed") {
+      if (
+        !localEtagValid ||
+        !productionEtagValid ||
+        record.localEtag !== record.productionEtag ||
+        record.differences.length !== 0
+      ) {
+        valueError(recordLabel, "已上线记录必须有相同 ETag 且没有差异");
+      }
+    } else if (record.state === "pending") {
+      if (
+        !localEtagValid ||
+        !productionEtagValid ||
+        record.differences.length === 0 ||
+        record.differences.some(
+          (difference) => !PRODUCTION_CONTENT_SYNC_DIFFERENCES.includes(difference),
+        )
+      ) {
+        valueError(recordLabel, "待部署记录必须有本地/生产 ETag 和受支持差异");
+      }
+      const etagDiffers = record.localEtag !== record.productionEtag;
+      if (differences.has("markdown-etag") !== etagDiffers) {
+        valueError(`${recordLabel}.differences`, "必须与 ETag 比较结果一致");
+      }
+    } else if (record.state === "missing") {
+      if (
+        !localEtagValid ||
+        record.productionEtag !== null ||
+        record.differences.length !== 1 ||
+        record.differences[0] !== "missing-production"
+      ) {
+        valueError(recordLabel, "生产缺失记录证据不一致");
+      }
+    } else if (
+      record.localEtag !== null ||
+      !productionEtagValid ||
+      record.differences.length !== 1 ||
+      record.differences[0] !== "unexpected-production"
+    ) {
+      valueError(recordLabel, "生产多出记录证据不一致");
+    }
+    countedStates[record.state] += 1;
+  }
+
+  for (const state of PRODUCTION_CONTENT_SYNC_STATES) {
+    if (report.counts[state] !== countedStates[state]) {
+      valueError(`${label}.counts.${state}`, "必须与 records 一致");
+    }
+  }
+  const driftCount =
+    report.counts.pending + report.counts.missing + report.counts.unexpected;
+  const expectedStatus = driftCount === 0 ? "synchronized" : "attention";
+  if (report.status !== expectedStatus) {
+    valueError(`${label}.status`, `必须是 ${expectedStatus}`);
   }
 
   return report;
@@ -4215,6 +4481,135 @@ class ContentReviewProofModal extends Modal {
   }
 }
 
+class ProductionContentSyncModal extends Modal {
+  constructor(app, report) {
+    super(app);
+    this.report = report;
+  }
+
+  onOpen() {
+    const { contentEl, report } = this;
+    contentEl.empty();
+    contentEl.addClass("myblog-production-sync");
+    contentEl.setAttr("data-status", report.status);
+    contentEl.createEl("p", {
+      cls: "myblog-production-sync__eyebrow",
+      text: `PRODUCTION CONTENT / ${report.status === "synchronized" ? "SYNCHRONIZED" : "ATTENTION"}`,
+    });
+    contentEl.createEl("h2", {
+      cls: "myblog-production-sync__title",
+      text: "生产内容同步状态",
+    });
+    contentEl.createEl("p", {
+      cls: "myblog-production-sync__boundary",
+      text: "只读取本地正式内容并请求生产 content.json；不会改写文章、提交或推送。网络或协议失败不会被解释成内容差异。",
+    });
+    contentEl.createEl("p", {
+      cls: "myblog-production-sync__stamp",
+      text: `结构版本 v${report.version} · 检查 ${report.checkedAt} · 本地公开范围 ${report.localBuildDate}`,
+    });
+
+    const counts = contentEl.createEl("dl", {
+      cls: "myblog-production-sync__counts",
+    });
+    for (const state of PRODUCTION_CONTENT_SYNC_STATES) {
+      const metric = counts.createEl("div", {
+        cls: "myblog-production-sync__metric",
+      });
+      metric.setAttr("data-state", state);
+      metric.createEl("dt", { text: PRODUCTION_CONTENT_SYNC_LABELS[state] });
+      metric.createEl("dd", { text: String(report.counts[state]) });
+    }
+    contentEl.createEl("p", {
+      cls: "myblog-production-sync__summary",
+      text: `${report.counts.deployed} 已上线 · ${report.counts.pending} 待部署 · ${report.counts.missing} 生产缺失 · ${report.counts.unexpected} 生产多出`,
+    });
+
+    const snapshot = contentEl.createEl("section", {
+      cls: "myblog-production-sync__snapshot",
+    });
+    snapshot.createEl("p", {
+      cls: "myblog-production-sync__section-label",
+      text: "VERIFIED PRODUCTION SNAPSHOT",
+    });
+    const snapshotRows = snapshot.createEl("dl");
+    for (const [term, value] of [
+      ["Manifest", report.manifestUrl],
+      ["Response ETag", report.productionEtag],
+      ["Last-Modified", report.productionLastModified],
+    ]) {
+      const row = snapshotRows.createEl("div", {
+        cls: "myblog-production-sync__snapshot-row",
+      });
+      row.createEl("dt", { text: term });
+      row.createEl("dd").createEl("code", { text: value });
+    }
+
+    const records = contentEl.createEl("section", {
+      cls: "myblog-production-sync__records-section",
+    });
+    records.createEl("p", {
+      cls: "myblog-production-sync__section-label",
+      text: `CONTENT LEDGER / ${report.records.length} ITEMS`,
+    });
+    if (report.records.length === 0) {
+      records.createEl("p", {
+        cls: "myblog-production-sync__empty",
+        text: "本地和生产当前都没有公开内容。",
+      });
+      return;
+    }
+
+    const list = records.createEl("ol", {
+      cls: "myblog-production-sync__records",
+    });
+    for (const record of report.records) {
+      const item = list.createEl("li", {
+        cls: "myblog-production-sync__record",
+      });
+      item.setAttr("data-state", record.state);
+      const state = item.createEl("p", {
+        cls: "myblog-production-sync__record-state",
+      });
+      state.createEl("span", { text: PRODUCTION_CONTENT_SYNC_LABELS[record.state] });
+      state.createEl("strong", { text: record.type.toUpperCase() });
+      item.createEl("h3", {
+        cls: "myblog-production-sync__record-title",
+        text: record.title,
+      });
+      item.createEl("p", {
+        cls: "myblog-production-sync__record-route",
+        text: record.id,
+      });
+      const source = item.createEl("p", {
+        cls: "myblog-production-sync__record-source",
+      });
+      source.createEl("span", {
+        text: record.sourcePath ? "本地来源 " : "生产来源 ",
+      });
+      source.createEl("code", { text: record.sourcePath ?? record.id });
+
+      const validators = item.createEl("dl", {
+        cls: "myblog-production-sync__validators",
+      });
+      for (const [term, value] of [
+        ["LOCAL", record.localEtag ?? "NONE"],
+        ["PRODUCTION", record.productionEtag ?? "NONE"],
+      ]) {
+        const validator = validators.createEl("div");
+        validator.createEl("dt", { text: term });
+        validator.createEl("dd").createEl("code", { text: value });
+      }
+      if (record.differences.length > 0) {
+        item.createEl("p", {
+          cls: "myblog-production-sync__differences",
+          text: `DIFF / ${record.differences.join(" + ")}`,
+        });
+      }
+    }
+  }
+}
+
 class ContentMaintenanceModal extends Modal {
   constructor(app, report, openSource) {
     super(app);
@@ -4408,6 +4803,13 @@ module.exports = class MyBlogPublisher extends Plugin {
       id: "inspect-published-maintenance",
       name: "查看已发布内容复核台账",
       checkCallback: (checking) => this.inspectPublishedMaintenance(checking),
+    });
+
+    this.addCommand({
+      id: "inspect-production-content-sync",
+      name: "检查生产内容同步状态",
+      checkCallback: (checking) =>
+        this.inspectProductionContentSync(checking),
     });
 
     this.addCommand({
@@ -5641,6 +6043,28 @@ module.exports = class MyBlogPublisher extends Plugin {
     );
   }
 
+  inspectProductionContentSync(checking) {
+    if (!this.isDesktopVault()) return false;
+    if (checking) return true;
+
+    return this.runRepositoryCommand(
+      [
+        "--silent",
+        "run",
+        "content:production",
+        "--",
+        "--format",
+        "json",
+      ],
+      {
+        failure: "生产内容同步检查未完成",
+        progress: "正在读取本地正式内容并核对生产 content.json…",
+        startFailure: "生产内容同步检查无法启动",
+      },
+      (output) => this.openStructuredProductionContentSync(output),
+    );
+  }
+
   inspectReviewDelivery(checking) {
     if (!this.isDesktopVault()) return false;
     if (checking) return true;
@@ -6005,6 +6429,19 @@ module.exports = class MyBlogPublisher extends Plugin {
         10000,
       );
       this.inspectPublishedMaintenanceText();
+    }
+  }
+
+  openStructuredProductionContentSync(output) {
+    try {
+      const report = parseProductionContentSyncReport(output);
+      new ProductionContentSyncModal(this.app, report).open();
+      new Notice("生产内容同步状态已更新。", 5000);
+    } catch (error) {
+      new Notice(
+        `生产同步证据不可用：${error.message}；不会自动重试。`,
+        15000,
+      );
     }
   }
 

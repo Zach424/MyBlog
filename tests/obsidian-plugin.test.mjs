@@ -504,6 +504,92 @@ function maintenanceReport({ records = [maintenanceRecord()], version = 1 } = {}
   };
 }
 
+function productionSyncRecord({
+  differences = [],
+  kind = "post",
+  slug = "deployed-post",
+  state = "deployed",
+} = {}) {
+  const directory = kind === "post" ? "posts" : "projects";
+  const id = `https://blog-iota-five-59.vercel.app/${directory}/${slug}`;
+  const localEtag =
+    state === "unexpected"
+      ? null
+      : '"sha256-aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa"';
+  const productionEtag =
+    state === "missing"
+      ? null
+      : state === "pending"
+        ? '"sha256-bbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbb"'
+        : '"sha256-aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa"';
+  return {
+    state,
+    id,
+    kind,
+    type: kind === "post" ? "article" : "project",
+    title: slug.replaceAll("-", " "),
+    sourcePath: state === "unexpected" ? null : `content/${directory}/${slug}.md`,
+    markdownUrl: `${id}/source.md`,
+    localEtag,
+    productionEtag,
+    differences,
+  };
+}
+
+function productionSyncReport({ records, safety = {}, status, version = 1 } = {}) {
+  const resolvedRecords = records ?? [
+    productionSyncRecord(),
+    productionSyncRecord({
+      differences: ["markdown-etag"],
+      kind: "project",
+      slug: "pending-project",
+      state: "pending",
+    }),
+    productionSyncRecord({
+      differences: ["missing-production"],
+      slug: "missing-post",
+      state: "missing",
+    }),
+    productionSyncRecord({
+      differences: ["unexpected-production"],
+      slug: "unexpected-post",
+      state: "unexpected",
+    }),
+  ];
+  const counts = Object.fromEntries(
+    ["deployed", "pending", "missing", "unexpected"].map((stateName) => [
+      stateName,
+      resolvedRecords.filter((record) => record.state === stateName).length,
+    ]),
+  );
+  const resolvedStatus = status ?? (
+    counts.pending + counts.missing + counts.unexpected === 0
+      ? "synchronized"
+      : "attention"
+  );
+  return {
+    version,
+    mode: "read-only",
+    status: resolvedStatus,
+    checkedAt: "2026-08-10T12:34:56.000Z",
+    origin: "https://blog-iota-five-59.vercel.app",
+    manifestUrl: "https://blog-iota-five-59.vercel.app/content.json",
+    localBuildDate: "2026-08-10",
+    productionEtag:
+      'W/"sha256-cccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccc"',
+    productionLastModified: "Mon, 10 Aug 2026 00:00:00 GMT",
+    counts,
+    records: resolvedRecords,
+    safety: {
+      networkChecked: true,
+      authorFilesChanged: false,
+      commitCreated: false,
+      pushExecuted: false,
+      ...safety,
+    },
+  };
+}
+
 function inboxReadinessReport({
   entry = {},
   reportDate = "2026-08-06",
@@ -921,11 +1007,11 @@ function authorDoctorReport() {
     ["delivery-baseline", "git", "Delivery baseline", "origin/main · synchronized", "main -> origin/main synchronized"],
     ["author-identity", "git", "Author identity", "name configured · email configured", "user.name and user.email configured"],
     ["workspace-contract", "workspace", "Workspace contract", "zach424-myblog · node >=22.13.0", "zach424-myblog · node >=22.13.0"],
-    ["npm-scripts", "workspace", "Author scripts", "11/11 required scripts", "11 required author scripts"],
+    ["npm-scripts", "workspace", "Author scripts", "12/12 required scripts", "12 required author scripts"],
     ["workspace-dependencies", "workspace", "Workspace dependencies", "35/35 pinned packages", "all declared packages installed at pinned versions"],
     ["content-layout", "workspace", "Content layout", "5/5 required paths", "5 required authoring paths"],
     ["obsidian-vault", "vault", "Obsidian Vault", ".obsidian present", ".obsidian directory present"],
-    ["publisher-plugin", "vault", "MyBlog Publisher", "myblog-publisher@1.34.0 · desktop", "myblog-publisher 1.34.0 desktop plugin"],
+    ["publisher-plugin", "vault", "MyBlog Publisher", "myblog-publisher@1.35.0 · desktop", "myblog-publisher 1.35.0 desktop plugin"],
   ];
   const scripts = [
     "content:author:doctor",
@@ -938,6 +1024,7 @@ function authorDoctorReport() {
     "content:review:deliver",
     "content:review:status",
     "content:status",
+    "content:production",
     "release:check",
   ];
   const paths = [
@@ -972,7 +1059,7 @@ function authorDoctorReport() {
           isDesktopOnly: true,
           mainPresent: true,
           stylesPresent: true,
-          version: "1.34.0",
+          version: "1.35.0",
         },
       },
       workspace: {
@@ -2918,7 +3005,7 @@ test("renders a versioned maintenance ledger and opens an exact Vault note", asy
     createPluginHarness(),
   ]);
   const manifest = JSON.parse(manifestSource);
-  assert.equal(manifest.version, "1.34.0");
+  assert.equal(manifest.version, "1.35.0");
   assert.equal(manifest.minAppVersion, "1.5.7");
   assert.equal(manifest.isDesktopOnly, true);
   assert.match(styles, /^\.myblog-draft-create \{/mu);
@@ -2933,6 +3020,7 @@ test("renders a versioned maintenance ledger and opens an exact Vault note", asy
   assert.match(styles, /^\.myblog-draft-intent \{/mu);
   assert.match(styles, /myblog-draft-intent__signature/u);
   assert.match(styles, /^\.myblog-maintenance \{/mu);
+  assert.match(styles, /^\.myblog-production-sync \{/mu);
   assert.match(styles, /\[data-status="overdue"\]/u);
   assert.match(styles, /font-family: var\(--font-interface\)/u);
   assert.match(styles, /^\.myblog-review-proof \{/mu);
@@ -3005,6 +3093,114 @@ test("renders a versioned maintenance ledger and opens an exact Vault note", asy
     ["content/projects/myblog.md"],
   );
   assert.equal(harness.modals[0].closed, true);
+});
+
+test("renders a strict read-only production content synchronization ledger", async () => {
+  const harness = await createPluginHarness();
+  const command = findCommand(harness, "inspect-production-content-sync");
+  assert.equal(command.checkCallback(true), true);
+  assert.equal(command.checkCallback(false), true);
+  assert.equal(harness.spawned.length, 1);
+  assert.deepEqual(plain(harness.spawned[0].args), [
+    "/d",
+    "/s",
+    "/c",
+    "npm",
+    "--silent",
+    "run",
+    "content:production",
+    "--",
+    "--format",
+    "json",
+  ]);
+
+  harness.spawned[0].child.stdout.emit(
+    "data",
+    Buffer.from(JSON.stringify(productionSyncReport())),
+  );
+  harness.spawned[0].child.emit("close", 0);
+
+  assert.equal(harness.notices[0].hidden, true);
+  assert.equal(harness.modals.length, 1);
+  const modal = harness.modals[0];
+  assert.equal(modal.contentEl.classes.has("myblog-production-sync"), true);
+  assert.equal(modal.contentEl.attributes["data-status"], "attention");
+  assert.equal(elementsByTag(modal, "button").length, 0);
+  assert.deepEqual(
+    allElements(modal.contentEl)
+      .filter((element) => element.classes.has("myblog-production-sync__record"))
+      .map((element) => element.attributes["data-state"]),
+    ["deployed", "pending", "missing", "unexpected"],
+  );
+  const text = allElements(modal.contentEl).map((element) => element.text).join(" ");
+  assert.match(text, /PRODUCTION CONTENT \/ ATTENTION/u);
+  assert.match(text, /1 已上线.*1 待部署.*1 生产缺失.*1 生产多出/su);
+  assert.match(text, /content\/projects\/pending-project\.md/u);
+  assert.match(text, /https:\/\/blog-iota-five-59\.vercel\.app\/posts\/unexpected-post/u);
+  assert.match(text, /只读取本地正式内容并请求生产 content\.json/u);
+  assert.match(harness.notices.at(-1).message, /生产内容同步状态已更新/u);
+
+  const mobile = await createPluginHarness({ desktop: false });
+  assert.equal(
+    findCommand(mobile, "inspect-production-content-sync").checkCallback(true),
+    false,
+  );
+  assert.equal(mobile.spawned.length, 0);
+});
+
+test("fails closed on untrusted production synchronization evidence without retrying", async (t) => {
+  const unsafePath = productionSyncReport();
+  unsafePath.records[0].sourcePath = "content/posts/../private.md";
+  const wrongCounts = productionSyncReport();
+  wrongCounts.counts.deployed = 9;
+  const invalidCases = [
+    ["invalid JSON", "not-json"],
+    ["unsupported version", JSON.stringify(productionSyncReport({ version: 2 }))],
+    ["unsafe source path", JSON.stringify(unsafePath)],
+    [
+      "network safety mismatch",
+      JSON.stringify(productionSyncReport({ safety: { networkChecked: false } })),
+    ],
+    ["count mismatch", JSON.stringify(wrongCounts)],
+  ];
+
+  for (const [name, output] of invalidCases) {
+    await t.test(name, async () => {
+      const harness = await createPluginHarness();
+      findCommand(harness, "inspect-production-content-sync").checkCallback(false);
+      harness.spawned[0].child.stdout.emit("data", Buffer.from(output));
+      harness.spawned[0].child.emit("close", 0);
+      assert.equal(harness.spawned.length, 1);
+      assert.equal(harness.modals.length, 0);
+      assert.match(
+        harness.notices.at(-1).message,
+        /生产同步证据不可用.*不会自动重试/su,
+      );
+    });
+  }
+});
+
+test("keeps production transport failures separate from content drift", async () => {
+  const harness = await createPluginHarness({ platform: "linux" });
+  findCommand(harness, "inspect-production-content-sync").checkCallback(false);
+  assert.equal(harness.spawned[0].executable, "npm");
+  assert.deepEqual(plain(harness.spawned[0].args), [
+    "--silent",
+    "run",
+    "content:production",
+    "--",
+    "--format",
+    "json",
+  ]);
+  assert.equal(harness.spawned[0].options.shell, false);
+  harness.spawned[0].child.stderr.emit(
+    "data",
+    Buffer.from("[production-sync] 生产清单请求在 10000ms 后超时"),
+  );
+  harness.spawned[0].child.emit("close", 1);
+  assert.equal(harness.modals.length, 0);
+  assert.match(harness.notices.at(-1).message, /请求在 10000ms 后超时/u);
+  assert.doesNotMatch(harness.notices.at(-1).message, /待部署|生产缺失|生产多出/u);
 });
 
 test("shows a local-only pending review delivery rail without executing recovery", async () => {
@@ -3857,6 +4053,7 @@ test("keeps diagnosis and delivery recovery outside the author transaction lease
   const bypassCommands = [
     "inspect-inbox-readiness",
     "inspect-published-maintenance",
+    "inspect-production-content-sync",
     "inspect-author-environment",
     "inspect-delivery-triage",
     "inspect-review-delivery",

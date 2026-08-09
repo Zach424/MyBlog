@@ -50,6 +50,8 @@ Feed 顶层声明 JSON Feed 1.1 `version`、站点标题/说明、`home_page_url
 
 清单不是第三个正文 Feed。JSON Feed 面向订阅读者并携带纯文本，`content.json` 面向同步器并携带地址与摘要验证器，单篇 `source.md` 才携带 Markdown 结构。三者从同一公开 getter 和稳定顺序派生；应用测试与生产冒烟逐项请求清单中的源文，要求响应 ETag 与 `markdown_etag` 在强/弱形式归一化后具有相同 opaque digest。
 
+本地 `content:production` 检查器把这个清单作为唯一生产事实：为相同 origin 从正式 Git 内容生成期望文档，在严格验证响应协议后按 id、`markdown_etag` 与其余公开字段输出 deployed/pending/missing/unexpected。传输失败与 schema 漂移不会生成内容状态；命令只读且有意不进入默认构建或 Actions。
+
 ## 单篇 Markdown 源文
 
 - URL：文章 `/posts/<slug>/source.md`，项目 `/projects/<slug>/source.md`
