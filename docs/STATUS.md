@@ -14,7 +14,7 @@ MyBlog 是 Zach424 的个人技术知识库与公开工程日志。它把学习�
 | 公开阅读 | done | 首页、文章、项目、专题、标签、搜索、关于、响应式、深色模式与详情页封面 |
 | 读者分享 | done | 文章/项目服务端规范链接、Web Share、URL/Markdown 引用 Clipboard、全 ASCII 标点转义、取消静默、共享 single-flight、`aria-live` 回执、无 JavaScript 恢复路径与 print 隔离 |
 | Markdown | done | GFM、代码高亮、语言标签、渐进增强的一键复制、与实际渲染一致的 H1–H6 heading id、H2/H3 目录与原生永久链接、Obsidian 兼容脚注/尾注与行内/块级数学公式、A4 打印/PDF 版式、阅读时间、相邻文章与响应式正文图片 |
-| 内容发现 | done | SEO、内容级 OG/Twitter 封面、JSON-LD、JSON Feed 1.1、RSS、Sitemap、robots、本地全文搜索 |
+| 内容发现 | done | SEO、内容级 OG/Twitter 封面、JSON-LD、JSON Feed 1.1、RSS、文章/项目可移植 Markdown 源文、Sitemap、robots、本地全文搜索 |
 | 网页写作 | done | `/studio`、GitHub OAuth、Decap workflow、PR、按 slug 归档媒体、稳定 slug 锁定、双层 SHA-256 冲突预检、快速重选 latest-wins、生产规则公式预览与全字段只读发布清单 |
 | Obsidian 写作 | done | Vault、三类受信模板、桌面插件 1.34.0、文件名唯一草稿身份、本地原子新建/安全改名/旧身份取证与严格清理、source-scoped 当前草稿作者意图、原始来源字节 SHA-256 摘要/导航双重绑定、作者意图与身份读取各自独立的 latest-wins generation/卸载失效、作者意图旧活动进程的专属 scope 接管与跨平台终止、媒体 COVER/BODY 来源/逐次替代文本/作者或文件名回退取证/精确变换、ALT 与 LINK occurrence 精确源码行导航、四个新发布/复核事务的 single-flight lease、阶段/输出活动脉冲、会话内最近终态回执与自动 doctor 联锁、13 项本机前置电路、统一只读 Git 交付分诊、版本化维护台账/Author Proof v3、两类安全重送/可信回执、deferred 并行草稿和新稿 `--check-only`/`--push` |
 | Inbox 发布就绪 | done | version 6/read-only 全草稿 ready/scheduled/blocked、每个可读来源的原始字节 SHA-256、Article/TIL/Project、精确站内目标/源码行/重复次数、媒体 COVER/BODY 用途/出现次数/源码行/最终替代文本及来源、空文本与文件名回退阻塞、真实媒体候选、目标/共享附件诊断、CLI 全库或 `--source` 聚焦 JSON 与 Obsidian 当前草稿原生摘要 |
@@ -39,7 +39,7 @@ MyBlog 是 Zach424 的个人技术知识库与公开工程日志。它把学习�
 - 视觉方向：Commit Trace / Evidence Rail，中文优先、工程档案感、浅深色响应式；
 - 运行时：Next.js 16.3.0、React 19.2.6、TypeScript 5、Node.js 22+；
 - 内容：仓库内 Markdown、YAML、Zod，GitHub 是唯一事实源；
-- 阅读：react-markdown、remark-gfm、remark-math、rehype-slug、rehype-highlight、rehype-katex 与 KaTeX；服务端 Markdown、中文脚注语义与回链、HTML + MathML 数学公式、MarkdownHeading 永久链接与 PrintSource 可信来源，最小 CodeBlock/ShareTrace 客户端岛、Web Share/Clipboard API、CommonMark 全 ASCII 标点引用转义、共享 single-flight 与 aria-live；GFM + math 共享 mdast 继续复现标题、链接、媒体和搜索语义，生产阅读与 Studio 共享 remark/rehype/KaTeX/安全 URL 规则，构建期公式使用 `trust: false`/严格资源上限；A4 `@page` 与 scoped print CSS 只重排既有语义 DOM；
+- 阅读：react-markdown、remark-gfm、remark-math、rehype-slug、rehype-highlight、rehype-katex 与 KaTeX；服务端 Markdown、中文脚注语义与回链、HTML + MathML 数学公式、MarkdownHeading 永久链接、PrintSource 可信来源与字段受限的可移植 `source.md`，最小 CodeBlock/ShareTrace 客户端岛、Web Share/Clipboard API、CommonMark 全 ASCII 标点引用转义、共享 single-flight 与 aria-live；GFM + math 共享 mdast 继续复现标题、链接、媒体、搜索和源文 URL 改写语义，生产阅读与 Studio 共享 remark/rehype/KaTeX/安全 URL 规则，构建期公式使用 `trust: false`/严格资源上限；A4 `@page` 与 scoped print CSS 只重排既有语义 DOM；
 - 发布：Decap CMS 3.14.1、GitHub OAuth、stable slug 自定义控件、同源媒体清单、内存会话账本、per-input generation 与 SHA-256 冲突确认、官方 preview template、同源只读公式/全字段预检端点、public-only 内容维护快照与严格浏览器契约、内容字段 allowlist、Obsidian 自有插件 1.34.0、Article/TIL/Project 受信模板、文件名唯一草稿身份、Vault 原子创建/旧身份清理与 FileManager 安全改名、身份读取独立 latest-wins/unload owner、version 6 inbox evidence、原始来源字节 `sourceSha256`、`--source` 聚焦模式与 `DRAFT → PUBLIC`/`MEDIA TRACE`/`LINK TRACE` 当前草稿摘要、摘要打开和 ALT/REF 导航前的全文摘要复核、当前草稿意图命令/报告/异步读取的 latest-wins generation、卸载失效和专属进程 scope 接管、媒体用途/次数/行号/替代文本/来源账本与精确行导航、空文本与文件名回退 blocker 双向核对、四事务 single-flight lease/active 阶段与 stdout/stderr 活动快照/会话内最近终态回执/自动 author-doctor interlock/version 1 的 13 项 preflight circuit、单快照 Git 交付 switchyard、版本化维护 deadline ledger/复核 Author Proof v3/两类本地交付 rail 与 sealed receipt/发布 Commit Envelope/inbox 只读 Modal、候选 SHA-256 与 Git-clean blob 绑定、两类待交付提交识别和独立安全重送、精确 OID refspec、防重复发布、manifest 稳定性、共享 worktree impact classifier、deferred 路径证据、review-note/publish-note 领域与 Git 交付门、六条纯文本降级、统一子进程生命周期与 Node 发布脚本；
 - 媒体：Sharp 0.35.3、浏览器 magic/帧结构解析、`createImageBitmap` 与 Web Crypto、构建期确定性摘要清单、mdast-util-from-markdown 2.0.3、`next/image`、固有尺寸、WebP 优化、引用所有权与 Git 附件跟踪；
 - 维护：内容新鲜度、根暂存媒体与正文/结构化端点外链的 CLI；Studio 与 Obsidian 都可显示公开 Current 队列，确定性库存进入本地发布候选，时间/DNS 敏感的外链 HEAD 只显式运行；
@@ -52,15 +52,15 @@ MyBlog 是 Zach424 的个人技术知识库与公开工程日志。它把学习�
 
 - 仓库：<https://github.com/Zach424/MyBlog>，生产分支 `main`；
 - 生产站：<https://blog-iota-five-59.vercel.app>；
-- 本轮实现提交：`a55e68bc172c92be26ebdebb456667e6fc25efd4`（JSON Feed 1.1）与 `8114e0859fac883ea77733dbd99968826428c2bb`（Vercel 缓存头归一化验证）；
-- 自动交付：[Quality Gate #159](https://github.com/Zach424/MyBlog/actions/runs/31092156541) 成功；首次 [Production Smoke #152](https://github.com/Zach424/MyBlog/actions/runs/31092209143) 暴露缓存验证器问题，修正后的 [Quality Gate](https://github.com/Zach424/MyBlog/actions/runs/31322381543) 与 [Production Smoke](https://github.com/Zach424/MyBlog/actions/runs/31322410233) 均成功；
-- 最新完成迭代：0088 JSON Feed 1.1；
+- 本轮实现提交：`a753b65d77f1f4aea2bc295049d8f404047abfbb`（文章/项目可移植 Markdown 源文）；
+- 自动交付：[Quality Gate #163](https://github.com/Zach424/MyBlog/actions/runs/31324365675) 与 [Production Smoke #156](https://github.com/Zach424/MyBlog/actions/runs/31324399522) 均成功；
+- 最新完成迭代：0089 可移植 Markdown 源文；
 - Obsidian 状态：仓库根目录就是 Vault，`docs/STATUS.md` 与 `docs/iterations/*.md` 可直接阅读和维护；
 - 手动外部接入：自定义域名、统计、评论、公开邮箱均暂缓，不阻塞当前开发。
 
 ## 本轮新增能力
 
-公开发现层新增规范 JSON Feed 1.1 `/feed.json` 与根页面 autodiscovery。Feed 复用公开内容索引、请求时 origin、RSS 稳定顺序和 Markdown AST 纯文本管线，当前输出 4 条文章/TIL/项目、20,697 字节；item 提供稳定绝对 id/url、摘要、纯文本正文、RFC 3339 日期、tags 与可选封面，不泄漏 draft、源路径或原始 body。完整发布门为 400/400、46 页、19/19、生产依赖审计 0；稳定生产为 24 条 Sitemap URL、OAuth 302、九路 HTML 预算全绿。首次生产冒烟还证明 Vercel CDN 会消费 SWR；验证器现同时接受源响应与官方归一化后的公开缓存策略，并继续拒绝错误 TTL、private/no-store 和错误 SWR。
+文章与项目详情新增相邻 `/source.md`、`text/markdown` alternate 与无需 JavaScript 的 Portable source 入口。导出保留 Markdown 结构，只输出公开 YAML allowlist，并以共享 AST 源码位置把站内链接、本地媒体和自页面 fragment 转为当前 origin 的绝对 URL；外链/代码保持原样，草稿、未来、未知记录和作者内部字段失败关闭。响应具有安全文件名、HTML canonical、`noindex`、分层缓存与 `no-store` 404。完整发布门为 404/404、46 页、20/20、生产依赖审计 0；桌面/320px 无溢出，稳定生产为 24 条 Sitemap URL、OAuth 302、九路 HTML 预算与全部源文契约全绿。
 
 ## 风险与下一步
 
@@ -77,5 +77,6 @@ MyBlog 是 Zach424 的个人技术知识库与公开工程日志。它把学习�
 11. checkout/setup-node v6 的六处移动 tag 风险已关闭：执行 ref 全部固定到从官方仓库核对的完整 SHA，测试与发布前检查共享唯一事实源。不可变 pin 不会自动接收上游修复，自动更新机器人继续暂缓；后续必须主动核对官方 refs，不能把 `# v6` 注释当作执行引用。
 12. 替代主机 raw 100KB 假绿已由双层预算关闭。Node gzip 是确定性传输模拟，不包含 Vercel CDN Brotli、响应头、TLS 或真实用户 Web Vitals；稳定域名变化时必须同步更新 origin 与带来源的生产基线，基线增长也必须经过产品价值复核，不能为单路由临时抬线。
 13. JSON Feed 当前为 4 条、20.7 KiB，全文 `content_text` 会随公开内容线性增长并丢失 Markdown 格式结构；当前不需要分页，达到有证据的体积或生成成本阈值后再评估最近 N 条、分页或摘要策略。Vercel 会消费 SWR，生产验证必须检查等价缓存语义而不是只比较源站字符串。
+14. 单篇 Markdown 源文有意不是仓库作者文件的无损 round-trip，raw HTML 属性也不在 URL 改写契约内；当前还没有显式 ETag/条件 GET。下一轮先以最终 UTF-8 字节摘要补齐稳定 ETag、Last-Modified、304 与生产缓存验证，不增加外部同步服务或写入 API。
 
-下一轮唯一主任务：实现文章与项目的规范 Markdown 源文端点 `/posts/[slug]/source.md`、`/projects/[slug]/source.md`，并在详情页提供可访问入口和 `text/markdown` alternate。先定义公开 frontmatter allowlist、canonical、绝对化站内链接/本地媒体、安全文件名、缓存、404 与内部字段防泄漏契约，再以失败测试驱动生成器、路由、metadata 和生产冒烟；不接入外部服务。
+下一轮唯一主任务：为文章/项目 Markdown 源文增加确定性 ETag、Last-Modified 与条件 GET。先锁定最终 UTF-8 字节哈希、内容变化、`If-None-Match` 命中/不命中、304 无正文、200/304 共享安全与缓存头以及 404 不缓存契约，再以失败测试驱动实现并验证真实 Vercel 行为；不接入外部同步服务、数据库或写入 API。

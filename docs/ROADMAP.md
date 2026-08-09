@@ -8,11 +8,11 @@
 | 4. 作者自助写作 | done | `/studio` OAuth + editorial workflow PR、Obsidian Vault/模板/附件/真实 `--push` |
 | 5. Vercel 原生迁移 | production live | 原生 Next.js、无 Cloudflare 依赖、24 路由生产冒烟通过 |
 | 6. 所有者生产上线 | done | Git 自动 Production、稳定域名自动冒烟、双端发布、回滚与恢复均已验收 |
-| 7. 持续内容与作者体验 | in progress | Iteration 0088 完成 JSON Feed 1.1、根页面发现、RSS 同序契约与 Vercel 缓存归一化验证 |
+| 7. 持续内容与作者体验 | in progress | Iteration 0089 完成文章/项目可移植 Markdown 源文、详情发现入口、公开字段隔离与生产缓存/404 契约 |
 
 ## 当前唯一主线
 
-进入持续内容与作者体验阶段。Iteration 0088 已让现有公开索引同时生成 JSON Feed 1.1 与 RSS：`/feed.json` 当前提供 4 条、20,697 字节的绝对 URL、纯文本全文、日期、标签和可选封面；根页面可自动发现，生产契约验证 MIME、缓存、隐私字段以及与 RSS 的完全同序。首次线上失败还把 Vercel 消费 SWR 的平台行为固化为有边界的等价缓存验证。下一主线实现文章/项目的规范 Markdown 源文端点与详情页入口，为 Obsidian、读者和自动化工具提供单篇可移植源文，同时严格限定公开 frontmatter、链接/媒体绝对化和内部字段防泄漏。需要品牌域名时再绑定自定义域名，旧公开站继续只作为迁移历史证据。
+进入持续内容与作者体验阶段。Iteration 0089 已让每篇公开文章/项目提供相邻 `source.md`：详情页同时输出 `text/markdown` alternate 与无需 JavaScript 的 Portable source 入口；公开 YAML 使用显式 allowlist，正文以 AST 证据绝对化站内链接、本地媒体和自页面 fragment，草稿/未来/未知记录失败关闭。生产契约覆盖 MIME、文件名、HTML canonical、`noindex`、Vercel 等价缓存和 `no-store` 404。下一主线为源文增加确定性 ETag、Last-Modified 与条件 GET，让 Obsidian/自动化同步器只在正文真正变化时下载完整内容。需要品牌域名时再绑定自定义域名，旧公开站继续只作为迁移历史证据。
 
 ## 已知风险
 
@@ -36,6 +36,7 @@
 - 内部链接支持内容页和严格标题锚点，行内/引用式/自引用共享实际渲染 slug 规则，详情页与公开知识地图共享 outgoing/backlinks；明确不支持 Obsidian 块引用，标题改名必须同步深链，当前双列 SVG 为小型内容库优化，内容规模增长后需要过滤/分组；
 - 正文普通 HTTPS 与结构化 repository/demo/canonical 已有统一确定性库存和受控实时报告；实时 DNS/网络结果有意不进 Actions，timeout/限流不能冒充内容错误；
 - 文章与项目已有完整 A4 打印版式，但 PDF 仍由读者通过浏览器打印生成，仓库不把二进制 PDF 当作发布源，也不提供服务端 PDF 缓存；后续版式变化仍需重新做真实 PDF 全页复核；
+- 单篇 Markdown 源文是公开投影而非作者文件的无损 round-trip：字段顺序、注释和写作字段有意不保留，项目 `type: project` 只属于公开 schema；raw HTML 属性不参与 URL 改写。当前 CDN 已缓存但没有显式 ETag/条件 GET，下一轮补齐同步效率契约；
 - 自定义域名、公开邮箱、统计和评论尚未选择，但不阻塞生产上线。
 
 ## 平台历史
