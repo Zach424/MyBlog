@@ -66,6 +66,12 @@ Schema 让 Obsidian 插件、脚本与其他客户端无需导入本站 TypeScri
 
 `content:production:wait -- --source <正式 Markdown>` 在同一协议上增加单篇有界收敛。它冻结来源 SHA-256 与目标 `markdown_etag`，首次读取完整清单，随后携带已验证响应 ETag 进行条件 GET；严格 304 复用上一快照，修改响应则重新验证全部清单后再比较目标。只有该 id 与冻结公开记录完全一致才结束为 deployed；pending/missing 继续到总时限，生产多出、来源漂移或协议错误立即失败。作者可以手动运行；Obsidian 1.41.0 也能在可信正常交付或 sealed recovery delivery 的 Git handoff、可能存在的作者事务释放和 Vault reconcile 后自动启动同一只读等待器。它仍不是部署器、Webhook 或默认 CI 门，失败不得反向触发 Git。
 
+## 结构化发现传输预算
+
+`/content.json`、`/content.schema.json`、`/feed.json`、`/rss.xml`、`/sitemap.xml` 与 `/robots.txt` 共用独立的确定性传输预算。Iteration 0100 以稳定生产提交 `67e7848` 在 2026-08-10 的完整响应为基线；按固定顺序记录 raw UTF-8 与 Node zlib gzip 字节。raw 上限为 `baseline + max(50%, 4096 B)` 后按 1 KiB 取整，gzip 上限为 `baseline + max(50%, 1024 B)` 后按 512 B 取整。
+
+预算检查不依赖 CDN 是否实际协商 gzip/Brotli；它用同一响应正文生成可复现的传输代理。本地真实 Next 测试使用较短的固定测试 origin，生产冒烟使用实际传入 origin，因此两者共享上限但各自报告真实字节。六个端点必须恰好覆盖一次，漏测、重复、意外端点、raw 超限或 gzip 超限都会失败。基线只能在确认增长属于有价值的内容/协议变化、重新测量真实生产并记录来源提交后更新；不能为了让门变绿自动读取当前输出重置自己。
+
 ## 单篇 Markdown 源文
 
 - URL：文章 `/posts/<slug>/source.md`，项目 `/projects/<slug>/source.md`

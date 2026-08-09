@@ -104,6 +104,10 @@ test("connects Vercel verification, maintenance reporting, rollback, and Studio 
   assert.match(smoke, /last-modified/);
   assert.match(smoke, /sha256-/);
   assert.match(smoke, /formatHtmlBudgetReport/);
+  assert.match(smoke, /formatDiscoveryBudgetReport/);
+  assert.match(smoke, /assertDiscoveryBudgetCoverage/);
+  assert.match(smoke, /assertDiscoveryBudgets/);
+  assert.match(smoke, /discoveryBudgetReports/);
   assert.match(smoke, /\/knowledge/);
   assert.match(smoke, /\/blog 永久重定向/);
   assert.match(smoke, /same-origin-allow-popups/);

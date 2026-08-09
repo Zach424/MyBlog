@@ -3,6 +3,12 @@ import { createHash } from "node:crypto";
 import { access, readFile } from "node:fs/promises";
 import test from "node:test";
 import { parse as parseYaml } from "yaml";
+import {
+  assertDiscoveryBudgetCoverage,
+  assertDiscoveryBudgets,
+  formatDiscoveryBudgetReport,
+  measureDiscoveryBudget,
+} from "../scripts/discovery-budget.mjs";
 
 const developmentPreviewMeta =
   /<meta(?=[^>]*\bname=["']codex-preview["'])(?=[^>]*\bcontent=["']development["'])[^>]*>/i;
@@ -373,7 +379,7 @@ test("server-renders a shareable search query against posts and projects", async
   assert.match(formulaHtml, /MyBlog — 把学习记录做成工程资产/u);
 });
 
-test("publishes a content manifest, its schema, JSON Feed, RSS, Sitemap and robots from the same public index", async () => {
+test("publishes a content manifest, its schema, JSON Feed, RSS, Sitemap and robots from the same public index", async (context) => {
   const [manifestResponse, schemaResponse, jsonFeedResponse, rssResponse, sitemapResponse, robotsResponse] = await Promise.all([
     render("/content.json", { accept: "application/json" }),
     render("/content.schema.json", { accept: "application/schema+json" }),
@@ -570,6 +576,21 @@ test("publishes a content manifest, its schema, JSON Feed, RSS, Sitemap and robo
   const robots = await robotsResponse.text();
   assert.match(robots, /User-agent: \*/);
   assert.match(robots, /Sitemap: https:\/\/blog\.example\.test\/sitemap\.xml/);
+
+  const discoveryBudgetReports = [
+    measureDiscoveryBudget({ pathname: "/content.json", body: manifestSource }),
+    measureDiscoveryBudget({
+      pathname: "/content.schema.json",
+      body: schemaSource,
+    }),
+    measureDiscoveryBudget({ pathname: "/feed.json", body: jsonFeedSource }),
+    measureDiscoveryBudget({ pathname: "/rss.xml", body: rss }),
+    measureDiscoveryBudget({ pathname: "/sitemap.xml", body: sitemap }),
+    measureDiscoveryBudget({ pathname: "/robots.txt", body: robots }),
+  ];
+  context.diagnostic(formatDiscoveryBudgetReport(discoveryBudgetReports));
+  assertDiscoveryBudgetCoverage(discoveryBudgetReports);
+  assertDiscoveryBudgets(discoveryBudgetReports);
 });
 
 test("publishes portable Markdown sources without author-only fields", async () => {

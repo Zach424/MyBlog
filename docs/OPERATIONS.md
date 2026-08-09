@@ -132,6 +132,8 @@ npm run production:smoke -- https://your-production.example --expect-oauth
 
 必须验证：首页、集合、文章、项目、知识地图、搜索、公开内容清单及 Schema、JSON Feed、RSS、robots、Sitemap 全部 URL、文章/项目 Markdown 源文、Studio HTML/配置/媒体清单/媒体预检/稳定 slug 控件/预览/固定版本运行时、OAuth 跳转、安全头、缓存和真实 404；清单、JSON Feed 与 RSS 要保持同一公开 URL 顺序，根页面必须包含实际生产 origin 的清单/Feed 发现链接。清单必须验证 version 1、字段 allowlist、绝对 HTML/Markdown URL、每项强 SHA-256 `markdown_etag`、全部真实源文强弱等价、MIME、文件名、self/describedby/up Link、`noindex`、Last-Modified、Vercel 等价缓存与空 304；Schema 必须验证 Draft 2020-12、同源 `$id`、结构关键字、MIME、文件名、self/describes/up Link、`noindex`、SHA-256 ETag、等价缓存与空 304。源文必须验证详情页 alternate/可见入口、公开 frontmatter、绝对链接/媒体、MIME、文件名、canonical、`noindex`、Vercel 等价缓存、SHA-256 ETag、Last-Modified、携带响应 ETag 的空 304，以及未知 slug 的 `no-store` 404。生产响应允许 Brotli CDN 把强标签弱化并精简 304 metadata，但强/弱 opaque digest 必须相同，Cache-Control 必须安全，仍存在的日期/链接/robots 不能漂移。命令会为九条关键 HTML 路由输出实际生产域名下的 raw/gzip、阈值、基线与余量，任何漏测、重复或超限都会失败。首次上线或域名切换还需用未登录浏览器覆盖桌面、320px、深色和键盘路径；域名变化后必须重新核对 manifest/schema/Feed/source URL、验证器、预算 origin 与真实生产基线，不能沿用替代主机的假绿。
 
+同一命令还会为清单、Schema、JSON Feed、RSS、Sitemap 与 robots 输出 `[discovery-budget]` 六行 raw/gzip 证据。任一路由缺失、重复、超出自己的冻结上限都会阻止冒烟；不要通过删除检查或自动采用当前输出解决失败。若增长是一次有意的内容/协议变化，先核对实际正文与公开集合，再在稳定生产重新测量六端点，同时更新基线数值、日期、来源提交、测试和迭代归档。域名变化会改变绝对 URL 和正文大小，必须以新稳定 origin 重新建立有来源基线。
+
 ## 故障等级
 
 | 等级 | 示例 | 处理 |

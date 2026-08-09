@@ -7,6 +7,12 @@ import {
   HTML_ROUTE_BASELINES,
   measureHtmlBudget,
 } from "./html-budget.mjs";
+import {
+  assertDiscoveryBudgetCoverage,
+  assertDiscoveryBudgets,
+  formatDiscoveryBudgetReport,
+  measureDiscoveryBudget,
+} from "./discovery-budget.mjs";
 
 function invariant(condition, message) {
   if (!condition) throw new Error(message);
@@ -551,6 +557,22 @@ export async function runProductionSmoke(originInput, { expectOAuth = false } = 
   } catch {
     throw new Error("JSON Feed 响应不是有效 JSON");
   }
+  const discoveryBudgetReports = [
+    measureDiscoveryBudget({
+      pathname: "/content.json",
+      body: contentManifest.body,
+    }),
+    measureDiscoveryBudget({
+      pathname: "/content.schema.json",
+      body: contentSchema.body,
+    }),
+    measureDiscoveryBudget({ pathname: "/feed.json", body: jsonFeed.body }),
+    measureDiscoveryBudget({ pathname: "/rss.xml", body: rss.body }),
+    measureDiscoveryBudget({ pathname: "/sitemap.xml", body: sitemap.body }),
+    measureDiscoveryBudget({ pathname: "/robots.txt", body: robots.body }),
+  ];
+  assertDiscoveryBudgetCoverage(discoveryBudgetReports);
+  assertDiscoveryBudgets(discoveryBudgetReports);
   const jsonFeedIds = Array.isArray(jsonFeedPayload.items)
     ? jsonFeedPayload.items.map((item) => item.id)
     : [];
@@ -749,6 +771,7 @@ export async function runProductionSmoke(originInput, { expectOAuth = false } = 
     sitemapCount: sitemapUrls.length,
     oauth: oauth.response.status,
     htmlBudgetReports,
+    discoveryBudgetReports,
   };
 }
 
@@ -762,6 +785,7 @@ if (isEntryPoint) {
   try {
     const result = await runProductionSmoke(origin, { expectOAuth: process.argv.includes("--expect-oauth") });
     console.log(formatHtmlBudgetReport(result.htmlBudgetReports));
+    console.log(formatDiscoveryBudgetReport(result.discoveryBudgetReports));
     console.log(`[smoke] ${result.origin}: ${result.sitemapCount} routes, OAuth ${result.oauth}`);
   } catch (error) {
     console.error(`[smoke] ${error instanceof Error ? error.message : String(error)}`);
