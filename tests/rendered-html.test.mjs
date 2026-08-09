@@ -1,4 +1,5 @@
 import assert from "node:assert/strict";
+import { createHash } from "node:crypto";
 import { access, readFile } from "node:fs/promises";
 import test from "node:test";
 import { parse as parseYaml } from "yaml";
@@ -6,14 +7,15 @@ import { parse as parseYaml } from "yaml";
 const developmentPreviewMeta =
   /<meta(?=[^>]*\bname=["']codex-preview["'])(?=[^>]*\bcontent=["']development["'])[^>]*>/i;
 
-async function render(pathname = "/") {
+async function render(pathname = "/", options = {}) {
   if (!process.env.TEST_BASE_URL) throw new Error("TEST_BASE_URL is required");
   return fetch(new URL(pathname, process.env.TEST_BASE_URL), {
     redirect: "manual",
     headers: {
-      accept: "text/html",
+      accept: options.accept ?? "text/html",
       "x-forwarded-host": "blog.example.test",
       "x-forwarded-proto": "https",
+      ...options.headers,
     },
   });
 }
@@ -453,13 +455,19 @@ test("publishes portable Markdown sources without author-only fields", async () 
     render("/posts/not-a-public-record/source.md"),
   ]);
 
-  for (const [response, slug, canonical] of [
+  for (const [response, slug, canonical, lastModified] of [
     [
       postResponse,
       "building-a-maintainable-blog",
       "https://blog.example.test/posts/building-a-maintainable-blog",
+      "Wed, 05 Aug 2026 00:00:00 GMT",
     ],
-    [projectResponse, "myblog", "https://blog.example.test/projects/myblog"],
+    [
+      projectResponse,
+      "myblog",
+      "https://blog.example.test/projects/myblog",
+      "Thu, 06 Aug 2026 00:00:00 GMT",
+    ],
   ]) {
     assert.equal(response.status, 200);
     assert.match(response.headers.get("content-type") ?? "", /^text\/markdown;\s*charset=utf-8$/iu);
@@ -475,9 +483,19 @@ test("publishes portable Markdown sources without author-only fields", async () 
       response.headers.get("link"),
       `<${canonical}>; rel="canonical"; type="text/html"`,
     );
+    assert.match(
+      response.headers.get("etag") ?? "",
+      /^"sha256-[0-9a-f]{64}"$/u,
+    );
+    assert.equal(response.headers.get("last-modified"), lastModified);
   }
 
   const postSource = await postResponse.text();
+  const postEtag = postResponse.headers.get("etag");
+  assert.equal(
+    postEtag,
+    `"sha256-${createHash("sha256").update(postSource, "utf8").digest("hex")}"`,
+  );
   const postMatch = /^---\n([\s\S]*?)\n---\n\n([\s\S]*)$/u.exec(postSource);
   assert.ok(postMatch);
   const postFrontmatter = parseYaml(postMatch[1]);
@@ -510,6 +528,30 @@ test("publishes portable Markdown sources without author-only fields", async () 
   assert.equal(projectFrontmatter.draft, undefined);
   assert.equal(missingResponse.status, 404);
   assert.equal(missingResponse.headers.get("cache-control"), "no-store");
+
+  const conditionalResponse = await render(
+    "/posts/building-a-maintainable-blog/source.md",
+    {
+      accept: "text/markdown",
+      headers: { "if-none-match": postEtag },
+    },
+  );
+  assert.equal(conditionalResponse.status, 304);
+  assert.equal(await conditionalResponse.text(), "");
+  assert.equal(conditionalResponse.headers.get("etag"), postEtag);
+  assert.equal(
+    conditionalResponse.headers.get("last-modified"),
+    "Wed, 05 Aug 2026 00:00:00 GMT",
+  );
+  assert.equal(
+    conditionalResponse.headers.get("cache-control"),
+    "public, max-age=0, s-maxage=3600, stale-while-revalidate=86400",
+  );
+  assert.equal(
+    conditionalResponse.headers.get("link"),
+    '<https://blog.example.test/posts/building-a-maintainable-blog>; rel="canonical"; type="text/html"',
+  );
+  assert.equal(conditionalResponse.headers.get("x-robots-tag"), "noindex");
 });
 
 test("removes starter artifacts and keeps the Vercel-native design contract explicit", async () => {

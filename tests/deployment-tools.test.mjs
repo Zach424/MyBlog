@@ -77,6 +77,9 @@ test("connects Vercel verification, maintenance reporting, rollback, and Studio 
   assert.match(smoke, /\/posts\/building-a-maintainable-blog\/source\.md/);
   assert.match(smoke, /\/projects\/myblog\/source\.md/);
   assert.match(smoke, /text\/markdown/);
+  assert.match(smoke, /if-none-match/);
+  assert.match(smoke, /last-modified/);
+  assert.match(smoke, /sha256-/);
   assert.match(smoke, /formatHtmlBudgetReport/);
   assert.match(smoke, /\/knowledge/);
   assert.match(smoke, /\/blog 永久重定向/);

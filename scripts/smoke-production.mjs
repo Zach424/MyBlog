@@ -179,11 +179,32 @@ export async function runProductionSmoke(originInput, { expectOAuth = false } = 
         source.response.headers.get("link") ===
           `<${expectation.canonical}>; rel="canonical"; type="text/html"` &&
         source.response.headers.get("x-robots-tag") === "noindex" &&
+        /^"sha256-[0-9a-f]{64}"$/u.test(source.response.headers.get("etag") ?? "") &&
+        Number.isFinite(Date.parse(source.response.headers.get("last-modified") ?? "")) &&
         hasMarkdownSourceCachePolicy(source.response.headers.get("cache-control")) &&
         source.body.startsWith("---\n") &&
         source.body.includes(`canonical: ${expectation.canonical}`) &&
         !/^\s*(?:draft|featured|sourcePath|body):/mu.test(source.body),
       `${expectation.slug} Markdown 公开源文契约异常`,
+    );
+    const etag = source.response.headers.get("etag");
+    const conditional = await request(origin, expectation.pathname, {
+      accept: "text/markdown",
+      headers: { "if-none-match": etag },
+    });
+    invariant(
+      conditional.response.status === 304 &&
+        conditional.body === "" &&
+        conditional.response.headers.get("etag") === etag &&
+        conditional.response.headers.get("last-modified") ===
+          source.response.headers.get("last-modified") &&
+        conditional.response.headers.get("link") ===
+          `<${expectation.canonical}>; rel="canonical"; type="text/html"` &&
+        conditional.response.headers.get("x-robots-tag") === "noindex" &&
+        hasMarkdownSourceCachePolicy(
+          conditional.response.headers.get("cache-control"),
+        ),
+      `${expectation.slug} Markdown 条件请求契约异常`,
     );
   }
   invariant(

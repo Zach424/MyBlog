@@ -44,6 +44,8 @@ Feed 顶层声明 JSON Feed 1.1 `version`、站点标题/说明、`home_page_url
 - 可移植性：canonical、站内页面、当前页 fragment 与本地媒体使用当前请求 origin 的绝对 URL；外链和代码保持原样
 - 响应：安全 ASCII 文件名、指向 HTML 页的 canonical `Link`、`X-Robots-Tag: noindex`
 - 缓存：浏览器立即复核，CDN 一小时 fresh、24 小时 stale-while-revalidate；Vercel 消费 CDN 指令后，客户端可只看到 `public, max-age=0`
+- 验证器：最终 UTF-8 表示的 SHA-256 强 ETag；Last-Modified 为最新公开日期事实的 UTC 零点
+- 条件读取：`If-None-Match` 支持精确/弱标签、列表与 `*`，命中返回空 304 并保留验证器、缓存、HTML canonical 和 `noindex`
 
 源文是公开阅读投影，不是 Git 作者原稿下载。它不包含 `draft`、`featured`、slug/sourcePath、统计派生字段或未公开记录；未知、草稿和未来内容统一返回 plain-text 404、`no-store` 与 `noindex`。JSON Feed 继续提供聚合纯文本，单篇源文提供 Markdown 结构，两者用途不同。
 

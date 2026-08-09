@@ -127,6 +127,8 @@ redirects:
 
 正文保留 Markdown 结构、代码和公式；共享 AST 只把根相对 link/image/definition 与当前页面 fragment 转为绝对公开 URL。HTTPS 外链、`mailto:` 等已有协议地址和代码示例保持原样。raw HTML 属性不是当前可移植改写契约的一部分，作者应继续使用受校验的 Markdown 链接/图片语法。源文只通过已过滤的公开 getter 获取记录；草稿、未来日期和未知 slug 返回 `404`，不能因知道文件名而绕过公开边界。
 
+源文验证器绑定最终 UTF-8 响应，而不是作者文件或数据库版本号：任何公开字段、正文、绝对 origin 或序列化变化都会得到新的 SHA-256 强 ETag。`Last-Modified` 使用 `publishedAt`、可选 `updatedAt` 与 `reviewedAt` 中最新日期的 UTC 零点；它只有日粒度，ETag 才是精确表示身份。GET 的 `If-None-Match` 使用弱比较，支持列表、弱标签与 `*`；匹配返回空 304，不匹配或畸形条件头返回完整 200。404 继续 `no-store`，不借验证器暴露非公开记录。
+
 ## Obsidian inbox 就绪状态
 
 `content/inbox/*.md`（不含说明 README）是作者本地待发布集合。运行 `npm run content:inbox` 或 Obsidian 命令“查看全部草稿发布就绪状态”，每篇会得到以下状态：

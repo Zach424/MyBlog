@@ -1,8 +1,10 @@
 import assert from "node:assert/strict";
+import { createHash } from "node:crypto";
 import test from "node:test";
 import { parse as parseYaml } from "yaml";
 import {
   createPublicMarkdown,
+  createPublicMarkdownResponse,
   getPublicMarkdownPath,
 } from "../lib/public-markdown.ts";
 
@@ -36,7 +38,7 @@ const post = {
   kind: "post",
   publishedAt: "2026-08-09",
   readingMinutes: 3,
-  reviewedAt: "2026-08-09",
+  reviewedAt: "2026-08-10",
   series: { order: 1, slug: "portable-source", title: "Portable source" },
   slug: "portable-source",
   sourcePath: "content/posts/portable-source.md",
@@ -158,4 +160,75 @@ test("creates a project source and stable endpoint without mutating the record",
   assert.equal(project.body, originalBody);
   assert.equal(getPublicMarkdownPath(project), "/projects/source-project/source.md");
   assert.equal(getPublicMarkdownPath(post), "/posts/portable-source/source.md");
+});
+
+test("derives a strong validator from the final UTF-8 representation", async () => {
+  const request = new Request(
+    "https://blog.example.test/posts/portable-source/source.md",
+  );
+  const response = createPublicMarkdownResponse(request, post);
+  const body = await response.text();
+  const expectedEtag = `"sha256-${createHash("sha256").update(body, "utf8").digest("hex")}"`;
+
+  assert.equal(response.status, 200);
+  assert.equal(response.headers.get("etag"), expectedEtag);
+  assert.equal(
+    response.headers.get("last-modified"),
+    "Mon, 10 Aug 2026 00:00:00 GMT",
+  );
+
+  const repeated = createPublicMarkdownResponse(request, post);
+  assert.equal(repeated.headers.get("etag"), expectedEtag);
+  const changed = createPublicMarkdownResponse(request, {
+    ...post,
+    body: `${post.body}\n\nRepresentation changed.`,
+  });
+  assert.notEqual(changed.headers.get("etag"), expectedEtag);
+  const otherOrigin = createPublicMarkdownResponse(
+    new Request("https://mirror.example/posts/portable-source/source.md"),
+    post,
+  );
+  assert.notEqual(otherOrigin.headers.get("etag"), expectedEtag);
+});
+
+test("returns a header-complete empty 304 for every valid matching If-None-Match form", async () => {
+  const url = "https://blog.example.test/posts/portable-source/source.md";
+  const baseline = createPublicMarkdownResponse(new Request(url), post);
+  const etag = baseline.headers.get("etag");
+  assert.ok(etag);
+
+  for (const ifNoneMatch of [etag, `W/${etag}`, `"another", W/${etag}`, "*"]) {
+    const response = createPublicMarkdownResponse(
+      new Request(url, { headers: { "if-none-match": ifNoneMatch } }),
+      post,
+    );
+    assert.equal(response.status, 304, ifNoneMatch);
+    assert.equal(await response.text(), "", ifNoneMatch);
+    assert.equal(response.headers.get("etag"), etag, ifNoneMatch);
+    assert.equal(
+      response.headers.get("last-modified"),
+      "Mon, 10 Aug 2026 00:00:00 GMT",
+      ifNoneMatch,
+    );
+    assert.equal(
+      response.headers.get("cache-control"),
+      "public, max-age=0, s-maxage=3600, stale-while-revalidate=86400",
+      ifNoneMatch,
+    );
+    assert.equal(
+      response.headers.get("link"),
+      '<https://origin.example/portable-source>; rel="canonical"; type="text/html"',
+      ifNoneMatch,
+    );
+    assert.equal(response.headers.get("x-robots-tag"), "noindex", ifNoneMatch);
+  }
+
+  for (const ifNoneMatch of ['"another"', 'W/"another"', '*, "another"']) {
+    const response = createPublicMarkdownResponse(
+      new Request(url, { headers: { "if-none-match": ifNoneMatch } }),
+      post,
+    );
+    assert.equal(response.status, 200, ifNoneMatch);
+    assert.match(await response.text(), /^---\n/u, ifNoneMatch);
+  }
 });
