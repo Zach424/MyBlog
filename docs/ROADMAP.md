@@ -8,11 +8,11 @@
 | 4. 作者自助写作 | done | `/studio` OAuth + editorial workflow PR、Obsidian Vault/模板/附件/真实 `--push` |
 | 5. Vercel 原生迁移 | production live | 原生 Next.js、无 Cloudflare 依赖、24 路由生产冒烟通过 |
 | 6. 所有者生产上线 | done | Git 自动 Production、稳定域名自动冒烟、双端发布、回滚与恢复均已验收 |
-| 7. 持续内容与作者体验 | in progress | Iteration 0092 完成只读生产内容四态对比、严格网络协议、真实 Vercel 快照与 Obsidian 1.35.0 原生台账 |
+| 7. 持续内容与作者体验 | in progress | Iteration 0093 完成单篇来源冻结、条件 GET 有界收敛、真实 Vercel 终态与 Obsidian 1.36.0 可取消等待 |
 
 ## 当前唯一主线
 
-进入持续内容与作者体验阶段。Iteration 0092 已把 `/content.json` 生产事实接到本地作者链路：`content:production` 复用相同 origin 的公开投影，受限流式读取真实清单，只有 HTTP/MIME/响应验证器与 version 1 schema 全部可信时才按 id、源文 ETag 和公开元数据输出 deployed/pending/missing/unexpected；Obsidian 1.35.0 严格重算计数/状态/路径/ETag/差异/安全声明后展示无动作台账。真实 Vercel 快照为 4/0/0/0，网络和协议错误不会冒充 drift。下一主线是对活动正式笔记进行 source-scoped、有界且可取消的生产收敛等待，让作者在 push 后获得单篇上线终态，同时继续保持零写入、无账号/数据库/API/通知。需要品牌域名时再绑定自定义域名，旧公开站继续只作为迁移历史证据。
+进入持续内容与作者体验阶段。Iteration 0093 已把单篇上线终态接到作者侧：`content:production:wait` 冻结精确正式来源 SHA-256 与公开 Markdown ETag，以严格条件 GET、总时限、间隔、单请求时限和取消信号等待 deployed；pending/missing 才继续，unexpected、来源漂移和协议错误立即失败。Obsidian 1.36.0 提供活动正式笔记命令、latest-wins 可见进度与无按钮终态回执，真实 Vercel 验证在 1 次、2254 ms 内收敛。下一主线是让可信发布/复核交付成功回执提供统一 post-delivery handoff，并在 Git 写事务释放、Vault reconcile 完成后自动接力现有等待器；等待失败绝不回滚或重复 push。需要品牌域名时再绑定自定义域名，旧公开站继续只作为迁移历史证据。
 
 ## 已知风险
 
@@ -32,12 +32,12 @@
 - slug 迁移已有构建验证的精确单跳 redirect 注册表，但仍是需要作者审阅的 Git 操作；不支持通配参数或自动推断，迁移必须同步处理内容、附件和引用；
 - Obsidian 已有全 inbox readiness 总览，但该报告有意只代表本地单篇写入事务，不替代正式发布的完整仓库门禁，也不进入看不到未跟踪草稿的 Actions；
 - Current record 已有 Studio 实时只读队列、每周 60/30 天 Actions 提醒和过期门；队列数据只随新 Production 接收内容变更，且仍不发送外部消息；若未来需要邮件/聊天通知，必须由所有者选择渠道后再接入；
-- Obsidian 1.35.0 保留既有草稿身份、作者意图、四事务联锁、Git 交付恢复和维护能力，并新增全库生产同步台账。台账已覆盖严格 schema、路径/ETag/计数闭合、Windows/POSIX spawn、卸载清理和无自动重试；真实主题下长 URL/ETag、大量记录密度与本机代理继承仍需首次使用观察。当前检查只取一个生产快照，不等待部署收敛；下一步只为活动正式笔记增加有界 latest-wins 等待，不把轮询塞进默认发布门；
+- Obsidian 1.36.0 保留既有草稿身份、作者意图、四事务联锁、Git 交付恢复和维护能力，并新增活动正式笔记生产收敛等待。等待器已覆盖严格 schema、来源绑定、条件 304、Windows/POSIX spawn、latest-wins、卸载取消和无自动重试；真实主题下长 ETag、尝试列表、持续 Notice 与本机代理继承仍需首次使用观察。当前 push 成功后仍需手动启动等待；下一步只建立可信 post-delivery handoff，不把网络等待纳入 Git 写事务或默认发布门；
 - 内部链接支持内容页和严格标题锚点，行内/引用式/自引用共享实际渲染 slug 规则，详情页与公开知识地图共享 outgoing/backlinks；明确不支持 Obsidian 块引用，标题改名必须同步深链，当前双列 SVG 为小型内容库优化，内容规模增长后需要过滤/分组；
 - 正文普通 HTTPS 与结构化 repository/demo/canonical 已有统一确定性库存和受控实时报告；实时 DNS/网络结果有意不进 Actions，timeout/限流不能冒充内容错误；
 - 文章与项目已有完整 A4 打印版式，但 PDF 仍由读者通过浏览器打印生成，仓库不把二进制 PDF 当作发布源，也不提供服务端 PDF 缓存；后续版式变化仍需重新做真实 PDF 全页复核；
 - 单篇 Markdown 源文是公开投影而非作者文件的无损 round-trip：字段顺序、注释和写作字段有意不保留，项目 `type: project` 只属于公开 schema；raw HTML 属性不参与 URL 改写。源文 ETag/条件 GET 与 version 1 批量清单已闭环；清单尚无独立 JSON Schema，源站生成成本随全部公开 Markdown 线性增长，达到实测阈值后再评估派生缓存或分页；
-- Git/Obsidian 交付回执与生产清单四态对比已经形成两段证据；全库快照不会自动等待单篇上线，下一轮以精确来源/Etag 和条件 GET 增加有界收敛等待，网络与协议错误仍不能冒充内容差异；
+- Git/Obsidian 交付回执、生产清单四态与单篇有界收敛已经形成三段证据；下一轮为两类可信交付成功回执定义统一最终来源 handoff，并在写事务释放后自动接力既有等待器，网络与协议错误仍不能冒充内容差异或触发二次 Git 动作；
 - 自定义域名、公开邮箱、统计和评论尚未选择，但不阻塞生产上线。
 
 ## 平台历史

@@ -96,6 +96,8 @@
 0089-portable-markdown-sources.md
 0090-markdown-source-conditional-reads.md
 0091-public-content-manifest.md
+0092-production-content-sync-checker.md
+0093-production-content-convergence-wait.md
 ```
 
 ## 必填结构
