@@ -119,7 +119,9 @@ async function inspectPublisherPluginProvenance(root, headOid) {
   const files = await Promise.all(
     PUBLISHER_PLUGIN_PROVENANCE_PATHS.map(async (path) => {
       const present = await isRegularFile(join(root, ...path.split("/")));
-      const headBlobOid = headOid ? git(root, ["rev-parse", `HEAD:${path}`]) : null;
+      const headBlobOid = headOid
+        ? git(root, ["rev-parse", `${headOid}:${path}`])
+        : null;
       const indexBlobOid = git(root, ["rev-parse", `:${path}`]);
       const indexStatus = diffStatus(root, ["diff", "--cached", "--quiet", "--", path]);
       const worktreeStatus = diffStatus(root, ["diff", "--quiet", "--", path]);

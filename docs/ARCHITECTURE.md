@@ -144,7 +144,7 @@ Obsidian ─────┘                                      │
 
 Obsidian 1.41.0 在所有 Git writer 之前建立独立的插件版本握手：运行 bundle 的内嵌常量、Obsidian 实例上的 runtime manifest、Author Doctor 读取的磁盘 manifest 三者必须使用完整数字语义版本且完全相等。doctor 的插件检查由磁盘观察动态派生 expected/observed/resolution，因此未来 patch/minor 版本仍可被旧运行时代码结构化验证；报告字段或派生检查被伪造则继续失败关闭。版本漂移进入无动作的 `PLUGIN RELOAD REQUIRED` interlock，不自动 reload、不进入领域 Git；两条 recovery delivery 在 author transaction lease 外执行相同 preflight，允许一般环境 attention 继续恢复，但缺失版本、bundle 或 provenance 证据同样阻止 Git 写入。
 
-1.41.0 在既有不自我哈希的 `bundle.json` 完整性之上增加只读 Git provenance。四个固定路径 `bundle.json/main.js/manifest.json/styles.css` 分别通过 `HEAD:<path>` 与 `:<path>` 解析 blob OID，并用 path-scoped `git diff --cached --quiet` / `git diff --quiet` 区分 index 与 worktree；只有普通文件存在、HEAD/index blob 相等且两层均 clean 才是 verified。所有路径绑定同一份 repository `localHead`，不访问网络、不读取凭据，也不执行任何 Git 写命令。
+1.41.0 在既有不自我哈希的 `bundle.json` 完整性之上增加只读 Git provenance。四个固定路径 `bundle.json/main.js/manifest.json/styles.css` 分别通过已冻结的 `<localHead>:<path>` 与 `:<path>` 解析 blob OID，并用 path-scoped `git diff --cached --quiet` / `git diff --quiet` 区分 index 与 worktree；只有普通文件存在、HEAD/index blob 相等且两层均 clean 才是 verified。所有路径绑定同一份 repository `localHead`，即使观察期间符号名 HEAD 移动也不会混入另一棵 tree；全程不访问网络、不读取凭据，也不执行任何 Git 写命令。
 
 Author Doctor 采用三版显式协商：不带增强参数的 JSON 保持 13 项 version 1；`--plugin-bundle` 保持原 14 项 version 2；`--plugin-provenance` 返回包含 bundle 与第 15 项 `publisher-provenance` 的 version 3，人类 text 默认使用 v3。1.41 的六个 writer 固定请求 v3；版本、摘要、来源依次进入 `PLUGIN RELOAD REQUIRED`、`PLUGIN BUNDLE INVALID`、`PLUGIN PROVENANCE UNVERIFIED` 三个无按钮 interlock。provenance Modal 展示每个路径的 HEAD/INDEX 短 OID与 index/worktree 状态，只指导作者经正常 Git 工作流恢复、提交、同步后重载，插件绝不自动 add/commit/push/fetch/reset、生成 descriptor、覆盖或重载。
 
