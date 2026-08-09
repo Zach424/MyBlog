@@ -18,7 +18,7 @@
 - 内容：全部公开文章、TIL 与项目
 - GUID：内容稳定绝对 URL
 - 日期：`publishedAt`，频道更新时间取最新 `updatedAt` 或 `publishedAt`
-- 缓存：1 小时 fresh，24 小时 stale-while-revalidate
+- 缓存：源响应声明 1 小时 fresh、24 小时 stale-while-revalidate；Vercel CDN 会消费 SWR 指令，客户端线上响应因此只保留等价的 `public, max-age=3600`
 
 RSS 对 XML 特殊字符统一转义，并从公开内容字段生成标题、摘要、分类和链接。根布局同时输出 RSS autodiscovery `<link>`。
 

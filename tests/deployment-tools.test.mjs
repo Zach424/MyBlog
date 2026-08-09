@@ -1,13 +1,27 @@
 import assert from "node:assert/strict";
 import { readFile } from "node:fs/promises";
 import test from "node:test";
-import { extractSitemapUrls } from "../scripts/smoke-production.mjs";
+import {
+  extractSitemapUrls,
+  hasJsonFeedCachePolicy,
+} from "../scripts/smoke-production.mjs";
 
 test("extracts exact production routes from a Sitemap", () => {
   assert.deepEqual(
     extractSitemapUrls("<urlset><url><loc>https://blog.test/</loc></url><url><loc>https://blog.test/posts/a</loc></url></urlset>"),
     ["https://blog.test/", "https://blog.test/posts/a"],
   );
+});
+
+test("accepts the JSON Feed cache policy before and after Vercel consumes SWR", () => {
+  assert.equal(
+    hasJsonFeedCachePolicy("public, max-age=3600, stale-while-revalidate=86400"),
+    true,
+  );
+  assert.equal(hasJsonFeedCachePolicy("public, max-age=3600"), true);
+  assert.equal(hasJsonFeedCachePolicy("public, max-age=60"), false);
+  assert.equal(hasJsonFeedCachePolicy("private, max-age=3600"), false);
+  assert.equal(hasJsonFeedCachePolicy("public, max-age=3600, stale-while-revalidate=60"), false);
 });
 
 test("connects Vercel verification, maintenance reporting, rollback, and Studio routing without Cloudflare", async () => {

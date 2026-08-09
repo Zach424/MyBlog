@@ -43,6 +43,26 @@ export function extractSitemapUrls(xml) {
   return [...xml.matchAll(/<loc>([^<]+)<\/loc>/gu)].map((match) => match[1]);
 }
 
+export function hasJsonFeedCachePolicy(value) {
+  if (typeof value !== "string") return false;
+
+  const directives = new Map();
+  for (const source of value.toLowerCase().split(",")) {
+    const [name, directiveValue] = source.trim().split("=", 2);
+    if (!name || directives.has(name)) return false;
+    directives.set(name, directiveValue);
+  }
+
+  const staleWhileRevalidate = directives.get("stale-while-revalidate");
+  return (
+    directives.has("public") &&
+    directives.get("max-age") === "3600" &&
+    !directives.has("private") &&
+    !directives.has("no-store") &&
+    (staleWhileRevalidate === undefined || staleWhileRevalidate === "86400")
+  );
+}
+
 async function request(origin, pathname, options = {}) {
   const response = await fetchWithRetry(new URL(pathname, origin), {
     body: options.body,
@@ -396,10 +416,9 @@ export async function runProductionSmoke(originInput, { expectOAuth = false } = 
   const rssIds = [...rss.body.matchAll(/<guid isPermaLink="true">([^<]+)<\/guid>/gu)]
     .map((match) => match[1]);
   invariant(
-    jsonFeed.response.status === 200 &&
+      jsonFeed.response.status === 200 &&
       jsonFeed.response.headers.get("content-type")?.startsWith("application/feed+json") &&
-      jsonFeed.response.headers.get("cache-control") ===
-        "public, max-age=3600, stale-while-revalidate=86400" &&
+      hasJsonFeedCachePolicy(jsonFeed.response.headers.get("cache-control")) &&
       jsonFeedPayload.version === "https://jsonfeed.org/version/1.1" &&
       jsonFeedPayload.home_page_url === `${origin.origin}/` &&
       jsonFeedPayload.feed_url === `${origin.origin}/feed.json` &&
