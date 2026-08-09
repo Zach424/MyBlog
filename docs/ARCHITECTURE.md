@@ -137,9 +137,11 @@ Obsidian ─────┘                                      │
 
 全库生产同步与单篇收敛等待共享 `lib/content/production-sync.ts` 的受限网络协议。`content:production` 读取一个完整快照；`content:production:wait` 先通过 `createProductionContentConvergenceTarget()` 冻结精确正式来源的原始 SHA-256、公开 id 和最终 Markdown ETag，再在明确的总时限、间隔与单请求时限内重复读取。第二次起发送上一份清单响应 ETag 作为 `If-None-Match`，只有响应携带同一 SHA-256 opaque validator 与有效 Last-Modified 的严格 304 才复用已验证快照。每次请求前后都会重读目标来源；字节漂移、生产多出、协议失败或取消立即终止，pending/missing 才进入下一轮。
 
-收敛报告是 version 1、`mode: read-only` 的结构化证据，包含冻结目标、时限、每次观测、最终生产快照与固定安全声明。Obsidian 1.38.0 既允许活动正式笔记手动启动，也能从正常新内容发布/正式复核或两条 sealed recovery delivery 的可信 Git 成功结果自动接力；同一 scope 使用 generation 与子进程取消实现 latest-wins，插件卸载也终止在途等待。stderr 只接收带固定前缀的逐行进度，stdout 只接收最终 JSON；插件独立验证键集合、时间、状态、差异、ETag、来源路径和零写入声明后才显示无按钮 Modal。
+收敛报告是 version 1、`mode: read-only` 的结构化证据，包含冻结目标、时限、每次观测、最终生产快照与固定安全声明。Obsidian 1.39.0 既允许活动正式笔记手动启动，也能从正常新内容发布/正式复核或两条 sealed recovery delivery 的可信 Git 成功结果自动接力；同一 scope 使用 generation 与子进程取消实现 latest-wins，插件卸载也终止在途等待。stderr 只接收带固定前缀的逐行进度，stdout 只接收最终 JSON；插件独立验证键集合、时间、状态、差异、ETag、来源路径和零写入声明后才显示无按钮 Modal。
 
 自动接力使用独立的 post-delivery handoff version 1。正常领域脚本与两条 recovery deliver 只有在 local/tracking ref 都等于已交付 commit 后，才把唯一最后 stdout 行写成 `[post-delivery-handoff] <JSON>`；其中固定 publication/review、commit、最终正式来源、公开 id/URL、来源 SHA-256、Markdown ETag，以及 `gitDelivered: true / productionChecked: false / waitStarted: false`。恢复脚本从 receipt 已封存的 commit blob 而不是可变工作区派生目标，并在 handoff 前保留原 JSON receipt。插件验证行位置、精确 schema、inbox/formal slug、receipt/handoff commit 和完整目标，再返回内部 post-author-release continuation。`runRepositoryCommand()` 必须先记录终态并释放可能存在的 author transaction lease，随后异步等待 Vault reconcile；仍未卸载时才用两个纯十六进制预期摘要启动原等待 CLI。CLI 重新读取并重算目标，任何 handoff 漂移都在首次网络请求前失败。生产终态 Modal 追加交付类型和 commit，但网络阶段从不持有 Git 写租约。
+
+Obsidian 1.39.0 在所有 Git writer 之前建立独立的插件版本握手：运行 bundle 的内嵌常量、Obsidian 实例上的 runtime manifest、Author Doctor 读取的磁盘 manifest 三者必须使用完整数字语义版本且完全相等。doctor 的插件检查由磁盘观察动态派生 expected/observed/resolution，因此未来 patch/minor 版本仍可被旧运行时代码结构化验证；报告字段或派生检查被伪造则继续失败关闭。版本漂移进入无动作的 `PLUGIN RELOAD REQUIRED` interlock，不自动 reload、不进入领域 Git；两条 recovery delivery 在 author transaction lease 外只执行这一版本预检，允许非版本 attention 继续恢复，但缺失或无法验证的磁盘版本身份同样阻止 Git 写入。
 
 Studio 在浏览器中用当前 origin 生成 `base_url`。`/api/cms/auth` 创建十分钟有效、HMAC 签名且绑定 origin 的 state；`/api/cms/callback` 交换 GitHub token，并且只向发起授权的同源窗口发送结果。未设置 `GITHUB_OAUTH_ID` 或 `GITHUB_OAUTH_SECRET` 时返回 503，发布入口安全关闭。
 

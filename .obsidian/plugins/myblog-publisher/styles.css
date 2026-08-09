@@ -1524,12 +1524,48 @@
 .myblog-author-doctor__station-label,
 .myblog-author-doctor__endpoint,
 .myblog-author-doctor__interlock-label,
+.myblog-author-doctor__plugin-reload-label,
+.myblog-author-doctor__plugin-versions dt,
 .myblog-author-doctor__check-state {
   font-family: var(--font-monospace);
   font-size: var(--font-ui-smaller);
   font-weight: var(--font-semibold);
   letter-spacing: 0.08em;
   text-transform: uppercase;
+}
+
+.myblog-author-doctor__plugin-reload {
+  border-block: 1px solid var(--myblog-doctor-caution);
+  margin: 0 0 var(--size-4-4);
+  padding-block: var(--size-4-3);
+}
+
+.myblog-author-doctor__plugin-reload-label,
+.myblog-author-doctor__plugin-reload-action {
+  color: var(--myblog-doctor-caution);
+  margin: 0;
+}
+
+.myblog-author-doctor__plugin-versions {
+  display: grid;
+  gap: var(--size-4-3);
+  grid-template-columns: repeat(3, minmax(0, 1fr));
+  margin: var(--size-4-3) 0;
+}
+
+.myblog-author-doctor__plugin-versions div,
+.myblog-author-doctor__plugin-versions dd {
+  margin: 0;
+  min-width: 0;
+}
+
+.myblog-author-doctor__plugin-versions dt {
+  color: var(--text-muted);
+  margin-block-end: var(--size-2-1);
+}
+
+.myblog-author-doctor__plugin-versions code {
+  overflow-wrap: anywhere;
 }
 
 .myblog-author-doctor__eyebrow {
@@ -1723,6 +1759,7 @@
 
 @media (max-width: 36rem) {
   .myblog-author-doctor__interlock,
+  .myblog-author-doctor__plugin-versions,
   .myblog-author-doctor__stations,
   .myblog-author-doctor__check {
     grid-template-columns: 1fr;

@@ -106,6 +106,7 @@ async function createPluginHarness({
   readActiveFilePathAt = 1,
   renameFailure,
   renamePostcondition = "exact",
+  runtimePluginVersion = "1.39.0",
   throwSpawnAt = [],
 } = {}) {
   const source = await readFile(pluginUrl, "utf8");
@@ -204,6 +205,10 @@ async function createPluginHarness({
   class Plugin {
     constructor(app) {
       this.app = app;
+      this.manifest = {
+        id: "myblog-publisher",
+        version: runtimePluginVersion,
+      };
     }
 
     addCommand(command) {
@@ -1167,7 +1172,7 @@ function deliveryTriageReport({
   };
 }
 
-function authorDoctorReport() {
+function authorDoctorReport({ pluginVersion = "1.39.0" } = {}) {
   const checkDefinitions = [
     ["node-runtime", "runtime", "Node.js runtime", "v24.14.0", ">=22.13.0"],
     ["npm-cli", "runtime", "npm CLI", "11.9.0", "available semantic version"],
@@ -1181,7 +1186,7 @@ function authorDoctorReport() {
     ["workspace-dependencies", "workspace", "Workspace dependencies", "35/35 pinned packages", "all declared packages installed at pinned versions"],
     ["content-layout", "workspace", "Content layout", "5/5 required paths", "5 required authoring paths"],
     ["obsidian-vault", "vault", "Obsidian Vault", ".obsidian present", ".obsidian directory present"],
-    ["publisher-plugin", "vault", "MyBlog Publisher", "myblog-publisher@1.38.0 · desktop", "myblog-publisher 1.38.0 desktop plugin"],
+    ["publisher-plugin", "vault", "MyBlog Publisher", `myblog-publisher@${pluginVersion} · desktop`, `myblog-publisher ${pluginVersion} desktop plugin`],
   ];
   const scripts = [
     "content:author:doctor",
@@ -1230,7 +1235,7 @@ function authorDoctorReport() {
           isDesktopOnly: true,
           mainPresent: true,
           stylesPresent: true,
-          version: "1.38.0",
+          version: pluginVersion,
         },
       },
       workspace: {
@@ -3176,7 +3181,7 @@ test("renders a versioned maintenance ledger and opens an exact Vault note", asy
     createPluginHarness(),
   ]);
   const manifest = JSON.parse(manifestSource);
-  assert.equal(manifest.version, "1.38.0");
+  assert.equal(manifest.version, "1.39.0");
   assert.equal(manifest.minAppVersion, "1.5.7");
   assert.equal(manifest.isDesktopOnly, true);
   assert.match(styles, /^\.myblog-draft-create \{/mu);
@@ -3853,6 +3858,171 @@ test("gates every new publish and review transaction with one ready author prefl
     ]);
     assert.equal(harness.modals.length, 0, commandId);
   }
+});
+
+test("holds every Git writer on an explicit runtime and disk plugin version mismatch", async (t) => {
+  const styles = await readFile(stylesUrl, "utf8");
+  assert.match(styles, /myblog-author-doctor__plugin-reload/u);
+  assert.match(styles, /myblog-author-doctor__plugin-versions/u);
+  await t.test("normal author transaction", async () => {
+    const harness = await createPluginHarness({
+      activeFilePath: "content/inbox/new-note.md",
+      runtimePluginVersion: "1.38.0",
+    });
+    findCommand(harness, "publish-current-note").checkCallback(false);
+    assert.deepEqual(plain(harness.spawned[0].args), authorDoctorCommandArgs);
+    harness.spawned[0].child.stdout.emit(
+      "data",
+      Buffer.from(JSON.stringify(authorDoctorReport())),
+    );
+    harness.spawned[0].child.emit("close", 0);
+
+    assert.equal(harness.spawned.length, 1);
+    assert.equal(harness.plugin.authorTransactionLease, null);
+    assert.equal(harness.modals.length, 1);
+    const modal = harness.modals[0];
+    const text = allElements(modal.contentEl)
+      .map((element) => element.text)
+      .join(" ");
+    assert.equal(elementsByTag(modal, "button").length, 0);
+    assert.match(text, /PLUGIN RELOAD REQUIRED/u);
+    assert.match(text, /RUNNING CODE.*1\.39\.0.*RUNTIME MANIFEST.*1\.38\.0.*DISK.*1\.39\.0/su);
+    assert.match(text, /关闭再启用 MyBlog Publisher.*重启 Obsidian/su);
+    assert.match(text, /发布当前草稿并同步 GitHub.*未启动/su);
+  });
+
+  await t.test("recovery delivery outside the author lease", async () => {
+    const harness = await createPluginHarness({
+      runtimePluginVersion: "1.38.0",
+    });
+    findCommand(harness, "deliver-pending-review").checkCallback(false);
+    assert.deepEqual(plain(harness.spawned[0].args), authorDoctorCommandArgs);
+    harness.spawned[0].child.stdout.emit(
+      "data",
+      Buffer.from(JSON.stringify(authorDoctorReport())),
+    );
+    harness.spawned[0].child.emit("close", 0);
+
+    assert.equal(harness.spawned.length, 1);
+    assert.equal(harness.plugin.authorTransactionLease, null);
+    assert.equal(harness.modals.length, 1);
+    assert.match(
+      allElements(harness.modals[0].contentEl)
+        .map((element) => element.text)
+        .join(" "),
+      /PLUGIN RELOAD REQUIRED.*重新同步待交付正式内容复核.*未启动/su,
+    );
+  });
+});
+
+test("keeps future disk patch and minor plugin versions structured for reload guidance", async (t) => {
+  for (const diskVersion of ["1.39.1", "1.40.0"]) {
+    await t.test(diskVersion, async () => {
+      const harness = await createPluginHarness({
+        runtimePluginVersion: "1.39.0",
+      });
+      findCommand(harness, "inspect-author-environment").checkCallback(false);
+      harness.spawned[0].child.stdout.emit(
+        "data",
+        Buffer.from(
+          JSON.stringify(authorDoctorReport({ pluginVersion: diskVersion })),
+        ),
+      );
+      harness.spawned[0].child.emit("close", 0);
+
+      assert.equal(harness.spawned.length, 1);
+      assert.equal(harness.modals.length, 1);
+      const text = allElements(harness.modals[0].contentEl)
+        .map((element) => element.text)
+        .join(" ");
+      assert.match(text, /PLUGIN RELOAD REQUIRED/u);
+      assert.match(text, new RegExp(`DISK.*${diskVersion.replaceAll(".", "\\.")}`, "su"));
+      assert.doesNotMatch(text, /结构化作者环境证据不可用/u);
+    });
+  }
+
+  await t.test("forged future version evidence", async () => {
+    const harness = await createPluginHarness({
+      runtimePluginVersion: "1.39.0",
+    });
+    const report = authorDoctorReport({ pluginVersion: "1.40.0" });
+    report.checks.at(-1).observed = "myblog-publisher@9.9.9 · desktop";
+    findCommand(harness, "inspect-author-environment").checkCallback(false);
+    harness.spawned[0].child.stdout.emit(
+      "data",
+      Buffer.from(JSON.stringify(report)),
+    );
+    harness.spawned[0].child.emit("close", 0);
+
+    assert.equal(harness.spawned.length, 2);
+    assert.equal(harness.modals.length, 0);
+    assert.ok(
+      harness.notices.some((notice) =>
+        /结构化作者环境证据不可用.*正在重新读取本地纯文本证据/su.test(
+          notice.message,
+        ),
+      ),
+    );
+  });
+});
+
+test("keeps recovery available through non-version doctor attention", async () => {
+  const harness = await createPluginHarness();
+  findCommand(harness, "deliver-pending-review").checkCallback(false);
+  harness.spawned[0].child.stdout.emit(
+    "data",
+    Buffer.from(JSON.stringify(authorDoctorAttentionReport())),
+  );
+  harness.spawned[0].child.emit("close", 1);
+
+  assert.equal(harness.spawned.length, 2);
+  assert.equal(harness.plugin.authorTransactionLease, null);
+  assert.equal(harness.modals.length, 0);
+  assert.deepEqual(plain(harness.spawned[1].args), [
+    "/d",
+    "/s",
+    "/c",
+    "npm",
+    "--silent",
+    "run",
+    "content:review:deliver",
+    "--",
+    "--format",
+    "json",
+    "--handoff",
+  ]);
+});
+
+test("fails recovery closed when the disk plugin version identity is unavailable", async () => {
+  const harness = await createPluginHarness();
+  const report = authorDoctorReport();
+  report.status = "needs-attention";
+  report.observation.vault.plugin = null;
+  report.summary = { attention: 1, passed: 12, total: 13 };
+  const publisher = report.checks.find(
+    (check) => check.id === "publisher-plugin",
+  );
+  publisher.observed = "missing";
+  publisher.resolution = "重新安装或启用 MyBlog Publisher 1.39.0";
+  publisher.status = "attention";
+
+  findCommand(harness, "deliver-pending-review").checkCallback(false);
+  harness.spawned[0].child.stdout.emit(
+    "data",
+    Buffer.from(JSON.stringify(report)),
+  );
+  harness.spawned[0].child.emit("close", 1);
+
+  assert.equal(harness.spawned.length, 1);
+  assert.equal(harness.plugin.authorTransactionLease, null);
+  assert.equal(harness.modals.length, 0);
+  assert.ok(
+    harness.notices.some((notice) =>
+      /插件版本握手证据不可用：磁盘插件版本身份不可用.*Git 恢复命令未启动/su.test(
+        notice.message,
+      ),
+    ),
+  );
 });
 
 test("releases each Git writer and reconciles the Vault before automatic production wait", async (t) => {
@@ -4560,7 +4730,9 @@ test("delivers an exact pending review, renders its receipt, and waits after rec
   const command = findCommand(harness, "deliver-pending-review");
   assert.equal(command.checkCallback(true), true);
   command.checkCallback(false);
-  assert.deepEqual(plain(harness.spawned[0].args), [
+  assert.deepEqual(plain(harness.spawned[0].args), authorDoctorCommandArgs);
+  finishReadyAuthorPreflight(harness, 0);
+  assert.deepEqual(plain(harness.spawned[1].args), [
     "/d",
     "/s",
     "/c",
@@ -4578,14 +4750,14 @@ test("delivers an exact pending review, renders its receipt, and waits after rec
     commitOid: receipt.review.commitOid,
     delivery: "review",
   });
-  harness.spawned[0].child.stdout.emit(
+  harness.spawned[1].child.stdout.emit(
     "data",
     Buffer.from(recoveryDeliveryOutput(receipt, handoff)),
   );
-  harness.spawned[0].child.emit("close", 0);
+  harness.spawned[1].child.emit("close", 0);
   await Promise.resolve();
   assert.equal(harness.reconciliations, 1);
-  assert.equal(harness.spawned.length, 1);
+  assert.equal(harness.spawned.length, 2);
   assert.equal(harness.modals.length, 1);
   const modal = harness.modals[0];
   assert.equal(
@@ -4610,8 +4782,8 @@ test("delivers an exact pending review, renders its receipt, and waits after rec
 
   harness.resolveReconcile();
   await new Promise((resolve) => setImmediate(resolve));
-  assert.equal(harness.spawned.length, 2);
-  assert.deepEqual(plain(harness.spawned[1].args), [
+  assert.equal(harness.spawned.length, 3);
+  assert.deepEqual(plain(harness.spawned[2].args), [
     "/d",
     "/s",
     "/c",
@@ -4629,11 +4801,11 @@ test("delivers an exact pending review, renders its receipt, and waits after rec
     "--expected-local-etag-sha256",
     "a".repeat(64),
   ]);
-  harness.spawned[1].child.stdout.emit(
+  harness.spawned[2].child.stdout.emit(
     "data",
     Buffer.from(JSON.stringify(productionConvergenceReport())),
   );
-  harness.spawned[1].child.emit("close", 0);
+  harness.spawned[2].child.emit("close", 0);
   assert.equal(harness.modals.length, 2);
   assert.equal(
     harness.spawned.filter(({ args }) => args.includes("content:review:deliver"))
@@ -4654,12 +4826,13 @@ test("does not retry delivery or reconcile when its success receipt is invalid",
     delivery: "review",
   });
   findCommand(harness, "deliver-pending-review").checkCallback(false);
-  harness.spawned[0].child.stdout.emit(
+  finishReadyAuthorPreflight(harness, 0);
+  harness.spawned[1].child.stdout.emit(
     "data",
     Buffer.from(recoveryDeliveryOutput(receipt, handoff)),
   );
-  harness.spawned[0].child.emit("close", 0);
-  assert.equal(harness.spawned.length, 1);
+  harness.spawned[1].child.emit("close", 0);
+  assert.equal(harness.spawned.length, 2);
   assert.equal(harness.modals.length, 0);
   assert.equal(harness.reconciliations, 0);
   assert.ok(
@@ -4674,7 +4847,9 @@ test("delivers an exact pending publication, renders its receipt, and waits afte
   const command = findCommand(harness, "deliver-pending-publication");
   assert.equal(command.checkCallback(true), true);
   command.checkCallback(false);
-  assert.deepEqual(plain(harness.spawned[0].args), [
+  assert.deepEqual(plain(harness.spawned[0].args), authorDoctorCommandArgs);
+  finishReadyAuthorPreflight(harness, 0);
+  assert.deepEqual(plain(harness.spawned[1].args), [
     "/d",
     "/s",
     "/c",
@@ -4689,15 +4864,15 @@ test("delivers an exact pending publication, renders its receipt, and waits afte
   ]);
   const receipt = publishDeliveryReceipt();
   const handoff = publicationDeliveryHandoff(receipt);
-  harness.spawned[0].child.stdout.emit(
+  harness.spawned[1].child.stdout.emit(
     "data",
     Buffer.from(recoveryDeliveryOutput(receipt, handoff)),
   );
-  harness.spawned[0].child.emit("close", 0);
+  harness.spawned[1].child.emit("close", 0);
   await Promise.resolve();
 
   assert.equal(harness.reconciliations, 1);
-  assert.equal(harness.spawned.length, 1);
+  assert.equal(harness.spawned.length, 2);
   assert.equal(harness.modals.length, 1);
   const modal = harness.modals[0];
   assert.equal(
@@ -4726,8 +4901,8 @@ test("delivers an exact pending publication, renders its receipt, and waits afte
 
   harness.resolveReconcile();
   await new Promise((resolve) => setImmediate(resolve));
-  assert.equal(harness.spawned.length, 2);
-  assert.deepEqual(plain(harness.spawned[1].args), [
+  assert.equal(harness.spawned.length, 3);
+  assert.deepEqual(plain(harness.spawned[2].args), [
     "/d",
     "/s",
     "/c",
@@ -4745,7 +4920,7 @@ test("delivers an exact pending publication, renders its receipt, and waits afte
     "--expected-local-etag-sha256",
     "a".repeat(64),
   ]);
-  harness.spawned[1].child.stdout.emit(
+  harness.spawned[2].child.stdout.emit(
     "data",
     Buffer.from(
       JSON.stringify(
@@ -4755,7 +4930,7 @@ test("delivers an exact pending publication, renders its receipt, and waits afte
       ),
     ),
   );
-  harness.spawned[1].child.emit("close", 0);
+  harness.spawned[2].child.emit("close", 0);
   assert.equal(harness.modals.length, 2);
   assert.equal(
     harness.spawned.filter(({ args }) => args.includes("content:publish:deliver"))
@@ -4776,12 +4951,13 @@ test("does not retry or reconcile an untrusted publication receipt", async () =>
   receipt.safety.manifestStable = false;
   const handoff = publicationDeliveryHandoff(receipt);
   findCommand(harness, "deliver-pending-publication").checkCallback(false);
-  harness.spawned[0].child.stdout.emit(
+  finishReadyAuthorPreflight(harness, 0);
+  harness.spawned[1].child.stdout.emit(
     "data",
     Buffer.from(recoveryDeliveryOutput(receipt, handoff)),
   );
-  harness.spawned[0].child.emit("close", 0);
-  assert.equal(harness.spawned.length, 1);
+  harness.spawned[1].child.emit("close", 0);
+  assert.equal(harness.spawned.length, 2);
   assert.equal(harness.modals.length, 0);
   assert.equal(harness.reconciliations, 0);
   assert.ok(
@@ -4799,13 +4975,14 @@ test("rejects a recovery handoff that is not bound to the sealed receipt", async
     delivery: "review",
   });
   findCommand(harness, "deliver-pending-review").checkCallback(false);
-  harness.spawned[0].child.stdout.emit(
+  finishReadyAuthorPreflight(harness, 0);
+  harness.spawned[1].child.stdout.emit(
     "data",
     Buffer.from(recoveryDeliveryOutput(receipt, handoff)),
   );
-  harness.spawned[0].child.emit("close", 0);
+  harness.spawned[1].child.emit("close", 0);
   await Promise.resolve();
-  assert.equal(harness.spawned.length, 1);
+  assert.equal(harness.spawned.length, 2);
   assert.equal(harness.reconciliations, 0);
   assert.equal(harness.modals.length, 0);
   assert.match(

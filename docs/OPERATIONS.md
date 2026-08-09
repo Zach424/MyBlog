@@ -29,7 +29,7 @@ Secret 只保存在 Vercel/GitHub 的加密设置中，不进入 `.env.example`�
 4. Obsidian 中可先运行“查看已发布内容复核台账”处理已有 Current 内容；打开正式笔记并人工更新事实与复核日期后，依次运行“检查当前正式内容复核”和“提交并同步当前正式内容复核”。发布新草稿时先运行“查看当前草稿发布意图”快速核对类型、目标、日期、附件与站内链接；需要全库对照时运行“查看全部草稿发布就绪状态”，处理 blocked 并确认 scheduled 日期，再运行 `npm run content:publish -- <note> --check-only`；
 5. 逐张确认实际格式、宽高、帧数和体积后，使用 Obsidian 的“发布当前草稿并同步 GitHub”或命令行 `--push`。`--push` 会把 `draft` 改为 `false` 后运行完整质量门、提交并推送；网页方式使用 editorial workflow。若新内容 push 失败，先运行“查看待同步新内容发布”，不要恢复草稿或再次发布；
 6. 让质量门通过，再把提交合并到 `main`；
-7. Obsidian 1.38.0 在正常 `--push` 或两条可信恢复交付成功后，先校验 receipt/handoff、释放可能存在的作者事务并完成 Vault reconcile，再自动启动单篇生产等待；等待失败不改变已经完成的 Git 交付。Studio 与普通 Git 仍需手动运行“等待当前正式内容上线”；
+7. Obsidian 1.39.0 在所有 Git 写入口前先校验运行代码/runtime manifest/磁盘插件版本；兼容后，正常 `--push` 或两条可信恢复交付成功会校验 receipt/handoff、释放可能存在的作者事务并完成 Vault reconcile，再自动启动单篇生产等待。等待失败不改变已经完成的 Git 交付；Studio 与普通 Git 仍需手动运行“等待当前正式内容上线”；
 8. Vercel 自动创建生产部署，deployment status 工作流检查稳定公开生产域名；
 9. 打开文章、公开内容清单、JSON Feed、RSS 和 Sitemap，确认新内容可见且绝对 URL 指向当前生产域名；清单中的 `markdown_etag` 应与对应源文响应一致。
 
@@ -85,9 +85,11 @@ push 失败后先运行 `npm run content:review:status`，或在 Obsidian 运行
 
 这个摘要复用完整 inbox readiness 的类型、正式内容契约、共享源、媒体准备和站内链接判断，不在插件中解析 Markdown/YAML 或读取图片。链接 trace 来自同一次 AST 遍历和正式目标/标题验证循环；公开关系索引仍使用原投影。媒体用途/行号/正文 alt 在既有附件替换时直接聚合，coverAlt 来自已经通过 Zod 的正式 record；同一附件可以同时是 COVER 与 BODY，BODY 同行重复仍保留逐次行号和文本。空 alt 会生成同附件 blocker，插件要求空值与 blocker 双向对应。媒体 trace 继续消费现有 preparation，并交叉验证用途顺序、出现次数、行号/文本长度、路径、扩展名、格式、尺寸、帧数、字节差、保留稳定性与静态 WebP 不放大语义。聚焦模式仍轻量解析全部草稿并检查正式目标、附件存在/目标/Git 跟踪与共享所有权，但只为当前草稿执行真实媒体派生；全库命令不带 `--source`，继续为每篇草稿生成完整候选。JSON version/mode/safety、单 entry、计数、精确链接、路径、媒体包络、用途/alt 来源、状态日期或来源不一致时失败关闭；命令运行期间切换、改名或替换活动文件也拒绝打开。不要把它当成发布授权：`READY / PUBLIC ON PASS` 仍必须继续运行“检查当前草稿”；摘要不修改文件、不进入 author transaction lease、不 reconcile、不提交、不推送、不联网，也不会在失败时自动回退或重试。
 
-环境或仓库位置发生变化后，可运行 `npm run content:author:doctor`，或在 Obsidian 运行“检查本机发布环境”单独诊断。13 项固定检查覆盖 Node/npm/Git、仓库根、main/upstream 本地同步、身份是否配置、package/关键脚本/全部固定依赖、内容路径、Vault 与插件 1.30.0。attention 返回退出码 1 并给出修复指令，但不会自动执行；姓名、邮箱和凭据不进入报告。该命令不要求工作区为空，因为合法草稿、附件和待复核内容可能存在；具体提交边界仍由 publish/review 门决定。
+环境或仓库位置发生变化后，可运行 `npm run content:author:doctor`，或在 Obsidian 运行“检查本机发布环境”单独诊断。13 项固定检查覆盖 Node/npm/Git、仓库根、main/upstream 本地同步、身份是否配置、package/关键脚本/全部固定依赖、内容路径、Vault 与插件 1.39.0。attention 返回退出码 1 并给出修复指令，但不会自动执行；姓名、邮箱和凭据不进入报告。该命令不要求工作区为空，因为合法草稿、附件和待复核内容可能存在；具体提交边界仍由 publish/review 门决定。
 
-插件 1.30.0 在“检查当前草稿”“发布当前草稿并同步 GitHub”“检查当前正式内容复核”“提交并同步当前正式内容复核”启动时自动运行同一 JSON doctor，并冻结调用时的来源路径。ready 不弹出 doctor，直接且仅启动一次原领域命令；attention 显示 `TRANSACTION INTERLOCK / HELD` 和完整 circuit，原命令不启动；无效 JSON 改读纯文本但仍失败关闭，doctor 致命退出同样停止。“查看当前草稿发布意图”及其 ALT/REF 本地导航是独立只读交互，不占用这条事务租约。
+插件 1.39.0 在“检查当前草稿”“发布当前草稿并同步 GitHub”“检查当前正式内容复核”“提交并同步当前正式内容复核”启动时自动运行同一 JSON doctor，并冻结调用时的来源路径。ready 不弹出 doctor，直接且仅启动一次原领域命令；attention 显示 `TRANSACTION INTERLOCK / HELD` 和完整 circuit，原命令不启动；无效 JSON 改读纯文本但仍失败关闭，doctor 致命退出同样停止。“查看当前草稿发布意图”及其 ALT/REF 本地导航是独立只读交互，不占用这条事务租约。
+
+进入任一 Git 写命令前，插件会把运行代码、runtime manifest 与磁盘 doctor 观察到的插件版本做严格三方比较。三者不相等时显示 `PLUGIN RELOAD REQUIRED` 与精确版本，不提供按钮，不自动重载，也不启动领域命令；关闭再启用插件或重启 Obsidian 后重新运行原命令。未来 patch/minor 磁盘版本仍按结构化报告显示，不退化成不可行动的纯文本。两条“重新同步待交付…”恢复命令在原租约之外先做一次 version-only doctor：非版本 attention 不影响已经需要恢复的 Git 交付，但版本身份缺失、证据不可信或版本漂移一律禁止恢复写入。
 
 四个新事务还共享一个 single-flight lease：从 doctor spawn 前持续到领域命令或诊断降级进程结算。运行“MyBlog Publisher: 查看当前作者事务”时，ACTIVE 依次显示操作、冻结来源路径、`前置检查 · PREFLIGHT` / `发布或复核 · DOMAIN` / `证据降级 · DIAGNOSTIC`、阶段进入时间/用时、owning child 最近一次 stdout/stderr 时间/静默时长，以及总开始时间/用时。本阶段还未产生输出时会明确显示“本阶段尚无输出”。租约占用时再次调用新事务不会排队或启动第二条链，而是用同一事实显示 `AUTHOR TRANSACTION / BUSY` 和等待建议。阶段转换和 child ownership 转交都会重置输出活动；旧 child 的迟到 stdout/stderr/close/error 不能更新或释放后来 owner，即使输出正文达到捕获上限，活动时间仍可更新。时钟回拨产生的 duration 钳制为零。所有时间都只用于观察，不代表 healthy/stuck/timeout，也不会触发 watchdog、取消或重试。
 

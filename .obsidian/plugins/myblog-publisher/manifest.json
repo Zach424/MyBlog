@@ -1,9 +1,9 @@
 {
   "id": "myblog-publisher",
   "name": "MyBlog Publisher",
-  "version": "1.38.0",
+  "version": "1.39.0",
   "minAppVersion": "1.5.7",
-  "description": "Create filename-owned drafts and hand both primary and recovered Git deliveries to a bounded production convergence wait.",
+  "description": "Create filename-owned drafts, interlock stale plugin runtimes, and hand verified Git deliveries to bounded production convergence.",
   "author": "Zach424",
   "isDesktopOnly": true
 }

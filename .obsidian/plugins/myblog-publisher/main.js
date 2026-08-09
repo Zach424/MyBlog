@@ -26,7 +26,7 @@ const CONTENT_DELIVERY_TRIAGE_REPORT_VERSION = 1;
 const AUTHOR_DOCTOR_REPORT_VERSION = 1;
 const INBOX_READINESS_REPORT_VERSION = 6;
 const AUTHOR_DOCTOR_NODE_ENGINE = ">=22.13.0";
-const AUTHOR_DOCTOR_PLUGIN_VERSION = "1.38.0";
+const AUTHOR_DOCTOR_PLUGIN_VERSION = "1.39.0";
 const CURRENT_DRAFT_INTENT_RUN_SCOPE = Symbol("current-draft-intent");
 const PRODUCTION_CONTENT_CONVERGENCE_RUN_SCOPE = Symbol(
   "production-content-convergence",
@@ -94,6 +94,7 @@ const AUTHOR_DOCTOR_REQUIRED_PATHS = [
   { kind: "directory", path: "templates/obsidian" },
 ];
 const GIT_OBJECT_ID_PATTERN = /^(?:[a-f0-9]{40}|[a-f0-9]{64})$/u;
+const PLUGIN_VERSION_PATTERN = /^(\d+)\.(\d+)\.(\d+)$/u;
 const CONTENT_REVIEW_DELIVERY_STATUSES = [
   "synchronized",
   "pending-review",
@@ -2716,9 +2717,10 @@ function deriveAuthorDoctorChecks(observation) {
     GIT_OBJECT_ID_PATTERN.test(localHead) &&
     trackingHead === localHead;
   const plugin = observation.vault.plugin;
+  const observedPluginVersion = plugin?.version ?? AUTHOR_DOCTOR_PLUGIN_VERSION;
   const pluginReady =
     plugin?.id === "myblog-publisher" &&
-    plugin.version === AUTHOR_DOCTOR_PLUGIN_VERSION &&
+    PLUGIN_VERSION_PATTERN.test(plugin.version) &&
     plugin.isDesktopOnly === true &&
     plugin.mainPresent === true &&
     plugin.stylesPresent === true;
@@ -2854,7 +2856,7 @@ function deriveAuthorDoctorChecks(observation) {
       repair: "把仓库根作为 Obsidian Vault 打开",
     },
     {
-      expected: `myblog-publisher ${AUTHOR_DOCTOR_PLUGIN_VERSION} desktop plugin`,
+      expected: `myblog-publisher ${observedPluginVersion} desktop plugin`,
       group: "vault",
       id: "publisher-plugin",
       label: "MyBlog Publisher",
@@ -2862,7 +2864,7 @@ function deriveAuthorDoctorChecks(observation) {
         ? `${plugin.id}@${plugin.version} · ${plugin.isDesktopOnly ? "desktop" : "not desktop"}`
         : "missing",
       pass: pluginReady,
-      repair: `重新安装或启用 MyBlog Publisher ${AUTHOR_DOCTOR_PLUGIN_VERSION}`,
+      repair: `重新安装或启用 MyBlog Publisher ${observedPluginVersion}`,
     },
   ];
   return definitions.map(({ pass, repair, ...evidence }) => ({
@@ -3037,6 +3039,12 @@ function parseAuthorDoctorReport(output, expectedRoot) {
         `${label} observation.vault.plugin.${field}`,
       );
     }
+    if (!PLUGIN_VERSION_PATTERN.test(observation.vault.plugin.version)) {
+      valueError(
+        `${label} observation.vault.plugin.version`,
+        "必须是完整数字语义版本",
+      );
+    }
     for (const field of ["isDesktopOnly", "mainPresent", "stylesPresent"]) {
       if (typeof observation.vault.plugin[field] !== "boolean") {
         valueError(`${label} observation.vault.plugin.${field}`, "必须是布尔值");
@@ -3092,6 +3100,38 @@ function parseAuthorDoctorReport(output, expectedRoot) {
     }
   }
   return report;
+}
+
+function createAuthorDoctorPluginVersionHandshake(report, runtimeManifest) {
+  const runtimeCodeVersion = AUTHOR_DOCTOR_PLUGIN_VERSION;
+  const runtimeManifestVersion = runtimeManifest?.version;
+  if (
+    runtimeManifest?.id !== "myblog-publisher" ||
+    typeof runtimeManifestVersion !== "string" ||
+    !PLUGIN_VERSION_PATTERN.test(runtimeManifestVersion)
+  ) {
+    throw new Error("运行中插件 manifest 版本身份不可用");
+  }
+  const diskPlugin = report.observation.vault.plugin;
+  if (!diskPlugin || diskPlugin.id !== "myblog-publisher") {
+    return Object.freeze({
+      diskVersion: null,
+      runtimeCodeVersion,
+      runtimeManifestVersion,
+      status: "unavailable",
+    });
+  }
+  const diskVersion = diskPlugin.version;
+  return Object.freeze({
+    diskVersion,
+    runtimeCodeVersion,
+    runtimeManifestVersion,
+    status:
+      diskVersion === runtimeCodeVersion &&
+      runtimeManifestVersion === runtimeCodeVersion
+        ? "compatible"
+        : "reload-required",
+  });
 }
 
 function parseContentPublishDeliveryReceipt(output) {
@@ -4227,15 +4267,18 @@ function createAuthorDoctorCheck(container, check) {
 }
 
 class AuthorDoctorModal extends Modal {
-  constructor(app, report, transaction = null) {
+  constructor(app, report, transaction = null, pluginVersionHandshake = null) {
     super(app);
     this.report = report;
     this.transaction = transaction;
+    this.pluginVersionHandshake = pluginVersionHandshake;
   }
 
   onOpen() {
-    const { contentEl, report, transaction } = this;
-    const ready = report.status === "ready";
+    const { contentEl, pluginVersionHandshake, report, transaction } = this;
+    const reloadRequired =
+      pluginVersionHandshake?.status === "reload-required";
+    const ready = report.status === "ready" && !reloadRequired;
     const groups = [
       ["runtime", "RUNTIME"],
       ["git", "GIT"],
@@ -4244,8 +4287,12 @@ class AuthorDoctorModal extends Modal {
     ];
     contentEl.empty();
     contentEl.addClass("myblog-author-doctor");
-    contentEl.setAttr("data-status", report.status);
+    contentEl.setAttr("data-status", ready ? "ready" : "needs-attention");
     contentEl.setAttr("data-interlock", transaction ? "held" : "inspection");
+    contentEl.setAttr(
+      "data-plugin-version",
+      pluginVersionHandshake?.status ?? "unavailable",
+    );
     contentEl.createEl("p", {
       cls: "myblog-author-doctor__eyebrow",
       text: "AUTHOR PREFLIGHT / LOCAL ONLY",
@@ -4258,6 +4305,33 @@ class AuthorDoctorModal extends Modal {
       cls: "myblog-author-doctor__boundary",
       text: "只读取本机运行时、Git、工作区与 Vault 的发布前置条件；不会安装依赖、修改配置、读取凭据或访问网络。",
     });
+
+    if (reloadRequired) {
+      const reload = contentEl.createEl("section", {
+        cls: "myblog-author-doctor__plugin-reload",
+      });
+      reload.setAttr("aria-label", "插件运行版本与磁盘版本不一致，需要重载");
+      reload.createEl("p", {
+        cls: "myblog-author-doctor__plugin-reload-label",
+        text: "PLUGIN RELOAD REQUIRED",
+      });
+      const versions = reload.createEl("dl", {
+        cls: "myblog-author-doctor__plugin-versions",
+      });
+      for (const [label, value] of [
+        ["RUNNING CODE", pluginVersionHandshake.runtimeCodeVersion],
+        ["RUNTIME MANIFEST", pluginVersionHandshake.runtimeManifestVersion],
+        ["DISK", pluginVersionHandshake.diskVersion],
+      ]) {
+        const item = versions.createEl("div");
+        item.createEl("dt", { text: label });
+        item.createEl("dd").createEl("code", { text: value });
+      }
+      reload.createEl("p", {
+        cls: "myblog-author-doctor__plugin-reload-action",
+        text: "关闭再启用 MyBlog Publisher，或重启 Obsidian，然后重新运行原命令。插件不会自动重载，也不会在版本漂移时启动 Git 领域命令。",
+      });
+    }
 
     if (transaction) {
       const interlock = contentEl.createEl("section", {
@@ -4315,7 +4389,7 @@ class AuthorDoctorModal extends Modal {
     });
     circuit.createEl("p", {
       cls: "myblog-author-doctor__summary",
-      text: `${report.summary.passed} PASS / ${report.summary.attention} ATTENTION`,
+      text: `${report.summary.passed} PASS / ${report.summary.attention} ATTENTION${reloadRequired ? " · RUNTIME HOLD" : ""}`,
     });
 
     const ledger = contentEl.createEl("section", {
@@ -7105,9 +7179,14 @@ module.exports = class MyBlogPublisher extends Plugin {
 
   continueAuthorTransaction(output, transaction, onReady, lease) {
     let report;
+    let pluginVersionHandshake;
     try {
       const root = this.app.vault.adapter.getBasePath();
       report = parseAuthorDoctorReport(output, root);
+      pluginVersionHandshake = createAuthorDoctorPluginVersionHandshake(
+        report,
+        this.manifest,
+      );
     } catch (error) {
       if (!this.setAuthorTransactionPhase(lease, "diagnostic")) return;
       new Notice(
@@ -7118,8 +7197,27 @@ module.exports = class MyBlogPublisher extends Plugin {
       return;
     }
 
+    if (pluginVersionHandshake.status === "reload-required") {
+      new AuthorDoctorModal(
+        this.app,
+        report,
+        transaction,
+        pluginVersionHandshake,
+      ).open();
+      new Notice(
+        `MyBlog Publisher 运行版本与磁盘版本不一致；${transaction.label}未启动。请关闭再启用插件或重启 Obsidian。`,
+        12000,
+      );
+      return "held";
+    }
+
     if (report.status !== "ready") {
-      new AuthorDoctorModal(this.app, report, transaction).open();
+      new AuthorDoctorModal(
+        this.app,
+        report,
+        transaction,
+        pluginVersionHandshake,
+      ).open();
       new Notice(
         `本机发布环境有 ${report.summary.attention} 项需要处理；${transaction.label}未启动。`,
         8000,
@@ -7135,9 +7233,18 @@ module.exports = class MyBlogPublisher extends Plugin {
     try {
       const root = this.app.vault.adapter.getBasePath();
       const report = parseAuthorDoctorReport(output, root);
-      new AuthorDoctorModal(this.app, report).open();
+      const pluginVersionHandshake =
+        createAuthorDoctorPluginVersionHandshake(report, this.manifest);
+      new AuthorDoctorModal(
+        this.app,
+        report,
+        null,
+        pluginVersionHandshake,
+      ).open();
       new Notice(
-        report.status === "ready"
+        pluginVersionHandshake.status === "reload-required"
+          ? "插件磁盘版本已更新；请关闭再启用 MyBlog Publisher 或重启 Obsidian。"
+          : report.status === "ready"
           ? "本机发布环境已就绪。"
           : `本机发布环境有 ${report.summary.attention} 项需要处理。`,
         6000,
@@ -7228,6 +7335,67 @@ module.exports = class MyBlogPublisher extends Plugin {
   deliverPendingReview(checking) {
     if (!this.isDesktopVault()) return false;
     if (checking) return true;
+    const transaction = {
+      label: "重新同步待交付正式内容复核",
+      sourcePath: "Git / pending-review",
+    };
+    return this.preflightRecoveryDeliveryVersion(
+      transaction,
+      () => this.runPendingReviewDelivery(),
+    );
+  }
+
+  preflightRecoveryDeliveryVersion(transaction, onReady) {
+    return this.runRepositoryCommand(
+      [
+        "--silent",
+        "run",
+        "content:author:doctor",
+        "--",
+        "--format",
+        "json",
+      ],
+      {
+        allowedExitCodes: [0, 1],
+        failure: `${transaction.label}的插件版本握手未完成；Git 恢复命令未启动`,
+        progress: `正在确认“${transaction.label}”的运行与磁盘插件版本…`,
+        startFailure: `${transaction.label}的插件版本握手无法启动；Git 恢复命令未启动`,
+      },
+      (output) => {
+        try {
+          const root = this.app.vault.adapter.getBasePath();
+          const report = parseAuthorDoctorReport(output, root);
+          const handshake = createAuthorDoctorPluginVersionHandshake(
+            report,
+            this.manifest,
+          );
+          if (handshake.status === "reload-required") {
+            new AuthorDoctorModal(
+              this.app,
+              report,
+              transaction,
+              handshake,
+            ).open();
+            new Notice(
+              `MyBlog Publisher 运行版本与磁盘版本不一致；${transaction.label}未启动。请关闭再启用插件或重启 Obsidian。`,
+              12000,
+            );
+            return "held";
+          }
+          if (handshake.status !== "compatible") {
+            throw new Error("磁盘插件版本身份不可用");
+          }
+        } catch (error) {
+          throw new Error(
+            `插件版本握手证据不可用：${error.message}；Git 恢复命令未启动`,
+          );
+        }
+        return onReady();
+      },
+    );
+  }
+
+  runPendingReviewDelivery() {
     return this.runRepositoryCommand(
       [
         "--silent",
@@ -7272,6 +7440,17 @@ module.exports = class MyBlogPublisher extends Plugin {
   deliverPendingPublication(checking) {
     if (!this.isDesktopVault()) return false;
     if (checking) return true;
+    const transaction = {
+      label: "重新同步待交付新内容发布",
+      sourcePath: "Git / pending-publication",
+    };
+    return this.preflightRecoveryDeliveryVersion(
+      transaction,
+      () => this.runPendingPublicationDelivery(),
+    );
+  }
+
+  runPendingPublicationDelivery() {
     return this.runRepositoryCommand(
       [
         "--silent",
