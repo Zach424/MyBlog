@@ -1,5 +1,6 @@
 import assert from "node:assert/strict";
 import { spawnSync } from "node:child_process";
+import { createHash } from "node:crypto";
 import { mkdir, mkdtemp, readFile, rm, writeFile } from "node:fs/promises";
 import { tmpdir } from "node:os";
 import { join } from "node:path";
@@ -59,7 +60,7 @@ function healthyObservation() {
         isDesktopOnly: true,
         mainPresent: true,
         stylesPresent: true,
-      version: "1.39.0",
+      version: "1.40.0",
       },
     },
     workspace: {
@@ -158,6 +159,27 @@ async function createDoctorFixture() {
     private: true,
     scripts,
   }, null, 2)}\n`;
+  const pluginManifest =
+    '{"id":"myblog-publisher","version":"1.40.0","isDesktopOnly":true}\n';
+  const pluginMain = "module.exports = {};\n";
+  const pluginStyles = ".fixture {}\n";
+  const pluginBundle = `${JSON.stringify(
+    {
+      version: 1,
+      algorithm: "sha256",
+      plugin: { id: "myblog-publisher", version: "1.40.0" },
+      files: [
+        ["main.js", pluginMain],
+        ["manifest.json", pluginManifest],
+        ["styles.css", pluginStyles],
+      ].map(([path, content]) => ({
+        path,
+        sha256: createHash("sha256").update(content).digest("hex"),
+      })),
+    },
+    null,
+    2,
+  )}\n`;
   await Promise.all([
     ...AUTHOR_DOCTOR_REQUIRED_PATHS.map(({ kind, path }) =>
       kind === "directory"
@@ -181,15 +203,19 @@ async function createDoctorFixture() {
     ),
     writeFile(
       join(root, ".obsidian", "plugins", "myblog-publisher", "manifest.json"),
-      '{"id":"myblog-publisher","version":"1.39.0","isDesktopOnly":true}\n',
+      pluginManifest,
     ),
     writeFile(
       join(root, ".obsidian", "plugins", "myblog-publisher", "main.js"),
-      "module.exports = {};\n",
+      pluginMain,
     ),
     writeFile(
       join(root, ".obsidian", "plugins", "myblog-publisher", "styles.css"),
-      ".fixture {}\n",
+      pluginStyles,
+    ),
+    writeFile(
+      join(root, ".obsidian", "plugins", "myblog-publisher", "bundle.json"),
+      pluginBundle,
     ),
   ]);
   git(root, "init", "-b", "main");
@@ -226,6 +252,125 @@ test("reports a real ready repository after its remote becomes unavailable", asy
     assert.equal(report.safety.networkChecked, false);
     assert.equal(report.safety.credentialsRead, false);
 
+    const bundleResult = run(
+      fixture.root,
+      process.execPath,
+      [
+        "--experimental-strip-types",
+        reportScriptPath,
+        "--format",
+        "json",
+        "--plugin-bundle",
+      ],
+      { allowFailure: true },
+    );
+    assert.equal(
+      bundleResult.status,
+      0,
+      `${bundleResult.stdout}\n${bundleResult.stderr}`,
+    );
+    const bundleReport = JSON.parse(bundleResult.stdout);
+    assert.equal(bundleReport.version, 2);
+    assert.equal(bundleReport.status, "ready");
+    assert.deepEqual(bundleReport.summary, {
+      attention: 0,
+      passed: 14,
+      total: 14,
+    });
+    assert.deepEqual(bundleReport.pluginBundle, {
+      descriptorStatus: "valid",
+      files: bundleReport.pluginBundle.files.map((file) => ({
+        expectedSha256: file.expectedSha256,
+        observedSha256: file.observedSha256,
+        path: file.path,
+        status: "verified",
+      })),
+      plugin: { id: "myblog-publisher", version: "1.40.0" },
+      version: 1,
+    });
+    assert.deepEqual(
+      bundleReport.pluginBundle.files.map((file) => file.path),
+      ["main.js", "manifest.json", "styles.css"],
+    );
+    assert.ok(
+      bundleReport.pluginBundle.files.every(
+        (file) =>
+          /^[a-f0-9]{64}$/u.test(file.expectedSha256) &&
+          file.expectedSha256 === file.observedSha256,
+      ),
+    );
+    assert.equal(
+      bundleReport.checks.at(-1).id,
+      "publisher-bundle",
+    );
+
+    const stylesPath = join(
+      fixture.root,
+      ".obsidian",
+      "plugins",
+      "myblog-publisher",
+      "styles.css",
+    );
+    const bundlePath = join(
+      fixture.root,
+      ".obsidian",
+      "plugins",
+      "myblog-publisher",
+      "bundle.json",
+    );
+    const [originalStyles, originalBundle] = await Promise.all([
+      readFile(stylesPath, "utf8"),
+      readFile(bundlePath, "utf8"),
+    ]);
+    await writeFile(stylesPath, `${originalStyles}.partial-update {}\n`);
+    const partialResult = run(
+      fixture.root,
+      process.execPath,
+      [
+        "--experimental-strip-types",
+        reportScriptPath,
+        "--format",
+        "json",
+        "--plugin-bundle",
+      ],
+      { allowFailure: true },
+    );
+    assert.equal(partialResult.status, 1);
+    const partialReport = JSON.parse(partialResult.stdout);
+    assert.equal(partialReport.status, "needs-attention");
+    assert.equal(partialReport.pluginBundle.files.at(-1).status, "mismatch");
+    assert.match(
+      partialReport.checks.at(-1).observed,
+      /2\/3 SHA-256 verified.*styles\.css mismatch/u,
+    );
+    await writeFile(stylesPath, originalStyles);
+
+    const forgedBundle = JSON.parse(originalBundle);
+    forgedBundle.unknown = true;
+    await writeFile(bundlePath, `${JSON.stringify(forgedBundle, null, 2)}\n`);
+    const forgedResult = run(
+      fixture.root,
+      process.execPath,
+      [
+        "--experimental-strip-types",
+        reportScriptPath,
+        "--format",
+        "json",
+        "--plugin-bundle",
+      ],
+      { allowFailure: true },
+    );
+    assert.equal(forgedResult.status, 1);
+    const forgedReport = JSON.parse(forgedResult.stdout);
+    assert.equal(forgedReport.pluginBundle.descriptorStatus, "invalid");
+    assert.ok(
+      forgedReport.pluginBundle.files.every(
+        (file) => file.status === "untrusted",
+      ),
+    );
+    assert.match(forgedReport.checks.at(-1).observed, /bundle\.json invalid/u);
+    await writeFile(bundlePath, originalBundle);
+
     const textResult = run(
       fixture.root,
       process.execPath,
@@ -234,6 +379,7 @@ test("reports a real ready repository after its remote becomes unavailable", asy
     );
     assert.equal(textResult.status, 0, textResult.stderr);
     assert.match(textResult.stdout, /AUTHOR READY/u);
+    assert.match(textResult.stdout, /Plugin bundle.*3\/3 SHA-256 verified/u);
     assert.match(textResult.stdout, /未读取凭据、未访问网络/u);
     assert.deepEqual(
       {

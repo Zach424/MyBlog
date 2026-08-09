@@ -28,7 +28,10 @@ function formatText(report) {
 let args;
 try {
   args = parseArgs({
-    options: { format: { default: "text", type: "string" } },
+    options: {
+      format: { default: "text", type: "string" },
+      "plugin-bundle": { default: false, type: "boolean" },
+    },
     strict: true,
   });
 } catch (error) {
@@ -41,7 +44,10 @@ if (!new Set(["json", "text"]).has(args.values.format)) {
 
 let report;
 try {
-  report = await inspectAuthorEnvironment();
+  report = await inspectAuthorEnvironment(process.cwd(), {
+    pluginBundle:
+      args.values["plugin-bundle"] || args.values.format === "text",
+  });
 } catch (error) {
   fail(error instanceof Error ? error.message : String(error));
 }

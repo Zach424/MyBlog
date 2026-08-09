@@ -23,10 +23,11 @@ const CONTENT_REVIEW_DELIVERY_RECEIPT_VERSION = 1;
 const CONTENT_PUBLISH_DELIVERY_REPORT_VERSION = 1;
 const CONTENT_PUBLISH_DELIVERY_RECEIPT_VERSION = 1;
 const CONTENT_DELIVERY_TRIAGE_REPORT_VERSION = 1;
-const AUTHOR_DOCTOR_REPORT_VERSION = 1;
+const AUTHOR_DOCTOR_REPORT_VERSION = 2;
+const AUTHOR_DOCTOR_PLUGIN_BUNDLE_VERSION = 1;
 const INBOX_READINESS_REPORT_VERSION = 6;
 const AUTHOR_DOCTOR_NODE_ENGINE = ">=22.13.0";
-const AUTHOR_DOCTOR_PLUGIN_VERSION = "1.39.0";
+const AUTHOR_DOCTOR_PLUGIN_VERSION = "1.40.0";
 const CURRENT_DRAFT_INTENT_RUN_SCOPE = Symbol("current-draft-intent");
 const PRODUCTION_CONTENT_CONVERGENCE_RUN_SCOPE = Symbol(
   "production-content-convergence",
@@ -95,6 +96,7 @@ const AUTHOR_DOCTOR_REQUIRED_PATHS = [
 ];
 const GIT_OBJECT_ID_PATTERN = /^(?:[a-f0-9]{40}|[a-f0-9]{64})$/u;
 const PLUGIN_VERSION_PATTERN = /^(\d+)\.(\d+)\.(\d+)$/u;
+const PLUGIN_BUNDLE_FILES = ["main.js", "manifest.json", "styles.css"];
 const CONTENT_REVIEW_DELIVERY_STATUSES = [
   "synchronized",
   "pending-review",
@@ -2694,7 +2696,38 @@ function authorDoctorVersionAtLeast(value, minimum) {
   return true;
 }
 
-function deriveAuthorDoctorChecks(observation) {
+function isAuthorDoctorPluginBundleReady(plugin, pluginBundle) {
+  return (
+    plugin?.id === "myblog-publisher" &&
+    pluginBundle.descriptorStatus === "valid" &&
+    pluginBundle.version === AUTHOR_DOCTOR_PLUGIN_BUNDLE_VERSION &&
+    pluginBundle.plugin?.id === "myblog-publisher" &&
+    pluginBundle.plugin.version === plugin.version &&
+    pluginBundle.files.length === PLUGIN_BUNDLE_FILES.length &&
+    pluginBundle.files.every(
+      (file, index) =>
+        file.path === PLUGIN_BUNDLE_FILES[index] &&
+        file.status === "verified" &&
+        file.expectedSha256 !== null &&
+        file.expectedSha256 === file.observedSha256,
+    )
+  );
+}
+
+function describeAuthorDoctorPluginBundle(plugin, pluginBundle) {
+  const verified = pluginBundle.files.filter(
+    (file) => file.status === "verified",
+  ).length;
+  const failures = pluginBundle.files
+    .filter((file) => file.status !== "verified")
+    .map((file) => `${file.path} ${file.status}`);
+  if (pluginBundle.descriptorStatus !== "valid") {
+    failures.unshift(`bundle.json ${pluginBundle.descriptorStatus}`);
+  }
+  return `myblog-publisher@${plugin?.version ?? "unknown"} · ${verified}/${PLUGIN_BUNDLE_FILES.length} SHA-256 verified${failures.length > 0 ? ` · ${failures.join(" · ")}` : ""}`;
+}
+
+function deriveAuthorDoctorChecks(observation, pluginBundle) {
   const requiredScripts = new Set(AUTHOR_DOCTOR_REQUIRED_SCRIPTS);
   const scriptNames = new Set(observation.workspace.scriptNames);
   const scriptsReady =
@@ -2866,6 +2899,15 @@ function deriveAuthorDoctorChecks(observation) {
       pass: pluginReady,
       repair: `重新安装或启用 MyBlog Publisher ${observedPluginVersion}`,
     },
+    {
+      expected: `myblog-publisher ${observedPluginVersion} bundle v${AUTHOR_DOCTOR_PLUGIN_BUNDLE_VERSION} · ${PLUGIN_BUNDLE_FILES.length} SHA-256 files`,
+      group: "vault",
+      id: "publisher-bundle",
+      label: "Plugin bundle",
+      observed: describeAuthorDoctorPluginBundle(plugin, pluginBundle),
+      pass: isAuthorDoctorPluginBundleReady(plugin, pluginBundle),
+      repair: "运行 npm run plugin:bundle -- --write 后重新加载插件",
+    },
   ];
   return definitions.map(({ pass, repair, ...evidence }) => ({
     ...evidence,
@@ -2885,7 +2927,7 @@ function parseAuthorDoctorReport(output, expectedRoot) {
   assertPlainObject(report, label);
   assertExactKeys(
     report,
-    ["version", "mode", "status", "observation", "summary", "checks", "safety"],
+    ["version", "mode", "status", "observation", "pluginBundle", "summary", "checks", "safety"],
     label,
   );
   if (report.version !== AUTHOR_DOCTOR_REPORT_VERSION) {
@@ -3052,9 +3094,97 @@ function parseAuthorDoctorReport(output, expectedRoot) {
     }
   }
 
-  const expectedChecks = deriveAuthorDoctorChecks(observation);
+  const pluginBundle = report.pluginBundle;
+  assertPlainObject(pluginBundle, `${label} pluginBundle`);
+  assertExactKeys(
+    pluginBundle,
+    ["descriptorStatus", "files", "plugin", "version"],
+    `${label} pluginBundle`,
+  );
+  if (
+    !new Set(["valid", "invalid", "missing"]).has(
+      pluginBundle.descriptorStatus,
+    )
+  ) {
+    valueError(`${label} pluginBundle.descriptorStatus`, "不是受支持的状态");
+  }
+  if (pluginBundle.descriptorStatus === "valid") {
+    if (pluginBundle.version !== AUTHOR_DOCTOR_PLUGIN_BUNDLE_VERSION) {
+      valueError(
+        `${label} pluginBundle.version`,
+        `必须是 ${AUTHOR_DOCTOR_PLUGIN_BUNDLE_VERSION}`,
+      );
+    }
+    assertPlainObject(pluginBundle.plugin, `${label} pluginBundle.plugin`);
+    assertExactKeys(
+      pluginBundle.plugin,
+      ["id", "version"],
+      `${label} pluginBundle.plugin`,
+    );
+    if (
+      pluginBundle.plugin.id !== "myblog-publisher" ||
+      typeof pluginBundle.plugin.version !== "string" ||
+      !PLUGIN_VERSION_PATTERN.test(pluginBundle.plugin.version)
+    ) {
+      valueError(`${label} pluginBundle.plugin`, "插件身份不可用");
+    }
+  } else if (pluginBundle.version !== null || pluginBundle.plugin !== null) {
+    valueError(
+      `${label} pluginBundle`,
+      "无效或缺失 descriptor 不能声明版本或插件身份",
+    );
+  }
+  if (
+    !Array.isArray(pluginBundle.files) ||
+    pluginBundle.files.length !== PLUGIN_BUNDLE_FILES.length
+  ) {
+    valueError(`${label} pluginBundle.files`, "必须包含固定的三个插件文件");
+  }
+  pluginBundle.files.forEach((file, index) => {
+    const fileLabel = `${label} pluginBundle.files[${index}]`;
+    assertPlainObject(file, fileLabel);
+    assertExactKeys(
+      file,
+      ["expectedSha256", "observedSha256", "path", "status"],
+      fileLabel,
+    );
+    if (file.path !== PLUGIN_BUNDLE_FILES[index]) {
+      valueError(`${fileLabel}.path`, "与固定插件文件顺序不一致");
+    }
+    for (const field of ["expectedSha256", "observedSha256"]) {
+      if (
+        file[field] !== null &&
+        (typeof file[field] !== "string" ||
+          !SOURCE_SHA256_PATTERN.test(file[field]))
+      ) {
+        valueError(`${fileLabel}.${field}`, "必须是 SHA-256 或 null");
+      }
+    }
+    if (
+      pluginBundle.descriptorStatus !== "valid" &&
+      file.expectedSha256 !== null
+    ) {
+      valueError(
+        `${fileLabel}.expectedSha256`,
+        "不可信 descriptor 不能声明预期摘要",
+      );
+    }
+    const expectedStatus =
+      file.observedSha256 === null
+        ? "missing"
+        : file.expectedSha256 === null
+          ? "untrusted"
+          : file.expectedSha256 === file.observedSha256
+            ? "verified"
+            : "mismatch";
+    if (file.status !== expectedStatus) {
+      valueError(`${fileLabel}.status`, "与摘要证据不一致");
+    }
+  });
+
+  const expectedChecks = deriveAuthorDoctorChecks(observation, pluginBundle);
   if (!Array.isArray(report.checks) || report.checks.length !== expectedChecks.length) {
-    valueError(`${label} checks`, "必须包含固定的 13 项检查");
+    valueError(`${label} checks`, "必须包含固定的 14 项检查");
   }
   expectedChecks.forEach((expected, index) => {
     const actual = report.checks[index];
@@ -3115,6 +3245,7 @@ function createAuthorDoctorPluginVersionHandshake(report, runtimeManifest) {
   const diskPlugin = report.observation.vault.plugin;
   if (!diskPlugin || diskPlugin.id !== "myblog-publisher") {
     return Object.freeze({
+      pluginBundle: report.pluginBundle,
       diskVersion: null,
       runtimeCodeVersion,
       runtimeManifestVersion,
@@ -3122,15 +3253,19 @@ function createAuthorDoctorPluginVersionHandshake(report, runtimeManifest) {
     });
   }
   const diskVersion = diskPlugin.version;
+  const versionsCompatible =
+    diskVersion === runtimeCodeVersion &&
+    runtimeManifestVersion === runtimeCodeVersion;
   return Object.freeze({
+    pluginBundle: report.pluginBundle,
     diskVersion,
     runtimeCodeVersion,
     runtimeManifestVersion,
-    status:
-      diskVersion === runtimeCodeVersion &&
-      runtimeManifestVersion === runtimeCodeVersion
+    status: !versionsCompatible
+      ? "reload-required"
+      : isAuthorDoctorPluginBundleReady(diskPlugin, report.pluginBundle)
         ? "compatible"
-        : "reload-required",
+        : "bundle-invalid",
   });
 }
 
@@ -4278,7 +4413,9 @@ class AuthorDoctorModal extends Modal {
     const { contentEl, pluginVersionHandshake, report, transaction } = this;
     const reloadRequired =
       pluginVersionHandshake?.status === "reload-required";
-    const ready = report.status === "ready" && !reloadRequired;
+    const bundleInvalid =
+      pluginVersionHandshake?.status === "bundle-invalid";
+    const ready = report.status === "ready" && !reloadRequired && !bundleInvalid;
     const groups = [
       ["runtime", "RUNTIME"],
       ["git", "GIT"],
@@ -4292,6 +4429,10 @@ class AuthorDoctorModal extends Modal {
     contentEl.setAttr(
       "data-plugin-version",
       pluginVersionHandshake?.status ?? "unavailable",
+    );
+    contentEl.setAttr(
+      "data-plugin-bundle",
+      bundleInvalid ? "invalid" : "verified",
     );
     contentEl.createEl("p", {
       cls: "myblog-author-doctor__eyebrow",
@@ -4330,6 +4471,38 @@ class AuthorDoctorModal extends Modal {
       reload.createEl("p", {
         cls: "myblog-author-doctor__plugin-reload-action",
         text: "关闭再启用 MyBlog Publisher，或重启 Obsidian，然后重新运行原命令。插件不会自动重载，也不会在版本漂移时启动 Git 领域命令。",
+      });
+    }
+
+    if (bundleInvalid) {
+      const bundle = contentEl.createEl("section", {
+        cls: "myblog-author-doctor__plugin-bundle",
+      });
+      bundle.setAttr("aria-label", "磁盘插件发布包摘要不一致");
+      bundle.createEl("p", {
+        cls: "myblog-author-doctor__plugin-bundle-label",
+        text: "PLUGIN BUNDLE INVALID",
+      });
+      bundle.createEl("p", {
+        cls: "myblog-author-doctor__plugin-bundle-state",
+        text: `bundle.json · ${pluginVersionHandshake.pluginBundle.descriptorStatus.toUpperCase()}`,
+      });
+      const files = bundle.createEl("dl", {
+        cls: "myblog-author-doctor__plugin-bundle-files",
+      });
+      for (const file of pluginVersionHandshake.pluginBundle.files) {
+        const item = files.createEl("div");
+        item.setAttr("data-state", file.status);
+        item.createEl("dt", { text: file.path });
+        const detail = item.createEl("dd");
+        detail.createEl("strong", { text: file.status.toUpperCase() });
+        detail.createEl("code", {
+          text: `EXPECTED ${file.expectedSha256?.slice(0, 12) ?? "UNAVAILABLE"} · OBSERVED ${file.observedSha256?.slice(0, 12) ?? "MISSING"}`,
+        });
+      }
+      bundle.createEl("p", {
+        cls: "myblog-author-doctor__plugin-bundle-action",
+        text: "在仓库根运行 npm run plugin:bundle -- --write，确认同步完整后关闭再启用插件或重启 Obsidian。插件不会自动覆盖、重载或启动 Git。",
       });
     }
 
@@ -4389,7 +4562,7 @@ class AuthorDoctorModal extends Modal {
     });
     circuit.createEl("p", {
       cls: "myblog-author-doctor__summary",
-      text: `${report.summary.passed} PASS / ${report.summary.attention} ATTENTION${reloadRequired ? " · RUNTIME HOLD" : ""}`,
+      text: `${report.summary.passed} PASS / ${report.summary.attention} ATTENTION${reloadRequired ? " · RUNTIME HOLD" : ""}${bundleInvalid ? " · BUNDLE HOLD" : ""}`,
     });
 
     const ledger = contentEl.createEl("section", {
@@ -7121,6 +7294,7 @@ module.exports = class MyBlogPublisher extends Plugin {
         "--",
         "--format",
         "json",
+        "--plugin-bundle",
       ],
       {
         allowedExitCodes: [0, 1],
@@ -7160,6 +7334,7 @@ module.exports = class MyBlogPublisher extends Plugin {
         "--",
         "--format",
         "json",
+        "--plugin-bundle",
       ],
       {
         allowedExitCodes: [0, 1],
@@ -7211,6 +7386,20 @@ module.exports = class MyBlogPublisher extends Plugin {
       return "held";
     }
 
+    if (pluginVersionHandshake.status === "bundle-invalid") {
+      new AuthorDoctorModal(
+        this.app,
+        report,
+        transaction,
+        pluginVersionHandshake,
+      ).open();
+      new Notice(
+        `MyBlog Publisher 磁盘发布包摘要不一致；${transaction.label}未启动。请重新生成或同步完整插件 bundle 后重载。`,
+        12000,
+      );
+      return "held";
+    }
+
     if (report.status !== "ready") {
       new AuthorDoctorModal(
         this.app,
@@ -7244,9 +7433,11 @@ module.exports = class MyBlogPublisher extends Plugin {
       new Notice(
         pluginVersionHandshake.status === "reload-required"
           ? "插件磁盘版本已更新；请关闭再启用 MyBlog Publisher 或重启 Obsidian。"
+          : pluginVersionHandshake.status === "bundle-invalid"
+            ? "插件磁盘发布包摘要不一致；请重新生成或同步完整 bundle 后重载。"
           : report.status === "ready"
-          ? "本机发布环境已就绪。"
-          : `本机发布环境有 ${report.summary.attention} 项需要处理。`,
+            ? "本机发布环境已就绪。"
+            : `本机发布环境有 ${report.summary.attention} 项需要处理。`,
         6000,
       );
     } catch (error) {
@@ -7354,6 +7545,7 @@ module.exports = class MyBlogPublisher extends Plugin {
         "--",
         "--format",
         "json",
+        "--plugin-bundle",
       ],
       {
         allowedExitCodes: [0, 1],
@@ -7378,6 +7570,19 @@ module.exports = class MyBlogPublisher extends Plugin {
             ).open();
             new Notice(
               `MyBlog Publisher 运行版本与磁盘版本不一致；${transaction.label}未启动。请关闭再启用插件或重启 Obsidian。`,
+              12000,
+            );
+            return "held";
+          }
+          if (handshake.status === "bundle-invalid") {
+            new AuthorDoctorModal(
+              this.app,
+              report,
+              transaction,
+              handshake,
+            ).open();
+            new Notice(
+              `MyBlog Publisher 磁盘发布包摘要不一致；${transaction.label}未启动。请重新生成或同步完整 bundle 后重载。`,
               12000,
             );
             return "held";

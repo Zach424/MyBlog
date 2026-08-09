@@ -1,8 +1,17 @@
+import {
+  describePublisherPluginBundle,
+  isPublisherPluginBundleVerified,
+  PUBLISHER_PLUGIN_BUNDLE_FILES,
+  PUBLISHER_PLUGIN_BUNDLE_VERSION,
+  type PublisherPluginBundleObservation,
+} from "./publisher-plugin-bundle.ts";
+
 export const AUTHOR_DOCTOR_REPORT_VERSION = 1 as const;
+export const AUTHOR_DOCTOR_BUNDLE_REPORT_VERSION = 2 as const;
 export const AUTHOR_DOCTOR_NODE_ENGINE = ">=22.13.0";
 export const AUTHOR_DOCTOR_PACKAGE_NAME = "zach424-myblog";
 export const AUTHOR_DOCTOR_PLUGIN_ID = "myblog-publisher";
-export const AUTHOR_DOCTOR_PLUGIN_VERSION = "1.39.0";
+export const AUTHOR_DOCTOR_PLUGIN_VERSION = "1.40.0";
 
 export const AUTHOR_DOCTOR_REQUIRED_SCRIPTS = [
   "content:author:doctor",
@@ -96,7 +105,8 @@ export type AuthorDoctorCheck = {
     | "workspace-dependencies"
     | "content-layout"
     | "obsidian-vault"
-    | "publisher-plugin";
+    | "publisher-plugin"
+    | "publisher-bundle";
   label: string;
   observed: string;
   resolution: string | null;
@@ -120,6 +130,14 @@ export type AuthorDoctorReport = {
     filesChanged: false;
     networkChecked: false;
   };
+};
+
+export type AuthorDoctorBundleReport = Omit<
+  AuthorDoctorReport,
+  "version"
+> & {
+  version: typeof AUTHOR_DOCTOR_BUNDLE_REPORT_VERSION;
+  pluginBundle: PublisherPluginBundleObservation;
 };
 
 type CheckInput = Omit<AuthorDoctorCheck, "resolution" | "status"> & {
@@ -382,5 +400,50 @@ export function analyzeAuthorEnvironment(
       filesChanged: false,
       networkChecked: false,
     },
+  };
+}
+
+function clonePluginBundle(
+  source: PublisherPluginBundleObservation,
+): PublisherPluginBundleObservation {
+  return {
+    descriptorStatus: source.descriptorStatus,
+    files: source.files.map((file) => ({ ...file })),
+    plugin: source.plugin ? { ...source.plugin } : null,
+    version: source.version,
+  };
+}
+
+export function addPublisherPluginBundleEvidence(
+  source: AuthorDoctorReport,
+  bundleSource: PublisherPluginBundleObservation,
+): AuthorDoctorBundleReport {
+  const pluginBundle = clonePluginBundle(bundleSource);
+  const pluginVersion = source.observation.vault.plugin?.version ?? null;
+  const bundleReady = isPublisherPluginBundleVerified(
+    pluginBundle,
+    pluginVersion,
+  );
+  const bundleCheck = check({
+    expected: `${AUTHOR_DOCTOR_PLUGIN_ID} ${pluginVersion ?? AUTHOR_DOCTOR_PLUGIN_VERSION} bundle v${PUBLISHER_PLUGIN_BUNDLE_VERSION} · ${PUBLISHER_PLUGIN_BUNDLE_FILES.length} SHA-256 files`,
+    group: "vault",
+    id: "publisher-bundle",
+    label: "Plugin bundle",
+    observed: describePublisherPluginBundle(pluginBundle, pluginVersion),
+    pass: bundleReady,
+    repair: "运行 npm run plugin:bundle -- --write 后重新加载插件",
+  });
+  const checks = [...source.checks.map((item) => ({ ...item })), bundleCheck];
+  const passed = checks.filter((item) => item.status === "pass").length;
+  const attention = checks.length - passed;
+  return {
+    version: AUTHOR_DOCTOR_BUNDLE_REPORT_VERSION,
+    mode: source.mode,
+    status: attention === 0 ? "ready" : "needs-attention",
+    observation: cloneObservation(source.observation),
+    pluginBundle,
+    summary: { attention, passed, total: checks.length },
+    checks,
+    safety: { ...source.safety },
   };
 }

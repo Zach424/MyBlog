@@ -106,7 +106,7 @@ async function createPluginHarness({
   readActiveFilePathAt = 1,
   renameFailure,
   renamePostcondition = "exact",
-  runtimePluginVersion = "1.39.0",
+  runtimePluginVersion = "1.40.0",
   throwSpawnAt = [],
 } = {}) {
   const source = await readFile(pluginUrl, "utf8");
@@ -1172,7 +1172,25 @@ function deliveryTriageReport({
   };
 }
 
-function authorDoctorReport({ pluginVersion = "1.39.0" } = {}) {
+function authorDoctorReport({
+  bundleStatus = "verified",
+  pluginVersion = "1.40.0",
+} = {}) {
+  const bundleFiles = ["main.js", "manifest.json", "styles.css"].map(
+    (path, index) => ({
+      expectedSha256: String(index + 1).repeat(64),
+      observedSha256:
+        bundleStatus === "mismatch" && path === "styles.css"
+          ? "f".repeat(64)
+          : String(index + 1).repeat(64),
+      path,
+      status:
+        bundleStatus === "mismatch" && path === "styles.css"
+          ? "mismatch"
+          : "verified",
+    }),
+  );
+  const bundleReady = bundleStatus === "verified";
   const checkDefinitions = [
     ["node-runtime", "runtime", "Node.js runtime", "v24.14.0", ">=22.13.0"],
     ["npm-cli", "runtime", "npm CLI", "11.9.0", "available semantic version"],
@@ -1187,6 +1205,15 @@ function authorDoctorReport({ pluginVersion = "1.39.0" } = {}) {
     ["content-layout", "workspace", "Content layout", "5/5 required paths", "5 required authoring paths"],
     ["obsidian-vault", "vault", "Obsidian Vault", ".obsidian present", ".obsidian directory present"],
     ["publisher-plugin", "vault", "MyBlog Publisher", `myblog-publisher@${pluginVersion} · desktop`, `myblog-publisher ${pluginVersion} desktop plugin`],
+    [
+      "publisher-bundle",
+      "vault",
+      "Plugin bundle",
+      bundleReady
+        ? `myblog-publisher@${pluginVersion} · 3/3 SHA-256 verified`
+        : `myblog-publisher@${pluginVersion} · 2/3 SHA-256 verified · styles.css mismatch`,
+      `myblog-publisher ${pluginVersion} bundle v1 · 3 SHA-256 files`,
+    ],
   ];
   const scripts = [
     "content:author:doctor",
@@ -1211,9 +1238,9 @@ function authorDoctorReport({ pluginVersion = "1.39.0" } = {}) {
     ["templates/obsidian", "directory"],
   ].map(([path, kind]) => ({ kind, path, present: true }));
   return {
-    version: 1,
+    version: 2,
     mode: "read-only",
-    status: "ready",
+    status: bundleReady ? "ready" : "needs-attention",
     observation: {
       currentDirectory: "D:/Study/blog",
       gitVersion: "git version 2.37.1.windows.1",
@@ -1248,16 +1275,31 @@ function authorDoctorReport({ pluginVersion = "1.39.0" } = {}) {
         scriptNames: scripts,
       },
     },
-    summary: { attention: 0, passed: 13, total: 13 },
-    checks: checkDefinitions.map(([id, group, label, observed, expected]) => ({
-      expected,
-      group,
-      id,
-      label,
-      observed,
-      resolution: null,
-      status: "pass",
-    })),
+    pluginBundle: {
+      descriptorStatus: "valid",
+      files: bundleFiles,
+      plugin: { id: "myblog-publisher", version: pluginVersion },
+      version: 1,
+    },
+    summary: {
+      attention: bundleReady ? 0 : 1,
+      passed: bundleReady ? 14 : 13,
+      total: 14,
+    },
+    checks: checkDefinitions.map(([id, group, label, observed, expected]) => {
+      const failed = id === "publisher-bundle" && !bundleReady;
+      return {
+        expected,
+        group,
+        id,
+        label,
+        observed,
+        resolution: failed
+          ? "运行 npm run plugin:bundle -- --write 后重新加载插件"
+          : null,
+        status: failed ? "attention" : "pass",
+      };
+    }),
     safety: {
       configurationChanged: false,
       credentialsRead: false,
@@ -1271,7 +1313,7 @@ function authorDoctorAttentionReport() {
   const report = authorDoctorReport();
   report.status = "needs-attention";
   report.observation.identity.emailConfigured = false;
-  report.summary = { attention: 1, passed: 12, total: 13 };
+  report.summary = { attention: 1, passed: 13, total: 14 };
   const identity = report.checks.find((check) => check.id === "author-identity");
   identity.observed = "name configured · email missing";
   identity.resolution = "配置 Git user.name 与 user.email 后重新检查";
@@ -1290,6 +1332,7 @@ const authorDoctorCommandArgs = [
   "--",
   "--format",
   "json",
+  "--plugin-bundle",
 ];
 
 function finishReadyAuthorPreflight(harness, index) {
@@ -3181,7 +3224,7 @@ test("renders a versioned maintenance ledger and opens an exact Vault note", asy
     createPluginHarness(),
   ]);
   const manifest = JSON.parse(manifestSource);
-  assert.equal(manifest.version, "1.39.0");
+  assert.equal(manifest.version, "1.40.0");
   assert.equal(manifest.minAppVersion, "1.5.7");
   assert.equal(manifest.isDesktopOnly, true);
   assert.match(styles, /^\.myblog-draft-create \{/mu);
@@ -3721,18 +3764,7 @@ test("renders a local-only author preflight circuit without repairing it", async
   const command = findCommand(harness, "inspect-author-environment");
   assert.equal(command.checkCallback(true), true);
   command.checkCallback(false);
-  assert.deepEqual(plain(harness.spawned[0].args), [
-    "/d",
-    "/s",
-    "/c",
-    "npm",
-    "--silent",
-    "run",
-    "content:author:doctor",
-    "--",
-    "--format",
-    "json",
-  ]);
+  assert.deepEqual(plain(harness.spawned[0].args), authorDoctorCommandArgs);
   harness.spawned[0].child.stdout.emit(
     "data",
     Buffer.from(JSON.stringify(authorDoctorReport())),
@@ -3750,7 +3782,7 @@ test("renders a local-only author preflight circuit without repairing it", async
     text,
     /RUNTIME \/ PASS.*GIT \/ PASS.*WORKSPACE \/ PASS.*VAULT \/ PASS/su,
   );
-  assert.match(text, /13 PASS \/ 0 ATTENTION/u);
+  assert.match(text, /14 PASS \/ 0 ATTENTION/u);
   assert.match(text, /Node\.js runtime/u);
   assert.match(text, /MyBlog Publisher/u);
   assert.match(text, /不会安装依赖、修改配置、读取凭据或访问网络/u);
@@ -3867,7 +3899,7 @@ test("holds every Git writer on an explicit runtime and disk plugin version mism
   await t.test("normal author transaction", async () => {
     const harness = await createPluginHarness({
       activeFilePath: "content/inbox/new-note.md",
-      runtimePluginVersion: "1.38.0",
+      runtimePluginVersion: "1.39.0",
     });
     findCommand(harness, "publish-current-note").checkCallback(false);
     assert.deepEqual(plain(harness.spawned[0].args), authorDoctorCommandArgs);
@@ -3886,14 +3918,14 @@ test("holds every Git writer on an explicit runtime and disk plugin version mism
       .join(" ");
     assert.equal(elementsByTag(modal, "button").length, 0);
     assert.match(text, /PLUGIN RELOAD REQUIRED/u);
-    assert.match(text, /RUNNING CODE.*1\.39\.0.*RUNTIME MANIFEST.*1\.38\.0.*DISK.*1\.39\.0/su);
+    assert.match(text, /RUNNING CODE.*1\.40\.0.*RUNTIME MANIFEST.*1\.39\.0.*DISK.*1\.40\.0/su);
     assert.match(text, /关闭再启用 MyBlog Publisher.*重启 Obsidian/su);
     assert.match(text, /发布当前草稿并同步 GitHub.*未启动/su);
   });
 
   await t.test("recovery delivery outside the author lease", async () => {
     const harness = await createPluginHarness({
-      runtimePluginVersion: "1.38.0",
+      runtimePluginVersion: "1.39.0",
     });
     findCommand(harness, "deliver-pending-review").checkCallback(false);
     assert.deepEqual(plain(harness.spawned[0].args), authorDoctorCommandArgs);
@@ -3916,10 +3948,10 @@ test("holds every Git writer on an explicit runtime and disk plugin version mism
 });
 
 test("keeps future disk patch and minor plugin versions structured for reload guidance", async (t) => {
-  for (const diskVersion of ["1.39.1", "1.40.0"]) {
+  for (const diskVersion of ["1.40.1", "1.41.0"]) {
     await t.test(diskVersion, async () => {
       const harness = await createPluginHarness({
-        runtimePluginVersion: "1.39.0",
+        runtimePluginVersion: "1.40.0",
       });
       findCommand(harness, "inspect-author-environment").checkCallback(false);
       harness.spawned[0].child.stdout.emit(
@@ -3943,7 +3975,7 @@ test("keeps future disk patch and minor plugin versions structured for reload gu
 
   await t.test("forged future version evidence", async () => {
     const harness = await createPluginHarness({
-      runtimePluginVersion: "1.39.0",
+      runtimePluginVersion: "1.40.0",
     });
     const report = authorDoctorReport({ pluginVersion: "1.40.0" });
     report.checks.at(-1).observed = "myblog-publisher@9.9.9 · desktop";
@@ -3998,13 +4030,19 @@ test("fails recovery closed when the disk plugin version identity is unavailable
   const report = authorDoctorReport();
   report.status = "needs-attention";
   report.observation.vault.plugin = null;
-  report.summary = { attention: 1, passed: 12, total: 13 };
+  report.summary = { attention: 2, passed: 12, total: 14 };
   const publisher = report.checks.find(
     (check) => check.id === "publisher-plugin",
   );
   publisher.observed = "missing";
-  publisher.resolution = "重新安装或启用 MyBlog Publisher 1.39.0";
+  publisher.resolution = "重新安装或启用 MyBlog Publisher 1.40.0";
   publisher.status = "attention";
+  const bundle = report.checks.find(
+    (check) => check.id === "publisher-bundle",
+  );
+  bundle.observed = "myblog-publisher@unknown · 3/3 SHA-256 verified";
+  bundle.resolution = "运行 npm run plugin:bundle -- --write 后重新加载插件";
+  bundle.status = "attention";
 
   findCommand(harness, "deliver-pending-review").checkCallback(false);
   harness.spawned[0].child.stdout.emit(
@@ -4023,6 +4061,40 @@ test("fails recovery closed when the disk plugin version identity is unavailable
       ),
     ),
   );
+});
+
+test("holds normal and recovery Git writers on a mismatched plugin bundle", async (t) => {
+  for (const commandId of [
+    "publish-current-note",
+    "deliver-pending-review",
+  ]) {
+    await t.test(commandId, async () => {
+      const harness = await createPluginHarness({
+        activeFilePath: "content/inbox/new-note.md",
+      });
+      findCommand(harness, commandId).checkCallback(false);
+      assert.deepEqual(plain(harness.spawned[0].args), authorDoctorCommandArgs);
+      harness.spawned[0].child.stdout.emit(
+        "data",
+        Buffer.from(
+          JSON.stringify(authorDoctorReport({ bundleStatus: "mismatch" })),
+        ),
+      );
+      harness.spawned[0].child.emit("close", 1);
+
+      assert.equal(harness.spawned.length, 1);
+      assert.equal(harness.plugin.authorTransactionLease, null);
+      assert.equal(harness.modals.length, 1);
+      assert.equal(elementsByTag(harness.modals[0], "button").length, 0);
+      const text = allElements(harness.modals[0].contentEl)
+        .map((element) => element.text)
+        .join(" ");
+      assert.match(text, /PLUGIN BUNDLE INVALID/u);
+      assert.match(text, /styles\.css.*MISMATCH/su);
+      assert.match(text, /npm run plugin:bundle -- --write/u);
+      assert.match(text, /不会自动覆盖、重载或启动 Git/su);
+    });
+  }
 });
 
 test("releases each Git writer and reconciles the Vault before automatic production wait", async (t) => {

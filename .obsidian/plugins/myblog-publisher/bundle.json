@@ -1,0 +1,22 @@
+{
+  "version": 1,
+  "algorithm": "sha256",
+  "plugin": {
+    "id": "myblog-publisher",
+    "version": "1.40.0"
+  },
+  "files": [
+    {
+      "path": "main.js",
+      "sha256": "40bc06fe405656f165cceb03c475602b1fe5866777b58142a4149095af2a4790"
+    },
+    {
+      "path": "manifest.json",
+      "sha256": "ac31e41a782521236fa70d0fcb615a213e795d3cb9edf8ab6762d862baf88216"
+    },
+    {
+      "path": "styles.css",
+      "sha256": "60b756d3c7b7fd94c75ea9d1abbbca1faf9ae2de2bccf3ca217f1a5b92b344ae"
+    }
+  ]
+}

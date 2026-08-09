@@ -2,9 +2,14 @@ import { spawnSync } from "node:child_process";
 import { lstat, readFile } from "node:fs/promises";
 import { dirname, join, resolve } from "node:path";
 import {
+  addPublisherPluginBundleEvidence,
   analyzeAuthorEnvironment,
   AUTHOR_DOCTOR_REQUIRED_PATHS,
 } from "../lib/content/author-doctor.ts";
+import {
+  observePublisherPluginBundle,
+  PUBLISHER_PLUGIN_BUNDLE_FILES,
+} from "../lib/content/publisher-plugin-bundle.ts";
 import { readContentDeliveryGitSnapshot } from "./delivery-git-snapshot.mjs";
 
 function normalizePath(path) {
@@ -52,6 +57,24 @@ async function isRegularFile(path) {
     return detail.isFile() && !detail.isSymbolicLink();
   } catch {
     return false;
+  }
+}
+
+async function readRegularFile(path) {
+  if (!(await isRegularFile(path))) return null;
+  try {
+    return await readFile(path);
+  } catch {
+    return null;
+  }
+}
+
+function parseJsonBytes(bytes) {
+  if (bytes === null) return undefined;
+  try {
+    return JSON.parse(bytes.toString("utf8"));
+  } catch {
+    return null;
   }
 }
 
@@ -105,7 +128,10 @@ async function readDependencyState(root, packageSource) {
   };
 }
 
-export async function inspectAuthorEnvironment(cwd = process.cwd()) {
+export async function inspectAuthorEnvironment(
+  cwd = process.cwd(),
+  { pluginBundle = false } = {},
+) {
   const root = resolve(cwd);
   const packageSource = await readJson(join(root, "package.json"));
   const npmVersion = await readNpmVersion(root);
@@ -133,17 +159,23 @@ export async function inspectAuthorEnvironment(cwd = process.cwd()) {
   );
   const dependencyState = await readDependencyState(root, packageSource);
   const pluginRoot = join(root, ".obsidian", "plugins", "myblog-publisher");
-  const pluginManifest = await readJson(join(pluginRoot, "manifest.json"));
+  const [bundleBytes, mainBytes, manifestBytes, stylesBytes] = await Promise.all([
+    readRegularFile(join(pluginRoot, "bundle.json")),
+    readRegularFile(join(pluginRoot, "main.js")),
+    readRegularFile(join(pluginRoot, "manifest.json")),
+    readRegularFile(join(pluginRoot, "styles.css")),
+  ]);
+  const pluginManifest = parseJsonBytes(manifestBytes);
   const plugin = pluginManifest
     ? {
         id: pluginManifest.id ?? "",
         isDesktopOnly: pluginManifest.isDesktopOnly === true,
-        mainPresent: await hasPath(pluginRoot, "main.js", "file"),
-        stylesPresent: await hasPath(pluginRoot, "styles.css", "file"),
+        mainPresent: mainBytes !== null,
+        stylesPresent: stylesBytes !== null,
         version: pluginManifest.version ?? "",
       }
     : null;
-  return analyzeAuthorEnvironment({
+  const report = analyzeAuthorEnvironment({
     currentDirectory: normalizePath(root),
     gitVersion,
     identity: {
@@ -174,4 +206,19 @@ export async function inspectAuthorEnvironment(cwd = process.cwd()) {
       ),
     },
   });
+  if (!pluginBundle) return report;
+  const pluginBundleObservation = observePublisherPluginBundle(
+    parseJsonBytes(bundleBytes),
+    Object.fromEntries(
+      PUBLISHER_PLUGIN_BUNDLE_FILES.map((path) => [
+        path,
+        path === "main.js"
+          ? mainBytes
+          : path === "manifest.json"
+            ? manifestBytes
+            : stylesBytes,
+      ]),
+    ),
+  );
+  return addPublisherPluginBundleEvidence(report, pluginBundleObservation);
 }

@@ -1524,6 +1524,8 @@
 .myblog-author-doctor__station-label,
 .myblog-author-doctor__endpoint,
 .myblog-author-doctor__interlock-label,
+.myblog-author-doctor__plugin-bundle-label,
+.myblog-author-doctor__plugin-bundle-files dt,
 .myblog-author-doctor__plugin-reload-label,
 .myblog-author-doctor__plugin-versions dt,
 .myblog-author-doctor__check-state {
@@ -1565,6 +1567,52 @@
 }
 
 .myblog-author-doctor__plugin-versions code {
+  overflow-wrap: anywhere;
+}
+
+.myblog-author-doctor__plugin-bundle {
+  border-block: 1px solid var(--myblog-doctor-caution);
+  margin: 0 0 var(--size-4-4);
+  padding-block: var(--size-4-3);
+}
+
+.myblog-author-doctor__plugin-bundle-label,
+.myblog-author-doctor__plugin-bundle-action {
+  color: var(--myblog-doctor-caution);
+  margin: 0;
+}
+
+.myblog-author-doctor__plugin-bundle-state {
+  color: var(--text-muted);
+  font-family: var(--font-monospace);
+  margin: var(--size-2-2) 0;
+}
+
+.myblog-author-doctor__plugin-bundle-files {
+  display: grid;
+  gap: var(--size-2-2);
+  margin: var(--size-4-3) 0;
+}
+
+.myblog-author-doctor__plugin-bundle-files div {
+  align-items: start;
+  display: grid;
+  gap: var(--size-2-2);
+  grid-template-columns: minmax(7rem, 0.6fr) minmax(0, 1.4fr);
+}
+
+.myblog-author-doctor__plugin-bundle-files dd {
+  display: grid;
+  gap: var(--size-2-1);
+  margin: 0;
+  min-width: 0;
+}
+
+.myblog-author-doctor__plugin-bundle-files strong {
+  color: var(--myblog-doctor-caution);
+}
+
+.myblog-author-doctor__plugin-bundle-files code {
   overflow-wrap: anywhere;
 }
 
@@ -1759,6 +1807,7 @@
 
 @media (max-width: 36rem) {
   .myblog-author-doctor__interlock,
+  .myblog-author-doctor__plugin-bundle-files div,
   .myblog-author-doctor__plugin-versions,
   .myblog-author-doctor__stations,
   .myblog-author-doctor__check {

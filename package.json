@@ -29,6 +29,7 @@
     "content:production:wait": "node --experimental-strip-types scripts/wait-production-content-convergence.mjs",
     "links:external": "node --experimental-strip-types scripts/report-external-links.mjs",
     "media:staging": "node --experimental-strip-types scripts/report-staging-media.mjs",
+    "plugin:bundle": "node --experimental-strip-types scripts/manage-publisher-plugin-bundle.mjs",
     "production:smoke": "node scripts/smoke-production.mjs",
     "migration:status": "node scripts/check-migration-status.mjs",
     "lint": "eslint . --ignore-pattern .next --ignore-pattern .vercel",

@@ -1,5 +1,6 @@
 import assert from "node:assert/strict";
 import { spawnSync } from "node:child_process";
+import { createHash } from "node:crypto";
 import {
   access,
   mkdtemp,
@@ -741,15 +742,36 @@ test("restores the draft and every original attachment when the real quality gat
   }
 });
 
-test("ships a desktop Obsidian command without hidden shell interpolation", async () => {
-  const [manifest, packageSource, plugin] = await Promise.all([
+test("ships one digest-bound desktop Obsidian plugin bundle without hidden shell interpolation", async () => {
+  const [bundleSource, manifest, packageSource, plugin, styles] = await Promise.all([
+    readFile(new URL("../.obsidian/plugins/myblog-publisher/bundle.json", import.meta.url), "utf8"),
     readFile(new URL("../.obsidian/plugins/myblog-publisher/manifest.json", import.meta.url), "utf8"),
     readFile(new URL("../package.json", import.meta.url), "utf8"),
     readFile(new URL("../.obsidian/plugins/myblog-publisher/main.js", import.meta.url), "utf8"),
+    readFile(new URL("../.obsidian/plugins/myblog-publisher/styles.css", import.meta.url), "utf8"),
   ]);
+  const bundle = JSON.parse(bundleSource);
   assert.equal(JSON.parse(manifest).isDesktopOnly, true);
-  assert.equal(JSON.parse(manifest).version, "1.39.0");
+  assert.equal(JSON.parse(manifest).version, "1.40.0");
   assert.equal(JSON.parse(manifest).minAppVersion, "1.5.7");
+  assert.deepEqual(Object.keys(bundle), ["version", "algorithm", "plugin", "files"]);
+  assert.equal(bundle.version, 1);
+  assert.equal(bundle.algorithm, "sha256");
+  assert.deepEqual(bundle.plugin, {
+    id: "myblog-publisher",
+    version: "1.40.0",
+  });
+  assert.deepEqual(
+    bundle.files,
+    [
+      ["main.js", plugin],
+      ["manifest.json", manifest],
+      ["styles.css", styles],
+    ].map(([path, content]) => ({
+      path,
+      sha256: createHash("sha256").update(content).digest("hex"),
+    })),
+  );
   assert.match(plugin, /FileSystemAdapter/);
   assert.match(plugin, /create-blog-draft/);
   assert.match(plugin, /DraftCreationModal/);
