@@ -22,6 +22,7 @@ MyBlog 是 Zach424 的个人技术知识库与公开工程日志。它把学习�
 | 自动交付 | done | GitHub `main` → Vercel Production → 稳定域名冒烟；checkout/setup-node v6 Node 24 action runtime 的六处引用固定到官方完整 SHA，应用 Node 22 与 workflow 语义由共享结构/发布门禁保护 |
 | 生产内容同步 | done | `content:production` 输出全库 deployed/pending/missing/unexpected；`content:production:wait` 冻结单篇来源 SHA-256/ETag，以条件 GET 有界等待 deployed；Obsidian 1.41.0 提供手动入口，并从正常或 recovery publication/review 的可信 Git 成功结果在写事务释放、Vault reconcile 后自动接力同一 latest-wins 等待器 |
 | HTML 传输预算 | done | 九条关键路由的稳定生产 raw/Node gzip 基线、160 KiB 紧急上限、20%/2 KiB gzip 余量公式、本地稳定 host 与部署后实际 origin 双验证、逐路由余量报告与覆盖失败关闭 |
+| 结构化发现传输预算 | done | 清单、Schema、JSON Feed、RSS、Sitemap、robots 的稳定生产 raw/gzip 基线、50% + raw 4 KiB/gzip 1 KiB 余量、逐端点报告与恰好一次覆盖门 |
 | 恢复能力 | done | Vercel 显式目标回滚、当前版本恢复、再次冒烟 |
 | 内容知识网络 | done | GFM 行内/引用式/自引用链接、页面与标题锚点构建门、文章与项目双向引用账本 |
 | 公开知识地图 | done | `/knowledge` 服务端 SVG 信号场、HTML 关系账本、孤立记录、主导航与 Sitemap，Markdown 链接为唯一事实源 |
@@ -48,21 +49,21 @@ MyBlog 是 Zach424 的个人技术知识库与公开工程日志。它把学习�
 - 路由：严格 YAML + Zod 永久重定向注册表、Next `redirects()` 308、构建期现行路由与静态文件交叉校验；
 - 知识图：纯函数派生有向节点/边、语义 SVG + HTML 账本、零客户端布局依赖与 320px 明确降级；
 - 托管：Vercel 原生 Next.js，当前链路不依赖 Cloudflare；
-- 质量：ESLint、Node test、TypeScript、Next build、真实生产服务器 HTTP 测试、npm audit、YAML workflow 契约、官方 action 完整 SHA 共享门禁、`Buffer.byteLength`/Node zlib raw-gzip 双层预算、源站/边缘 ETag 等价验证与线上实际 origin 冒烟。
+- 质量：ESLint、Node test、TypeScript、Next build、真实生产服务器 HTTP 测试、npm audit、YAML workflow 契约、官方 action 完整 SHA 共享门禁、九路 HTML 与六端点结构化发现的 `Buffer.byteLength`/Node zlib raw-gzip 双层预算、源站/边缘 ETag 等价验证与线上实际 origin 冒烟。
 
 ## 当前运行状态
 
 - 仓库：<https://github.com/Zach424/MyBlog>，生产分支 `main`；
 - 生产站：<https://blog-iota-five-59.vercel.app>；
-- 本轮实现提交：`9865a57`（公开内容清单 JSON Schema）；
-- 自动交付：[Quality Gate #185](https://github.com/Zach424/MyBlog/actions/runs/31339348063) 与 [Production Smoke #178](https://github.com/Zach424/MyBlog/actions/runs/31339376510) 均成功；
-- 最新完成迭代：0099 公开内容清单 JSON Schema；
+- 本轮实现提交：`8bee6a7`（结构化发现端点传输预算）；
+- 自动交付：[Quality Gate #187](https://github.com/Zach424/MyBlog/actions/runs/31340336024) 与 [Production Smoke #180](https://github.com/Zach424/MyBlog/actions/runs/31340359648) 均成功；
+- 最新完成迭代：0100 结构化发现端点传输预算；
 - Obsidian 状态：仓库根目录就是 Vault，`docs/STATUS.md` 与 `docs/iterations/*.md` 可直接阅读和维护；
 - 手动外部接入：自定义域名、统计、评论、公开邮箱均暂缓，不阻塞当前开发。
 
 ## 本轮新增能力
 
-公开内容清单新增同源 `/content.schema.json`：Draft 2020-12 Schema 严格限定 version 1 顶层/item 字段、origin 路由形状、日期/ETag token、标签唯一性和 kind/type 组合，清单与 Schema 使用 IANA registered `describedby`/`describes` Link 双向发现。端点有 `application/schema+json`、最终字节 SHA-256 ETag、分层缓存、空 304 与 `noindex`；Ajv 8.20.0 仅作为开发依赖，真实清单和九类结构漂移反例均纳入门禁。完整门为 471/471 单元测试、48 个构建页面、20/20 应用测试、生产依赖审计 0；真实生产 Schema 为 3278 B，24 路由冒烟通过。
+新增六端点结构化发现传输预算：`scripts/discovery-budget.mjs` 冻结生产提交 `67e7848` 的 raw/gzip 基线，为每个端点分别推导 raw `baseline + max(50%, 4096 B)`/1 KiB 取整与 gzip `baseline + max(50%, 1024 B)`/512 B 取整上限。真实 Next 应用和生产冒烟都要求 content、Schema、Feed、RSS、Sitemap、robots 恰好测量一次，逐项输出实际值、上限、基线和余量；可压缩 raw 膨胀、高熵 gzip 膨胀、漏测、重复和意外端点全部失败关闭。完整门为 478/478 单元测试、48 个构建页面、20/20 应用测试、生产依赖审计 0；稳定生产六项全部 PASS，最小 raw/gzip 余量为 +4159/+1032 B。
 
 ## 风险与下一步
 
@@ -78,8 +79,8 @@ MyBlog 是 Zach424 的个人技术知识库与公开工程日志。它把学习�
 10. `decap-cms` 的开发依赖树仍有上游无修复的高危审计项；它不进入公开服务端生产依赖，但其浏览器编辑器包仅对已授权作者开放，后续应单独评估升级或替代方案。
 11. checkout/setup-node v6 的六处移动 tag 风险已关闭：执行 ref 全部固定到从官方仓库核对的完整 SHA，测试与发布前检查共享唯一事实源。不可变 pin 不会自动接收上游修复，自动更新机器人继续暂缓；后续必须主动核对官方 refs，不能把 `# v6` 注释当作执行引用。
 12. 替代主机 raw 100KB 假绿已由双层预算关闭。Node gzip 是确定性传输模拟，不包含 Vercel CDN Brotli、响应头、TLS 或真实用户 Web Vitals；稳定域名变化时必须同步更新 origin 与带来源的生产基线，基线增长也必须经过产品价值复核，不能为单路由临时抬线。
-13. JSON Feed 当前为 4 条、20697 B，全文 `content_text` 会随公开内容线性增长并丢失 Markdown 格式结构；清单为 3009 B，Schema 为 3278 B。当前不需要分页，但结构化发现端点尚无像 HTML 一样的确定性 raw/gzip 预算，下一轮先建立基线、余量公式和本地/生产覆盖，再在达到有证据的阈值后评估最近 N 条、分页或派生缓存。Vercel 会消费 SWR，生产验证必须检查等价缓存语义而不是只比较源站字符串。
+13. JSON Feed 当前为 4 条、20697/9876 B raw/gzip，全文 `content_text` 会随公开内容线性增长并丢失 Markdown 格式结构；六端点预算已把当前规模、推导上限和本地/生产覆盖闭环。基线不会自动追随当前输出；只有有价值的内容/协议变化、真实生产重测和归档齐全时才能更新。达到阈值后再评估最近 N 条、分页或派生缓存，不能先抬线。Vercel 会消费 SWR，生产验证必须检查等价缓存语义而不是只比较源站字符串。
 14. 单篇 Markdown 源文有意不是仓库作者文件的无损 round-trip，raw HTML 属性也不在 URL 改写契约内；确定性 ETag、Last-Modified、条件 GET、version 1 批量清单与独立 Draft 2020-12 Schema 已闭环。Schema 能拒绝未知字段、坏 token、origin 路由形状和 kind/type 错配，但不单独证明跨字段相等、跨条目唯一/排序或真实日历日期；生产清单解析器继续负责这些关系语义。Vercel 可对压缩表示弱化 ETag 并精简边缘 304 元数据，生产门以相同 opaque digest 和安全缓存验证等价语义。
 15. Git/Obsidian sealed receipt、version 1 handoff、生产收敛、三方版本、磁盘 bundle 摘要和四路径 Git provenance 已覆盖正常与恢复交付；v3 绑定冻结 localHead tree，工作区/index 漂移不能再把本地 `--write` 伪装成可信 release。剩余证据缺口不是自动化逻辑，而是首次真实 Obsidian 主题与本机代理环境下的人机验收。
 
-下一轮唯一主任务：为公开结构化发现端点建立确定性传输预算。先以当前 `/content.json`、`/content.schema.json`、`/feed.json`、`/rss.xml`、`/sitemap.xml` 与 `/robots.txt` 的实际字节为基线，定义可解释的 raw/gzip 余量和完整覆盖规则，再让本地真实应用测试与生产冒烟逐端点报告/失败关闭；本轮只测量增长，不提前分页或改变公开内容。
+下一轮唯一主任务：为 `/feed.json`、`/rss.xml`、`/sitemap.xml` 与 `/robots.txt` 增加由最终响应字节生成的确定性 SHA-256 ETag 和 `If-None-Match` 空 304。复用现有 HTTP validator 语义，保持正文、MIME 与既有缓存 TTL 不变，并让本地/生产烟测验证强弱等价；当前真实生产四端点均没有 ETag，这是已观测缺口。
