@@ -8,11 +8,11 @@
 | 4. 作者自助写作 | done | `/studio` OAuth + editorial workflow PR、Obsidian Vault/模板/附件/真实 `--push` |
 | 5. Vercel 原生迁移 | production live | 原生 Next.js、无 Cloudflare 依赖、24 路由生产冒烟通过 |
 | 6. 所有者生产上线 | done | Git 自动 Production、稳定域名自动冒烟、双端发布、回滚与恢复均已验收 |
-| 7. 持续内容与作者体验 | in progress | Iteration 0100 为六个结构化发现端点冻结生产 raw/gzip 基线、推导余量、完整覆盖和本地/生产失败门 |
+| 7. 持续内容与作者体验 | in progress | Iteration 0101 为 JSON Feed、RSS、Sitemap、robots 增加最终正文 SHA-256 ETag、空 304 与本地/生产等价验证 |
 
 ## 当前唯一主线
 
-进入持续内容与作者体验阶段。Iteration 0100 已为清单、Schema、JSON Feed、RSS、Sitemap 与 robots 建立来自稳定生产提交 `67e7848` 的 raw/gzip 基线；本地真实 Next 与 Vercel 冒烟复用同一纯函数，按 50% + 最小字节余量推导逐端点上限，并拒绝漏测、重复、意外端点、raw 或 gzip 超限。生产六项全部 PASS，最小 raw/gzip 余量为 +4159/+1032 B。下一主线是给目前没有 ETag 的 Feed、RSS、Sitemap、robots 增加最终字节 SHA-256 条件读取；首次真实 Obsidian 人机验收继续保留为所有者可执行事项，需要品牌域名时再绑定自定义域名。
+进入持续内容与作者体验阶段。Iteration 0101 已让 JSON Feed、RSS、Sitemap 与 robots 和清单/Schema 一样具备最终正文 SHA-256 ETag 与 `If-None-Match` 空 304；本地源站锁定完整头，Vercel 生产允许压缩表示弱化标签并精简 304 metadata，但摘要身份、缓存和零正文必须等价。六路传输预算仍全部 PASS。下一主线是为已有 `/search?q=` 增加同源 OpenSearch description 与根页面发现入口，并把新结构化端点接入验证器、预算和生产冒烟；首次真实 Obsidian 人机验收继续保留为所有者可执行事项，需要品牌域名时再绑定自定义域名。
 
 ## 已知风险
 
@@ -39,7 +39,8 @@
 - 单篇 Markdown 源文是公开投影而非作者文件的无损 round-trip：字段顺序、注释和写作字段有意不保留，项目 `type: project` 只属于公开 schema；raw HTML 属性不参与 URL 改写。源文 ETag/条件 GET、version 1 批量清单与独立 Draft 2020-12 Schema 已闭环；Schema 不表达跨字段相等、跨条目排序/唯一或真实日历语义，严格生产解析器仍是这些不变量的权威；
 - Git/Obsidian sealed receipt、version 1 handoff、生产清单四态、单篇有界收敛、runtime/disk 版本、bundle 完整性与 Git provenance 已覆盖正常和恢复交付；网络、协议、版本、摘要或来源错误不能冒充内容差异或触发二次 Git 动作。首次真实 Obsidian 人机验收继续等待所有者操作，不用自动化假证据替代；
 - 当前结构化生产 raw/gzip 基线为：清单 3009/921 B、Schema 3278/755 B、JSON Feed 20697/9876 B、RSS 3238/1241 B、Sitemap 4527/504 B、robots 155/127 B；逐端点推导上限和覆盖门已闭环。基线更新必须伴随产品价值复核、真实生产重测、来源提交和归档，不能自动跟随输出自我放行；
-- 当前生产 `/feed.json`、`/rss.xml`、`/sitemap.xml`、`/robots.txt` 都没有 ETag 或 Last-Modified，只有清单、Schema 与单篇 Markdown 有显式条件读取；下一轮复用最终字节 SHA-256/If-None-Match helper 补齐四端点，不改变正文或缓存 TTL；
+- JSON Feed、RSS、Sitemap、robots 已有最终正文 ETag 与条件读取，但有意不为 robots 伪造 Last-Modified；Vercel 对部分压缩 200 响应使用弱标签、对 304 省略 Content-Type，生产门按 HTTP 等价语义验收；
+- 现有 `/search?q=` 只有站内导航入口，没有标准化的机器发现描述；下一轮新增 OpenSearch 时必须限制同源查询模板、保持无数据库搜索，并把第七个端点纳入预算 provenance，不能用本地估值冒充稳定生产基线；
 - 自定义域名、公开邮箱、统计和评论尚未选择，但不阻塞生产上线。
 
 ## 平台历史

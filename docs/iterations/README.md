@@ -103,6 +103,9 @@
 0096-obsidian-plugin-version-handshake.md
 0097-obsidian-plugin-bundle-integrity.md
 0098-obsidian-plugin-git-provenance.md
+0099-content-manifest-json-schema.md
+0100-structured-discovery-transfer-budgets.md
+0101-structured-discovery-conditional-reads.md
 ```
 
 ## 必填结构
