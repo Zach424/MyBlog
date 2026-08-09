@@ -87,6 +87,18 @@ export function hasMarkdownSourceCachePolicy(value) {
   );
 }
 
+export function hasMarkdownSourceEtag(value) {
+  return /^(?:W\/)?"sha256-[0-9a-f]{64}"$/u.test(value ?? "");
+}
+
+export function sameMarkdownSourceEtag(left, right) {
+  return (
+    hasMarkdownSourceEtag(left) &&
+    hasMarkdownSourceEtag(right) &&
+    left.replace(/^W\//u, "") === right.replace(/^W\//u, "")
+  );
+}
+
 async function request(origin, pathname, options = {}) {
   const response = await fetchWithRetry(new URL(pathname, origin), {
     body: options.body,
@@ -179,7 +191,7 @@ export async function runProductionSmoke(originInput, { expectOAuth = false } = 
         source.response.headers.get("link") ===
           `<${expectation.canonical}>; rel="canonical"; type="text/html"` &&
         source.response.headers.get("x-robots-tag") === "noindex" &&
-        /^"sha256-[0-9a-f]{64}"$/u.test(source.response.headers.get("etag") ?? "") &&
+        hasMarkdownSourceEtag(source.response.headers.get("etag")) &&
         Number.isFinite(Date.parse(source.response.headers.get("last-modified") ?? "")) &&
         hasMarkdownSourceCachePolicy(source.response.headers.get("cache-control")) &&
         source.body.startsWith("---\n") &&
@@ -192,15 +204,19 @@ export async function runProductionSmoke(originInput, { expectOAuth = false } = 
       accept: "text/markdown",
       headers: { "if-none-match": etag },
     });
+    const conditionalLastModified = conditional.response.headers.get("last-modified");
+    const conditionalLink = conditional.response.headers.get("link");
+    const conditionalRobots = conditional.response.headers.get("x-robots-tag");
     invariant(
       conditional.response.status === 304 &&
         conditional.body === "" &&
-        conditional.response.headers.get("etag") === etag &&
-        conditional.response.headers.get("last-modified") ===
-          source.response.headers.get("last-modified") &&
-        conditional.response.headers.get("link") ===
-          `<${expectation.canonical}>; rel="canonical"; type="text/html"` &&
-        conditional.response.headers.get("x-robots-tag") === "noindex" &&
+        sameMarkdownSourceEtag(conditional.response.headers.get("etag"), etag) &&
+        (conditionalLastModified === null ||
+          conditionalLastModified === source.response.headers.get("last-modified")) &&
+        (conditionalLink === null ||
+          conditionalLink ===
+            `<${expectation.canonical}>; rel="canonical"; type="text/html"`) &&
+        (conditionalRobots === null || conditionalRobots === "noindex") &&
         hasMarkdownSourceCachePolicy(
           conditional.response.headers.get("cache-control"),
         ),

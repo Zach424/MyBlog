@@ -5,6 +5,8 @@ import {
   extractSitemapUrls,
   hasJsonFeedCachePolicy,
   hasMarkdownSourceCachePolicy,
+  hasMarkdownSourceEtag,
+  sameMarkdownSourceEtag,
 } from "../scripts/smoke-production.mjs";
 
 test("extracts exact production routes from a Sitemap", () => {
@@ -39,6 +41,19 @@ test("accepts the Markdown source cache policy before and after Vercel consumes 
     false,
   );
   assert.equal(hasMarkdownSourceCachePolicy("private, max-age=0"), false);
+});
+
+test("accepts Vercel weakening without losing the Markdown source digest identity", () => {
+  const strong = `"sha256-${"a".repeat(64)}"`;
+  const weak = `W/${strong}`;
+  assert.equal(hasMarkdownSourceEtag(strong), true);
+  assert.equal(hasMarkdownSourceEtag(weak), true);
+  assert.equal(sameMarkdownSourceEtag(strong, weak), true);
+  assert.equal(sameMarkdownSourceEtag(weak, strong), true);
+  assert.equal(sameMarkdownSourceEtag(strong, `"sha256-${"b".repeat(64)}"`), false);
+  assert.equal(hasMarkdownSourceEtag(`"md5-${"a".repeat(32)}"`), false);
+  assert.equal(hasMarkdownSourceEtag('W/"sha256-short"'), false);
+  assert.equal(sameMarkdownSourceEtag(null, strong), false);
 });
 
 test("connects Vercel verification, maintenance reporting, rollback, and Studio routing without Cloudflare", async () => {
