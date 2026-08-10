@@ -1,9 +1,13 @@
 import Link from "next/link";
+import { headers } from "next/headers";
+import { StructuredData } from "@/components/StructuredData";
 import {
   getAllPosts,
   getFeaturedProject,
   getTagIndex,
 } from "@/lib/content";
+import { resolveSiteUrl } from "@/lib/site";
+import { createWebsiteStructuredData } from "@/lib/website";
 
 const evidenceItems = [
   {
@@ -26,7 +30,8 @@ const evidenceItems = [
   },
 ] as const;
 
-export default function Home() {
+export default async function Home() {
+  const siteUrl = resolveSiteUrl(await headers());
   const journalEntries = getAllPosts().slice(0, 3);
   const featuredProject = getFeaturedProject();
   const topicTags = getTagIndex().slice(0, 4);
@@ -34,6 +39,7 @@ export default function Home() {
 
   return (
     <>
+      <StructuredData data={createWebsiteStructuredData(siteUrl)} />
       <main id="main-content">
         <section className="hero page-shell" id="top" aria-labelledby="hero-title">
           <div className="hero-copy">

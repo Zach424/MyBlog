@@ -54,6 +54,20 @@ function expectedBreadcrumbList(items) {
   };
 }
 
+function expectedWebsiteIdentity(origin) {
+  const siteRoot = new URL("/", origin).href;
+  return {
+    "@context": "https://schema.org",
+    "@type": "WebSite",
+    "@id": `${siteRoot}#website`,
+    name: "Zach424 / Engineering Notes",
+    url: siteRoot,
+    description:
+      "记录学习路径、技术取舍和项目复盘，把写过的代码变成可复用的判断。",
+    inLanguage: "zh-CN",
+  };
+}
+
 test("server-renders the engineering log homepage", async () => {
   const response = await render();
   assert.equal(response.status, 200);
@@ -115,6 +129,41 @@ test("server-renders the engineering log homepage", async () => {
   assert.match(visibleHtml, /Design Systems · 3/);
   assert.doesNotMatch(html, developmentPreviewMeta);
   assert.doesNotMatch(html, /Starter Project|react-loading-skeleton|Your site is taking shape/);
+});
+
+test("publishes one authoritative WebSite identity on the homepage only", async () => {
+  const homeResponse = await render();
+  assert.equal(homeResponse.status, 200);
+  const websiteDocuments = structuredDataByType(
+    await homeResponse.text(),
+    "WebSite",
+  );
+  assert.equal(websiteDocuments.length, 1);
+  assert.deepEqual(
+    websiteDocuments[0],
+    expectedWebsiteIdentity("https://blog.example.test"),
+  );
+  assert.doesNotMatch(JSON.stringify(websiteDocuments[0]), /SearchAction/u);
+
+  const internalPaths = [
+    "/posts",
+    "/posts/building-a-maintainable-blog",
+    "/projects/myblog",
+    "/series/build-my-blog",
+    "/tags/typescript",
+    "/search",
+    "/knowledge",
+    "/about",
+  ];
+  const internalResponses = await Promise.all(internalPaths.map(render));
+  for (const [index, response] of internalResponses.entries()) {
+    assert.equal(response.status, 200, internalPaths[index]);
+    assert.equal(
+      structuredDataByType(await response.text(), "WebSite").length,
+      0,
+      internalPaths[index],
+    );
+  }
 });
 
 test("server-renders every public content collection and detail route", async () => {
@@ -1028,7 +1077,8 @@ test("removes starter artifacts and keeps the Vercel-native design contract expl
   assert.match(layout, /export async function generateMetadata/);
   assert.match(layout, /resolveSiteUrl/);
   assert.match(siteModule, /x-forwarded-host/);
-  assert.match(layout, /<html lang="zh-CN">/);
+  assert.match(layout, /SITE_LANGUAGE/u);
+  assert.match(layout, /<html lang=\{SITE_LANGUAGE\}>/u);
   assert.doesNotMatch(layout, /next\/font|Starter Project|favicon\.svg/);
 
   assert.match(css, /--signal:\s*#b9431f/i);

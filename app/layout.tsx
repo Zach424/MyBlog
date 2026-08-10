@@ -1,7 +1,12 @@
 import type { Metadata, Viewport } from "next";
 import { headers } from "next/headers";
 import { SiteFooter, SiteHeader } from "@/components/SiteChrome";
-import { resolveSiteUrl, SITE_DESCRIPTION, SITE_TITLE } from "@/lib/site";
+import {
+  resolveSiteUrl,
+  SITE_DESCRIPTION,
+  SITE_LANGUAGE,
+  SITE_TITLE,
+} from "@/lib/site";
 import "./globals.css";
 
 async function getSiteUrl() {
@@ -81,7 +86,7 @@ export default function RootLayout({
   children: React.ReactNode;
 }>) {
   return (
-    <html lang="zh-CN">
+    <html lang={SITE_LANGUAGE}>
       <body>
         <a className="skip-link" href="#main-content">
           跳到主要内容

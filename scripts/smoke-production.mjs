@@ -65,6 +65,27 @@ function assertBreadcrumbList(origin, pathname, html, items) {
   );
 }
 
+function assertWebsiteIdentity(origin, html) {
+  const documents = structuredDataByType(html, "WebSite");
+  invariant(documents.length === 1, "首页 WebSite 数量异常");
+  const siteRoot = new URL("/", origin).href;
+  const expected = {
+    "@context": "https://schema.org",
+    "@type": "WebSite",
+    "@id": `${siteRoot}#website`,
+    name: "Zach424 / Engineering Notes",
+    url: siteRoot,
+    description:
+      "记录学习路径、技术取舍和项目复盘，把写过的代码变成可复用的判断。",
+    inLanguage: "zh-CN",
+  };
+  invariant(
+    JSON.stringify(documents[0]) === JSON.stringify(expected) &&
+      !JSON.stringify(documents[0]).includes("SearchAction"),
+    "首页 WebSite 站点身份异常",
+  );
+}
+
 const RETRYABLE_STATUS = new Set([429, 500, 502, 503, 504]);
 
 async function fetchWithRetry(url, init = {}, attempts = 3) {
@@ -210,6 +231,7 @@ export async function runProductionSmoke(originInput, { expectOAuth = false } = 
       home.body.includes(`${origin.origin}/opensearch.xml`),
     "首页缺少 OpenSearch 发现链接",
   );
+  assertWebsiteIdentity(origin, home.body);
 
   const htmlBudgetReports = [
     measureHtmlBudget({ pathname: "/", html: home.body }),
@@ -230,6 +252,10 @@ export async function runProductionSmoke(originInput, { expectOAuth = false } = 
     const page = await request(origin, pathname);
     invariant(page.response.status === 200, `${pathname} 状态 ${page.response.status}`);
     invariant(page.body.includes(marker), `${pathname} 缺少预期内容`);
+    invariant(
+      structuredDataByType(page.body, "WebSite").length === 0,
+      `${pathname} 非首页不得输出 WebSite`,
+    );
     if (pathname.startsWith("/search")) {
       invariant(
         page.body.includes('rel="search"') &&

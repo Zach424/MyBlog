@@ -1,6 +1,7 @@
 export const SITE_TITLE = "Zach424 / Engineering Notes";
 export const SITE_DESCRIPTION =
   "记录学习路径、技术取舍和项目复盘，把写过的代码变成可复用的判断。";
+export const SITE_LANGUAGE = "zh-CN";
 
 interface HeaderReader {
   get(name: string): string | null;
