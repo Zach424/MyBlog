@@ -31,7 +31,9 @@ const recoveryRoutes = [
 
 export default function NotFound() {
   return (
-    <main className={`not-found page-shell ${styles.page}`} id="main-content">
+    <>
+      <meta name="robots" content="noindex" />
+      <main className={`not-found page-shell ${styles.page}`} id="main-content">
       <section className={styles.hero} aria-labelledby="not-found-title">
         <div className={styles.code} aria-hidden="true">
           <span>404</span>
@@ -91,6 +93,7 @@ export default function NotFound() {
         <p>如果这是旧书签，请先从档案或搜索确认内容是否已经迁移。</p>
         <Link href="/">返回首页</Link>
       </div>
-    </main>
+      </main>
+    </>
   );
 }

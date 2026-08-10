@@ -68,6 +68,7 @@ test("keeps the 404 recovery junction server-rendered and printable", async () =
 
   assert.doesNotMatch(page, /["']use client["']/u);
   assert.equal((page.match(/<h1\b/gu) ?? []).length, 1);
+  assert.match(page, /<meta name="robots" content="noindex" \/>/u);
   assert.match(page, /className=\{`not-found-routes \$\{styles\.routes\}`\}/u);
   assert.match(page, /href: "\/search"/u);
   assert.match(page, /href: "\/archive"/u);
