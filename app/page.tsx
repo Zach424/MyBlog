@@ -8,32 +8,10 @@ import {
   getSeriesIndex,
   getTagIndex,
 } from "@/lib/content";
+import { createHomepageEvidence } from "@/lib/homepage-evidence";
 import { createPublicRouteInventory } from "@/lib/public-routes";
 import { resolveSiteUrl } from "@/lib/site";
 import { createWebsiteStructuredData } from "@/lib/website";
-
-function createEvidenceItems(publicUrlCount: number) {
-  return [
-    {
-      state: "Verified",
-      mark: "verified",
-      value: "公开生产上线",
-      meta: `Guest · ${publicUrlCount} public URLs · Sitemap synced`,
-    },
-    {
-      state: "Building",
-      mark: "building",
-      value: "持续内容发布与维护",
-      meta: "Markdown · Checks · Feeds",
-    },
-    {
-      state: "Learned",
-      mark: "learned",
-      value: "权限变更也要做未登录验收",
-      meta: "Access · Guest · Canonical",
-    },
-  ] as const;
-}
 
 export default async function Home() {
   const siteUrl = resolveSiteUrl(await headers());
@@ -42,10 +20,15 @@ export default async function Home() {
   const series = getSeriesIndex();
   const tags = getTagIndex();
   const publicRoutes = createPublicRouteInventory({ posts, projects, series, tags });
-  const evidenceItems = createEvidenceItems(publicRoutes.total);
   const journalEntries = posts.slice(0, 3);
   const featuredProject = getFeaturedProject();
   const topicTags = tags.slice(0, 4);
+  const homepageEvidence = createHomepageEvidence({
+    publicRouteCount: publicRoutes.total,
+    latestModified: publicRoutes.latestModified,
+    featuredProject,
+    latestPost: posts[0],
+  });
 
   return (
     <>
@@ -89,7 +72,7 @@ export default async function Home() {
               <span className="rail-current">CURRENT</span>
             </div>
             <div className="evidence-list">
-              {evidenceItems.map((item) => (
+              {homepageEvidence.evidenceItems.map((item) => (
                 <div className="evidence-item" key={item.state}>
                   <span
                     className={`evidence-mark ${item.mark}`}
@@ -108,7 +91,7 @@ export default async function Home() {
 
         <section className="focus-strip page-shell" id="focus" aria-label="当前关注">
           <span className="focus-label">Current focus</span>
-          <strong>公开运行 / 内容发布 / 维护反馈</strong>
+          <strong>{homepageEvidence.currentFocus}</strong>
           <span className="focus-index">
             TRACE {String(journalEntries.length).padStart(2, "0")} / ACTIVE
           </span>

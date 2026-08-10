@@ -129,8 +129,10 @@ test("server-renders the engineering log homepage", async () => {
     visibleHtml,
     new RegExp(`Guest · ${sitemapUrls.length} public URLs · Sitemap synced`, "u"),
   );
-  assert.match(html, /持续内容发布与维护/);
-  assert.match(html, /权限变更也要做未登录验收/);
+  assert.match(visibleHtml, /持续维护 · TypeScript · React · \+3/);
+  assert.match(visibleHtml, /ARTICLE · 2026-07-18 · Next\.js · \+3/);
+  assert.match(visibleHtml, /持续维护项目 \/ 最新文章 \/ 2026-08-06/);
+  assert.doesNotMatch(visibleHtml, /持续内容发布与维护|权限变更也要做未登录验收/u);
   const latestDate = /LATEST · (\d{4}-\d{2}-\d{2})/u.exec(visibleHtml)?.[1];
   const sitemapHomeDate = new RegExp(
     `<loc>https://blog\\.example\\.test/<\\/loc>\\s*<lastmod>(\\d{4}-\\d{2}-\\d{2})<\\/lastmod>`,
