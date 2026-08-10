@@ -351,6 +351,7 @@ test("keeps key HTML routes structurally valid and within explainable transfer b
     "/posts",
     "/posts/building-a-maintainable-blog",
     "/projects/myblog",
+    "/archive",
     "/series/build-my-blog",
     "/tags/typescript",
     "/search?q=cloudflare",
