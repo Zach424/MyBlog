@@ -71,6 +71,36 @@ test("keeps graph order deterministic across repository input order", () => {
   ]);
 });
 
+test("preserves update dates without using them to reorder graph nodes", () => {
+  const olderUpdated = {
+    ...post("older-updated", "", "2026-07-01"),
+    updatedAt: "2026-09-01",
+  };
+  const newerPublished = post("newer-published", "", "2026-08-01");
+
+  const graph = deriveKnowledgeGraph([olderUpdated, newerPublished]);
+
+  assert.deepEqual(
+    graph.nodes.map(({ publishedAt, updatedAt, url }) => ({
+      publishedAt,
+      updatedAt,
+      url,
+    })),
+    [
+      {
+        publishedAt: "2026-08-01",
+        updatedAt: undefined,
+        url: "/posts/newer-published",
+      },
+      {
+        publishedAt: "2026-07-01",
+        updatedAt: "2026-09-01",
+        url: "/posts/older-updated",
+      },
+    ],
+  );
+});
+
 test("returns an explicit empty graph without inventing relationships", () => {
   assert.deepEqual(deriveKnowledgeGraph([]), {
     counts: {

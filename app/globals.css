@@ -3113,6 +3113,18 @@ input:focus-visible {
   text-transform: uppercase;
 }
 
+.search-result-date {
+  display: flex;
+  flex-direction: column;
+  gap: 0.125rem;
+}
+
+.search-result-date > span {
+  color: var(--faint);
+  font-size: 0.5rem;
+  letter-spacing: 0.08em;
+}
+
 .search-result-copy {
   display: flex;
   flex-direction: column;

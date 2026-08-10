@@ -398,6 +398,12 @@ test("server-renders updated dates in shared content lists without changing the 
     );
   }
 
+  const searchResponse = await render("/search");
+  assert.equal(searchResponse.status, 200);
+  const searchHtml = visibleDocument(await searchResponse.text());
+  assert.match(searchHtml, /按首发时间显示全部 4 条公开记录/u);
+  assert.equal((searchHtml.match(/首发顺序/gu) ?? []).length, 4);
+
   const archiveResponse = await render("/archive");
   assert.equal(archiveResponse.status, 200);
   const archiveHtml = visibleDocument(await archiveResponse.text());
@@ -559,6 +565,8 @@ test("server-renders an accessible knowledge map from Markdown relations", async
   assert.equal((html.match(/class="knowledge-edge-record"/g) ?? []).length, 8);
   assert.match(html, /MyBlog — 把学习记录做成工程资产/);
   assert.match(html, /为什么先写项目章程，再写首页/);
+  assert.match(html, /PROJECT \/ UPDATED \/ 2026-08-06/u);
+  assert.match(html, /POST \/ UPDATED \/ 2026-08-05/u);
   assert.match(html, /尚未连线，不等于没有价值/);
   assert.doesNotMatch(html, /<canvas\b/i);
 });
@@ -846,6 +854,10 @@ test("server-renders a shareable search query against posts and projects", async
   assert.match(html, /Cloudflare/);
   assert.match(html, /MyBlog — 把学习记录做成工程资产/);
   assert.match(html, /NO TRACKING/);
+  assert.match(
+    html,
+    /<span class="search-result-date"><span>UPDATED<\/span><time dateTime="2026-08-06">2026-08-06<\/time><\/span>/u,
+  );
   assert.match(html, /<mark class="search-hit">Cloudflare<\/mark>/u);
   assert.match(
     html,

@@ -4,7 +4,10 @@ import {
   createSearchTextSegments,
   searchDocuments,
 } from "../lib/search.ts";
-import { markdownToPlainText } from "../lib/search-index.ts";
+import {
+  createSearchDocuments,
+  markdownToPlainText,
+} from "../lib/search-index.ts";
 
 const documents = [
   {
@@ -68,6 +71,54 @@ test("keeps footnote evidence searchable without leaking authoring markers", () 
   );
 });
 
+test("preserves update dates in search documents without changing publication order", () => {
+  const records = [
+    {
+      body: "旧内容后来发生了重要更新。",
+      description: "首发较早但更新较晚。",
+      kind: "post",
+      publishedAt: "2026-07-01",
+      updatedAt: "2026-09-01",
+      tags: ["TypeScript"],
+      title: "旧文章新更新",
+      type: "article",
+      url: "/posts/older-updated",
+    },
+    {
+      body: "首发时间较新。",
+      description: "没有后续更新。",
+      kind: "post",
+      publishedAt: "2026-08-01",
+      tags: ["TypeScript"],
+      title: "较新文章",
+      type: "article",
+      url: "/posts/newer-published",
+    },
+  ];
+
+  const indexed = createSearchDocuments(records);
+
+  assert.deepEqual(
+    indexed.map(({ publishedAt, updatedAt, url }) => ({
+      publishedAt,
+      updatedAt,
+      url,
+    })),
+    [
+      {
+        publishedAt: "2026-08-01",
+        updatedAt: undefined,
+        url: "/posts/newer-published",
+      },
+      {
+        publishedAt: "2026-07-01",
+        updatedAt: "2026-09-01",
+        url: "/posts/older-updated",
+      },
+    ],
+  );
+});
+
 test("ranks title and tag matches above body-only matches", () => {
   const results = searchDocuments(documents, "cloudflare");
 
@@ -88,7 +139,9 @@ test("uses AND semantics, NFKC normalization and useful empty states", () => {
   );
   assert.equal(searchDocuments(documents, "ＣＬＯＵＤＦＬＡＲＥ").length, 2);
   assert.equal(searchDocuments(documents, "不存在").length, 0);
-  assert.equal(searchDocuments(documents, "").length, documents.length);
+  const unfiltered = searchDocuments(documents, "");
+  assert.equal(unfiltered.length, documents.length);
+  assert.ok(unfiltered.every((result) => result.reason === "首发顺序"));
 });
 
 test("selects the evidence field that proves the most query terms", () => {

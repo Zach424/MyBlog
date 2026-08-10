@@ -12,6 +12,7 @@ export type KnowledgeGraphNode = {
   neighborCount: number;
   outgoing: ContentRecord["url"][];
   publishedAt: string;
+  updatedAt?: string;
   slug: string;
   title: string;
   url: ContentRecord["url"];
@@ -63,6 +64,7 @@ export function deriveKnowledgeGraph(
       neighborCount: neighbors.size,
       outgoing,
       publishedAt: record.publishedAt,
+      updatedAt: record.updatedAt,
       slug: record.slug,
       title: record.title,
       url: record.url,

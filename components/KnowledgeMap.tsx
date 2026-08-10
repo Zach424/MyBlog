@@ -5,6 +5,7 @@ import type {
   KnowledgeGraphEdge,
   KnowledgeGraphNode,
 } from "@/lib/content";
+import { getContentDatePresentation } from "@/lib/content-presentation";
 
 const MAP_WIDTH = 1200;
 const NODE_WIDTH = 360;
@@ -170,6 +171,7 @@ export function KnowledgeMapField({ graph }: { graph: KnowledgeGraph }) {
           })}
           {positioned.map((node) => {
             const lines = splitTitle(node.title);
+            const contentDate = getContentDatePresentation(node);
             return (
               <a
                 aria-label={`打开${node.kind === "post" ? "文章" : "项目"}：${node.title}`}
@@ -186,7 +188,7 @@ export function KnowledgeMapField({ graph }: { graph: KnowledgeGraph }) {
                   y={node.y}
                 />
                 <text className="knowledge-node-type" x={node.x + 18} y={node.y + 22}>
-                  {nodeType(node)} / {node.publishedAt}
+                  {`${nodeType(node)} / ${contentDate.label} / ${contentDate.date}`}
                 </text>
                 <text
                   className="knowledge-node-count"
@@ -284,15 +286,18 @@ export function KnowledgeIsolatedRecords({ graph }: { graph: KnowledgeGraph }) {
         <p className="knowledge-isolated-empty">当前每条公开记录都至少有一个站内关系。</p>
       ) : (
         <ul>
-          {isolated.map((node) => (
-            <li key={node.url}>
-              <Link href={node.url}>
-                <span>{nodeType(node)} / {node.publishedAt}</span>
-                <strong>{node.title}</strong>
-                <small>{node.description}</small>
-              </Link>
-            </li>
-          ))}
+          {isolated.map((node) => {
+            const contentDate = getContentDatePresentation(node);
+            return (
+              <li key={node.url}>
+                <Link href={node.url}>
+                  <span>{`${nodeType(node)} / ${contentDate.label} / ${contentDate.date}`}</span>
+                  <strong>{node.title}</strong>
+                  <small>{node.description}</small>
+                </Link>
+              </li>
+            );
+          })}
         </ul>
       )}
     </section>

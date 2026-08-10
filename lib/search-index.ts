@@ -59,6 +59,7 @@ export function createSearchDocuments(records: ContentRecord[]) {
       title: record.title,
       description: record.description,
       publishedAt: record.publishedAt,
+      updatedAt: record.updatedAt,
       tags: record.tags,
       url: record.url,
       body: markdownToPlainText(record.body),

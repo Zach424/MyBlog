@@ -3,6 +3,7 @@ export interface SearchDocument {
   title: string;
   description: string;
   publishedAt: string;
+  updatedAt?: string;
   tags: string[];
   url: string;
   body: string;
@@ -183,7 +184,7 @@ export function searchDocuments(
     return documents.map((document) => ({
       document,
       score: 0,
-      reason: "最新记录",
+      reason: "首发顺序",
       excerpt: document.description,
       excerptSource: "摘要",
     }));

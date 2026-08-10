@@ -12,6 +12,7 @@ import {
   searchDocuments,
   type SearchDocument,
 } from "@/lib/search";
+import { getContentDatePresentation } from "@/lib/content-presentation";
 
 const kindLabels: Record<SearchDocument["kind"], string> = {
   article: "Article",
@@ -117,61 +118,65 @@ export function SearchExperience({
         <p>
           {hasQuery
             ? `“${deferredQuery.trim()}” 找到 ${results.length} 条记录`
-            : `按最新顺序显示全部 ${results.length} 条公开记录`}
+            : `按首发时间显示全部 ${results.length} 条公开记录`}
         </p>
       </div>
 
       {results.length ? (
         <div className="search-results">
-          {results.map((match, index) => (
-            <Link
-              className="search-result-row"
-              href={match.document.url}
-              key={`${match.document.kind}-${match.document.url}`}
-            >
-              <span className="search-result-seq">
-                {String(index + 1).padStart(2, "0")}
-              </span>
-              <span className="search-result-meta">
-                <strong>{kindLabels[match.document.kind]}</strong>
-                <time dateTime={match.document.publishedAt}>
-                  {match.document.publishedAt}
-                </time>
-              </span>
-              <span className="search-result-copy">
-                <strong>
-                  <HighlightedSearchText
-                    text={match.document.title}
-                    query={deferredQuery}
-                  />
-                </strong>
-                {hasQuery ? (
-                  <span className="search-result-excerpt">
-                    <span className="search-evidence-source">
-                      {match.excerptSource}
-                    </span>
-                    <span>
-                      <HighlightedSearchText
-                        text={match.excerpt}
-                        query={deferredQuery}
-                      />
-                    </span>
+          {results.map((match, index) => {
+            const contentDate = getContentDatePresentation(match.document);
+            return (
+              <Link
+                className="search-result-row"
+                href={match.document.url}
+                key={`${match.document.kind}-${match.document.url}`}
+              >
+                <span className="search-result-seq">
+                  {String(index + 1).padStart(2, "0")}
+                </span>
+                <span className="search-result-meta">
+                  <strong>{kindLabels[match.document.kind]}</strong>
+                  <span className="search-result-date">
+                    <span>{contentDate.label}</span>
+                    <time dateTime={contentDate.date}>{contentDate.date}</time>
                   </span>
-                ) : (
-                  <span>{match.document.description}</span>
-                )}
-                <small>
-                  <HighlightedSearchText
-                    text={match.document.tags.join(" · ")}
-                    query={deferredQuery}
-                  />
-                </small>
-              </span>
-              <span className="search-result-reason">
-                {match.reason} <span aria-hidden="true">→</span>
-              </span>
-            </Link>
-          ))}
+                </span>
+                <span className="search-result-copy">
+                  <strong>
+                    <HighlightedSearchText
+                      text={match.document.title}
+                      query={deferredQuery}
+                    />
+                  </strong>
+                  {hasQuery ? (
+                    <span className="search-result-excerpt">
+                      <span className="search-evidence-source">
+                        {match.excerptSource}
+                      </span>
+                      <span>
+                        <HighlightedSearchText
+                          text={match.excerpt}
+                          query={deferredQuery}
+                        />
+                      </span>
+                    </span>
+                  ) : (
+                    <span>{match.document.description}</span>
+                  )}
+                  <small>
+                    <HighlightedSearchText
+                      text={match.document.tags.join(" · ")}
+                      query={deferredQuery}
+                    />
+                  </small>
+                </span>
+                <span className="search-result-reason">
+                  {match.reason} <span aria-hidden="true">→</span>
+                </span>
+              </Link>
+            );
+          })}
         </div>
       ) : (
         <div className="search-empty">
