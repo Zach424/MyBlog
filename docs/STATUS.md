@@ -14,14 +14,14 @@ MyBlog 是 Zach424 的个人技术知识库与公开工程日志。它把学习�
 | 公开阅读 | done | 首页、文章、项目、专题、标签、搜索、关于、响应式、深色模式与详情页封面；搜索结果提供 Unicode 安全命中证据，文章/项目详情提供最多 3 条带可见理由的继续阅读 |
 | 读者分享 | done | 文章/项目服务端规范链接、Web Share、URL/Markdown 引用 Clipboard、全 ASCII 标点转义、取消静默、共享 single-flight、`aria-live` 回执、无 JavaScript 恢复路径与 print 隔离 |
 | Markdown | done | GFM、代码高亮、语言标签、渐进增强的一键复制、与实际渲染一致的 H1–H6 heading id、H2/H3 目录与原生永久链接、Obsidian 兼容脚注/尾注与行内/块级数学公式、A4 打印/PDF 版式、阅读时间、相邻文章与响应式正文图片 |
-| 内容发现 | done | SEO、内容级 OG/Twitter 封面、首页唯一 `WebSite`、文章/项目纯生成器维护的稳定 `@id` 与 `isPartOf` 站点引用、四类详情可见路径与 `BreadcrumbList` JSON-LD、OpenSearch 1.1、version 1 公开内容清单及 Draft 2020-12 JSON Schema、JSON Feed 1.1、RSS、文章/项目可移植 Markdown 源文、Sitemap、robots、NFKC/AND 本地全文搜索；七个结构化端点与源文均有 SHA-256 ETag/条件读取 |
+| 内容发现 | done | SEO、内容级 OG/Twitter 封面、首页唯一 `WebSite`、文章/项目纯生成器维护的稳定身份与站点引用、文章 `wordCount`/`timeRequired`、四类详情可见路径与 `BreadcrumbList` JSON-LD、OpenSearch 1.1、version 1 公开内容清单及 Draft 2020-12 JSON Schema、JSON Feed 1.1、RSS、文章/项目可移植 Markdown 源文、Sitemap、robots、NFKC/AND 本地全文搜索；七个结构化端点与源文均有 SHA-256 ETag/条件读取 |
 | 网页写作 | done | `/studio`、GitHub OAuth、Decap workflow、PR、按 slug 归档媒体、稳定 slug 锁定、双层 SHA-256 冲突预检、快速重选 latest-wins、生产规则公式预览与全字段只读发布清单 |
 | Obsidian 写作 | done | Vault、三类受信模板、桌面插件 1.41.0、文件名唯一草稿身份、原子新建/改名/旧身份清理、source-scoped 作者意图与来源行导航、发布/复核 single-flight、三方版本联锁、bundle SHA-256 完整性、四路径 Git HEAD/index/worktree provenance、sealed Git 交付恢复、维护台账、全库生产同步、手动单篇收敛与正常/恢复交付自动接力 |
 | Inbox 发布就绪 | done | version 6/read-only 全草稿 ready/scheduled/blocked、每个可读来源的原始字节 SHA-256、Article/TIL/Project、精确站内目标/源码行/重复次数、媒体 COVER/BODY 用途/出现次数/源码行/最终替代文本及来源、空文本与文件名回退阻塞、真实媒体候选、目标/共享附件诊断、CLI 全库或 `--source` 聚焦 JSON 与 Obsidian 当前草稿原生摘要 |
 | 附件发布 | done | Wiki/Markdown 图片转换、按内容隔离、稳定命名、越界保护、失败回滚 |
 | 自动交付 | done | GitHub `main` → Vercel Production → 稳定域名冒烟；checkout/setup-node v6 Node 24 action runtime 的六处引用固定到官方完整 SHA，应用 Node 22 与 workflow 语义由共享结构/发布门禁保护 |
 | 生产内容同步 | done | `content:production` 输出全库 deployed/pending/missing/unexpected；`content:production:wait` 冻结单篇来源 SHA-256/ETag，以条件 GET 有界等待 deployed；Obsidian 1.41.0 提供手动入口，并从正常或 recovery publication/review 的可信 Git 成功结果在写事务释放、Vault reconcile 后自动接力同一 latest-wins 等待器 |
-| HTML 传输预算 | done | 九条关键路由的稳定生产 raw/Node gzip 基线、160 KiB 紧急上限、20%/2 KiB gzip 余量公式、本地稳定 host 与部署后实际 origin 双验证、逐路由余量报告与覆盖失败关闭；0107 基线来自 `668d26fb` 稳定生产响应 |
+| HTML 传输预算 | done | 九条关键路由的稳定生产 raw/Node gzip 基线、160 KiB 紧急上限、20%/2 KiB gzip 余量公式、本地稳定 host 与部署后实际 origin 双验证、逐路由余量报告与覆盖失败关闭；0109 基线来自 `1f0b6ce5` 稳定生产响应 |
 | 结构化发现传输预算 | done | 清单、Schema、JSON Feed、RSS、Sitemap、robots、OpenSearch 的稳定生产 raw/gzip 基线、50% + raw 4 KiB/gzip 1 KiB 余量、逐端点报告与恰好一次覆盖门 |
 | 恢复能力 | done | Vercel 显式目标回滚、当前版本恢复、再次冒烟 |
 | 内容知识网络 | done | GFM 行内/引用式/自引用链接、页面与标题锚点构建门、文章/项目双向引用账本，以及复用专题、标签和已验证图边的可解释推荐 |
@@ -42,7 +42,7 @@ MyBlog 是 Zach424 的个人技术知识库与公开工程日志。它把学习�
 - 运行时：Next.js 16.3.0、React 19.2.6、TypeScript 5、Node.js 22+；
 - 内容：仓库内 Markdown、YAML、Zod，GitHub 是唯一事实源；
 - 发现：`/content.json` 从公开 getter 稳定生成 4 条机器清单，逐项提供同 origin HTML/Markdown URL 与最终源文 SHA-256；`/content.schema.json` 使用 Draft 2020-12 固定 version 1 结构，并以 describedby/describes Link 与清单双向关联。清单、Schema、JSON Feed、RSS、Sitemap、robots、OpenSearch 都以最终正文生成 SHA-256 ETag 并支持空 304；清单另有 Last-Modified，Feed/RSS/Sitemap/OpenSearch 保留一小时 fresh/一天 SWR，robots 保留一天 fresh；
-- 结构化身份：`SITE_TITLE`、`SITE_DESCRIPTION`、`SITE_LANGUAGE` 与可信请求 origin 生成仅首页存在的唯一 `WebSite`，根 URL 与 `#website` 身份稳定；文章 `BlogPosting` 和项目 `SoftwareSourceCode` 使用同 origin canonical 加 `#content` 的稳定身份，并以最小 `isPartOf` 引用站点节点；两个类型收窄纯生成器集中完整文档、作者、数组/URL 复制与可选字段省略，详情页不再内联映射；四类详情面包屑继续由可见路径单一来源生成。全部使用原生服务端 JSON-LD script，不增加客户端代码、数据库、虚构别名、SearchAction 或未经确认的人物档案；
+- 结构化身份：`SITE_TITLE`、`SITE_DESCRIPTION`、`SITE_LANGUAGE` 与可信请求 origin 生成仅首页存在的唯一 `WebSite`，根 URL 与 `#website` 身份稳定；文章 `BlogPosting` 和项目 `SoftwareSourceCode` 使用同 origin canonical 加 `#content` 的稳定身份，并以最小 `isPartOf` 引用站点节点；两个类型收窄纯生成器集中完整文档、作者、数组/URL 复制与可选字段省略，详情页不再内联映射；文章另复用内容契约的整数 `wordCount` 和正整数 `readingMinutes` 输出 `wordCount`/`PT<n>M`，项目不扩散 Article 字段；四类详情面包屑继续由可见路径单一来源生成。全部使用原生服务端 JSON-LD script，不增加客户端代码、数据库、虚构别名、SearchAction 或未经确认的人物档案；
 - 搜索：服务端 Markdown AST 生成纯文本索引，客户端使用 NFKC、`zh-CN` 小写和多词 AND 排名；规范化命中通过 grapheme 边界映射回作者原文，只以 React 文本节点和原生 `<mark>` 渲染。摘要/正文选择覆盖查询词更多的证据，字段原因与来源标签、浅深色 AA 对比和显式 `:focus-visible` 共同提供可解释反馈；
 - 推荐：服务端纯函数从公开记录和 outgoing/backlink 索引派生，按双向引用 120、当前引用 80、反向引用 70、同专题 60、每个共同标签 15 排序；最多 3 条、同分稳定决胜、逐条显示实际理由，无客户端请求、数据库或新增内容字段；
 - 阅读：react-markdown、remark-gfm、remark-math、rehype-slug、rehype-highlight、rehype-katex 与 KaTeX；服务端 Markdown、中文脚注语义与回链、HTML + MathML 数学公式、MarkdownHeading 永久链接、PrintSource 可信来源与字段受限的可移植 `source.md`，最终 UTF-8 SHA-256 ETag、公开日期 Last-Modified 与 `If-None-Match` 弱比较，最小 CodeBlock/ShareTrace 客户端岛、Web Share/Clipboard API、CommonMark 全 ASCII 标点引用转义、共享 single-flight 与 aria-live；GFM + math 共享 mdast 继续复现标题、链接、媒体、搜索和源文 URL 改写语义，生产阅读与 Studio 共享 remark/rehype/KaTeX/安全 URL 规则，构建期公式使用 `trust: false`/严格资源上限；A4 `@page` 与 scoped print CSS 只重排既有语义 DOM；
@@ -58,15 +58,15 @@ MyBlog 是 Zach424 的个人技术知识库与公开工程日志。它把学习�
 
 - 仓库：<https://github.com/Zach424/MyBlog>，生产分支 `main`；
 - 生产站：<https://blog-iota-five-59.vercel.app>；
-- 本轮实现提交：`025d477`（文章/项目完整结构化数据纯生成器）；
-- 自动交付：[Quality Gate #204](https://github.com/Zach424/MyBlog/actions/runs/31352813930) 与 [Verify Vercel production #196](https://github.com/Zach424/MyBlog/actions/runs/31352841092) 均成功；
-- 最新完成迭代：0108 纯内容结构化数据生成器；
+- 本轮实现提交：`1f0b6ce`（文章字数与标准阅读 Duration）；基线提交：`62fb47a`；
+- 自动交付：[Quality Gate #206](https://github.com/Zach424/MyBlog/actions/runs/31354071712) 与 [Verify Vercel production #198](https://github.com/Zach424/MyBlog/actions/runs/31354099562) 均成功；
+- 最新完成迭代：0109 文章阅读统计结构化数据；
 - Obsidian 状态：仓库根目录就是 Vault，`docs/STATUS.md` 与 `docs/iterations/*.md` 可直接阅读和维护；
 - 手动外部接入：自定义域名、统计、评论、公开邮箱均暂缓，不阻塞当前开发。
 
 ## 本轮新增能力
 
-文章 `BlogPosting` 与项目 `SoftwareSourceCode` 的完整 JSON-LD 现在分别由 `createBlogPostingStructuredData()` 和 `createSoftwareSourceCodeStructuredData()` 生成。两个类型收窄纯函数继续复用同源内容身份与 `SITE_LANGUAGE`，集中标题、描述、日期、语言、标签、URL、图片、作者、仓库和技术栈；tags/stack 与 URL 会被复制，调用方记录不被持有；可选图片/仓库在对象中保持 `undefined`，序列化后省略。两条详情页不再内联 `@context`、身份、语言或作者，实际可见 UI、公开事实、客户端代码和数据库均未变化。功能门为 501/501 单元测试、49 个构建页面、23/23 应用测试、生产依赖审计 0；真实浏览器确认两类完整字段与标题正常、内部页 `WebSite=0`、console 无告警；真实生产 24 路由与 OAuth 302 全部通过。九路线上 raw 与 0107 基线逐项完全相同，gzip 仅 -2 至 +1 B 波动，因此继续使用 `668d26fb` 的有来源基线，不为无输出重构重置预算。
+文章 `BlogPosting` 现在直接复用内容契约派生的整数 `wordCount`，并把同一正整数 `readingMinutes` 映射为 ISO 8601 `timeRequired: PT<n>M`；代表历史文章精确为 899/`PT4M`，页面仍显示同源的“4 min”。项目 `SoftwareSourceCode` 明确没有这两个 Article 字段；没有新增 frontmatter、可见 UI、客户端代码、数据库或第二套估算。失败优先首次 2/4 失败，功能实现后生成器/站点测试 9/9、集成目标 10/10、基线目标 17/17；完整门为 501/501 单元测试、49 个构建页面、23/23 应用测试、生产依赖审计 0。真实浏览器确认文章统计、项目隔离、标题和空 console；真实生产 24 路由与 OAuth 302 全部通过。代表文章增加 81/39 B（raw/gzip），九路已用 `1f0b6ce5` 稳定生产重新冻结为 27309/5996、17862/4251、51865/12255、108029/24464、17511/4166、17332/4135、36194/13827、35908/7244、14912/3855 B。
 
 ## 风险与下一步
 
@@ -89,6 +89,7 @@ MyBlog 是 Zach424 的个人技术知识库与公开工程日志。它把学习�
 17. 推荐排序在当前小型内容库里可解释且稳定，但内容与标签增长后，泛化共同标签可能逐步压过稀有关系。先保留可见理由和 HTML 预算证据，积累真实内容分布后再评估标签稀有度或多样性约束；不接入点击追踪或黑盒模型。
 18. 结构化面包屑会增加四类详情 HTML，且只有与可见路径一致时才可信；0105 的九路基线已用 `ccd494e` 稳定生产重新冻结，后续不能用本地输出或未部署提交自我放行。当前自动门证明语法、路径、同源与 404 边界，不保证搜索引擎一定展示富媒体结果；后续变更仍应使用官方 Rich Results Test 或 Schema Markup Validator 做必要的发布前抽查。
 19. 首页站点名称会被 Google 与页面标题、`og:site_name`、首页可见文字等多信号共同判断；当前 `WebSite` 只能表达偏好，不能保证采用或展示。站点名称不支持 Rich Results Test，应使用 Schema Markup Validator 做语法抽查。0107 九路 HTML 基线已绑定 `668d26fb` 稳定生产；自定义域名启用时必须同步验证根 URL、内容/站点 `@id`、canonical、Open Graph、Feed/清单和全部生产门，不能沿用 Vercel 域名证据。
-20. 当前内容身份生成器有意要求 canonical 与站点同 origin，避免把外部页面错误声明为本博客内部节点；内容契约仍允许 HTTPS canonical，因此未来若要转载或迁移到外部 canonical，必须先明确“本地页面身份、原始作品身份与 `isPartOf`”的语义，再调整契约和生成器，不能绕过同源门。文章/项目完整 JSON-LD 已在 0108 收口为纯生成器，原内联漂移风险关闭；作者 `Person` 仍只有现有姓名和 GitHub URL，在所有者确认更多人物事实前不增加独立 `@id` 或 ProfilePage。下一轮只复用已有文章统计增加 `wordCount`/`timeRequired`，不扩充人物事实。
+20. 当前内容身份生成器有意要求 canonical 与站点同 origin，避免把外部页面错误声明为本博客内部节点；内容契约仍允许 HTTPS canonical，因此未来若要转载或迁移到外部 canonical，必须先明确“本地页面身份、原始作品身份与 `isPartOf`”的语义，再调整契约和生成器，不能绕过同源门。文章/项目完整 JSON-LD 已收口为纯生成器；作者 `Person` 仍只有现有姓名和 GitHub URL，在所有者确认更多人物事实前不增加独立 `@id` 或 ProfilePage。
+21. `wordCount`/`timeRequired` 是内容契约的确定性启发式，不是每位读者的精确承诺：中文按 CJK 字符、拉丁文按 token，分别以 300/200 每分钟估算并至少为 1。代码块、公式和语言分布会影响结果；算法变更时必须同步页面 Read Time、JSON-LD、测试与生产基线。全局读者复盘发现文章/项目没有统一时间轴，下一轮优先补 `/archive`，不继续为字段丰富度扩充人物或集合 schema。
 
-下一轮唯一主任务：在文章纯生成器中复用内容管线已有的 `wordCount` 与 `readMinutes`，为 `BlogPosting` 增加整数 `wordCount` 与 ISO 8601 Duration `timeRequired`（如 `PT8M`）。先用失败测试锁定正整数和分钟映射，再验证真实 SSR、浏览器、生产 smoke 与代表文章 HTML 基线；不新增 frontmatter、可见 UI、Person/ProfilePage、客户端代码或数据库。
+下一轮唯一主任务：新增服务端 `/archive` 时间档案页，从 `getAllContent()` 按年/月确定性混排 Article、TIL 与 Project，显示真实日期、类型、标题与摘要，并提供空状态；接入主导航、Sitemap、内部链接健康检查、生产 smoke、320px/深浅色/打印与 HTML 预算。保持 Markdown/Git 单一事实源，不新增数据库、客户端请求、云配置或作者字段。

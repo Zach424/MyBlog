@@ -76,7 +76,7 @@ npm run production:smoke -- https://example.vercel.app --expect-oauth
 
 首页站点身份质量必须证明域名根恰有一个服务端 `WebSite`，精确复用站点标题、描述、`zh-CN` 与当前 origin 的规范根 URL，并以 `<root>#website` 作为稳定 `@id`。集合、文章、项目、专题、标签、搜索、知识地图和关于页都必须为零；协议只允许 HTTP(S)、禁止凭据，且没有事实来源时不得生成 `alternateName`、`potentialAction` 或 `SearchAction`。测试只解析真实 HTML 的 JSON-LD script；站点名称不支持 Rich Results Test，语法抽查使用 Schema Markup Validator。
 
-内容身份质量必须证明代表文章与项目各有且只有一个对应类型文档，`@id` 为精确 canonical 加 `#content`，`url`、文章 `mainEntityOfPage`、`inLanguage` 与既有字段不漂移，`isPartOf` 必须严格等于 `{ "@id": "<root>#website" }`。身份生成器还要拒绝跨 origin、首页路径、查询/fragment 与凭据，并保证输入 URL 不变；完整文档生成器必须精确比较全部对象和序列化属性顺序、复制 tags/stack、克隆 URL，并证明可选图片/仓库在对象中为 `undefined`、在 JSON 中被省略。页面源码不得重新内联 `@context`、作者、语言或身份构造；文章/项目未知 slug 的 404 不得泄漏任一内容类型。相同语义断言分布于纯函数、源码边界、真实 Next SSR、浏览器 DOM 与生产烟测。
+内容身份质量必须证明代表文章与项目各有且只有一个对应类型文档，`@id` 为精确 canonical 加 `#content`，`url`、文章 `mainEntityOfPage`、`inLanguage` 与既有字段不漂移，`isPartOf` 必须严格等于 `{ "@id": "<root>#website" }`。身份生成器还要拒绝跨 origin、首页路径、查询/fragment 与凭据，并保证输入 URL 不变；完整文档生成器必须精确比较全部对象和序列化属性顺序、复制 tags/stack、克隆 URL，并证明可选图片/仓库在对象中为 `undefined`、在 JSON 中被省略。文章还必须逐值复用正整数 `wordCount`，把同一 `readingMinutes` 映射为 `PT<n>M`；代表文章固定为 899/`PT4M`，项目必须无这两个字段。页面源码不得重新内联 `@context`、作者、语言或身份构造；文章/项目未知 slug 的 404 不得泄漏任一内容类型。相同语义断言分布于纯函数、源码边界、真实 Next SSR、浏览器 DOM 与生产烟测。
 
 ## 永久重定向质量门
 
@@ -132,7 +132,7 @@ npm run production:smoke -- https://example.vercel.app --expect-oauth
 
 `scripts/html-budget.mjs` 保存稳定生产 origin、基线日期、来源提交及九条路由的 raw/Node zlib gzip 基线。本地生产测试用该稳定 origin 作为 forwarded host，对完整响应执行 `Buffer.byteLength` 与 `gzipSync`；部署后的 `production:smoke` 再对实际输入域名执行同一模块，二者都输出实测、阈值、基线和余量。raw 160 KiB 只防止异常解压/文档膨胀；性能回归由按生产基线推导的 gzip 门判断，因此高度重复但可压缩的 100KB 以上页面不会被旧统一门误伤，高熵增长仍会失败。
 
-Iteration 0107 以稳定生产提交 `668d26fb` 在 2026-08-10 重新冻结九路基线：`/` 27309/5993、`/posts` 17862/4250、代表文章 51784/12216、代表项目 108029/24464、专题 17511/4163、标签 17332/4134、搜索 36194/13825、知识地图 35908/7242、关于页 14912/3851 B（raw/gzip）。内容身份上线后九路 gzip 上限仍依次为 8192、7168、15360、29696、7168、7168、17408、10240、6144 B，稳定生产余量依次为 +2199、+2918、+3144、+5232、+3005、+3034、+3583、+2998、+2293 B；来源提交、日期和完整路径清单由脚本与测试共同锁定。Iteration 0108 的纯生成器部署后九路 raw 与这些基线逐项完全相同，gzip 只在 -2 至 +1 B 内波动，因此保留 `668d26fb` 的来源基线而不做无输出重测量。
+Iteration 0109 以稳定生产功能提交 `1f0b6ce5` 在 2026-08-10 重新冻结九路基线：`/` 27309/5996、`/posts` 17862/4251、代表文章 51865/12255、代表项目 108029/24464、专题 17511/4166、标签 17332/4135、搜索 36194/13827、知识地图 35908/7244、关于页 14912/3855 B（raw/gzip）。文章统计让代表文章相对 0108 增长 81/39 B；九路 gzip 上限仍依次为 8192、7168、15360、29696、7168、7168、17408、10240、6144 B，稳定生产余量依次为 +2196、+2917、+3105、+5232、+3002、+3033、+3581、+2996、+2289 B。来源提交、日期和完整路径清单由脚本与测试共同锁定；基线仍不能自动追随当前输出。
 
 `scripts/discovery-budget.mjs` 独立保存七个结构化端点的 stable-origin raw/gzip 基线和逐端点推导上限。它同时约束 raw 与 gzip：可压缩的异常正文不能只靠 gzip 通过，高熵增长也不能只靠 raw 通过。本地应用测试与生产冒烟必须各自恰好覆盖清单、Schema、JSON Feed、RSS、Sitemap、robots、OpenSearch 一次，并输出 `[discovery-budget]` 报告；Iteration 0102 以稳定生产提交 `e5bb2a8` 冻结基线，依次为 3009/921、3278/755、20697/9876、3238/1241、4527/504、155/127、700/462 B（raw/gzip）。
 

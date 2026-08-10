@@ -109,4 +109,4 @@ iteration 0107 的“完整内容对象仍内联”风险已经关闭。仍需�
 
 ## 10. 下一轮唯一主任务
 
-在新的文章纯生成器中复用内容管线已经计算并在页面可见的 `wordCount` 与 `readMinutes`，为 `BlogPosting` 增加整数 `wordCount` 和 ISO 8601 Duration `timeRequired`（例如 `PT8M`）。先用失败测试锁定正整数、分钟到 Duration 的确定性映射、真实 SSR 与生产输出，再在功能部署后重测代表文章 HTML 基线。Schema.org 明确把 [`wordCount`](https://schema.org/wordCount) 用于 Article/CreativeWork，把 [`timeRequired`](https://schema.org/timeRequired) 定义为 CreativeWork 的 Duration；本轮只记录主线，不提前实现，也不增加 frontmatter、可见 UI、客户端代码、数据库或未经验证的阅读事实。
+在新的文章纯生成器中复用内容管线已经计算并在页面可见的 `wordCount` 与 `readingMinutes`，为 `BlogPosting` 增加整数 `wordCount` 和 ISO 8601 Duration `timeRequired`（例如 `PT8M`）。先用失败测试锁定正整数、分钟到 Duration 的确定性映射、真实 SSR 与生产输出，再在功能部署后重测代表文章 HTML 基线。Schema.org 明确把 [`wordCount`](https://schema.org/wordCount) 用于 Article/CreativeWork，把 [`timeRequired`](https://schema.org/timeRequired) 定义为 CreativeWork 的 Duration；本轮只记录主线，不提前实现，也不增加 frontmatter、可见 UI、客户端代码、数据库或未经验证的阅读事实。
