@@ -166,6 +166,15 @@ export function extractSitemapUrls(xml) {
   return [...xml.matchAll(/<loc>([^<]+)<\/loc>/gu)].map((match) => match[1]);
 }
 
+function decodeXmlText(value) {
+  return value
+    .replaceAll("&quot;", '"')
+    .replaceAll("&apos;", "'")
+    .replaceAll("&lt;", "<")
+    .replaceAll("&gt;", ">")
+    .replaceAll("&amp;", "&");
+}
+
 function extractRssItems(xml) {
   return [...xml.matchAll(/<item>([\s\S]*?)<\/item>/gu)].map((match) => {
     const item = match[1];
@@ -177,6 +186,9 @@ function extractRssItems(xml) {
           /<dcterms:modified>([^<]+)<\/dcterms:modified>/gu,
         ),
       ].map((modifiedMatch) => modifiedMatch[1]),
+      categories: [...item.matchAll(/<category>([^<]+)<\/category>/gu)].map(
+        (categoryMatch) => decodeXmlText(categoryMatch[1]),
+      ),
       pubDate: item.match(/<pubDate>([^<]+)<\/pubDate>/u)?.[1] ?? "",
     };
   });
@@ -1014,6 +1026,7 @@ export async function runProductionSmoke(originInput, { expectOAuth = false } = 
       return (
         item.guid === feedItem.id &&
         item.pubDate === new Date(feedItem.date_published).toUTCString() &&
+        JSON.stringify(item.categories) === JSON.stringify(feedItem.tags) &&
         JSON.stringify(item.modifiedDates) ===
           JSON.stringify(expectedModified ? [expectedModified] : [])
       );
@@ -1298,14 +1311,14 @@ export async function runProductionSmoke(originInput, { expectOAuth = false } = 
         rss.response.headers.get("etag"),
         sha256Etag(rss.body),
       ) &&
-      rssLastModified === "Mon, 10 Aug 2026 21:26:25 GMT" &&
+      rssLastModified === "Mon, 10 Aug 2026 22:25:11 GMT" &&
       rss.body.includes(
         '<rss version="2.0" xmlns:atom="http://www.w3.org/2005/Atom" xmlns:dcterms="http://purl.org/dc/terms/">',
       ) &&
       !rss.body.includes("<atom:updated>") &&
       rssItems.length >= 4 &&
       rssUpdateContractValid,
-    "RSS 条目或条件验证器异常",
+    "RSS 条目、标签或条件验证器异常",
   );
   invariant(
     robots.response.status === 200 &&
@@ -1416,7 +1429,7 @@ export async function runProductionSmoke(originInput, { expectOAuth = false } = 
       }),
       request(origin, "/rss.xml", {
         accept: "application/rss+xml",
-        headers: { "if-modified-since": "2026-08-10T21:26:25Z" },
+        headers: { "if-modified-since": "2026-08-10T22:25:11Z" },
       }),
     ]);
   for (const [pathname, conditional, source, lastModified, cachePolicy] of [

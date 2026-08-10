@@ -1131,7 +1131,7 @@ test("publishes the structured discovery suite from one public origin", async (c
   const rss = await rssResponse.text();
   const rssEtag = rssResponse.headers.get("etag");
   const rssLastModified = rssResponse.headers.get("last-modified");
-  assert.equal(rssLastModified, "Mon, 10 Aug 2026 21:26:25 GMT");
+  assert.equal(rssLastModified, "Mon, 10 Aug 2026 22:25:11 GMT");
   assert.equal(
     rssEtag,
     `"sha256-${createHash("sha256").update(rss, "utf8").digest("hex")}"`,
@@ -1156,6 +1156,9 @@ test("publishes the structured discovery suite from one public origin", async (c
   assert.deepEqual(jsonFeedUrls, rssUrls, "JSON Feed 与 RSS 必须保持同一公开顺序");
   for (const [index, item] of rssItems.entries()) {
     const feedItem = jsonFeed.items[index];
+    const categories = [
+      ...item.matchAll(/<category>([^<]+)<\/category>/gu),
+    ].map((match) => match[1]);
     const modifiedDates = [
       ...item.matchAll(/<dcterms:modified>([^<]+)<\/dcterms:modified>/gu),
     ].map((match) => match[1]);
@@ -1173,6 +1176,11 @@ test("publishes the structured discovery suite from one public origin", async (c
       modifiedDates,
       expectedModified ? [expectedModified] : [],
       "RSS dcterms:modified 必须与严格更晚的 JSON Feed 修改时间一致",
+    );
+    assert.deepEqual(
+      categories,
+      feedItem.tags,
+      "RSS category 必须与 JSON Feed tags 一致",
     );
   }
 
@@ -1362,7 +1370,7 @@ test("publishes the structured discovery suite from one public origin", async (c
         },
       }),
       render("/rss.xml", {
-        headers: { "if-modified-since": "2026-08-10T21:26:25Z" },
+        headers: { "if-modified-since": "2026-08-10T22:25:11Z" },
       }),
     ]);
 

@@ -2,11 +2,11 @@ import type { ContentRecord } from "./content";
 
 export type FeedRepresentation = "json" | "rss";
 
-// These are the exact commits that last changed each serialized representation.
-// Bump the matching revision when its feed body contract changes.
+// These timestamps record when each serialized body contract was approved.
+// Bump the matching revision whenever that feed representation changes.
 const FEED_REPRESENTATION_REVISIONS = Object.freeze({
   json: "2026-08-06T10:09:53Z", // a55e68b: JSON Feed 1.1 introduced
-  rss: "2026-08-10T21:26:25Z", // 97eabce: RSS modification dates introduced
+  rss: "2026-08-10T22:25:11Z", // Iteration 0125: RSS categories aligned with public tags
 });
 
 function contentDateTimestamp(record: ContentRecord) {

@@ -89,7 +89,7 @@ test("derives each Feed validator from content and its representation revision",
   );
   assert.equal(
     createFeedLastModified("rss", []),
-    "Mon, 10 Aug 2026 21:26:25 GMT",
+    "Mon, 10 Aug 2026 22:25:11 GMT",
   );
   assert.equal(
     createFeedLastModified("rss", [
@@ -121,6 +121,10 @@ test("creates escaped RSS with stable identities and explicit modification dates
   const postItem = itemByGuid("https://blog.example.test/posts/build-worker");
   const projectItem = itemByGuid("https://blog.example.test/projects/myblog");
   const sameDayItem = itemByGuid("https://blog.example.test/posts/same-day");
+  const categories = (item) =>
+    [...item.matchAll(/<category>([^<]+)<\/category>/gu)].map(
+      (match) => match[1],
+    );
 
   assert.match(xml, /<title>Build &amp; verify &lt;Worker&gt;<\/title>/);
   assert.match(xml, /<atom:link href="https:\/\/blog\.example\.test\/rss\.xml"/);
@@ -138,10 +142,20 @@ test("creates escaped RSS with stable identities and explicit modification dates
     /<dcterms:modified>2026-07-19T00:00:00Z<\/dcterms:modified>/u,
   );
   assert.ok(projectItem);
+  assert.deepEqual(categories(postItem), ["TypeScript"]);
+  assert.deepEqual(categories(projectItem), ["Cloudflare"]);
+  assert.deepEqual(categories(sameDayItem), ["TypeScript"]);
+  assert.doesNotMatch(xml, /<category>article<\/category>|<category>Project<\/category>/u);
   assert.doesNotMatch(projectItem, /<dcterms:modified>/u);
   assert.ok(sameDayItem);
   assert.doesNotMatch(sameDayItem, /<dcterms:modified>/u);
   assert.doesNotMatch(xml, /<atom:updated>/u);
+  assert.match(
+    createRssXml(new URL("https://blog.example.test"), [
+      { ...post, tags: ["Data & <XML>"] },
+    ]),
+    /<category>Data &amp; &lt;XML&gt;<\/category>/u,
+  );
   assert.deepEqual(
     [...xml.matchAll(/<guid isPermaLink="true">([^<]+)<\/guid>/gu)].map(
       (match) => match[1],

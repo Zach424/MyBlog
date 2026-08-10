@@ -112,7 +112,7 @@ export function createRssXml(siteUrl: URL, records: ContentRecord[]) {
     .map((record) => {
       const url = absoluteSiteUrl(siteUrl, record.url);
       const modifiedDate = rssModifiedDate(record);
-      const categories = [record.kind === "project" ? "Project" : record.type, ...record.tags]
+      const categories = record.tags
         .map((category) => `      <category>${escapeXml(category)}</category>`)
         .join("\n");
 

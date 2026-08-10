@@ -141,7 +141,11 @@ test("connects Vercel verification, maintenance reporting, rollback, and Studio 
   assert.match(smoke, /assertDiscoveryBudgetCoverage/);
   assert.match(smoke, /assertDiscoveryBudgets/);
   assert.match(smoke, /discoveryBudgetReports/);
-  assert.match(smoke, /RSS 条目或条件验证器异常/u);
+  assert.match(smoke, /RSS 条目、标签或条件验证器异常/u);
+  assert.match(
+    smoke,
+    /JSON\.stringify\(item\.categories\).*JSON\.stringify\(feedItem\.tags\)/su,
+  );
   assert.match(smoke, /robots 正文或条件验证器异常/u);
   assert.match(smoke, /Sitemap URL 数量或条件验证器异常/u);
   assert.match(smoke, /条件请求契约异常/u);
