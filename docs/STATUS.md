@@ -11,7 +11,7 @@ MyBlog 是 Zach424 的个人技术知识库与公开工程日志。它把学习�
 | 模块 | 状态 | 当前责任与证据 |
 | --- | --- | --- |
 | 内容契约 | done | YAML + Zod 校验文章、TIL、项目、标签、专题、日期、URL、内容语境、复核日期与本地封面替代文本 |
-| 公开阅读 | done | 首页、文章、项目、专题、标签、统一时间档案、订阅与开放接口目录、搜索、关于、响应式、深色模式与详情页封面；搜索结果提供 Unicode 安全命中证据，文章/项目详情提供最多 3 条带可见理由的继续阅读 |
+| 公开阅读 | done | 首页、文章、项目、专题、标签、统一时间档案、订阅与开放接口目录、搜索、关于、品牌化 404 恢复路口、响应式、深色模式与详情页封面；搜索结果提供 Unicode 安全命中证据，文章/项目详情提供最多 3 条带可见理由的继续阅读 |
 | 读者分享 | done | 文章/项目服务端规范链接、Web Share、URL/Markdown 引用 Clipboard、全 ASCII 标点转义、取消静默、共享 single-flight、`aria-live` 回执、无 JavaScript 恢复路径与 print 隔离 |
 | Markdown | done | GFM、代码高亮、语言标签、渐进增强的一键复制、与实际渲染一致的 H1–H6 heading id、H2/H3 目录与原生永久链接、Obsidian 兼容脚注/尾注与行内/块级数学公式、A4 打印/PDF 版式、阅读时间、相邻文章与响应式正文图片 |
 | 内容发现 | done | SEO、内容级 OG/Twitter 封面、首页唯一 `WebSite`、文章/项目纯生成器维护的稳定身份与站点引用、文章 `wordCount`/`timeRequired`、四类详情可见路径与 `BreadcrumbList` JSON-LD、统一年月时间档案、可见订阅目录、OpenSearch 1.1、version 1 公开内容清单及 Draft 2020-12 JSON Schema、JSON Feed 1.1、RSS、文章/项目可移植 Markdown 源文、Sitemap、robots、NFKC/AND 本地全文搜索；七个结构化端点与源文均有 SHA-256 ETag/条件读取 |
@@ -21,7 +21,7 @@ MyBlog 是 Zach424 的个人技术知识库与公开工程日志。它把学习�
 | 附件发布 | done | Wiki/Markdown 图片转换、按内容隔离、稳定命名、越界保护、失败回滚 |
 | 自动交付 | done | GitHub `main` → Vercel Production → 稳定域名冒烟；checkout/setup-node v6 Node 24 action runtime 的六处引用固定到官方完整 SHA，应用 Node 22 与 workflow 语义由共享结构/发布门禁保护 |
 | 生产内容同步 | done | `content:production` 输出全库 deployed/pending/missing/unexpected；`content:production:wait` 冻结单篇来源 SHA-256/ETag，以条件 GET 有界等待 deployed；Obsidian 1.41.0 提供手动入口，并从正常或 recovery publication/review 的可信 Git 成功结果在写事务释放、Vault reconcile 后自动接力同一 latest-wins 等待器 |
-| HTML 传输预算 | done | 十一条关键路由的稳定生产 raw/Node gzip 基线、160 KiB 紧急上限、20%/2 KiB gzip 余量公式、本地稳定 host 与部署后实际 origin 双验证、逐路由余量报告与覆盖失败关闭；0111 基线来自 `5ab34a7` 稳定生产响应并覆盖 `/subscribe` |
+| HTML 传输预算 | done | 十二条关键路由的稳定生产 raw/Node gzip 基线、160 KiB 紧急上限、20%/2 KiB gzip 余量公式、本地稳定 host 与部署后实际 origin 双验证、逐路由余量报告与覆盖失败关闭；0112 基线来自 `c2e1d96` 稳定生产响应并覆盖固定 404 |
 | 结构化发现传输预算 | done | 清单、Schema、JSON Feed、RSS、Sitemap、robots、OpenSearch 的稳定生产 raw/gzip 基线、50% + raw 4 KiB/gzip 1 KiB 余量、逐端点报告与恰好一次覆盖门 |
 | 恢复能力 | done | Vercel 显式目标回滚、当前版本恢复、再次冒烟 |
 | 内容知识网络 | done | GFM 行内/引用式/自引用链接、页面与标题锚点构建门、文章/项目双向引用账本，以及复用专题、标签和已验证图边的可解释推荐 |
@@ -41,6 +41,7 @@ MyBlog 是 Zach424 的个人技术知识库与公开工程日志。它把学习�
 - 视觉方向：Commit Trace / Evidence Rail，中文优先、工程档案感、浅深色响应式；
 - 时间档案：`createContentArchive()` 从同一公开 `ContentRecord` 复制后按发布日期倒序、`zh-CN` 标题和 `en` URL 稳定决胜，再按年/月生成计数账本；`/archive` 以纯 Server Component 输出原生日期、类型、标题和摘要，主导航、Sitemap、320px、深浅色、打印与生产 smoke 共用该事实；
 - 订阅入口：`createSubscriptionCatalog()` 把既有 RSS、JSON Feed、OpenSearch、内容清单/Schema 与单篇 Markdown 投影为五条只读通道，并从同一公开集合稳定选择最新 Markdown 示例；`/subscribe` 用纯 Server Component 输出 MIME、Freshness、真实端点动作与只读边界，不复制协议数据、不增加客户端请求；
+- 错误恢复：根级 `not-found` 保持真实 404、`no-store`、显式 `noindex` 与单一 H1，以 KEYWORD/TIME/NOTES/BUILDS 四路账本连接搜索、档案、文章和项目；CSS Module、390px、深浅色、打印、SSR、生产 smoke 和固定路由预算共同锁定，无客户端请求或软 404；
 - 运行时：Next.js 16.3.0、React 19.2.6、TypeScript 5、Node.js 22+；
 - 内容：仓库内 Markdown、YAML、Zod，GitHub 是唯一事实源；
 - 发现：`/content.json` 从公开 getter 稳定生成 4 条机器清单，逐项提供同 origin HTML/Markdown URL 与最终源文 SHA-256；`/content.schema.json` 使用 Draft 2020-12 固定 version 1 结构，并以 describedby/describes Link 与清单双向关联。清单、Schema、JSON Feed、RSS、Sitemap、robots、OpenSearch 都以最终正文生成 SHA-256 ETag 并支持空 304；清单另有 Last-Modified，Feed/RSS/Sitemap/OpenSearch 保留一小时 fresh/一天 SWR，robots 保留一天 fresh；
@@ -54,21 +55,21 @@ MyBlog 是 Zach424 的个人技术知识库与公开工程日志。它把学习�
 - 路由：严格 YAML + Zod 永久重定向注册表、Next `redirects()` 308、构建期现行路由与静态文件交叉校验；
 - 知识图：纯函数派生有向节点/边、语义 SVG + HTML 账本、零客户端布局依赖与 320px 明确降级；
 - 托管：Vercel 原生 Next.js，当前链路不依赖 Cloudflare；
-- 质量：ESLint、Node test、TypeScript、Next build、真实生产服务器 HTTP 测试、npm audit、YAML workflow 契约、官方 action 完整 SHA 共享门禁、十一路 HTML 与七端点结构化发现的 `Buffer.byteLength`/Node zlib raw-gzip 双层预算、源站/边缘 ETag 等价验证与线上实际 origin 冒烟。
+- 质量：ESLint、Node test、TypeScript、Next build、真实生产服务器 HTTP 测试、npm audit、YAML workflow 契约、官方 action 完整 SHA 共享门禁、十二路 HTML 与七端点结构化发现的 `Buffer.byteLength`/Node zlib raw-gzip 双层预算、源站/边缘 ETag 等价验证与线上实际 origin 冒烟。
 
 ## 当前运行状态
 
 - 仓库：<https://github.com/Zach424/MyBlog>，生产分支 `main`；
 - 生产站：<https://blog-iota-five-59.vercel.app>；
-- 本轮实现提交：`5ab34a7`（订阅与开放接口目录）；基线提交：`8c39241`；
-- 自动交付：[Quality Gate #211](https://github.com/Zach424/MyBlog/actions/runs/31409262889) 与 [Verify Vercel production #203](https://github.com/Zach424/MyBlog/actions/runs/31409329481) 均成功；基线提交对应的 [Quality Gate #212](https://github.com/Zach424/MyBlog/actions/runs/31409845698) 与 [Verify Vercel production #204](https://github.com/Zach424/MyBlog/actions/runs/31409904998) 也均成功；
-- 最新完成迭代：0111 订阅与开放接口目录；
+- 本轮功能提交：`366a36f`（404 恢复路口）；生产差异修复：`c2e1d96`（显式 noindex）；基线提交：`928c0bf`；
+- 自动交付：[Quality Gate #215](https://github.com/Zach424/MyBlog/actions/runs/31414526358)、[#216](https://github.com/Zach424/MyBlog/actions/runs/31415242651) 与基线 [#217](https://github.com/Zach424/MyBlog/actions/runs/31415804221) 均成功；首次 [Verify Vercel production #207](https://github.com/Zach424/MyBlog/actions/runs/31414580914) 因生产 HTML 缺少 noindex 按预期失败，修复后的 [#208](https://github.com/Zach424/MyBlog/actions/runs/31415296255) 与基线 [#209](https://github.com/Zach424/MyBlog/actions/runs/31415864476) 成功；
+- 最新完成迭代：0112 404 恢复路口；
 - Obsidian 状态：仓库根目录就是 Vault，`docs/STATUS.md` 与 `docs/iterations/*.md` 可直接阅读和维护；
 - 手动外部接入：自定义域名、统计、评论、公开邮箱均暂缓，不阻塞当前开发。
 
 ## 本轮新增能力
 
-新增 `/subscribe`，把现有机器端点从隐藏的协议能力整理成普通读者可见的订阅与开放接口目录。`createSubscriptionCatalog()` 是无副作用纯函数：固定输出 RSS、JSON Feed、OpenSearch、内容清单/Schema 与单篇 Markdown 五条只读通道，并从同一公开记录按日期、标题和 URL 稳定选择最新 Markdown 示例；页面展示受众、用途、MIME、Freshness、真实入口、继续路径与“只负责读取”的边界，没有客户端 JavaScript、数据库、第二份协议清单或外部订阅服务。失败优先首次因模块不存在失败，实现后 9/9 目标测试通过；完整验证为 508/508 单元测试、51 个构建页面、25/25 应用测试。真实 Chromium 在桌面深色与 390×844 移动视口确认五条通道、根宽无溢出和零 console error/warning。真实生产 26 路由与 OAuth 302 全部通过。十一路基线用 `5ab34a70` 稳定生产冻结为：首页 27419/6016、文章集合 17972/4265、代表文章 51975/12279、代表项目 108139/24490、档案 20386/4742、订阅 29108/5727、专题 17621/4184、标签 17442/4154、搜索 36304/13847、知识地图 36018/7262、关于 15022/3870 B（raw/gzip）；Sitemap 更新为 4882/524 B、26 URLs。
+未知 URL 现在进入服务端 404 恢复路口：页面明确展示 `404 / Not Found` 与 `No redirect`，并提供搜索、时间档案、文章、项目四条真实路径；保留首页兜底、单一 H1、`no-store`、显式 noindex 和零内容结构化身份，不创建软 404 或客户端应用。404 样式迁入 5,410 B CSS Module，全局 CSS 从临界的 99,818 B 降到 93,810 B。失败优先目标测试先因新 H1 缺失失败；完整验证为 509/509 单元测试、51 个构建页面、26/26 应用测试。真实 Chromium 覆盖桌面、390×844、深色、打印、根宽与 console。首次生产 smoke 发现 Vercel HTML 没有 Next 自动 noindex，显式 meta 修复后 Quality Gate #216 与生产 smoke #208 通过。十二条生产基线统一绑定 `c2e1d968`，固定 404 为 25370/4459 B（raw/gzip），生产仍为 26 条 Sitemap 路由与 OAuth 302。
 
 ## 风险与下一步
 
@@ -93,8 +94,9 @@ MyBlog 是 Zach424 的个人技术知识库与公开工程日志。它把学习�
 19. 首页站点名称会被 Google 与页面标题、`og:site_name`、首页可见文字等多信号共同判断；当前 `WebSite` 只能表达偏好，不能保证采用或展示。站点名称不支持 Rich Results Test，应使用 Schema Markup Validator 做语法抽查。0107 九路 HTML 基线已绑定 `668d26fb` 稳定生产；自定义域名启用时必须同步验证根 URL、内容/站点 `@id`、canonical、Open Graph、Feed/清单和全部生产门，不能沿用 Vercel 域名证据。
 20. 当前内容身份生成器有意要求 canonical 与站点同 origin，避免把外部页面错误声明为本博客内部节点；内容契约仍允许 HTTPS canonical，因此未来若要转载或迁移到外部 canonical，必须先明确“本地页面身份、原始作品身份与 `isPartOf`”的语义，再调整契约和生成器，不能绕过同源门。文章/项目完整 JSON-LD 已收口为纯生成器；作者 `Person` 仍只有现有姓名和 GitHub URL，在所有者确认更多人物事实前不增加独立 `@id` 或 ProfilePage。
 21. `wordCount`/`timeRequired` 是内容契约的确定性启发式，不是每位读者的精确承诺：中文按 CJK 字符、拉丁文按 token，分别以 300/200 每分钟估算并至少为 1。代码块、公式和语言分布会影响结果；算法变更时必须同步页面 Read Time、JSON-LD、测试与生产基线。
-22. `/archive` 当前只有一个年份和月份，但跨年、跨月、同日决胜、空集合和输入不变已经由夹具固定。内容增长前不提前增加客户端筛选、分页或年份锚点；若分组或 DOM 规模开始触及十一路预算，再依据真实数据选择增强方式。
+22. `/archive` 当前只有一个年份和月份，但跨年、跨月、同日决胜、空集合和输入不变已经由夹具固定。内容增长前不提前增加客户端筛选、分页或年份锚点；若分组或 DOM 规模开始触及十二路预算，再依据真实数据选择增强方式。
 23. `/subscribe` 已把五类现有开放接口集中为可见目录，但它有意保持只读：不会收集邮箱、创建账户、保存订阅状态或代理第三方阅读器。未来若需要邮件订阅，必须由所有者单独选择供应商、隐私告知与数据保留策略，不能把当前目录误解为邮件服务。
-24. 默认 Next.js 404 仍缺少本站的恢复语境；未知 URL 虽然正确返回 404 和安全缓存边界，但读者不能直接前往搜索、档案、文章或项目继续定位内容。下一轮只改善这一恢复页面，不改变不存在资源的状态码，也不把错误页做成客户端应用。
+24. 404 恢复语境已经闭环，但本地 Next 自动 noindex 与 Vercel 最终 HTML 不一致；组件显式 meta 后本地有两个相同指令、生产一个。相同指令不改变语义，升级 Next/Vercel 时仍必须用最终生产 HTML 验证。错误页继承根首页 canonical，本轮没有为非索引页面启用实验性 global-not-found。
+25. 首页 Evidence Rail 仍硬编码 `25 public URLs` 与 `REV. 010`，已落后于当前 26 URL Sitemap。下一轮必须抽取 Sitemap 与首页共享的公开路由事实清单，用真实内容日期/统计替代手写数字；不能只把 25 改成 26 继续保留漂移源。
 
-下一轮唯一主任务：新增服务端自定义 `not-found` 恢复页，为未知 URL 提供清晰的 404 说明以及搜索、时间档案、文章和项目四条真实恢复路径。保持 HTTP 404 与 `no-store`、单一 H1、无客户端请求、深浅色/响应式/打印语义，并接入真实 SSR、随机 404、内部链接与生产 smoke；不创建软 404、自动重定向、数据库、统计或云配置。
+下一轮唯一主任务：建立单一公开路由事实清单，让 Sitemap 与首页 Evidence Rail 共同派生公开 URL 数量；移除硬编码 `25 public URLs` 和无来源的 `REV. 010`，改用真实内容日期/统计，并用测试阻止再次漂移。保持首页纯服务端，不增加 API 请求、Git 运行时读取、客户端状态、数据库或云配置。

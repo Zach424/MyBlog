@@ -1,6 +1,6 @@
 # 搜索与发布发现
 
-- 状态：RSS/Sitemap/robots implemented in iteration 0006；JSON Feed 1.1 implemented in iteration 0088；公开内容清单 implemented in iteration 0091；清单 JSON Schema implemented in iteration 0099；既有结构化端点条件读取 completed in iteration 0101；OpenSearch 1.1 discovery completed in iteration 0102；可解释搜索命中证据 completed in iteration 0103；可解释继续阅读 completed in iteration 0104；详情页结构化面包屑 completed in iteration 0105；首页站点身份 completed in iteration 0106；文章/项目内容身份图 completed in iteration 0107；完整内容结构化数据纯生成边界 completed in iteration 0108；文章阅读统计结构化数据 completed in iteration 0109；统一时间档案 completed in iteration 0110；订阅与开放接口目录 completed in iteration 0111
+- 状态：RSS/Sitemap/robots implemented in iteration 0006；JSON Feed 1.1 implemented in iteration 0088；公开内容清单 implemented in iteration 0091；清单 JSON Schema implemented in iteration 0099；既有结构化端点条件读取 completed in iteration 0101；OpenSearch 1.1 discovery completed in iteration 0102；可解释搜索命中证据 completed in iteration 0103；可解释继续阅读 completed in iteration 0104；详情页结构化面包屑 completed in iteration 0105；首页站点身份 completed in iteration 0106；文章/项目内容身份图 completed in iteration 0107；完整内容结构化数据纯生成边界 completed in iteration 0108；文章阅读统计结构化数据 completed in iteration 0109；统一时间档案 completed in iteration 0110；订阅与开放接口目录 completed in iteration 0111；未知 URL 恢复与索引边界 completed in iteration 0112
 - 目标：让公开内容可搜索、可订阅、可被搜索引擎发现，同时保持 Git 内容源和无数据库架构。
 
 ## 站内搜索
@@ -23,7 +23,7 @@
 
 `/archive` 从 `getAllContent()` 的同一公开 Article、TIL 与 Project 集合生成，不维护第二份目录。记录先按发布日期倒序排列，同日使用 `zh-CN` 标题和规范 URL 稳定决胜，再按年份与月份组成原生有序账本；每项显示真实 `<time>`、内容类型、标题和摘要，空集合具有明确恢复说明。
 
-页面是纯 Server Component，主导航、Sitemap、内部链接门、真实 Next SSR、生产冒烟与十一路 HTML 预算共同覆盖它。它不增加数据库、客户端取数、统计服务、分页状态或 frontmatter 字段；内容发布后，年月分组、计数和最新顺序随同一 Markdown/Git 事实源自动更新。
+页面是纯 Server Component，主导航、Sitemap、内部链接门、真实 Next SSR、生产冒烟与十二路 HTML 预算共同覆盖它。它不增加数据库、客户端取数、统计服务、分页状态或 frontmatter 字段；内容发布后，年月分组、计数和最新顺序随同一 Markdown/Git 事实源自动更新。
 
 ## 订阅与开放接口目录
 
@@ -135,6 +135,12 @@ Schema 让 Obsidian 插件、脚本与其他客户端无需导入本站 TypeScri
 - 条件读取：`If-None-Match` 支持精确/弱标签、列表与 `*`，命中返回空 304；源站保留共享头，边缘可按 HTTP 语义只转发 ETag、Cache-Control 等缓存更新元数据
 
 源文是公开阅读投影，不是 Git 作者原稿下载。它不包含 `draft`、`featured`、slug/sourcePath、统计派生字段或未公开记录；未知、草稿和未来内容统一返回 plain-text 404、`no-store` 与 `noindex`。公开内容清单负责批量发现和变更判断，JSON Feed 提供聚合纯文本，单篇源文提供 Markdown 结构，三者用途不同。
+
+## 未知 URL 与索引边界
+
+根级 `not-found` 对未知 URL 返回真实 HTTP 404 与 `no-store`，并在最终生产 HTML 中显式包含 `robots=noindex`。页面提供搜索、时间档案、文章和项目四条恢复路径，但自身不进入 Sitemap、Feed、公开内容清单或结构化身份图，也不输出 BreadcrumbList。不存在的地址不会自动重定向为首页，因此搜索引擎和读者都能区分“资源不存在”与“站点可继续浏览”。
+
+本地 Next 当前会自动注入一条 noindex，组件显式声明会形成相同的第二条；Vercel 生产最终只保留显式的一条。测试要求至少存在该指令，而不依赖不同运行环境的去重数量。404 仍继承根 metadata 的首页 canonical；本轮不为修正这一非索引页面的 canonical 启用实验性 global-not-found 或复制根布局。
 
 ## Sitemap
 
