@@ -24,7 +24,8 @@ import {
 import { extractTableOfContents } from "@/lib/content/markdown";
 import { getContentCover } from "@/lib/content/media";
 import { getPublicMarkdownPath } from "@/lib/public-markdown";
-import { absoluteSiteUrl, resolveSiteUrl } from "@/lib/site";
+import { absoluteSiteUrl, resolveSiteUrl, SITE_LANGUAGE } from "@/lib/site";
+import { createContentStructuredIdentity } from "@/lib/website";
 
 type ProjectPageProps = {
   params: Promise<{ slug: string }>;
@@ -97,11 +98,12 @@ export default async function ProjectPage({ params }: ProjectPageProps) {
         data={{
           "@context": "https://schema.org",
           "@type": "SoftwareSourceCode",
+          ...createContentStructuredIdentity(siteUrl, new URL(projectUrl)),
           name: project.title,
           description: project.description,
           dateCreated: project.publishedAt,
           dateModified: project.reviewedAt,
-          inLanguage: "zh-CN",
+          inLanguage: SITE_LANGUAGE,
           keywords: project.tags,
           url: projectUrl,
           image: cover ? absoluteSiteUrl(siteUrl, cover.src) : undefined,

@@ -121,6 +121,11 @@ test("connects Vercel verification, maintenance reporting, rollback, and Studio 
   assert.match(smoke, /首页 WebSite 数量异常/u);
   assert.match(smoke, /首页 WebSite 站点身份异常/u);
   assert.match(smoke, /非首页不得输出 WebSite/u);
+  assert.match(smoke, /文章结构化身份异常/u);
+  assert.match(smoke, /项目结构化身份异常/u);
+  assert.match(smoke, /文章 WebSite 引用异常/u);
+  assert.match(smoke, /项目 WebSite 引用异常/u);
+  assert.match(smoke, /未知详情页不得输出内容结构化身份/u);
   assert.doesNotMatch(smoke, /"@type": "SearchAction"/u);
   assert.match(smoke, /\/search\?q=Wrangler/u);
   assert.match(smoke, /\/search\?q=B_i/u);

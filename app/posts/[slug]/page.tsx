@@ -27,7 +27,8 @@ import {
 import { extractTableOfContents } from "@/lib/content/markdown";
 import { getContentCover } from "@/lib/content/media";
 import { getPublicMarkdownPath } from "@/lib/public-markdown";
-import { absoluteSiteUrl, resolveSiteUrl } from "@/lib/site";
+import { absoluteSiteUrl, resolveSiteUrl, SITE_LANGUAGE } from "@/lib/site";
+import { createContentStructuredIdentity } from "@/lib/website";
 
 type PostPageProps = {
   params: Promise<{ slug: string }>;
@@ -107,11 +108,12 @@ export default async function PostPage({ params }: PostPageProps) {
         data={{
           "@context": "https://schema.org",
           "@type": "BlogPosting",
+          ...createContentStructuredIdentity(siteUrl, new URL(canonicalUrl)),
           headline: post.title,
           description: post.description,
           datePublished: post.publishedAt,
           dateModified: post.reviewedAt,
-          inLanguage: "zh-CN",
+          inLanguage: SITE_LANGUAGE,
           keywords: post.tags,
           mainEntityOfPage: canonicalUrl,
           url: canonicalUrl,

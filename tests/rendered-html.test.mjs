@@ -166,6 +166,88 @@ test("publishes one authoritative WebSite identity on the homepage only", async 
   }
 });
 
+test("connects article and project identities to the canonical WebSite node", async () => {
+  const [homeResponse, postResponse, projectResponse] = await Promise.all([
+    render(),
+    render("/posts/building-a-maintainable-blog"),
+    render("/projects/myblog"),
+  ]);
+  assert.equal(homeResponse.status, 200);
+  assert.equal(postResponse.status, 200);
+  assert.equal(projectResponse.status, 200);
+
+  const websiteDocuments = structuredDataByType(
+    await homeResponse.text(),
+    "WebSite",
+  );
+  assert.equal(websiteDocuments.length, 1);
+  const websiteReference = { "@id": websiteDocuments[0]["@id"] };
+  const expectations = [
+    {
+      response: postResponse,
+      type: "BlogPosting",
+      canonical:
+        "https://blog.example.test/posts/building-a-maintainable-blog",
+      pageProperty: "mainEntityOfPage",
+    },
+    {
+      response: projectResponse,
+      type: "SoftwareSourceCode",
+      canonical: "https://blog.example.test/projects/myblog",
+      pageProperty: "url",
+    },
+  ];
+
+  for (const expectation of expectations) {
+    const documents = structuredDataByType(
+      await expectation.response.text(),
+      expectation.type,
+    );
+    assert.equal(documents.length, 1, expectation.type);
+    assert.equal(
+      documents[0]["@id"],
+      `${expectation.canonical}#content`,
+      expectation.type,
+    );
+    assert.deepEqual(
+      documents[0].isPartOf,
+      websiteReference,
+      expectation.type,
+    );
+    assert.equal(documents[0].url, expectation.canonical, expectation.type);
+    assert.equal(
+      documents[0][expectation.pageProperty],
+      expectation.canonical,
+      expectation.type,
+    );
+    assert.equal(documents[0].inLanguage, "zh-CN", expectation.type);
+    assert.deepEqual(
+      documents[0].author,
+      {
+        "@type": "Person",
+        name: "Zach424",
+        url: "https://github.com/Zach424",
+      },
+      expectation.type,
+    );
+  }
+
+  for (const pathname of [
+    "/posts/structured-data-missing",
+    "/projects/structured-data-missing",
+  ]) {
+    const response = await render(pathname);
+    assert.equal(response.status, 404, pathname);
+    const html = await response.text();
+    assert.equal(structuredDataByType(html, "BlogPosting").length, 0, pathname);
+    assert.equal(
+      structuredDataByType(html, "SoftwareSourceCode").length,
+      0,
+      pathname,
+    );
+  }
+});
+
 test("server-renders every public content collection and detail route", async () => {
   const routeExpectations = [
     ["/posts", /文章与 TIL/],

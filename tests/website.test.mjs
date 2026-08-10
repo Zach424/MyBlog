@@ -2,7 +2,10 @@ import assert from "node:assert/strict";
 import { readFile } from "node:fs/promises";
 import test from "node:test";
 
-import { createWebsiteStructuredData } from "../lib/website.ts";
+import {
+  createContentStructuredIdentity,
+  createWebsiteStructuredData,
+} from "../lib/website.ts";
 import {
   SITE_DESCRIPTION,
   SITE_LANGUAGE,
@@ -43,6 +46,60 @@ test("rejects unsafe WebSite origins and does not invent unsupported search acti
   assert.equal("alternateName" in document, false);
   assert.equal("potentialAction" in document, false);
   assert.doesNotMatch(JSON.stringify(document), /SearchAction/u);
+});
+
+test("connects a canonical content identity to the root WebSite node", () => {
+  const siteUrl = new URL(
+    "https://blog.example.test/preview?source=test#fragment",
+  );
+  const contentUrl = new URL(
+    "https://blog.example.test/posts/building-a-maintainable-blog",
+  );
+  const originalSiteHref = siteUrl.href;
+  const originalContentHref = contentUrl.href;
+
+  assert.deepEqual(createContentStructuredIdentity(siteUrl, contentUrl), {
+    "@id":
+      "https://blog.example.test/posts/building-a-maintainable-blog#content",
+    isPartOf: {
+      "@id": "https://blog.example.test/#website",
+    },
+  });
+  assert.equal(siteUrl.href, originalSiteHref);
+  assert.equal(contentUrl.href, originalContentHref);
+});
+
+test("rejects content identities outside the canonical site boundary", () => {
+  const siteUrl = new URL("https://blog.example.test");
+
+  assert.throws(
+    () =>
+      createContentStructuredIdentity(
+        siteUrl,
+        new URL("https://other.example.test/posts/a"),
+      ),
+    /same origin/u,
+  );
+  assert.throws(
+    () => createContentStructuredIdentity(siteUrl, new URL("https://blog.example.test")),
+    /content path/u,
+  );
+  assert.throws(
+    () =>
+      createContentStructuredIdentity(
+        siteUrl,
+        new URL("https://blog.example.test/posts/a?source=test"),
+      ),
+    /query or fragment/u,
+  );
+  assert.throws(
+    () =>
+      createContentStructuredIdentity(
+        siteUrl,
+        new URL("https://author:secret@blog.example.test/posts/a"),
+      ),
+    /credentials/u,
+  );
 });
 
 test("keeps the WebSite identity on the homepage server boundary", async () => {

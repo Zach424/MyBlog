@@ -86,6 +86,49 @@ function assertWebsiteIdentity(origin, html) {
   );
 }
 
+function assertContentIdentity(origin, htmlPages) {
+  const siteId = `${new URL("/", origin).href}#website`;
+  const expectations = [
+    {
+      pathname: "/posts/building-a-maintainable-blog",
+      type: "BlogPosting",
+      pageProperty: "mainEntityOfPage",
+      identityError: "文章结构化身份异常",
+      websiteError: "文章 WebSite 引用异常",
+    },
+    {
+      pathname: "/projects/myblog",
+      type: "SoftwareSourceCode",
+      pageProperty: "url",
+      identityError: "项目结构化身份异常",
+      websiteError: "项目 WebSite 引用异常",
+    },
+  ];
+
+  for (const expectation of expectations) {
+    const canonical = new URL(expectation.pathname, origin).href;
+    const documents = structuredDataByType(
+      htmlPages.get(expectation.pathname)?.body ?? "",
+      expectation.type,
+    );
+    const document = documents[0];
+    invariant(
+      documents.length === 1 &&
+        document?.["@context"] === "https://schema.org" &&
+        document?.["@id"] === `${canonical}#content` &&
+        document?.url === canonical &&
+        document?.[expectation.pageProperty] === canonical &&
+        document?.inLanguage === "zh-CN",
+      expectation.identityError,
+    );
+    invariant(
+      JSON.stringify(document.isPartOf) ===
+        JSON.stringify({ "@id": siteId }),
+      expectation.websiteError,
+    );
+  }
+}
+
 const RETRYABLE_STATUS = new Set([429, 500, 502, 503, 504]);
 
 async function fetchWithRetry(url, init = {}, attempts = 3) {
@@ -274,6 +317,7 @@ export async function runProductionSmoke(originInput, { expectOAuth = false } = 
       htmlBudgetReports.push(measureHtmlBudget({ pathname, html: page.body }));
     }
   }
+  assertContentIdentity(origin, htmlPages);
   const relatedPost = htmlPages.get("/posts/building-a-maintainable-blog")?.body ?? "";
   invariant(
     (relatedPost.match(/class="content-recommendation"/gu) ?? []).length === 2 &&
@@ -344,6 +388,14 @@ export async function runProductionSmoke(originInput, { expectOAuth = false } = 
         structuredDataByType(body, "BreadcrumbList").length === 0,
     ),
     "未知详情页不得输出 BreadcrumbList",
+  );
+  invariant(
+    missingBreadcrumbPages.every(
+      ({ body }) =>
+        structuredDataByType(body, "BlogPosting").length === 0 &&
+        structuredDataByType(body, "SoftwareSourceCode").length === 0,
+    ),
+    "未知详情页不得输出内容结构化身份",
   );
   assertHtmlBudgetCoverage(htmlBudgetReports);
   assertHtmlBudgets(htmlBudgetReports);
