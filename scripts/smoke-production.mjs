@@ -242,6 +242,22 @@ function sha256Etag(body) {
   return `"sha256-${createHash("sha256").update(body, "utf8").digest("hex")}"`;
 }
 
+const HEAD_REPRESENTATION_HEADERS = [
+  "content-disposition",
+  "content-type",
+  "last-modified",
+  "link",
+  "x-robots-tag",
+];
+
+function hasEquivalentHeadHeaders(source, candidate, optional = false) {
+  return HEAD_REPRESENTATION_HEADERS.every((name) => {
+    const expected = source.headers.get(name);
+    const actual = candidate.headers.get(name);
+    return optional ? actual === null || actual === expected : actual === expected;
+  });
+}
+
 export function hasRobotsCachePolicy(value) {
   const directives = cacheDirectives(value);
   if (!directives) return false;
@@ -1448,6 +1464,131 @@ export async function runProductionSmoke(originInput, { expectOAuth = false } = 
   invariant(
     malformedDate.response.status === 200 && malformedDate.body === rss.body,
     "RSS 非 HTTP-date 条件不应命中",
+  );
+  const conditionalHeadTargets = [
+    ["/content.json", "application/json", contentManifest, hasMarkdownSourceCachePolicy],
+    [
+      "/content.schema.json",
+      "application/schema+json",
+      contentSchema,
+      hasMarkdownSourceCachePolicy,
+    ],
+    ["/feed.json", "application/feed+json", jsonFeed, hasJsonFeedCachePolicy],
+    ["/rss.xml", "application/rss+xml", rss, hasJsonFeedCachePolicy],
+    ["/sitemap.xml", "application/xml", sitemap, hasJsonFeedCachePolicy],
+    ["/robots.txt", "text/plain", robots, hasRobotsCachePolicy],
+    [
+      "/opensearch.xml",
+      "application/opensearchdescription+xml",
+      openSearch,
+      hasJsonFeedCachePolicy,
+    ],
+    [
+      markdownSources[0].pathname,
+      "text/markdown",
+      sourceResponses[0],
+      hasMarkdownSourceCachePolicy,
+    ],
+    [
+      markdownSources[1].pathname,
+      "text/markdown",
+      sourceResponses[1],
+      hasMarkdownSourceCachePolicy,
+    ],
+  ];
+  for (const [pathname, accept, source, cachePolicy] of conditionalHeadTargets) {
+    const etag = source.response.headers.get("etag");
+    const lastModified = source.response.headers.get("last-modified");
+    const [head, tagMatch] = await Promise.all([
+      request(origin, pathname, { accept, method: "HEAD" }),
+      request(origin, pathname, {
+        accept,
+        method: "HEAD",
+        headers: { "if-none-match": etag },
+      }),
+    ]);
+    invariant(
+      head.response.status === 200 &&
+        head.body === "" &&
+        sameMarkdownSourceEtag(head.response.headers.get("etag"), etag) &&
+        cachePolicy(head.response.headers.get("cache-control")) &&
+        hasEquivalentHeadHeaders(source.response, head.response),
+      `${pathname} HEAD 条件响应契约异常`,
+    );
+    invariant(
+      tagMatch.response.status === 304 &&
+        tagMatch.body === "" &&
+        sameMarkdownSourceEtag(tagMatch.response.headers.get("etag"), etag) &&
+        cachePolicy(tagMatch.response.headers.get("cache-control")) &&
+        hasEquivalentHeadHeaders(source.response, tagMatch.response, true),
+      `${pathname} ETag HEAD 条件响应契约异常`,
+    );
+
+    if (lastModified) {
+      const staleDate = new Date(Date.parse(lastModified) - 1_000).toUTCString();
+      const malformedDate = new Date(Date.parse(lastModified)).toISOString();
+      const [dateMatch, staleDateResponse, malformedDateResponse, staleTagWins] =
+        await Promise.all([
+          request(origin, pathname, {
+            accept,
+            method: "HEAD",
+            headers: { "if-modified-since": lastModified },
+          }),
+          request(origin, pathname, {
+            accept,
+            method: "HEAD",
+            headers: { "if-modified-since": staleDate },
+          }),
+          request(origin, pathname, {
+            accept,
+            method: "HEAD",
+            headers: { "if-modified-since": malformedDate },
+          }),
+          request(origin, pathname, {
+            accept,
+            method: "HEAD",
+            headers: {
+              "if-none-match": '"sha256-stale"',
+              "if-modified-since": lastModified,
+            },
+          }),
+        ]);
+      invariant(
+        dateMatch.response.status === 304 &&
+          dateMatch.body === "" &&
+          sameMarkdownSourceEtag(dateMatch.response.headers.get("etag"), etag) &&
+          cachePolicy(dateMatch.response.headers.get("cache-control")) &&
+          hasEquivalentHeadHeaders(source.response, dateMatch.response, true),
+        `${pathname} 日期 HEAD 条件响应契约异常`,
+      );
+      for (const [label, response] of [
+        ["旧日期", staleDateResponse],
+        ["非法日期", malformedDateResponse],
+        ["ETag 优先", staleTagWins],
+      ]) {
+        invariant(
+          response.response.status === 200 &&
+            response.body === "" &&
+            sameMarkdownSourceEtag(response.response.headers.get("etag"), etag) &&
+            cachePolicy(response.response.headers.get("cache-control")) &&
+            hasEquivalentHeadHeaders(source.response, response.response),
+          `${pathname} ${label} HEAD 条件响应契约异常`,
+        );
+      }
+    }
+  }
+  const missingMarkdownHead = await request(
+    origin,
+    "/posts/not-a-public-record/source.md",
+    { accept: "text/markdown", method: "HEAD", redirect: "manual" },
+  );
+  invariant(
+    missingMarkdownHead.response.status === 404 &&
+      missingMarkdownHead.body === "" &&
+      missingMarkdownHead.response.headers.get("cache-control") === "no-store" &&
+      missingMarkdownHead.response.headers.get("etag") === null &&
+      missingMarkdownHead.response.headers.get("last-modified") === null,
+    "未知 Markdown HEAD 不得生成公开验证器",
   );
   const routeResponses = await Promise.all(
     sitemapUrls.map((url) => fetchWithRetry(url, { redirect: "manual" })),

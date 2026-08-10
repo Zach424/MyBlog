@@ -145,6 +145,8 @@ test("connects Vercel verification, maintenance reporting, rollback, and Studio 
   assert.match(smoke, /robots 正文或条件验证器异常/u);
   assert.match(smoke, /Sitemap URL 数量或条件验证器异常/u);
   assert.match(smoke, /条件请求契约异常/u);
+  assert.match(smoke, /method: "HEAD"/u);
+  assert.match(smoke, /HEAD 条件响应契约异常/u);
   assert.match(smoke, /\/knowledge/);
   assert.match(smoke, /\/blog 永久重定向/);
   assert.match(smoke, /same-origin-allow-popups/);

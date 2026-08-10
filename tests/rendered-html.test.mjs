@@ -16,6 +16,7 @@ const developmentPreviewMeta =
 async function render(pathname = "/", options = {}) {
   if (!process.env.TEST_BASE_URL) throw new Error("TEST_BASE_URL is required");
   return fetch(new URL(pathname, process.env.TEST_BASE_URL), {
+    method: options.method,
     redirect: "manual",
     headers: {
       accept: options.accept ?? "text/html",
@@ -1509,6 +1510,113 @@ test("publishes portable Markdown sources without author-only fields", async () 
   );
   assert.equal(staleTagWins.status, 200);
   assert.equal(await staleTagWins.text(), postSource);
+});
+
+test("keeps every public conditional HEAD response bodyless and GET-equivalent", async () => {
+  const targets = [
+    ["/content.json", "application/json"],
+    ["/content.schema.json", "application/schema+json"],
+    ["/feed.json", "application/feed+json"],
+    ["/rss.xml", "application/rss+xml"],
+    ["/sitemap.xml", "application/xml"],
+    ["/robots.txt", "text/plain"],
+    ["/opensearch.xml", "application/opensearchdescription+xml"],
+    ["/posts/building-a-maintainable-blog/source.md", "text/markdown"],
+    ["/projects/myblog/source.md", "text/markdown"],
+  ];
+  const representationHeaders = [
+    "cache-control",
+    "content-disposition",
+    "content-type",
+    "etag",
+    "last-modified",
+    "link",
+    "x-robots-tag",
+  ];
+
+  for (const [pathname, accept] of targets) {
+    const get = await render(pathname, { accept });
+    const etag = get.headers.get("etag");
+    const lastModified = get.headers.get("last-modified");
+    assert.ok(etag, pathname);
+    await get.body?.cancel();
+
+    const head = await render(pathname, { accept, method: "HEAD" });
+    assert.equal(head.status, 200, pathname);
+    assert.equal(await head.text(), "", pathname);
+    for (const header of representationHeaders) {
+      assert.equal(head.headers.get(header), get.headers.get(header), `${pathname} ${header}`);
+    }
+
+    const tagMatch = await render(pathname, {
+      accept,
+      method: "HEAD",
+      headers: { "if-none-match": etag },
+    });
+    assert.equal(tagMatch.status, 304, pathname);
+    assert.equal(await tagMatch.text(), "", pathname);
+    for (const header of representationHeaders) {
+      assert.equal(tagMatch.headers.get(header), get.headers.get(header), `${pathname} 304 ${header}`);
+    }
+
+    if (lastModified) {
+      const staleDate = new Date(Date.parse(lastModified) - 1_000).toUTCString();
+      const malformedDate = new Date(Date.parse(lastModified)).toISOString();
+      const [dateMatch, staleDateResponse, malformedDateResponse, staleTagWins] =
+        await Promise.all([
+          render(pathname, {
+            accept,
+            method: "HEAD",
+            headers: { "if-modified-since": lastModified },
+          }),
+          render(pathname, {
+            accept,
+            method: "HEAD",
+            headers: { "if-modified-since": staleDate },
+          }),
+          render(pathname, {
+            accept,
+            method: "HEAD",
+            headers: { "if-modified-since": malformedDate },
+          }),
+          render(pathname, {
+            accept,
+            method: "HEAD",
+            headers: {
+              "if-none-match": '"sha256-stale"',
+              "if-modified-since": lastModified,
+            },
+          }),
+        ]);
+      assert.equal(dateMatch.status, 304, `${pathname} date`);
+      assert.equal(await dateMatch.text(), "", `${pathname} date`);
+      assert.equal(staleDateResponse.status, 200, `${pathname} stale date`);
+      assert.equal(await staleDateResponse.text(), "", `${pathname} stale date`);
+      assert.equal(malformedDateResponse.status, 200, `${pathname} malformed date`);
+      assert.equal(await malformedDateResponse.text(), "", `${pathname} malformed date`);
+      assert.equal(staleTagWins.status, 200, `${pathname} stale ETag`);
+      assert.equal(await staleTagWins.text(), "", `${pathname} stale ETag`);
+      for (const response of [staleDateResponse, malformedDateResponse, staleTagWins]) {
+        for (const header of representationHeaders) {
+          assert.equal(
+            response.headers.get(header),
+            get.headers.get(header),
+            `${pathname} conditional HEAD ${header}`,
+          );
+        }
+      }
+    }
+  }
+
+  const missing = await render("/posts/not-a-public-record/source.md", {
+    accept: "text/markdown",
+    method: "HEAD",
+  });
+  assert.equal(missing.status, 404);
+  assert.equal(await missing.text(), "");
+  assert.equal(missing.headers.get("cache-control"), "no-store");
+  assert.equal(missing.headers.get("etag"), null);
+  assert.equal(missing.headers.get("last-modified"), null);
 });
 
 test("removes starter artifacts and keeps the Vercel-native design contract explicit", async () => {
