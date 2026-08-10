@@ -1163,6 +1163,17 @@ export async function runProductionSmoke(originInput, { expectOAuth = false } = 
     (missing.response.headers.get("cache-control") ?? "").includes("no-store"),
     "404 必须 no-store",
   );
+  invariant(
+    missing.body.includes('<meta name="robots" content="noindex"') &&
+      missing.body.includes("这条轨迹在这里中断。") &&
+      (missing.body.match(/class="not-found-route [^"]+"/gu) ?? []).length === 4 &&
+      missing.body.includes('href="/search"') &&
+      missing.body.includes('href="/archive"') &&
+      missing.body.includes('href="/posts"') &&
+      missing.body.includes('href="/projects"') &&
+      !missing.body.includes('http-equiv="refresh"'),
+    "404 恢复路径或 noindex 契约异常",
+  );
 
   return {
     origin: origin.origin,

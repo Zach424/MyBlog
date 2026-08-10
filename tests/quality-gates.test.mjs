@@ -148,6 +148,10 @@ test("applies the production security and cache baseline", async () => {
   const missingResponse = await request("/definitely-missing");
   assert.equal(missingResponse.status, 404);
   assert.match(missingResponse.headers.get("cache-control") ?? "", /no-store/);
+  const missingHtml = await missingResponse.text();
+  assert.match(missingHtml, /<meta name="robots" content="noindex"/i);
+  assert.match(missingHtml, /这条轨迹在这里中断。/u);
+  assert.equal((missingHtml.match(/class="not-found-route [^"]+"/gu) ?? []).length, 4);
 
   const studioResponse = await request("/studio");
   assert.equal(studioResponse.status, 200);

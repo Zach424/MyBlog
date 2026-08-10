@@ -2791,31 +2791,6 @@ input:focus-visible {
   text-underline-offset: 0.25rem;
 }
 
-.not-found {
-  min-height: 65vh;
-  display: flex;
-  align-items: flex-start;
-  justify-content: center;
-  flex-direction: column;
-  padding-block: 5rem;
-}
-
-.not-found h1 {
-  max-width: 50rem;
-  margin: 1.25rem 0 1rem;
-  font-family: var(--display);
-  font-size: clamp(3rem, 7vw, 6rem);
-  line-height: 0.98;
-  letter-spacing: -0.05em;
-}
-
-.not-found > p:not(.section-label) {
-  max-width: 40rem;
-  margin: 0 0 2rem;
-  color: var(--muted);
-  line-height: 1.8;
-}
-
 .entry {
   color: inherit;
   text-decoration: none;
@@ -5066,4 +5041,5 @@ input:focus-visible {
   .subscription-boundary nav {
     display: none;
   }
+
 }

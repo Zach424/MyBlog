@@ -131,6 +131,42 @@ test("server-renders the engineering log homepage", async () => {
   assert.doesNotMatch(html, /Starter Project|react-loading-skeleton|Your site is taking shape/);
 });
 
+test("server-renders a semantic 404 recovery junction without soft redirecting", async () => {
+  const response = await render("/definitely-missing-recovery-junction");
+  assert.equal(response.status, 404);
+  assert.match(response.headers.get("content-type") ?? "", /^text\/html\b/i);
+  assert.match(response.headers.get("cache-control") ?? "", /no-store/i);
+
+  const html = visibleDocument(await response.text()).replaceAll("<!-- -->", "");
+  assert.equal((html.match(/<h1\b/giu) ?? []).length, 1);
+  assert.match(html, /<meta name="robots" content="noindex"/i);
+  assert.match(html, /<main class="not-found page-shell [^"]+" id="main-content">/i);
+  assert.match(html, /<h1[^>]*>这条轨迹在这里中断。<\/h1>/u);
+  assert.match(html, /服务器没有找到这个地址/u);
+  assert.match(html, /<nav class="not-found-routes [^"]+" aria-label="404 恢复路径">/u);
+  assert.equal((html.match(/class="not-found-route [^"]+"/gu) ?? []).length, 4);
+
+  for (const [href, label] of [
+    ["/search", "搜索知识库"],
+    ["/archive", "按时间回溯"],
+    ["/posts", "浏览文章"],
+    ["/projects", "浏览项目"],
+  ]) {
+    assert.match(
+      html,
+      new RegExp(`<a class="not-found-route [^"]+" href="${href}">[\\s\\S]*?${label}[\\s\\S]*?<\\/a>`, "u"),
+      href,
+    );
+  }
+
+  assert.match(html, /href="\/">返回首页<\/a>/u);
+  assert.doesNotMatch(html, /http-equiv="refresh"/i);
+  assert.equal(structuredDataByType(html, "BreadcrumbList").length, 0);
+
+  const source = await readFile(new URL("../app/not-found.tsx", import.meta.url), "utf8");
+  assert.doesNotMatch(source, /["']use client["']/);
+});
+
 test("publishes one authoritative WebSite identity on the homepage only", async () => {
   const homeResponse = await render();
   assert.equal(homeResponse.status, 200);
@@ -709,7 +745,7 @@ test("renders project Markdown and returns a real 404 for unknown content", asyn
 
   const missingResponse = await render("/posts/does-not-exist");
   assert.equal(missingResponse.status, 404);
-  assert.match(await missingResponse.text(), /这条工程轨迹不存在/);
+  assert.match(await missingResponse.text(), /这条轨迹在这里中断。/);
 });
 
 test("server-renders a shareable search query against posts and projects", async () => {

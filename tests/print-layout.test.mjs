@@ -59,3 +59,26 @@ test("keeps the chronological archive server-rendered and printable", async () =
   assert.match(styles, /@media print[\s\S]*?\.archive-entry\s*\{[\s\S]*?break-inside:\s*avoid-page;/u);
   assert.match(styles, /@media print[\s\S]*?\.archive-page \.collection-links\s*\{\s*display:\s*none;/u);
 });
+
+test("keeps the 404 recovery junction server-rendered and printable", async () => {
+  const [page, styles] = await Promise.all([
+    readFile(new URL("../app/not-found.tsx", import.meta.url), "utf8"),
+    readFile(new URL("../app/not-found.module.css", import.meta.url), "utf8"),
+  ]);
+
+  assert.doesNotMatch(page, /["']use client["']/u);
+  assert.equal((page.match(/<h1\b/gu) ?? []).length, 1);
+  assert.match(page, /className=\{`not-found-routes \$\{styles\.routes\}`\}/u);
+  assert.match(page, /href: "\/search"/u);
+  assert.match(page, /href: "\/archive"/u);
+  assert.match(page, /href: "\/posts"/u);
+  assert.match(page, /href: "\/projects"/u);
+  assert.match(
+    styles,
+    /@media print[\s\S]*?\.route\s*\{[\s\S]*?break-inside:\s*avoid-page;/u,
+  );
+  assert.match(
+    styles,
+    /@media print[\s\S]*?\.route::after[\s\S]*?attr\(href\)/u,
+  );
+});
