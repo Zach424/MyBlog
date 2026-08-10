@@ -6,7 +6,7 @@
 npm run check
 ```
 
-顺序为 ESLint → 483 项内容/维护/inbox/暂存媒体/关系/标题锚点与永久链接/脚注/数学公式/打印版式/知识图/外链库存与检查/搜索/OpenSearch/公开清单/发现端点验证器与预算/公开 Markdown/OAuth/Studio/Obsidian/媒体/重定向/代码复制/交付单元测试 → Next 路由类型生成与 TypeScript → 原生 Next.js 生产构建（49 个页面，并包含动态 Route Handler）→ 20 项真实生产 HTTP 与质量审计。任何一步失败都阻止合并和生产部署。
+顺序为 ESLint → 485 项内容/维护/inbox/暂存媒体/关系/标题锚点与永久链接/脚注/数学公式/打印版式/知识图/外链库存与检查/搜索/OpenSearch/公开清单/发现端点验证器与预算/公开 Markdown/OAuth/Studio/Obsidian/媒体/重定向/代码复制/交付单元测试 → Next 路由类型生成与 TypeScript → 原生 Next.js 生产构建（49 个页面，并包含动态 Route Handler）→ 20 项真实生产 HTTP 与质量审计。任何一步失败都阻止合并和生产部署。
 
 发布候选额外执行：
 
@@ -67,6 +67,8 @@ npm run production:smoke -- https://example.vercel.app --expect-oauth
 ```
 
 检查代表内容、搜索、Studio HTML/配置/媒体清单/媒体预检/稳定 slug 控件/公式预览模块/版本化 KaTeX CSS/同源 CMS 运行时、OAuth、OpenSearch、公开内容清单及 Schema、JSON Feed、RSS、robots、全 Sitemap、永久重定向、安全头、缓存与随机 404。OpenSearch 必须具有 1.1 namespace、唯一 ShortName/Description、同源 results/self URL、安全 `{searchTerms}` 模板、示例查询、语言/编码、准确 MIME、`noindex`、最终正文 SHA-256 ETag 与空 304；首页和搜索结果页必须声明绝对 `rel="search"`，端点不能进入 Sitemap。公开内容清单必须由根 HTML 发现，使用 version 1、同 origin 绝对 HTML/Markdown URL、字段白名单、稳定顺序和与全部真实源文相同的 SHA-256 digest；清单自身 ETag、Last-Modified、空 304、`noindex` 与 Vercel 等价缓存必须成立，并与 JSON Feed/RSS 保持同一公开 id 顺序。Schema 必须使用 Draft 2020-12 和 `application/schema+json`，具有同源 `$id`、严格字段结构、与清单双向 registered Link relation、SHA-256 ETag、空 304、`noindex` 与等价缓存；Ajv 2020 还要验证真实清单并拒绝结构反例。JSON Feed 必须使用 1.1 version 和 `application/feed+json`，顶层 origin、作者、语言、icon 正确，item 必须有唯一同值 id/url、纯文本正文、RFC 3339 发布日期且不泄漏内部字段。JSON Feed、RSS、Sitemap、robots 和 OpenSearch 还必须证明 ETag 等于各自最终正文 SHA-256，并用源响应标签完成同 digest、同缓存策略、零正文的 304；缓存验证接受源响应的一小时 fresh/一天 SWR，以及 Vercel CDN 消费 SWR 后的等价一小时策略，robots 则必须保持明确的一天 public fresh。错误 TTL、`private` 或 `no-store` 仍失败关闭。九条关键 HTML 路由和七个结构化发现端点还必须在实际传入的生产域名下逐条输出 raw/gzip 实测、阈值、基线和带正负号的余量；缺失、重复、意外端点或超限都失败关闭。线上公式 POST 必须返回两条公式、KaTeX、MathML 与生产管线标记，CSS 必须内联 WOFF2 且不残留 package 相对字体路径。媒体清单必须是 `version: 1`、根为 `public/uploads`，每项包含安全路径、正整数节数与 64 位 SHA-256，并保持 `no-store`。永久重定向检查要求 `/blog` 返回 308、同源 `Location` 直达 `/posts`，且目标只需一次请求即返回 200。`--expect-oauth` 只用于已配置 GitHub OAuth 的生产环境；本地和 Preview 允许 OAuth 以 503 安全关闭。
+
+搜索质量必须覆盖全角/大小写 NFKC、组合重音、兼容字符、多词 AND、摘要/正文证据选择、重叠分段、原文重组和空查询。真实 Next 与生产 smoke 不能只在 RSC 序列化载荷中找到文档标题：Cloudflare 查询必须出现真实 `<mark>`、来源和字段原因，Wrangler 必须是 1 条“正文”证据，B_i 必须是 0 条且没有 mark。组件源码不得使用 `dangerouslySetInnerHTML`；浅深色 ink/trace 对比必须达到 4.5:1，320px 不得横向溢出，搜索输入必须有选择器优先级足够的 `:focus-visible` 轮廓。
 
 ## 永久重定向质量门
 

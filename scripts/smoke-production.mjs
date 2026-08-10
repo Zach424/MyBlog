@@ -190,6 +190,12 @@ export async function runProductionSmoke(originInput, { expectOAuth = false } = 
           page.body.includes(`${origin.origin}/opensearch.xml`),
         "搜索结果页缺少 OpenSearch 发现链接",
       );
+      invariant(
+        page.body.includes('<mark class="search-hit">Cloudflare</mark>') &&
+          page.body.includes('class="search-evidence-source"') &&
+          page.body.includes("匹配标签、正文"),
+        "搜索命中证据异常",
+      );
     }
     htmlPages.set(pathname, page);
     if (HTML_ROUTE_BASELINES[pathname]) {
@@ -198,6 +204,26 @@ export async function runProductionSmoke(originInput, { expectOAuth = false } = 
   }
   assertHtmlBudgetCoverage(htmlBudgetReports);
   assertHtmlBudgets(htmlBudgetReports);
+
+  const [bodySearch, emptySearch] = await Promise.all([
+    request(origin, "/search?q=Wrangler"),
+    request(origin, "/search?q=B_i"),
+  ]);
+  invariant(
+    bodySearch.response.status === 200 &&
+      bodySearch.body.includes('<mark class="search-hit">Wrangler</mark>') &&
+      bodySearch.body.includes(
+        '<span class="search-evidence-source">正文</span>',
+      ) &&
+      bodySearch.body.includes("“Wrangler” 找到 1 条记录"),
+    "搜索正文证据异常",
+  );
+  invariant(
+    emptySearch.response.status === 200 &&
+      emptySearch.body.includes("“B_i” 找到 0 条记录") &&
+      !emptySearch.body.includes('<mark class="search-hit">'),
+    "搜索空结果证据异常",
+  );
 
   const markdownSources = [
     {

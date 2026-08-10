@@ -107,6 +107,7 @@
 0100-structured-discovery-transfer-budgets.md
 0101-structured-discovery-conditional-reads.md
 0102-opensearch-discovery.md
+0103-explainable-search-evidence.md
 ```
 
 ## 必填结构

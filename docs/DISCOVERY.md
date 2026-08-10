@@ -1,15 +1,17 @@
 # 搜索与发布发现
 
-- 状态：RSS/Sitemap/robots implemented in iteration 0006；JSON Feed 1.1 implemented in iteration 0088；公开内容清单 implemented in iteration 0091；清单 JSON Schema implemented in iteration 0099；既有结构化端点条件读取 completed in iteration 0101；OpenSearch 1.1 discovery completed in iteration 0102
+- 状态：RSS/Sitemap/robots implemented in iteration 0006；JSON Feed 1.1 implemented in iteration 0088；公开内容清单 implemented in iteration 0091；清单 JSON Schema implemented in iteration 0099；既有结构化端点条件读取 completed in iteration 0101；OpenSearch 1.1 discovery completed in iteration 0102；可解释搜索命中证据 completed in iteration 0103
 - 目标：让公开内容可搜索、可订阅、可被搜索引擎发现，同时保持 Git 内容源和无数据库架构。
 
 ## 站内搜索
 
-`lib/search.ts` 在构建阶段把所有公开文章、TIL 与项目转换为可序列化文档。Markdown 标题、链接、强调和 fenced code 标记会被清理，但可搜索的文字和代码内容保留。
+`lib/search-index.ts` 在服务端把所有公开文章、TIL 与项目转换为可序列化文档。Markdown 标题、链接、强调和 fenced code 标记会被清理，但可搜索的文字、代码、公式源码和图片替代文本保留；Markdown 解析器不会进入客户端 bundle。
 
-查询先经过 Unicode NFKC 与小写规范化，空格分隔的多个词使用 AND 语义。排序权重依次偏向标题、标签、摘要和正文；同分时按发布日期与标题稳定排序。空查询返回全部公开内容，未知查询返回明确的空状态。
+查询先经过 Unicode NFKC 与 `zh-CN` 小写规范化，空格分隔的多个词使用 AND 语义。排序权重依次偏向标题、标签、摘要和正文；同分时按发布日期与标题稳定排序。空查询返回全部公开内容，未知查询返回明确的空状态，排名契约没有因高亮而改变。
 
 搜索页通过 `?q=` 接收初始查询并服务端输出首屏结果。后续输入在浏览器本地匹配，同时用 `history.replaceState` 更新可分享 URL，不产生网络搜索请求，也不使用分析服务。
+
+每条查询结果同时给出字段原因、摘要/正文来源与真实命中片段。摘要和正文比较覆盖的不同查询词数量，覆盖更多者成为上下文；正文片段围绕首个规范化命中截取。高亮先在规范化文本定位，再映射回 grapheme 边界，因而全角大小写、组合重音和兼容字符仍显示作者原文。重叠范围合并后由 React 文本节点与原生 `<mark>` 渲染，不使用 `dangerouslySetInnerHTML`。trace 背景、signal 底线、字段文字和来源标签共同表达证据；深浅色命中文字对比达到 AA，搜索输入保留明确 `:focus-visible`。
 
 ## OpenSearch 1.1
 

@@ -108,6 +108,11 @@ test("connects Vercel verification, maintenance reporting, rollback, and Studio 
   assert.match(smoke, /OpenSearch 描述或条件验证器异常/u);
   assert.match(smoke, /首页缺少 OpenSearch 发现链接/u);
   assert.match(smoke, /搜索结果页缺少 OpenSearch 发现链接/u);
+  assert.match(smoke, /搜索命中证据异常/u);
+  assert.match(smoke, /搜索正文证据异常/u);
+  assert.match(smoke, /搜索空结果证据异常/u);
+  assert.match(smoke, /\/search\?q=Wrangler/u);
+  assert.match(smoke, /\/search\?q=B_i/u);
   assert.match(smoke, /https:\/\/jsonfeed\.org\/version\/1\.1/);
   assert.match(smoke, /\/posts\/building-a-maintainable-blog\/source\.md/);
   assert.match(smoke, /\/projects\/myblog\/source\.md/);

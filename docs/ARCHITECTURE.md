@@ -58,6 +58,7 @@ lib/
   studio-math-preview.ts            同源作者预览的公式校验、HTML 输出与无障碍语义
   studio-maintenance.ts             公开 Current 内容到最小维护队列快照的适配层
   search-index.ts                   服务端 Markdown AST 到搜索纯文本/文档索引
+  search.ts                         客户端安全查询、排名、证据片段与 Unicode 原文分段
   media-policy.ts                   原图安全包络、WebP 优化与公开媒体预算的共享策略
   studio-media-manifest.ts          已归档媒体路径、字节数与 SHA-256 的确定性清单
   obsidian-publishing.ts            Obsidian 校验、附件与目标路径转换
@@ -121,7 +122,9 @@ H2/H3 由 `MarkdownHeading` 服务端组件接收 `rehype-slug` 已写入的真�
 
 脚注沿用已经安装的 `remark-gfm` 解析，不增加第二套 Markdown 解析器或客户端脚本。`MarkdownContent` 通过 `remarkRehypeOptions` 固定 `note-` DOM clobber 前缀、中文“注释与来源”标签和按引用位置生成的中文回链名称；自定义 anchor renderer 保留 rehype 生成的 `id`、`data-*`、`aria-*` 与 class，同时继续只为 HTTP(S) 外链设置新窗口策略。脚注标题绕开正文 `MarkdownHeading`，因此不进入 H2/H3 permalink 或目录。构建期内容关系仍从同一 GFM AST 读取脚注定义中的真实链接并去重；搜索纯文本只移除 `[^id]` 和定义标签，保留证据正文，避免作者语法污染摘要又不丢失可检索信息。
 
-数学公式沿用 Obsidian 的 `$...$` 与 `$$...$$`。`lib/content/markdown.ts` 把 GFM 与 `micromark-extension-math`/`mdast-util-math` 合并为共享服务端 AST，标题、关系、外链和媒体抽取都复用它，所以公式里的链接/图片外观文本不会变成真实引用，代码与未闭合的普通美元文本保持原义。`lib/markdown-math.ts` 使用本地 KaTeX 预解析每条公式，固定 `htmlAndMathml`、`strict: error`、`trust: false`、`maxSize: 20` 与 `maxExpand: 1000`；失败会带正文行号进入内容构建门。`MarkdownContent` 通过 `remark-math` 与 `rehype-katex` 在 Server Component 内输出可视 HTML、MathML 和 TeX annotation，不加载 CDN 或客户端公式脚本。块级公式得到可聚焦横向滚动区，打印取消滚动并避免跨页。`lib/search-index.ts` 只在服务端把同一 AST 转为索引文本，保留公式 TeX 值；`lib/search.ts` 继续只包含浏览器端排名逻辑，避免把解析器和 KaTeX带入搜索客户端岛。
+数学公式沿用 Obsidian 的 `$...$` 与 `$$...$$`。`lib/content/markdown.ts` 把 GFM 与 `micromark-extension-math`/`mdast-util-math` 合并为共享服务端 AST，标题、关系、外链和媒体抽取都复用它，所以公式里的链接/图片外观文本不会变成真实引用，代码与未闭合的普通美元文本保持原义。`lib/markdown-math.ts` 使用本地 KaTeX 预解析每条公式，固定 `htmlAndMathml`、`strict: error`、`trust: false`、`maxSize: 20` 与 `maxExpand: 1000`；失败会带正文行号进入内容构建门。`MarkdownContent` 通过 `remark-math` 与 `rehype-katex` 在 Server Component 内输出可视 HTML、MathML 和 TeX annotation，不加载 CDN 或客户端公式脚本。块级公式得到可聚焦横向滚动区，打印取消滚动并避免跨页。`lib/search-index.ts` 只在服务端把同一 AST 转为索引文本，保留公式 TeX 值；`lib/search.ts` 继续只包含可序列化的查询、排名和证据分段，避免把解析器和 KaTeX 带入搜索客户端岛。
+
+`lib/search.ts` 对查询继续执行 Unicode NFKC、`zh-CN` 小写与多词 AND 语义，排名权重不变。结果摘要在摘要与正文之间选择覆盖查询词更多的一侧；正文窗口以首个规范化命中为中心。命中表示先在规范化文本上定位，再用 `Intl.Segmenter` 的 grapheme 边界和规范化前缀长度映射回作者原文，重叠范围合并后只返回 `{ text, matched }` 数据。`SearchExperience` 把这些数据渲染为 React 文本节点和原生 `<mark>`，不使用 raw HTML；同一客户端岛既参与初始服务端 HTML，也处理后续本地输入，因此首屏与水合后保持同一证据契约。字段原因、摘要/正文来源标签、AA 对比和显式输入焦点让颜色不是唯一信号。
 
 `lib/markdown-pipeline.ts` 进一步把生产阅读的 remark/rehype 插件、脚注选项、受限 KaTeX 和 URL protocol transform 集中成共享配置。`/studio/math-preview` 先调用同一构建期公式门，再用 pinned unified/remark/rehype/stringify 重放共享管线；raw HTML 保持关闭，`href`/`src` 再应用同一安全 URL 规则。端点只接受同源 JSON，限制声明与实际正文为 100,000 B，返回 `no-store`/`noindex` 的 200 或带行号 422；其他协议/类型/体积错误分别失败。它只生成作者预览，不保存 Git 或替代完整构建门。
 
