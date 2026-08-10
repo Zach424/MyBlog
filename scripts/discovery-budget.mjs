@@ -5,8 +5,8 @@ export const DISCOVERY_BUDGET_ORIGIN = new URL(
 );
 
 export const DISCOVERY_BUDGET_BASELINE_PROVENANCE = Object.freeze({
-  measuredAt: "2026-08-10",
-  sourceRevision: "49e92a61a6f66bafd5316eb291c0599818209671",
+  measuredAt: "2026-08-11",
+  sourceRevision: "5ab34a702aec87777f6d33030dc9215a99343190",
 });
 
 export const DISCOVERY_BUDGET_POLICY = Object.freeze({
@@ -23,7 +23,7 @@ const measuredRouteBaselines = {
   "/content.schema.json": { rawBytes: 3_278, gzipBytes: 755 },
   "/feed.json": { rawBytes: 20_697, gzipBytes: 9_876 },
   "/rss.xml": { rawBytes: 3_238, gzipBytes: 1_241 },
-  "/sitemap.xml": { rawBytes: 4_703, gzipBytes: 512 },
+  "/sitemap.xml": { rawBytes: 4_882, gzipBytes: 524 },
   "/robots.txt": { rawBytes: 155, gzipBytes: 127 },
   "/opensearch.xml": { rawBytes: 700, gzipBytes: 462 },
 };

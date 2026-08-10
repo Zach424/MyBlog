@@ -99,7 +99,7 @@ test("reports actual bytes, limits, baselines, and signed headroom per route", (
   });
   const output = formatHtmlBudgetReport([passing, failing]);
 
-  assert.match(output, /^\[html-budget\] policy origin=https:\/\/blog-iota-five-59\.vercel\.app revision=49e92a61 measured=2026-08-10 raw=/u);
+  assert.match(output, /^\[html-budget\] policy origin=https:\/\/blog-iota-five-59\.vercel\.app revision=5ab34a70 measured=2026-08-11 raw=/u);
   assert.match(output, /\/fixtures\/passing raw=\d+\/163840 headroom=\+\d+ baseline=1000 gzip=\d+\/3072 headroom=\+\d+ baseline=1000/u);
   assert.match(output, /\/fixtures\/failing .*headroom=-\d+.*FAIL/u);
 });
@@ -133,8 +133,8 @@ test("pins the deterministic local origin to the documented stable production si
 
   assert.equal(HTML_BUDGET_ORIGIN.origin, "https://blog-iota-five-59.vercel.app");
   assert.deepEqual(HTML_BUDGET_BASELINE_PROVENANCE, {
-    measuredAt: "2026-08-10",
-    sourceRevision: "49e92a61a6f66bafd5316eb291c0599818209671",
+    measuredAt: "2026-08-11",
+    sourceRevision: "5ab34a702aec87777f6d33030dc9215a99343190",
   });
   assert.ok(readme.includes(HTML_BUDGET_ORIGIN.origin));
   assert.deepEqual(Object.keys(HTML_ROUTE_BASELINES), [
