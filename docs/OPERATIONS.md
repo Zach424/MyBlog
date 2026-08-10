@@ -160,6 +160,8 @@ Iteration 0122 起，JSON Feed 与 RSS 必须声明由各自表示修订时间�
 
 Iteration 0123 起，`/content.json` 与文章/项目 `source.md` 已公开的 Last-Modified 也传入同一条件响应助手。稳定生产逐资源验证同值日期空 304、旧/非 HTTP-date 完整 200、陈旧 ETag 屏蔽日期，以及 ETag、缓存、Link/noindex 可选元数据和正文保持不变。功能提交 `3946c36` 的完整 smoke 为 27 routes、OAuth 302；清单及七端点 body 基线均未变化，不创建响应头专用重基线。
 
+Iteration 0124 起，生产 smoke 对七个结构化端点和两篇代表 `source.md` 执行普通 HEAD、匹配 ETag HEAD，并对五个带日期资源额外执行日期命中、旧日期、非 HTTP-date 和陈旧 ETag 优先 HEAD。所有 200/304 必须零正文；200 的 ETag、Last-Modified、MIME、缓存、文件名、Link/noindex 与 GET 等价，边缘 304 可省略可选表示元数据但不得漂移；未知源文 HEAD 必须是 `no-store` 404 且没有 ETag/Last-Modified。功能提交 `64ab9dd` 的稳定生产 smoke 为 27 routes、OAuth 302，所有预算保持 PASS。
+
 搜索路径还要分别核对 `/search?q=cloudflare`、`/search?q=Wrangler` 与 `/search?q=B_i`：第一条必须出现可见命中 mark、来源和字段原因，第二条必须只有 1 条正文证据，第三条必须显示 0 条且不存在 mark。不要用 HTML 内 RSC 序列化的完整搜索文档冒充可见结果；生产 smoke 以真实 `<mark class="search-hit">`、来源标签和结果计数作为证据。
 
 继续阅读路径要核对代表文章恰有 2 个、代表项目恰有 3 个真实 `<a class="content-recommendation">`，并包含“当前记录引用”“引用当前记录”“同专题”或“共同标签”等实际理由。不要用 RSC 数据中的标题或推荐对象冒充可点击结果；链接数量、`Continue trace` 标题和理由必须都来自服务端可见 HTML。推荐变化属于关键 HTML 增长，部署后先观察文章/项目 raw-gzip 余量，再用同一提交的稳定生产响应更新有来源基线。

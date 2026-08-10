@@ -114,6 +114,8 @@ vercel.json                         Vercel Next.js 框架声明
 
 `lib/http-validators.ts` 的可选日期条件层严格遵循 HTTP 先决条件顺序：只生成规范 IMF-fixdate 且拒绝未来 `Last-Modified`；接收端兼容 IMF-fixdate、RFC 850 与 asctime 三种 HTTP-date，拒绝日历错误、星期不符、重复成员和非 HTTP 日期。任何 `If-None-Match` 字段一旦存在就完全遮蔽 `If-Modified-Since`，即使 ETag 值陈旧或畸形；只有没有 ETag 条件的 GET/HEAD 才在表示修改时间早于或等于请求日期时返回带 ETag、日期和缓存元数据的空 304。Iteration 0122 首先接入 RSS/JSON Feed，Iteration 0123 再让已有可靠日期事实的内容清单与单篇 Markdown 复用同一路径；无日期事实端点继续只用 ETag。
 
+Next.js 16.3 的 Route Handler 发送边界会对仅导出 GET 的公开端点处理 HEAD，并在最终发送阶段抑制响应体；业务生成器仍运行，因此 ETag、Last-Modified、MIME、缓存、Link 与 noindex 可以和 GET 保持同源。Iteration 0124 不显式复制九个 `HEAD()` 导出，而是用真实生产构建与 Vercel smoke 把框架行为固定为项目契约：七个结构化端点和文章/项目 `source.md` 的普通 HEAD 为 200/零正文，ETag 与日期命中为 304/零正文，旧/坏日期或陈旧 ETag 优先路径为 200/零正文；未知源文保持 `no-store` 404 且无公开验证器。Next 升级时必须重新验证这一框架边界。
+
 `lib/public-routes.ts` 是可索引公开路由的唯一派生边界。11 条静态页面声明 path、日期来源、change frequency 与 priority；文章、项目、专题和标签从同一公开内容/索引自动追加。最终清单检查跨集合 path 唯一性，并输出 routes、total 与最新公开内容日期。`createSitemapXml()` 只把 routes 序列化为 XML；首页 Evidence Rail 使用同一个 total，`LATEST` 使用与 Sitemap 根 URL `lastmod` 相同的日期。Feed、Studio、OAuth、错误页和其他 noindex 端点有意不属于该集合。整个边界只在服务端运行，不读取 Git、不发起 API 请求，也不持有第二份计数。
 
 `lib/homepage-evidence.ts` 是公开内容事实到首页 Evidence Rail 的专用 view-model。它只接收精选项目的标题、status、stack、日期与最新文章的标题、type、tags、日期，再映射 Building、Learned 和 Current focus；stack/tag 以“前 N 项 + 剩余数量”控制密度，标题保持原文，空项目/空文章输出明确等待状态。首页组件不再解释状态或维护运行摘要；该纯函数不读取文件、不发起请求，也不扩展内容 schema。
