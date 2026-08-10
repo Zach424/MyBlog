@@ -26,6 +26,7 @@ app/
   studio/                           Studio HTML、内容复核队列、配置、媒体清单/预检、slug 控件、公式预览与版本化 CMS 运行时路由
   posts/ projects/ series/ tags/   集合、详情页与嵌套 source.md Route Handler
   archive/                          文章、TIL 与项目的服务端年月时间档案
+  subscribe/                        现有订阅与开放接口的服务端可见路由表
   knowledge/ search/ about/         知识地图、搜索和关于页
   content.json/ content.schema.json/ feed.json/ rss.xml/ sitemap.xml/ robots.txt/ opensearch.xml/ 站点级发现端点
 components/                         站点框架、内容视图、Markdown、搜索
@@ -91,6 +92,8 @@ vercel.json                         Vercel Next.js 框架声明
 `next.config.ts` 在开发和构建开始时冻结作者时区日期，并行执行内容、媒体文件、内容—媒体关系与永久重定向校验。内容校验器先验证全部 Markdown，再对已公开内容执行关系完整性与新鲜度检查；媒体校验器递归扫描 `public/uploads`，拒绝符号链接、非图片、损坏图片、扩展名伪装和预算超限；媒体关系校验器用标准 Markdown AST 读取正式 posts/projects 的 `cover`、行内图片与引用式图片，核对精确文件路径和 slug 所有权，再拒绝无人引用的已归档附件；重定向校验器交叉检查当前公开 HTML 路由、静态文件、运维命名空间与 `content/redirects.yml`。纯净 Git 检出尚无上传目录时等价于零张图片；目录一旦存在，所有文件和正式引用都必须通过校验。`lib/content/index.ts` 在构建/服务端从 `content/posts` 与 `content/projects` 读取文件，解析为统一记录，过滤草稿和未来内容，再派生专题、标签、时间档案、搜索、公开内容清单、JSON Feed、RSS、单篇 Markdown 源文与 Sitemap。
 
 `lib/content/archive.ts` 只接收已验证的公开 `ContentRecord`，复制后按 `publishedAt` 倒序、`zh-CN` 标题与 `en` URL 依次决胜，再用插入顺序稳定生成年/月账本和每年计数；调用方数组不会被改写，空集合返回空档案。`app/archive/page.tsx` 直接消费这一纯投影，以 Server Component 输出原生 `ol`/`section`/`time`/链接，并把 Article、TIL 与 Project 放回一条时间轴；页面没有数据库、客户端请求、第二份内容索引或作者维护字段。
+
+`lib/subscriptions.ts` 把既有读取能力投影为固定五通道目录：RSS、JSON Feed、OpenSearch、公开清单/Schema 和单篇 Markdown。静态协议事实与从公开记录稳定选择的最新 `source.md` 示例在纯函数中汇合；`app/subscribe/page.tsx` 只负责把它们服务端渲染成可见路由表。页面不代理端点、不复制正文、不发起客户端请求，也不把只读接口误写成发布 API；发布入口仍是 Studio/Obsidian → Git。
 
 `lib/public-markdown.ts` 把同一公开 `ContentRecord` 投影为可移植 Markdown，而不是读取并透传作者原文件。YAML 只按文章/项目显式白名单输出公开阅读字段、canonical 与可选封面；`draft`、`featured`、源文件路径和构建派生字段不会进入响应。正文复用共享 GFM + math AST 的节点位置，只改写真实 link/image/definition URL：根相对站内地址、媒体地址与自页面 fragment 转为当前请求 origin 下的绝对 URL，外部 URL、代码和围栏代码保持不变，无法证明节点位置时失败关闭。最终 UTF-8 表示生成 `"sha256-<64 hex>"` 源站强 ETag；`Last-Modified` 取 published/updated/reviewed 中最新日期的 UTC 零点。`If-None-Match` 按 GET 弱比较语义接受单值、列表、`W/` 与 `*`，源站命中返回带共享响应头的空 304，畸形条件头按普通 200 处理。Vercel 对 Brotli 表示可把同一 opaque tag 弱化为 `W/`，并按 HTTP 语义把边缘 304 收敛为 ETag、Cache-Control 等缓存更新元数据；生产验证比较强弱标签中的相同 SHA-256 身份，并只校验仍出现的可选元数据不能漂移。文章与项目的嵌套 `source.md` Route Handler 只调用公开 getter，因此草稿、未来内容和未知 slug 都返回不可缓存的 404。
 
@@ -253,11 +256,11 @@ Obsidian 草稿中的 Wiki 图片嵌入、指向 `public/uploads` 的 Markdown �
 
 一般页面的 COOP 为 `same-origin`；Studio 与 OAuth 为 `same-origin-allow-popups`，以允许 GitHub OAuth 弹窗完成握手。Studio CSP 不允许第三方脚本源，只额外允许 GitHub API、GitHub 授权页和头像来源；`unsafe-eval` 例外被限制在 Studio 路由，因为固定版本 Decap 编辑器/解析器需要运行时求值。
 
-`scripts/discovery-budget.mjs` 冻结稳定生产 origin、测量日期、来源提交和七个结构化发现端点的完整 UTF-8/raw 与 Node zlib gzip 基线。每个端点的 raw 上限由 `baseline + max(50%, 4096 B)` 向上取整到 1 KiB，gzip 上限由 `baseline + max(50%, 1024 B)` 向上取整到 512 B；高度可压缩但异常膨胀的正文和 raw 尚小但传输熵异常的正文都能独立失败。真实 Next 应用和生产冒烟复用同一测量器，并要求清单、Schema、JSON Feed、RSS、Sitemap、robots、OpenSearch 恰好各出现一次；Iteration 0102 的稳定生产基线固定到 `e5bb2a8`，不会自动跟随当前输出。
+`scripts/discovery-budget.mjs` 冻结稳定生产 origin、测量日期、来源提交和七个结构化发现端点的完整 UTF-8/raw 与 Node zlib gzip 基线。每个端点的 raw 上限由 `baseline + max(50%, 4096 B)` 向上取整到 1 KiB，gzip 上限由 `baseline + max(50%, 1024 B)` 向上取整到 512 B；高度可压缩但异常膨胀的正文和 raw 尚小但传输熵异常的正文都能独立失败。真实 Next 应用和生产冒烟复用同一测量器，并要求清单、Schema、JSON Feed、RSS、Sitemap、robots、OpenSearch 恰好各出现一次；Iteration 0111 的稳定生产基线固定到 `5ab34a7`，不会自动跟随当前输出。
 
 ## 7. 部署与回滚
 
-Vercel GitHub Integration 负责每个分支的 Preview 和 `main` 的 Production，不再维护重复的部署 Action。GitHub `deployment_status` 成功事件触发生产冒烟，检查代表页面、时间档案、全 Sitemap、Studio/OAuth、Feed、公开内容清单及 Schema、OpenSearch、文章/项目 Markdown 源文、安全头和 404；清单、Schema、JSON Feed、RSS、Sitemap、robots、OpenSearch 的最终正文验证器及条件读取也在线复核，并逐项输出十条 HTML 与七个结构化发现端点的 raw/gzip 基线、上限和余量。
+Vercel GitHub Integration 负责每个分支的 Preview 和 `main` 的 Production，不再维护重复的部署 Action。GitHub `deployment_status` 成功事件触发生产冒烟，检查代表页面、时间档案、订阅路由表、全 Sitemap、Studio/OAuth、Feed、公开内容清单及 Schema、OpenSearch、文章/项目 Markdown 源文、安全头和 404；清单、Schema、JSON Feed、RSS、Sitemap、robots、OpenSearch 的最终正文验证器及条件读取也在线复核，并逐项输出十一条 HTML 与七个结构化发现端点的 raw/gzip 基线、上限和余量。
 
 Quality、生产冒烟与回滚工作流均使用 Node 24 runtime 的 checkout/setup-node v6，但实际执行仓库脚本时仍固定 Node.js 22。显式 `cache: npm` 避免 setup-node major 的自动缓存探测改变现有行为；GitHub-hosted runner 由平台维护，不引入自托管 runner 版本责任。升级 action 时必须先更新结构契约测试，再同时验证 push、定时触发结构、deployment status 与手动回滚权限。
 
