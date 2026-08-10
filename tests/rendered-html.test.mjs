@@ -366,6 +366,13 @@ test("renders project Markdown and returns a real 404 for unknown content", asyn
 });
 
 test("server-renders a shareable search query against posts and projects", async () => {
+  const searchExperienceSource = await readFile(
+    new URL("../components/SearchExperience.tsx", import.meta.url),
+    "utf8",
+  );
+  assert.match(searchExperienceSource, /<mark className="search-hit"/u);
+  assert.doesNotMatch(searchExperienceSource, /dangerouslySetInnerHTML/u);
+
   const response = await render("/search?q=cloudflare");
   assert.equal(response.status, 200);
 
@@ -375,16 +382,32 @@ test("server-renders a shareable search query against posts and projects", async
   assert.match(html, /Cloudflare/);
   assert.match(html, /MyBlog — 把学习记录做成工程资产/);
   assert.match(html, /NO TRACKING/);
+  assert.match(html, /<mark class="search-hit">Cloudflare<\/mark>/u);
+  assert.match(
+    html,
+    /<span class="search-evidence-source">(?:摘要|正文)<\/span>/u,
+  );
+  assert.match(html, /匹配(?:标题|标签|摘要|正文)/u);
   assert.match(
     html,
     /<link(?=[^>]*rel="search")(?=[^>]*type="application\/opensearchdescription\+xml")(?=[^>]*href="https:\/\/blog\.example\.test\/opensearch\.xml")[^>]*>/i,
   );
 
-  const formulaResponse = await render("/search?q=B_i");
-  assert.equal(formulaResponse.status, 200);
-  const formulaHtml = await formulaResponse.text();
-  assert.match(formulaHtml, /value="B_i"/u);
-  assert.match(formulaHtml, /MyBlog — 把学习记录做成工程资产/u);
+  const bodyMatchResponse = await render("/search?q=Wrangler");
+  assert.equal(bodyMatchResponse.status, 200);
+  const bodyMatchHtml = await bodyMatchResponse.text();
+  assert.match(bodyMatchHtml, /value="Wrangler"/u);
+  assert.match(bodyMatchHtml, /<mark class="search-hit">Wrangler<\/mark>/u);
+  assert.match(
+    bodyMatchHtml,
+    /<span class="search-evidence-source">正文<\/span>/u,
+  );
+
+  const emptyResponse = await render("/search?q=B_i");
+  assert.equal(emptyResponse.status, 200);
+  const emptyHtml = await emptyResponse.text();
+  assert.match(emptyHtml, /“B_i” 找到 0 条记录/u);
+  assert.doesNotMatch(emptyHtml, /<mark class="search-hit">/u);
 });
 
 test("publishes the structured discovery suite from one public origin", async (context) => {

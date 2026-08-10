@@ -8,6 +8,7 @@ import {
   useState,
 } from "react";
 import {
+  createSearchTextSegments,
   searchDocuments,
   type SearchDocument,
 } from "@/lib/search";
@@ -17,6 +18,18 @@ const kindLabels: Record<SearchDocument["kind"], string> = {
   til: "TIL",
   project: "Project",
 };
+
+function HighlightedSearchText({ text, query }: { text: string; query: string }) {
+  return createSearchTextSegments(text, query).map((segment, index) =>
+    segment.matched ? (
+      <mark className="search-hit" key={`${index}-${segment.text}`}>
+        {segment.text}
+      </mark>
+    ) : (
+      segment.text
+    ),
+  );
+}
 
 export function SearchExperience({
   documents,
@@ -126,9 +139,33 @@ export function SearchExperience({
                 </time>
               </span>
               <span className="search-result-copy">
-                <strong>{match.document.title}</strong>
-                <span>{hasQuery ? match.excerpt : match.document.description}</span>
-                <small>{match.document.tags.join(" · ")}</small>
+                <strong>
+                  <HighlightedSearchText
+                    text={match.document.title}
+                    query={deferredQuery}
+                  />
+                </strong>
+                {hasQuery ? (
+                  <span className="search-result-excerpt">
+                    <span className="search-evidence-source">
+                      {match.excerptSource}
+                    </span>
+                    <span>
+                      <HighlightedSearchText
+                        text={match.excerpt}
+                        query={deferredQuery}
+                      />
+                    </span>
+                  </span>
+                ) : (
+                  <span>{match.document.description}</span>
+                )}
+                <small>
+                  <HighlightedSearchText
+                    text={match.document.tags.join(" · ")}
+                    query={deferredQuery}
+                  />
+                </small>
               </span>
               <span className="search-result-reason">
                 {match.reason} <span aria-hidden="true">→</span>

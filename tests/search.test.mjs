@@ -1,6 +1,7 @@
 import assert from "node:assert/strict";
 import test from "node:test";
 import {
+  createSearchTextSegments,
   searchDocuments,
 } from "../lib/search.ts";
 import { markdownToPlainText } from "../lib/search-index.ts";
@@ -76,6 +77,8 @@ test("ranks title and tag matches above body-only matches", () => {
   );
   assert.match(results[0].reason, /标题/);
   assert.match(results[0].reason, /标签/);
+  assert.equal(results[0].excerptSource, "摘要");
+  assert.equal(results[1].excerptSource, "正文");
 });
 
 test("uses AND semantics, NFKC normalization and useful empty states", () => {
@@ -86,4 +89,52 @@ test("uses AND semantics, NFKC normalization and useful empty states", () => {
   assert.equal(searchDocuments(documents, "ＣＬＯＵＤＦＬＡＲＥ").length, 2);
   assert.equal(searchDocuments(documents, "不存在").length, 0);
   assert.equal(searchDocuments(documents, "").length, documents.length);
+});
+
+test("selects the evidence field that proves the most query terms", () => {
+  const [result] = searchDocuments(
+    [
+      {
+        ...documents[2],
+        description: "内容契约包含搜索证据。",
+        body: "正文只提到搜索。",
+      },
+    ],
+    "内容 搜索",
+  );
+
+  assert.equal(result.excerpt, "内容契约包含搜索证据。");
+  assert.equal(result.excerptSource, "摘要");
+  assert.equal(result.reason, "匹配摘要、正文");
+});
+
+test("segments normalized matches without changing authored text", () => {
+  assert.deepEqual(
+    createSearchTextSegments(
+      "Cloudflare 与 cloudflare",
+      "ＣＬＯＵＤＦＬＡＲＥ",
+    ),
+    [
+      { text: "Cloudflare", matched: true },
+      { text: " 与 ", matched: false },
+      { text: "cloudflare", matched: true },
+    ],
+  );
+  assert.deepEqual(
+    createSearchTextSegments("Café / ﬁle", "Cafe\u0301 fi"),
+    [
+      { text: "Café", matched: true },
+      { text: " / ", matched: false },
+      { text: "ﬁ", matched: true },
+      { text: "le", matched: false },
+    ],
+  );
+
+  const authored = "<script>alert(1)</script>";
+  const segments = createSearchTextSegments(authored, "<script>");
+  assert.equal(segments.map((segment) => segment.text).join(""), authored);
+  assert.deepEqual(segments[0], { text: "<script>", matched: true });
+  assert.deepEqual(createSearchTextSegments(authored, ""), [
+    { text: authored, matched: false },
+  ]);
 });

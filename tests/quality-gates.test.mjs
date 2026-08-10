@@ -448,6 +448,11 @@ test("keeps text design tokens at WCAG AA contrast", async () => {
       const ratio = contrastRatio(tokens[role], tokens.canvas);
       assert.ok(ratio >= 4.5, `${name} ${role} contrast ${ratio.toFixed(2)} < 4.5`);
     }
+    const searchHitRatio = contrastRatio(tokens.ink, tokens.trace);
+    assert.ok(
+      searchHitRatio >= 4.5,
+      `${name} search-hit contrast ${searchHitRatio.toFixed(2)} < 4.5`,
+    );
   }
 });
 
@@ -462,4 +467,8 @@ test("keeps the root layout fluid at 320px viewports", async () => {
   assert.match(css, /\.knowledge-map-scroll\s*{[^}]*overflow-x:\s*auto/s);
   assert.match(css, /@media \(max-width:\s*42rem\)[\s\S]*?\.knowledge-map-frame\s*{[^}]*display:\s*none/s);
   assert.match(css, /@media \(max-width:\s*42rem\)[\s\S]*?\.knowledge-mobile-note\s*{[^}]*display:\s*block/s);
+  assert.match(
+    css,
+    /\.search-input-row input:focus-visible\s*{[^}]*outline:\s*0\.125rem solid var\(--signal\)[^}]*outline-offset:\s*0\.3125rem/s,
+  );
 });
