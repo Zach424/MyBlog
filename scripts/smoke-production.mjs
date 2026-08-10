@@ -95,6 +95,7 @@ function assertContentIdentity(origin, htmlPages) {
       pageProperty: "mainEntityOfPage",
       identityError: "文章结构化身份异常",
       websiteError: "文章 WebSite 引用异常",
+      readingStats: { timeRequired: "PT4M", wordCount: 899 },
     },
     {
       pathname: "/projects/myblog",
@@ -118,7 +119,12 @@ function assertContentIdentity(origin, htmlPages) {
         document?.["@id"] === `${canonical}#content` &&
         document?.url === canonical &&
         document?.[expectation.pageProperty] === canonical &&
-        document?.inLanguage === "zh-CN",
+        document?.inLanguage === "zh-CN" &&
+        (expectation.readingStats
+          ? document?.wordCount === expectation.readingStats.wordCount &&
+            document?.timeRequired === expectation.readingStats.timeRequired
+          : !Object.hasOwn(document ?? {}, "wordCount") &&
+            !Object.hasOwn(document ?? {}, "timeRequired")),
       expectation.identityError,
     );
     invariant(

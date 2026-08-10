@@ -189,6 +189,7 @@ test("connects article and project identities to the canonical WebSite node", as
       canonical:
         "https://blog.example.test/posts/building-a-maintainable-blog",
       pageProperty: "mainEntityOfPage",
+      readingStats: { timeRequired: "PT4M", wordCount: 899 },
     },
     {
       response: projectResponse,
@@ -230,6 +231,21 @@ test("connects article and project identities to the canonical WebSite node", as
       },
       expectation.type,
     );
+    if (expectation.readingStats) {
+      assert.equal(
+        documents[0].wordCount,
+        expectation.readingStats.wordCount,
+        expectation.type,
+      );
+      assert.equal(
+        documents[0].timeRequired,
+        expectation.readingStats.timeRequired,
+        expectation.type,
+      );
+    } else {
+      assert.equal(Object.hasOwn(documents[0], "wordCount"), false);
+      assert.equal(Object.hasOwn(documents[0], "timeRequired"), false);
+    }
   }
 
   for (const pathname of [

@@ -21,8 +21,10 @@ test("creates one exact BlogPosting document without retaining caller arrays", (
     title: "Typed schema",
     description: "Freeze the full article document.",
     publishedAt: "2026-08-01",
+    readingMinutes: 8,
     reviewedAt: "2026-08-08",
     tags: ["Next.js", "TypeScript"],
+    wordCount: 1542,
   };
   const originalUrls = [siteUrl.href, canonicalUrl.href, imageUrl.href];
 
@@ -43,6 +45,8 @@ test("creates one exact BlogPosting document without retaining caller arrays", (
     dateModified: "2026-08-08",
     inLanguage: "zh-CN",
     keywords: ["Next.js", "TypeScript"],
+    wordCount: 1542,
+    timeRequired: "PT8M",
     mainEntityOfPage: "https://blog.example.test/posts/typed-schema",
     url: "https://blog.example.test/posts/typed-schema",
     image: "https://blog.example.test/uploads/typed-schema/cover.webp",
@@ -116,8 +120,10 @@ test("keeps optional image and repository keys explicit but omits them from JSON
       title: "No cover",
       description: "Optional article image.",
       publishedAt: "2026-08-01",
+      readingMinutes: 1,
       reviewedAt: "2026-08-01",
       tags: ["Next.js"],
+      wordCount: 1,
     },
     siteUrl,
   });
@@ -135,6 +141,8 @@ test("keeps optional image and repository keys explicit but omits them from JSON
   });
 
   assert.equal(Object.hasOwn(postDocument, "image"), true);
+  assert.equal(postDocument.wordCount, 1);
+  assert.equal(postDocument.timeRequired, "PT1M");
   assert.equal(postDocument.image, undefined);
   assert.equal(Object.hasOwn(projectDocument, "image"), true);
   assert.equal(Object.hasOwn(projectDocument, "codeRepository"), true);

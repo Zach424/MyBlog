@@ -4,7 +4,13 @@ import type { PostRecord, ProjectRecord } from "./contract.ts";
 
 type BlogPostingRecord = Pick<
   PostRecord,
-  "description" | "publishedAt" | "reviewedAt" | "tags" | "title"
+  | "description"
+  | "publishedAt"
+  | "readingMinutes"
+  | "reviewedAt"
+  | "tags"
+  | "title"
+  | "wordCount"
 >;
 
 type SoftwareSourceCodeRecord = Pick<
@@ -62,6 +68,8 @@ export function createBlogPostingStructuredData({
     dateModified: post.reviewedAt,
     inLanguage: SITE_LANGUAGE,
     keywords: [...post.tags],
+    wordCount: post.wordCount,
+    timeRequired: `PT${post.readingMinutes}M`,
     mainEntityOfPage: canonicalHref,
     url: canonicalHref,
     image: optionalUrl(imageUrl),
