@@ -133,6 +133,21 @@ test("server-renders the engineering log homepage", async () => {
   assert.match(visibleHtml, /ARTICLE · 2026-07-18 · Next\.js · \+3/);
   assert.match(visibleHtml, /持续维护项目 \/ 最新文章 \/ 2026-08-06/);
   assert.doesNotMatch(visibleHtml, /持续内容发布与维护|权限变更也要做未登录验收/u);
+  assert.match(visibleHtml, /<section[^>]*data-home-activity="latest-three"[^>]*>/u);
+  assert.equal(
+    (visibleHtml.match(/data-home-activity-event="true"/gu) ?? []).length,
+    3,
+  );
+  assert.equal(
+    (visibleHtml.match(/data-activity-mode="updated"/gu) ?? []).length,
+    3,
+  );
+  assert.match(
+    visibleHtml,
+    /2026-08-06[\s\S]*?MyBlog — 把学习记录做成工程资产[\s\S]*?2026-08-05[\s\S]*?从零搭建可维护的个人技术博客[\s\S]*?2026-08-04[\s\S]*?为什么先写项目章程，再写首页/u,
+  );
+  assert.match(visibleHtml, /href="\/activity"[^>]*>完整活动账本/u);
+  assert.doesNotMatch(visibleHtml, /data-activity-mode="reviewed"/u);
   const latestDate = /LATEST · (\d{4}-\d{2}-\d{2})/u.exec(visibleHtml)?.[1];
   const sitemapHomeDate = new RegExp(
     `<loc>https://blog\\.example\\.test/<\\/loc>\\s*<lastmod>(\\d{4}-\\d{2}-\\d{2})<\\/lastmod>`,
@@ -482,15 +497,15 @@ test("server-renders a content activity ledger from publish and update events", 
     /<link rel="canonical" href="https:\/\/blog\.example\.test\/activity"/u,
   );
   assert.match(html, /8 EVENTS \/ 4 PUBLISHED \/ 4 UPDATED/u);
-  assert.equal((html.match(/class="activity-day"/gu) ?? []).length, 5);
-  assert.equal((html.match(/class="activity-event activity-event-published"/gu) ?? []).length, 4);
-  assert.equal((html.match(/class="activity-event activity-event-updated"/gu) ?? []).length, 4);
-  assert.equal((html.match(/class="activity-event-link"/gu) ?? []).length, 8);
+  assert.equal((html.match(/data-activity-day="true"/gu) ?? []).length, 5);
+  assert.equal((html.match(/data-activity-mode="published"/gu) ?? []).length, 4);
+  assert.equal((html.match(/data-activity-mode="updated"/gu) ?? []).length, 4);
+  assert.equal((html.match(/data-activity-event="true"/gu) ?? []).length, 8);
   assert.match(html, /<time dateTime="2026-08-06">/u);
   assert.match(html, /UPDATED[\s\S]*?内容更新 · Project[\s\S]*?MyBlog — 把学习记录做成工程资产/u);
   assert.match(html, /PUBLISHED[\s\S]*?首次发布 · Article/u);
   assert.match(html, /REVIEWED[\s\S]*?不等同于内容发生变化/u);
-  assert.doesNotMatch(html, /activity-event-reviewed/u);
+  assert.doesNotMatch(html, /data-activity-mode="reviewed"/u);
   assert.ok(html.indexOf("2026-08-06") < html.indexOf("2026-07-18"));
   assert.match(html, /href="\/archive"/u);
 });

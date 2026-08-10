@@ -8,6 +8,7 @@ import {
   type ContentActivityMode,
   type ContentActivityType,
 } from "@/lib/content";
+import styles from "./activity.module.css";
 
 export const metadata: Metadata = {
   title: "内容活动",
@@ -52,16 +53,16 @@ export default function ActivityPage() {
         meta={`${activity.counts.events} EVENTS / ${activity.counts.published} PUBLISHED / ${activity.counts.updated} UPDATED`}
       />
 
-      <section className="activity-key" aria-label="活动事件说明">
-        <div className="activity-key-item">
-          <span className="activity-key-node activity-node-published" aria-hidden="true" />
+      <section className={styles.key} aria-label="活动事件说明">
+        <div className={styles.keyItem}>
+          <span className={`${styles.keyNode} ${styles.publishedNode}`} aria-hidden="true" />
           <div>
             <strong>PUBLISHED</strong>
             <span>内容首次公开</span>
           </div>
         </div>
-        <div className="activity-key-item">
-          <span className="activity-key-node activity-node-updated" aria-hidden="true" />
+        <div className={styles.keyItem}>
+          <span className={`${styles.keyNode} ${styles.updatedNode}`} aria-hidden="true" />
           <div>
             <strong>UPDATED</strong>
             <span>事实发生后续变化</span>
@@ -77,32 +78,39 @@ export default function ActivityPage() {
           还没有公开活动。发布第一篇文章或项目后，这里会生成第一条 PUBLISHED 事件。
         </p>
       ) : (
-        <ol className="activity-ledger" aria-label="公开内容活动时间线">
+        <ol className={styles.ledger} aria-label="公开内容活动时间线">
           {activity.days.map((day) => (
-            <li className="activity-day" key={day.date}>
-              <header className="activity-day-marker">
+            <li className={styles.day} data-activity-day="true" key={day.date}>
+              <header className={styles.dayMarker}>
                 <time dateTime={day.date}>
                   <span>{day.date.slice(0, 4)}</span>
                   <strong>{compactDate(day.date)}</strong>
                   <small>{day.events.length} events</small>
                 </time>
               </header>
-              <ol className="activity-day-events" aria-label={`${day.date} 的内容活动`}>
+              <ol className={styles.dayEvents} aria-label={`${day.date} 的内容活动`}>
                 {day.events.map((event) => (
-                  <li className={`activity-event activity-event-${event.mode}`} key={event.id}>
-                    <Link className="activity-event-link" href={event.url}>
-                      <span className="activity-event-signal" aria-hidden="true">
-                        <span className={`activity-event-node activity-node-${event.mode}`} />
+                  <li
+                    className={styles.event}
+                    data-activity-event="true"
+                    data-activity-mode={event.mode}
+                    key={event.id}
+                  >
+                    <Link className={styles.eventLink} href={event.url}>
+                      <span className={styles.eventSignal} aria-hidden="true">
+                        <span
+                          className={`${styles.eventNode} ${event.mode === "updated" ? styles.updatedNode : styles.publishedNode}`}
+                        />
                       </span>
-                      <span className="activity-event-meta">
+                      <span className={styles.eventMeta}>
                         <strong>{event.mode.toUpperCase()}</strong>
                         <span>{modeLabels[event.mode]} · {typeLabels[event.contentType]}</span>
                       </span>
-                      <span className="activity-event-copy">
+                      <span className={styles.eventCopy}>
                         <strong>{event.title}</strong>
                         <span>{event.description}</span>
                       </span>
-                      <span className="activity-event-arrow" aria-hidden="true">→</span>
+                      <span className={styles.eventArrow} aria-hidden="true">→</span>
                     </Link>
                   </li>
                 ))}

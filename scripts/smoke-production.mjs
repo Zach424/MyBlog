@@ -281,6 +281,27 @@ export async function runProductionSmoke(originInput, { expectOAuth = false } = 
     "首页缺少 OpenSearch 发现链接",
   );
   assertWebsiteIdentity(origin, home.body);
+  const homeActivityStart = home.body.indexOf('data-home-activity="latest-three"');
+  const homeActivityEnd = home.body.indexOf("</section>", homeActivityStart);
+  const homeActivity = home.body.slice(homeActivityStart, homeActivityEnd);
+  const homeActivityTitles = [
+    "MyBlog — 把学习记录做成工程资产",
+    "从零搭建可维护的个人技术博客",
+    "为什么先写项目章程，再写首页",
+  ];
+  const homeActivityPositions = homeActivityTitles.map((title) => homeActivity.indexOf(title));
+  invariant(
+    homeActivityStart >= 0 &&
+      homeActivityEnd > homeActivityStart &&
+      (homeActivity.match(/data-home-activity-event="true"/gu) ?? []).length === 3 &&
+      (homeActivity.match(/data-activity-mode="updated"/gu) ?? []).length === 3 &&
+      homeActivityPositions.every((position) => position >= 0) &&
+      homeActivityPositions.every(
+        (position, index) => index === 0 || homeActivityPositions[index - 1] < position,
+      ) &&
+      homeActivity.includes('href="/activity"'),
+    "首页最近活动摘要异常",
+  );
 
   const htmlBudgetReports = [
     measureHtmlBudget({ pathname: "/", html: home.body }),
@@ -341,9 +362,9 @@ export async function runProductionSmoke(originInput, { expectOAuth = false } = 
   const activity = htmlPages.get("/activity")?.body ?? "";
   invariant(
     activity.includes("8 EVENTS / 4 PUBLISHED / 4 UPDATED") &&
-      (activity.match(/class="activity-event activity-event-published"/gu) ?? []).length === 4 &&
-      (activity.match(/class="activity-event activity-event-updated"/gu) ?? []).length === 4 &&
-      !activity.includes("activity-event-reviewed"),
+      (activity.match(/data-activity-mode="published"/gu) ?? []).length === 4 &&
+      (activity.match(/data-activity-mode="updated"/gu) ?? []).length === 4 &&
+      !activity.includes('data-activity-mode="reviewed"'),
     "内容活动事件账本异常",
   );
   assertContentIdentity(origin, htmlPages);

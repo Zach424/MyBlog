@@ -2,6 +2,7 @@ import Link from "next/link";
 import { headers } from "next/headers";
 import { StructuredData } from "@/components/StructuredData";
 import {
+  createContentActivity,
   getAllPosts,
   getAllProjects,
   getFeaturedProject,
@@ -13,6 +14,13 @@ import { getProjectStatusPresentation } from "@/lib/content-presentation";
 import { createPublicRouteInventory } from "@/lib/public-routes";
 import { resolveSiteUrl } from "@/lib/site";
 import { createWebsiteStructuredData } from "@/lib/website";
+import activityStyles from "./home-activity.module.css";
+
+const activityTypeLabels = {
+  article: "Article",
+  project: "Project",
+  til: "TIL",
+} as const;
 
 export default async function Home() {
   const siteUrl = resolveSiteUrl(await headers());
@@ -22,6 +30,9 @@ export default async function Home() {
   const tags = getTagIndex();
   const publicRoutes = createPublicRouteInventory({ posts, projects, series, tags });
   const journalEntries = posts.slice(0, 3);
+  const latestActivity = createContentActivity([...posts, ...projects]).days
+    .flatMap((day) => day.events)
+    .slice(0, 3);
   const featuredProject = getFeaturedProject();
   const featuredProjectStatus = featuredProject
     ? getProjectStatusPresentation(featuredProject.status)
@@ -99,6 +110,52 @@ export default async function Home() {
           <span className="focus-index">
             TRACE {String(journalEntries.length).padStart(2, "0")} / ACTIVE
           </span>
+        </section>
+
+        <section
+          className={`${activityStyles.section} page-shell`}
+          aria-labelledby="home-activity-title"
+          data-home-activity="latest-three"
+        >
+          <header className={activityStyles.heading}>
+            <div>
+              <p className="section-label">
+                Change set / {String(latestActivity.length).padStart(2, "0")} latest
+              </p>
+              <h2 id="home-activity-title">最近活动</h2>
+            </div>
+            <p>这里记录内容真正发生变化的时间；首次发布与后续更新共享同一条可追溯事件线。</p>
+            <Link className={activityStyles.allLink} href="/activity">
+              完整活动账本 <span aria-hidden="true">→</span>
+            </Link>
+          </header>
+
+          <ol className={activityStyles.ledger} aria-label="最近三次内容活动">
+            {latestActivity.map((event, index) => (
+              <li
+                className={activityStyles.event}
+                data-activity-mode={event.mode}
+                data-home-activity-event="true"
+                key={event.id}
+              >
+                <span
+                  className={`${activityStyles.node} ${event.mode === "updated" ? activityStyles.updated : activityStyles.published}`}
+                  aria-hidden="true"
+                />
+                <div className={activityStyles.meta}>
+                  <strong>{event.mode.toUpperCase()}</strong>
+                  <time dateTime={event.date}>{event.date}</time>
+                </div>
+                <Link className={activityStyles.eventLink} href={event.url}>
+                  <span>
+                    {activityTypeLabels[event.contentType]} · CHANGE {String(index + 1).padStart(2, "0")}
+                  </span>
+                  <h3>{event.title}</h3>
+                  <span aria-hidden="true">↗</span>
+                </Link>
+              </li>
+            ))}
+          </ol>
         </section>
 
         <section className="journal page-shell" id="recent" aria-labelledby="recent-title">
