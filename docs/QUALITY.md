@@ -166,6 +166,8 @@ Iteration 0123 只把内容清单与单篇 Markdown 已存在的 Last-Modified �
 
 Iteration 0124 没有改运行时响应生成，而是把 Next/Vercel 的 HEAD 发送行为从隐式依赖提升为回归契约。失败优先部署测试先因 smoke 缺少 `method: "HEAD"` 以 5/6 失败；提交 `64ab9dd` 后为真实应用新增第 31 项测试，并让生产 smoke 覆盖九端点 HEAD 矩阵。完整证据为 530 项单元、52 页构建、31 项应用测试和线上 27 routes/OAuth 302；正文、ETag 与 raw/gzip 基线不变。
 
+Iteration 0125 先以逐 item 精确数组断言证明旧 RSS 错把内容类型混入 tags，失败证据为 discovery 测试 7/8。功能提交 `f9bd0d0` 后，单元层覆盖 XML 特殊字符转义，真实应用与生产 smoke 都在解码 XML 后要求 RSS categories 和 JSON Feed tags 数量、顺序和值一致；完整门为 ESLint、TypeScript、530 项单元、52 页构建、31 项应用测试，稳定生产为 27 routes/OAuth 302。新生产 RSS 为 3400/1284 B（raw/gzip）；预算提交 `0b1f81d` 把七端点基线来源绑定到已部署功能提交 `f9bd0d0`，其余六端点实测不变，RSS 推导上限仍为 8192/2560 B。
+
 基线不是自动追随当前页面的自我放行值。只有在确认增长属于有价值的产品变化、真实生产重新测量且完整门通过后，才能同时更新数值、日期和来源提交；不得只为失败路由调高单个阈值。预算用于捕获意外回归，不代替真实网络与 Web Vitals；未来若接入观测服务，仍应以真实用户传输和渲染数据补充。
 
 ## 媒体预算

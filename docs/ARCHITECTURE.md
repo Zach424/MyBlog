@@ -108,9 +108,9 @@ vercel.json                         Vercel Next.js 框架声明
 
 `lib/subscriptions.ts` 把既有读取能力投影为固定五通道目录：RSS、JSON Feed、OpenSearch、公开清单/Schema 和单篇 Markdown。静态协议事实与从公开记录稳定选择的最新 `source.md` 示例在纯函数中汇合；`app/subscribe/page.tsx` 只负责把它们服务端渲染成可见路由表。页面不代理端点、不复制正文、不发起客户端请求，也不把只读接口误写成发布 API；发布入口仍是 Studio/Obsidian → Git。
 
-`lib/discovery.ts` 为 JSON Feed 与 RSS 共用同一公开记录排序。RSS 继续用 `pubDate` 表达首次发布时间、用稳定内容 URL 表达 `guid`，只在 `updatedAt > publishedAt` 时额外输出 Dublin Core Terms 的 `dcterms:modified` RFC 3339 UTC 时间；根元素声明 `http://purl.org/dc/terms/` 命名空间。该扩展不会把 Atom `entry` 的 `updated` 元素误放进 RSS item，也不会改变频道 `lastBuildDate`、条目顺序或 JSON Feed 的 `date_modified`。不理解扩展的阅读器仍可按普通 RSS 2.0 消费，理解 Dublin Core Terms 的解析器可读取修改时间。
+`lib/discovery.ts` 为 JSON Feed 与 RSS 共用同一公开记录排序。RSS 继续用 `pubDate` 表达首次发布时间、用稳定内容 URL 表达 `guid`，只在 `updatedAt > publishedAt` 时额外输出 Dublin Core Terms 的 `dcterms:modified` RFC 3339 UTC 时间；根元素声明 `http://purl.org/dc/terms/` 命名空间。每个 RSS item 的 `<category>` 只从同一 `record.tags` 依原顺序逐项 XML 转义生成，因此数量、顺序和值与对应 JSON Feed `tags` 一致；内容类型不再混入无 `domain` 分类，项目也不会虚构一套外部 taxonomy URI。该映射不会改变频道 `lastBuildDate`、条目顺序或时间语义。不理解扩展或不展示分类的阅读器仍可按普通 RSS 2.0 消费。
 
-`lib/feed-http.ts` 为两个 Feed 分别保存可审计的表示格式修订时间：JSON Feed 绑定引入提交 `a55e68b`，RSS 绑定最近改变 XML 正文的提交 `97eabce`。HTTP `Last-Modified` 取“格式修订时间”与所有公开记录最新 `updatedAt ?? publishedAt` 的最大值；纯日期按作者时区 `Asia/Shanghai` 的日界线换算到 UTC，避免本地当天在 UTC 前八小时形成未来响应头。空内容 Feed 仍由格式修订时间得到真实验证器，调用方数组不变。正文格式以后发生变化时必须同步推进对应修订时间；只改响应处理、测试或文档不应伪造正文修改。
+`lib/feed-http.ts` 为两个 Feed 分别保存可审计的表示格式修订时间：JSON Feed 当前为 `2026-08-06T10:09:53Z`，RSS 在 Iteration 0125 标签语义对齐后为 `2026-08-10T22:25:11Z`。HTTP `Last-Modified` 取“格式修订时间”与所有公开记录最新 `updatedAt ?? publishedAt` 的最大值；纯日期按作者时区 `Asia/Shanghai` 的日界线换算到 UTC，避免本地当天在 UTC 前八小时形成未来响应头。空内容 Feed 仍由格式修订时间得到真实验证器，调用方数组不变。正文格式以后发生变化时必须同步推进对应修订时间；只改响应处理、测试或文档不应伪造正文修改。
 
 `lib/http-validators.ts` 的可选日期条件层严格遵循 HTTP 先决条件顺序：只生成规范 IMF-fixdate 且拒绝未来 `Last-Modified`；接收端兼容 IMF-fixdate、RFC 850 与 asctime 三种 HTTP-date，拒绝日历错误、星期不符、重复成员和非 HTTP 日期。任何 `If-None-Match` 字段一旦存在就完全遮蔽 `If-Modified-Since`，即使 ETag 值陈旧或畸形；只有没有 ETag 条件的 GET/HEAD 才在表示修改时间早于或等于请求日期时返回带 ETag、日期和缓存元数据的空 304。Iteration 0122 首先接入 RSS/JSON Feed，Iteration 0123 再让已有可靠日期事实的内容清单与单篇 Markdown 复用同一路径；无日期事实端点继续只用 ETag。
 
@@ -306,6 +306,7 @@ Quality、生产冒烟与回滚工作流均使用 Node 24 runtime 的 checkout/s
 - 必要的 URL 迁移必须登记为有日期和原因的单跳永久重定向；来源不能遮蔽现有路由或文件，目标必须在同一构建中公开。
 - 草稿、未来内容不能进入页面、搜索、公开内容清单、JSON Feed、RSS、Markdown 源文或 Sitemap。
 - RSS item 的 `pubDate`、`guid` 与排序必须继续表达首发身份；修改时间只能以带正式命名空间的 `dcterms:modified` 补充，并且仅在更新日晚于首发日时存在。
+- RSS item 的 category 必须逐项来自同一内容记录的 tags，并与对应 JSON Feed tags 在数量、顺序和值上相等；内容类型不能混入无 domain 的主题分类。
 - HTTP 条件请求必须让 `If-None-Match` 优先于 `If-Modified-Since`；日期验证器不得晚于响应时间，也不得由无日期事实的端点伪造。
 - 公开站内链接必须指向同一构建中的公开文章或项目；详情页 outgoing/backlinks 与 `/knowledge` 的节点、边和孤立状态只能从同一正文链接集合派生。
 - 公开内容必须声明语境和复核日期；Current record 超过 180 天未复核不能进入新部署。
