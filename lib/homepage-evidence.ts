@@ -1,4 +1,5 @@
 import type { PostRecord, ProjectRecord } from "./content/contract.ts";
+import { getProjectStatusLabel } from "./content-presentation.ts";
 
 type HomepagePost = Pick<
   PostRecord,
@@ -28,13 +29,6 @@ export interface HomepageEvidence {
   evidenceItems: HomepageEvidenceItem[];
   currentFocus: string;
 }
-
-const projectStatusLabels: Record<ProjectRecord["status"], string> = {
-  planning: "规划中",
-  building: "构建中",
-  maintained: "持续维护",
-  archived: "已归档",
-};
 
 const postTypeLabels: Record<PostRecord["type"], string> = {
   article: "文章",
@@ -66,7 +60,7 @@ export function createHomepageEvidence(
   }
 
   const projectStatus = input.featuredProject
-    ? projectStatusLabels[input.featuredProject.status]
+    ? getProjectStatusLabel(input.featuredProject.status)
     : undefined;
   const postType = input.latestPost
     ? postTypeLabels[input.latestPost.type]

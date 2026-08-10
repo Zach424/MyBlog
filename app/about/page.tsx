@@ -1,6 +1,15 @@
 import type { Metadata } from "next";
 import Link from "next/link";
 import { CollectionIntro } from "@/components/ContentViews";
+import { createAboutProfile } from "@/lib/about-profile";
+import {
+  getAllPosts,
+  getAllProjects,
+  getFeaturedProject,
+  getSeriesIndex,
+  getTagIndex,
+} from "@/lib/content";
+import { createPublicRouteInventory } from "@/lib/public-routes";
 
 export const metadata: Metadata = {
   title: "关于",
@@ -14,6 +23,21 @@ export const metadata: Metadata = {
 };
 
 export default function AboutPage() {
+  const posts = getAllPosts();
+  const projects = getAllProjects();
+  const series = getSeriesIndex();
+  const tags = getTagIndex();
+  const publicRoutes = createPublicRouteInventory({ posts, projects, series, tags });
+  const profile = createAboutProfile({
+    postCount: posts.length,
+    projectCount: projects.length,
+    seriesCount: series.length,
+    tagCount: tags.length,
+    publicRouteCount: publicRoutes.total,
+    latestModified: publicRoutes.latestModified,
+    featuredProject: getFeaturedProject(),
+  });
+
   return (
     <main className="collection-page page-shell" id="main-content">
       <nav className="breadcrumbs" aria-label="面包屑">
@@ -25,13 +49,22 @@ export default function AboutPage() {
         eyebrow="About this log"
         title="学习不是收藏答案，而是更新判断。"
         description="我是 Zach424。这里记录我如何理解技术、做出取舍、把想法变成项目，并在结果出现后重新检查最初的判断。"
-        meta="LEARN / BUILD / REVIEW"
+        meta={profile.meta}
       />
       <div className="about-grid">
         <section>
-          <span>01 / CONTENT</span>
-          <h2>这里记录什么</h2>
-          <p>短小的 TIL、经过验证的完整文章，以及包含背景、约束、实现、证据和复盘的项目档案。</p>
+          <span>01 / INVENTORY</span>
+          <h2>公开系统档案</h2>
+          <dl className="about-facts">
+            {profile.facts.map((fact) => (
+              <div key={fact.label}>
+                <dt>{fact.label}</dt>
+                <dd>
+                  {fact.href ? <Link href={fact.href}>{fact.value}</Link> : fact.value}
+                </dd>
+              </div>
+            ))}
+          </dl>
         </section>
         <section>
           <span>02 / METHOD</span>
@@ -40,8 +73,20 @@ export default function AboutPage() {
         </section>
         <section>
           <span>03 / STACK</span>
-          <h2>当前技术基线</h2>
-          <p>TypeScript、React、Next.js 与 Vercel。内容保存在 Git 中，通过构建期校验生成页面。</p>
+          <h2>当前项目基线</h2>
+          <Link className="about-project-link" href={profile.featuredProject.href}>
+            {profile.featuredProject.title} <span aria-hidden="true">→</span>
+          </Link>
+          <p className="about-project-status">
+            {profile.featuredProject.status} · 内容保存在 Git 中，通过构建期校验生成页面。
+          </p>
+          {profile.featuredProject.stack.length > 0 ? (
+            <ul className="about-stack" aria-label="当前项目技术栈">
+              {profile.featuredProject.stack.map((item) => (
+                <li key={item}>{item}</li>
+              ))}
+            </ul>
+          ) : null}
         </section>
         <section>
           <span>04 / CONTACT</span>

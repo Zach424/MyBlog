@@ -340,6 +340,22 @@ test("server-renders every public content collection and detail route", async ()
   }
 });
 
+test("server-renders the about system profile from public content facts", async () => {
+  const response = await render("/about");
+  assert.equal(response.status, 200);
+  const html = await response.text();
+
+  assert.match(html, /4 RECORDS \/ 26 ROUTES \/ UPDATED 2026-08-06/u);
+  assert.match(html, /公开系统档案/u);
+  assert.match(html, /文章与 TIL/u);
+  assert.match(html, /MyBlog — 把学习记录做成工程资产/u);
+  assert.match(html, /持续维护/u);
+  for (const stackItem of ["TypeScript", "React", "Next.js", "Vercel", "GitHub"]) {
+    assert.match(html, new RegExp(stackItem.replace(".", "\\."), "u"));
+  }
+  assert.doesNotMatch(html, /TypeScript、React、Next\.js 与 Vercel/u);
+});
+
 test("server-renders one read-only subscription switchboard with real endpoints", async () => {
   const response = await render("/subscribe");
   assert.equal(response.status, 200);
