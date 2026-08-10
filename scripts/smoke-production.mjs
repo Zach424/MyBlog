@@ -185,6 +185,24 @@ function decodeXmlText(value) {
     .replaceAll("&amp;", "&");
 }
 
+function extractOpmlSubscriptions(xml) {
+  return [...xml.matchAll(/<outline (?=[^>]*\btype="rss")([^>]*)\/>/gu)].map(
+    (match) =>
+      Object.fromEntries(
+        [...match[1].matchAll(/([A-Za-z]+)="([^"]*)"/gu)].map(
+          (attribute) => [attribute[1], decodeXmlText(attribute[2])],
+        ),
+      ),
+  );
+}
+
+function extractOpmlGroupSubscriptions(xml, label) {
+  const group = xml.match(
+    new RegExp(`<outline text="${label}">([\\s\\S]*?)<\\/outline>`, "u"),
+  )?.[1];
+  return group ? extractOpmlSubscriptions(group) : [];
+}
+
 function extractRssItems(xml) {
   return [...xml.matchAll(/<item>([\s\S]*?)<\/item>/gu)].map((match) => {
     const item = match[1];
@@ -446,8 +464,9 @@ export async function runProductionSmoke(originInput, { expectOAuth = false } = 
   );
   const subscribe = htmlPages.get("/subscribe")?.body ?? "";
   invariant(
-    (subscribe.match(/class="subscription-route"/gu) ?? []).length === 5 &&
+    (subscribe.match(/class="subscription-route"/gu) ?? []).length === 6 &&
       subscribe.includes('href="/rss.xml"') &&
+      subscribe.includes('href="/feeds.opml"') &&
       subscribe.includes('href="/feed.json"') &&
       subscribe.includes('href="/opensearch.xml"') &&
       subscribe.includes('href="/content.json"') &&
@@ -1005,7 +1024,7 @@ export async function runProductionSmoke(originInput, { expectOAuth = false } = 
     invariant([302, 503].includes(oauth.response.status), `OAuth 状态 ${oauth.response.status}`);
   }
 
-  const [contentManifest, contentSchema, jsonFeed, rss, tagRss, seriesRss, robots, sitemap, openSearch] = await Promise.all([
+  const [contentManifest, contentSchema, jsonFeed, rss, tagRss, seriesRss, opml, robots, sitemap, openSearch] = await Promise.all([
     request(origin, "/content.json", { accept: "application/json" }),
     request(origin, "/content.schema.json", { accept: "application/schema+json" }),
     request(origin, "/feed.json", { accept: "application/feed+json" }),
@@ -1016,6 +1035,7 @@ export async function runProductionSmoke(originInput, { expectOAuth = false } = 
     request(origin, "/series/build-my-blog/rss.xml", {
       accept: "application/rss+xml",
     }),
+    request(origin, "/feeds.opml", { accept: "text/x-opml" }),
     request(origin, "/robots.txt", { accept: "text/plain" }),
     request(origin, "/sitemap.xml", { accept: "application/xml" }),
     request(origin, "/opensearch.xml", {
@@ -1515,12 +1535,97 @@ export async function runProductionSmoke(originInput, { expectOAuth = false } = 
     !sitemap.body.includes("/series/build-my-blog/rss.xml"),
     "专题 RSS 不应进入 Sitemap",
   );
+  invariant(
+    !sitemap.body.includes("/feeds.opml"),
+    "OPML 不应进入 Sitemap",
+  );
+  const opmlSubscriptions = extractOpmlSubscriptions(opml.body);
+  const rootOpmlSubscriptions = extractOpmlGroupSubscriptions(
+    opml.body,
+    "全部更新",
+  );
+  const tagOpmlSubscriptions = extractOpmlGroupSubscriptions(
+    opml.body,
+    "按标签",
+  );
+  const seriesOpmlSubscriptions = extractOpmlGroupSubscriptions(
+    opml.body,
+    "按专题",
+  );
+  const expectedTagFeedUrls = sitemapUrls
+    .filter((url) => /^\/tags\/[^/]+$/u.test(new URL(url).pathname))
+    .map((url) => `${url}/rss.xml`)
+    .sort();
+  const expectedSeriesFeedUrls = sitemapUrls
+    .filter((url) => /^\/series\/[^/]+$/u.test(new URL(url).pathname))
+    .map((url) => `${url}/rss.xml`)
+    .sort();
+  const opmlGroupsInOrder = ["全部更新", "按标签", "按专题"].map(
+    (label) => opml.body.indexOf(`<outline text="${label}">`),
+  );
+  invariant(
+    opml.response.status === 200 &&
+      opml.response.headers.get("content-type") ===
+        "text/x-opml; charset=utf-8" &&
+      opml.response.headers.get("content-disposition") ===
+        'attachment; filename="zach424-subscriptions.opml"' &&
+      hasJsonFeedCachePolicy(opml.response.headers.get("cache-control")) &&
+      sameMarkdownSourceEtag(
+        opml.response.headers.get("etag"),
+        sha256Etag(opml.body),
+      ) &&
+      opml.response.headers.get("last-modified") === null &&
+      opml.response.headers.get("x-robots-tag") === "noindex" &&
+      opml.response.headers.get("link") ===
+        `<${origin.origin}/feeds.opml>; rel="self"; type="text/x-opml", <${origin.origin}/subscribe>; rel="up"; type="text/html"` &&
+      opml.body.startsWith(
+        '<?xml version="1.0" encoding="UTF-8"?>\n<opml version="2.0">',
+      ) &&
+      opml.body.includes("<title>Zach424 / Engineering Notes — 全部订阅</title>") &&
+      opml.body.includes("<ownerName>Zach424</ownerName>") &&
+      opml.body.includes("<ownerId>https://github.com/Zach424</ownerId>") &&
+      opml.body.includes("<docs>https://opml.org/spec2.opml</docs>") &&
+      !/<date(?:Created|Modified)>/u.test(opml.body) &&
+      opmlGroupsInOrder.every((position) => position >= 0) &&
+      opmlGroupsInOrder.every(
+        (position, index) =>
+          index === 0 || opmlGroupsInOrder[index - 1] < position,
+      ) &&
+      rootOpmlSubscriptions.length === 1 &&
+      rootOpmlSubscriptions[0].xmlUrl === `${origin.origin}/rss.xml` &&
+      JSON.stringify(tagOpmlSubscriptions.map(({ xmlUrl }) => xmlUrl).sort()) ===
+        JSON.stringify(expectedTagFeedUrls) &&
+      JSON.stringify(
+        seriesOpmlSubscriptions.map(({ xmlUrl }) => xmlUrl).sort(),
+      ) === JSON.stringify(expectedSeriesFeedUrls) &&
+      opmlSubscriptions.length ===
+        1 + expectedTagFeedUrls.length + expectedSeriesFeedUrls.length &&
+      new Set(opmlSubscriptions.map(({ xmlUrl }) => xmlUrl)).size ===
+        opmlSubscriptions.length &&
+      opmlSubscriptions.every((subscription) => {
+        const expectedHtmlUrl =
+          subscription.xmlUrl === `${origin.origin}/rss.xml`
+            ? `${origin.origin}/`
+            : subscription.xmlUrl.replace(/\/rss\.xml$/u, "");
+        return (
+          subscription.type === "rss" &&
+          subscription.text === subscription.title &&
+          subscription.xmlUrl.startsWith(`${origin.origin}/`) &&
+          subscription.htmlUrl === expectedHtmlUrl &&
+          subscription.description.length > 0 &&
+          subscription.language === "zh-CN" &&
+          subscription.version === "RSS"
+        );
+      }),
+    "OPML 2.0 聚合订阅异常",
+  );
   const conditionalDiscoveryResponses = await Promise.all(
     [
       ["/feed.json", "application/feed+json", jsonFeed],
       ["/rss.xml", "application/rss+xml", rss],
       ["/tags/typescript/rss.xml", "application/rss+xml", tagRss],
       ["/series/build-my-blog/rss.xml", "application/rss+xml", seriesRss],
+      ["/feeds.opml", "text/x-opml", opml],
       ["/sitemap.xml", "application/xml", sitemap],
       ["/robots.txt", "text/plain", robots],
       [
@@ -1551,6 +1656,7 @@ export async function runProductionSmoke(originInput, { expectOAuth = false } = 
         seriesRss,
         hasJsonFeedCachePolicy,
       ],
+      ["/feeds.opml", "text/x-opml", opml, hasJsonFeedCachePolicy],
       ["/sitemap.xml", "application/xml", sitemap, hasJsonFeedCachePolicy],
       ["/robots.txt", "text/plain", robots, hasRobotsCachePolicy],
       [
@@ -1699,6 +1805,7 @@ export async function runProductionSmoke(originInput, { expectOAuth = false } = 
       seriesRss,
       hasJsonFeedCachePolicy,
     ],
+    ["/feeds.opml", "text/x-opml", opml, hasJsonFeedCachePolicy],
     ["/sitemap.xml", "application/xml", sitemap, hasJsonFeedCachePolicy],
     ["/robots.txt", "text/plain", robots, hasRobotsCachePolicy],
     [

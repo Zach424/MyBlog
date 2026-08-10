@@ -148,6 +148,8 @@ test("connects Vercel verification, maintenance reporting, rollback, and Studio 
   assert.match(smoke, /\/series\/build-my-blog\/rss\.xml/u);
   assert.match(smoke, /专题 RSS 条目、发现或条件响应异常/u);
   assert.match(smoke, /未知专题 RSS 不得生成公开验证器/u);
+  assert.match(smoke, /\/feeds\.opml/u);
+  assert.match(smoke, /OPML 2\.0 聚合订阅异常/u);
   assert.match(
     smoke,
     /JSON\.stringify\(item\.categories\).*JSON\.stringify\(feedItem\.tags\)/su,

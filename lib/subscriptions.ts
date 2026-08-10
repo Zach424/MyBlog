@@ -1,5 +1,6 @@
 export type SubscriptionChannelId =
   | "rss"
+  | "opml"
   | "json-feed"
   | "opensearch"
   | "manifest"
@@ -41,6 +42,17 @@ const staticChannels: SubscriptionChannel[] = [
     freshness: ROUTE_FRESHNESS,
     pathLabel: "/rss.xml",
     links: [{ href: "/rss.xml", label: "打开 RSS" }],
+  },
+  {
+    id: "opml",
+    audience: "阅读器迁移",
+    title: "一次导入全部订阅",
+    description:
+      "把全站、全部公开标签与全部公开专题 RSS 分组导入支持 OPML 2.0 的阅读器。",
+    format: "text/x-opml",
+    freshness: ROUTE_FRESHNESS,
+    pathLabel: "/feeds.opml",
+    links: [{ href: "/feeds.opml", label: "下载 OPML" }],
   },
   {
     id: "json-feed",

@@ -442,9 +442,10 @@ test("server-renders one read-only subscription switchboard with real endpoints"
     html,
     /<ol class="subscription-routes" aria-label="公开订阅与读取通道">/u,
   );
-  assert.equal((html.match(/class="subscription-route"/gu) ?? []).length, 5);
+  assert.equal((html.match(/class="subscription-route"/gu) ?? []).length, 6);
   for (const href of [
     "/rss.xml",
+    "/feeds.opml",
     "/feed.json",
     "/opensearch.xml",
     "/content.json",
@@ -456,6 +457,85 @@ test("server-renders one read-only subscription switchboard with real endpoints"
   assert.match(html, /这些接口只负责读取/u);
   assert.match(html, /公开、只读、不要求账号/u);
   assert.match(html, /<a href="\/subscribe">订阅<\/a>/u);
+});
+
+test("publishes one portable OPML 2.0 bundle for every public RSS projection", async () => {
+  const [opmlResponse, tagsResponse, seriesResponse, sitemapResponse] =
+    await Promise.all([
+      render("/feeds.opml", { accept: "text/x-opml" }),
+      render("/tags"),
+      render("/series"),
+      render("/sitemap.xml"),
+    ]);
+
+  assert.equal(opmlResponse.status, 200);
+  assert.equal(opmlResponse.headers.get("content-type"), "text/x-opml; charset=utf-8");
+  assert.equal(
+    opmlResponse.headers.get("content-disposition"),
+    'attachment; filename="zach424-subscriptions.opml"',
+  );
+  assert.equal(
+    opmlResponse.headers.get("cache-control"),
+    "public, max-age=3600, stale-while-revalidate=86400",
+  );
+  assert.equal(opmlResponse.headers.get("x-robots-tag"), "noindex");
+  assert.equal(opmlResponse.headers.get("last-modified"), null);
+  assert.equal(
+    opmlResponse.headers.get("link"),
+    '<https://blog.example.test/feeds.opml>; rel="self"; type="text/x-opml", <https://blog.example.test/subscribe>; rel="up"; type="text/html"',
+  );
+
+  const opml = await opmlResponse.text();
+  const etag = opmlResponse.headers.get("etag");
+  assert.equal(
+    etag,
+    `"sha256-${createHash("sha256").update(opml, "utf8").digest("hex")}"`,
+  );
+  assert.match(opml, /^<\?xml version="1\.0" encoding="UTF-8"\?>/u);
+  assert.match(opml, /<opml version="2\.0">/u);
+  assert.match(opml, /<head>[\s\S]*<docs>https:\/\/opml\.org\/spec2\.opml<\/docs>[\s\S]*<\/head>/u);
+  assert.match(opml, /<outline text="全部更新">/u);
+  assert.match(opml, /<outline text="按标签">/u);
+  assert.match(opml, /<outline text="按专题">/u);
+  assert.doesNotMatch(opml, /<date(?:Created|Modified)>/u);
+
+  const tagsHtml = visibleDocument(await tagsResponse.text());
+  const seriesHtml = visibleDocument(await seriesResponse.text());
+  const expectedFeedUrls = [
+    "https://blog.example.test/rss.xml",
+    ...[...tagsHtml.matchAll(/<a href="(\/tags\/[^"]+)">/gu)]
+      .map((match) => `https://blog.example.test${match[1]}/rss.xml`),
+    ...[...seriesHtml.matchAll(/<a class="directory-row" href="(\/series\/[^"]+)">/gu)]
+      .map((match) => `https://blog.example.test${match[1]}/rss.xml`),
+  ];
+  const actualFeedUrls = [
+    ...opml.matchAll(/\bxmlUrl="([^"]+)"/gu),
+  ].map((match) => match[1]);
+  assert.deepEqual([...actualFeedUrls].sort(), [...expectedFeedUrls].sort());
+  assert.equal(new Set(actualFeedUrls).size, actualFeedUrls.length);
+  assert.equal(
+    (opml.match(/\btype="rss"/gu) ?? []).length,
+    actualFeedUrls.length,
+  );
+
+  const sitemap = await sitemapResponse.text();
+  assert.doesNotMatch(sitemap, /\/feeds\.opml/u);
+
+  const [matchResponse, staleResponse] = await Promise.all([
+    render("/feeds.opml", {
+      accept: "text/x-opml",
+      headers: { "if-none-match": `W/${etag}` },
+    }),
+    render("/feeds.opml", {
+      accept: "text/x-opml",
+      headers: { "if-none-match": '"sha256-stale"' },
+    }),
+  ]);
+  assert.equal(matchResponse.status, 304);
+  assert.equal(await matchResponse.text(), "");
+  assert.equal(matchResponse.headers.get("etag"), etag);
+  assert.equal(staleResponse.status, 200);
+  assert.equal(await staleResponse.text(), opml);
 });
 
 test("publishes one discoverable conditional RSS projection for each public tag", async () => {
@@ -1868,6 +1948,7 @@ test("keeps every public conditional HEAD response bodyless and GET-equivalent",
     ["/rss.xml", "application/rss+xml"],
     ["/tags/typescript/rss.xml", "application/rss+xml"],
     ["/series/build-my-blog/rss.xml", "application/rss+xml"],
+    ["/feeds.opml", "text/x-opml"],
     ["/sitemap.xml", "application/xml"],
     ["/robots.txt", "text/plain"],
     ["/opensearch.xml", "application/opensearchdescription+xml"],
