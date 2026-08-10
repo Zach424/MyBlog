@@ -962,7 +962,8 @@ test("publishes the structured discovery suite from one public origin", async (c
     manifestEtag,
     `"sha256-${createHash("sha256").update(manifestSource, "utf8").digest("hex")}"`,
   );
-  assert.ok(Number.isFinite(Date.parse(manifestResponse.headers.get("last-modified") ?? "")));
+  const manifestLastModified = manifestResponse.headers.get("last-modified");
+  assert.ok(Number.isFinite(Date.parse(manifestLastModified ?? "")));
   const manifest = JSON.parse(manifestSource);
   assert.deepEqual(Object.keys(manifest), [
     "version",
@@ -1008,6 +1009,29 @@ test("publishes the structured discovery suite from one public origin", async (c
   });
   assert.equal(conditionalManifest.status, 304);
   assert.equal(await conditionalManifest.text(), "");
+
+  const [manifestDateMatch, manifestStaleTagWins] = await Promise.all([
+    render("/content.json", {
+      accept: "application/json",
+      headers: { "if-modified-since": manifestLastModified },
+    }),
+    render("/content.json", {
+      accept: "application/json",
+      headers: {
+        "if-none-match": '"sha256-stale"',
+        "if-modified-since": manifestLastModified,
+      },
+    }),
+  ]);
+  assert.equal(manifestDateMatch.status, 304);
+  assert.equal(await manifestDateMatch.text(), "");
+  assert.equal(manifestDateMatch.headers.get("etag"), manifestEtag);
+  assert.equal(
+    manifestDateMatch.headers.get("last-modified"),
+    manifestLastModified,
+  );
+  assert.equal(manifestStaleTagWins.status, 200);
+  assert.equal(await manifestStaleTagWins.text(), manifestSource);
   assert.equal(conditionalManifest.headers.get("etag"), manifestEtag);
 
   assert.equal(schemaResponse.status, 200);
@@ -1460,6 +1484,31 @@ test("publishes portable Markdown sources without author-only fields", async () 
     '<https://blog.example.test/posts/building-a-maintainable-blog>; rel="canonical"; type="text/html"',
   );
   assert.equal(conditionalResponse.headers.get("x-robots-tag"), "noindex");
+
+  const [dateMatch, staleTagWins] = await Promise.all([
+    render("/posts/building-a-maintainable-blog/source.md", {
+      accept: "text/markdown",
+      headers: {
+        "if-modified-since": "Wed, 05 Aug 2026 00:00:00 GMT",
+      },
+    }),
+    render("/posts/building-a-maintainable-blog/source.md", {
+      accept: "text/markdown",
+      headers: {
+        "if-none-match": '"sha256-stale"',
+        "if-modified-since": "Wed, 05 Aug 2026 00:00:00 GMT",
+      },
+    }),
+  ]);
+  assert.equal(dateMatch.status, 304);
+  assert.equal(await dateMatch.text(), "");
+  assert.equal(dateMatch.headers.get("etag"), postEtag);
+  assert.equal(
+    dateMatch.headers.get("last-modified"),
+    "Wed, 05 Aug 2026 00:00:00 GMT",
+  );
+  assert.equal(staleTagWins.status, 200);
+  assert.equal(await staleTagWins.text(), postSource);
 });
 
 test("removes starter artifacts and keeps the Vercel-native design contract explicit", async () => {

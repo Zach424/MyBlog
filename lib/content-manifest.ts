@@ -1,8 +1,8 @@
 import type { ContentRecord } from "./content";
 import { createPublicMarkdown, getPublicMarkdownPath } from "./public-markdown.ts";
 import {
+  createSha256ConditionalResponse,
   createSha256Etag,
-  matchesIfNoneMatch,
   PUBLIC_CONDITIONAL_CACHE_CONTROL,
 } from "./http-validators.ts";
 import { absoluteSiteUrl, resolveSiteUrl } from "./site.ts";
@@ -87,8 +87,6 @@ export function createContentManifest(siteUrl: URL, records: ContentRecord[]) {
 
 function contentManifestHeaders(
   siteUrl: URL,
-  records: ContentRecord[],
-  etag: string,
 ) {
   const manifestUrl = absoluteSiteUrl(siteUrl, "/content.json");
   const schemaUrl = absoluteSiteUrl(siteUrl, "/content.schema.json");
@@ -97,18 +95,17 @@ function contentManifestHeaders(
     "cache-control": PUBLIC_CONDITIONAL_CACHE_CONTROL,
     "content-disposition": 'inline; filename="content.json"',
     "content-type": "application/json; charset=utf-8",
-    etag,
     link: `<${manifestUrl}>; rel="self"; type="application/json", <${schemaUrl}>; rel="describedby"; type="application/schema+json", <${homeUrl}>; rel="up"; type="text/html"`,
     "x-robots-tag": "noindex",
   });
-  const newestDate = newestPublicDate(records);
-  if (newestDate) {
-    headers.set(
-      "last-modified",
-      new Date(`${newestDate}T00:00:00.000Z`).toUTCString(),
-    );
-  }
   return headers;
+}
+
+function contentManifestLastModified(records: ContentRecord[]) {
+  const newestDate = newestPublicDate(records);
+  return newestDate
+    ? new Date(`${newestDate}T00:00:00.000Z`).toUTCString()
+    : undefined;
 }
 
 export function createContentManifestResponse(
@@ -117,10 +114,10 @@ export function createContentManifestResponse(
 ) {
   const siteUrl = resolveSiteUrl(request.headers, request.url);
   const body = createContentManifest(siteUrl, records);
-  const etag = createSha256Etag(body);
-  const headers = contentManifestHeaders(siteUrl, records, etag);
-
-  return matchesIfNoneMatch(request.headers.get("if-none-match"), etag)
-    ? new Response(null, { status: 304, headers })
-    : new Response(body, { headers });
+  return createSha256ConditionalResponse(
+    request,
+    body,
+    contentManifestHeaders(siteUrl),
+    { lastModified: contentManifestLastModified(records) },
+  );
 }

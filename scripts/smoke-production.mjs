@@ -570,6 +570,62 @@ export async function runProductionSmoke(originInput, { expectOAuth = false } = 
         ),
       `${expectation.slug} Markdown 条件请求契约异常`,
     );
+    const sourceLastModified = source.response.headers.get("last-modified");
+    const staleSourceDate = new Date(
+      Date.parse(sourceLastModified) - 1_000,
+    ).toUTCString();
+    const malformedSourceDate = new Date(
+      Date.parse(sourceLastModified),
+    ).toISOString();
+    const [dateMatch, staleDate, malformedDate, staleTagWins] = await Promise.all([
+      request(origin, expectation.pathname, {
+        accept: "text/markdown",
+        headers: { "if-modified-since": sourceLastModified },
+      }),
+      request(origin, expectation.pathname, {
+        accept: "text/markdown",
+        headers: { "if-modified-since": staleSourceDate },
+      }),
+      request(origin, expectation.pathname, {
+        accept: "text/markdown",
+        headers: { "if-modified-since": malformedSourceDate },
+      }),
+      request(origin, expectation.pathname, {
+        accept: "text/markdown",
+        headers: {
+          "if-none-match": '"sha256-stale"',
+          "if-modified-since": sourceLastModified,
+        },
+      }),
+    ]);
+    const dateMatchLastModified =
+      dateMatch.response.headers.get("last-modified");
+    invariant(
+      dateMatch.response.status === 304 &&
+        dateMatch.body === "" &&
+        sameMarkdownSourceEtag(dateMatch.response.headers.get("etag"), etag) &&
+        hasMarkdownSourceCachePolicy(
+          dateMatch.response.headers.get("cache-control"),
+        ) &&
+        (dateMatchLastModified === null ||
+          dateMatchLastModified === sourceLastModified),
+      `${expectation.slug} Markdown If-Modified-Since 契约异常`,
+    );
+    invariant(
+      staleDate.response.status === 200 && staleDate.body === source.body,
+      `${expectation.slug} Markdown 旧 If-Modified-Since 不应命中`,
+    );
+    invariant(
+      malformedDate.response.status === 200 && malformedDate.body === source.body,
+      `${expectation.slug} Markdown 非 HTTP-date 条件不应命中`,
+    );
+    invariant(
+      staleTagWins.response.status === 200 &&
+        staleTagWins.body === source.body &&
+        staleTagWins.response.headers.get("last-modified") ===
+          sourceLastModified,
+      `${expectation.slug} Markdown 未保持 If-None-Match 优先级`,
+    );
   }
   invariant(
     sourceResponses[0].body.includes(`${origin.origin}/projects/myblog`) &&
@@ -1012,6 +1068,73 @@ export async function runProductionSmoke(originInput, { expectOAuth = false } = 
         conditionalManifestLink === contentManifest.response.headers.get("link")) &&
       (conditionalManifestRobots === null || conditionalManifestRobots === "noindex"),
     "公开内容清单条件请求契约异常",
+  );
+  const manifestLastModified =
+    contentManifest.response.headers.get("last-modified");
+  const staleManifestDate = new Date(
+    Date.parse(manifestLastModified) - 1_000,
+  ).toUTCString();
+  const malformedManifestDate = new Date(
+    Date.parse(manifestLastModified),
+  ).toISOString();
+  const [
+    manifestDateMatch,
+    manifestStaleDate,
+    manifestMalformedDate,
+    manifestStaleTagWins,
+  ] = await Promise.all([
+    request(origin, "/content.json", {
+      accept: "application/json",
+      headers: { "if-modified-since": manifestLastModified },
+    }),
+    request(origin, "/content.json", {
+      accept: "application/json",
+      headers: { "if-modified-since": staleManifestDate },
+    }),
+    request(origin, "/content.json", {
+      accept: "application/json",
+      headers: { "if-modified-since": malformedManifestDate },
+    }),
+    request(origin, "/content.json", {
+      accept: "application/json",
+      headers: {
+        "if-none-match": '"sha256-stale"',
+        "if-modified-since": manifestLastModified,
+      },
+    }),
+  ]);
+  const manifestDateMatchLastModified =
+    manifestDateMatch.response.headers.get("last-modified");
+  invariant(
+    manifestDateMatch.response.status === 304 &&
+      manifestDateMatch.body === "" &&
+      sameMarkdownSourceEtag(
+        manifestDateMatch.response.headers.get("etag"),
+        manifestEtag,
+      ) &&
+      hasMarkdownSourceCachePolicy(
+        manifestDateMatch.response.headers.get("cache-control"),
+      ) &&
+      (manifestDateMatchLastModified === null ||
+        manifestDateMatchLastModified === manifestLastModified),
+    "公开内容清单 If-Modified-Since 契约异常",
+  );
+  invariant(
+    manifestStaleDate.response.status === 200 &&
+      manifestStaleDate.body === contentManifest.body,
+    "公开内容清单旧 If-Modified-Since 不应命中",
+  );
+  invariant(
+    manifestMalformedDate.response.status === 200 &&
+      manifestMalformedDate.body === contentManifest.body,
+    "公开内容清单非 HTTP-date 条件不应命中",
+  );
+  invariant(
+    manifestStaleTagWins.response.status === 200 &&
+      manifestStaleTagWins.body === contentManifest.body &&
+      manifestStaleTagWins.response.headers.get("last-modified") ===
+        manifestLastModified,
+    "公开内容清单未保持 If-None-Match 优先级",
   );
   const schemaEtag = contentSchema.response.headers.get("etag");
   invariant(

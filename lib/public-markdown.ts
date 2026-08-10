@@ -2,8 +2,7 @@ import { stringify as stringifyYaml } from "yaml";
 import type { ContentRecord } from "./content";
 import { parseMarkdown, walkMarkdown } from "./content/markdown.ts";
 import {
-  createSha256Etag,
-  matchesIfNoneMatch,
+  createSha256ConditionalResponse,
   PUBLIC_CONDITIONAL_CACHE_CONTROL,
 } from "./http-validators.ts";
 import { absoluteSiteUrl, resolveSiteUrl } from "./site.ts";
@@ -136,14 +135,11 @@ function publicMarkdownLastModified(record: ContentRecord) {
 function publicMarkdownHeaders(
   canonical: string,
   record: ContentRecord,
-  etag: string,
 ) {
   return new Headers({
     "cache-control": PUBLIC_CONDITIONAL_CACHE_CONTROL,
     "content-disposition": `inline; filename="${record.slug}.md"`,
     "content-type": "text/markdown; charset=utf-8",
-    etag,
-    "last-modified": publicMarkdownLastModified(record),
     link: `<${canonical}>; rel="canonical"; type="text/html"`,
     "x-robots-tag": "noindex",
   });
@@ -166,12 +162,12 @@ export function createPublicMarkdownResponse(request: Request, record: ContentRe
   const siteUrl = resolveSiteUrl(request.headers, request.url);
   const canonical = canonicalRecordUrl(siteUrl, record);
   const body = createPublicMarkdown(siteUrl, record);
-  const etag = createSha256Etag(body);
-  const headers = publicMarkdownHeaders(canonical, record, etag);
-
-  return matchesIfNoneMatch(request.headers.get("if-none-match"), etag)
-    ? new Response(null, { status: 304, headers })
-    : new Response(body, { headers });
+  return createSha256ConditionalResponse(
+    request,
+    body,
+    publicMarkdownHeaders(canonical, record),
+    { lastModified: publicMarkdownLastModified(record) },
+  );
 }
 
 export function createPublicMarkdownNotFoundResponse() {

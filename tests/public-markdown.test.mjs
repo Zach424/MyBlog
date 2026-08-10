@@ -231,4 +231,37 @@ test("returns a header-complete empty 304 for every valid matching If-None-Match
     assert.equal(response.status, 200, ifNoneMatch);
     assert.match(await response.text(), /^---\n/u, ifNoneMatch);
   }
+
+  const dateMatch = createPublicMarkdownResponse(
+    new Request(url, {
+      headers: { "if-modified-since": "Mon, 10 Aug 2026 00:00:00 GMT" },
+    }),
+    post,
+  );
+  assert.equal(dateMatch.status, 304);
+  assert.equal(await dateMatch.text(), "");
+  assert.equal(dateMatch.headers.get("etag"), etag);
+  assert.equal(
+    dateMatch.headers.get("last-modified"),
+    "Mon, 10 Aug 2026 00:00:00 GMT",
+  );
+
+  for (const [label, headers] of [
+    ["stale date", { "if-modified-since": "Sun, 09 Aug 2026 23:59:59 GMT" }],
+    ["malformed date", { "if-modified-since": "2026-08-10T00:00:00Z" }],
+    [
+      "stale ETag wins",
+      {
+        "if-none-match": '"sha256-stale"',
+        "if-modified-since": "Mon, 10 Aug 2026 00:00:00 GMT",
+      },
+    ],
+  ]) {
+    const response = createPublicMarkdownResponse(
+      new Request(url, { headers }),
+      post,
+    );
+    assert.equal(response.status, 200, label);
+    assert.match(await response.text(), /^---\n/u, label);
+  }
 });
