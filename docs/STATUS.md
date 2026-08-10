@@ -11,7 +11,7 @@ MyBlog 是 Zach424 的个人技术知识库与公开工程日志。它把学习�
 | 模块 | 状态 | 当前责任与证据 |
 | --- | --- | --- |
 | 内容契约 | done | YAML + Zod 校验文章、TIL、项目、标签、专题、日期、URL、内容语境、复核日期与本地封面替代文本 |
-| 公开阅读 | done | 首页、文章、项目、专题、标签、统一时间档案、订阅与开放接口目录、搜索、关于、品牌化 404 恢复路口、响应式、深色模式与详情页封面；共享列表、搜索和知识图谱统一区分首发/更新日，搜索结果提供 Unicode 安全命中证据，文章/项目详情提供最多 3 条带可见理由的继续阅读 |
+| 公开阅读 | done | 首页、文章、项目、专题、标签、统一时间档案、首发/更新内容活动、订阅与开放接口目录、搜索、关于、品牌化 404 恢复路口、响应式、深色模式与详情页封面；共享列表、搜索和知识图谱统一区分首发/更新日，搜索结果提供 Unicode 安全命中证据，文章/项目详情提供最多 3 条带可见理由的继续阅读 |
 | 读者分享 | done | 文章/项目服务端规范链接、Web Share、URL/Markdown 引用 Clipboard、全 ASCII 标点转义、取消静默、共享 single-flight、`aria-live` 回执、无 JavaScript 恢复路径与 print 隔离 |
 | Markdown | done | GFM、代码高亮、语言标签、渐进增强的一键复制、与实际渲染一致的 H1–H6 heading id、H2/H3 目录与原生永久链接、Obsidian 兼容脚注/尾注与行内/块级数学公式、A4 打印/PDF 版式、阅读时间、相邻文章与响应式正文图片 |
 | 内容发现 | done | SEO、内容级 OG/Twitter 封面、首页唯一 `WebSite`、文章/项目纯生成器维护的稳定身份与站点引用、文章 `wordCount`/`timeRequired`、四类详情可见路径与 `BreadcrumbList` JSON-LD、统一年月时间档案、可见订阅目录、首页/Sitemap 共享公开路由事实、OpenSearch 1.1、version 1 公开内容清单及 Draft 2020-12 JSON Schema、JSON Feed 1.1、RSS、文章/项目可移植 Markdown 源文、Sitemap、robots、NFKC/AND 本地全文搜索；七个结构化端点与源文均有 SHA-256 ETag/条件读取 |
@@ -21,7 +21,7 @@ MyBlog 是 Zach424 的个人技术知识库与公开工程日志。它把学习�
 | 附件发布 | done | Wiki/Markdown 图片转换、按内容隔离、稳定命名、越界保护、失败回滚 |
 | 自动交付 | done | GitHub `main` → Vercel Production → 稳定域名冒烟；checkout/setup-node v6 Node 24 action runtime 的六处引用固定到官方完整 SHA，应用 Node 22 与 workflow 语义由共享结构/发布门禁保护 |
 | 生产内容同步 | done | `content:production` 输出全库 deployed/pending/missing/unexpected；`content:production:wait` 冻结单篇来源 SHA-256/ETag，以条件 GET 有界等待 deployed；Obsidian 1.41.0 提供手动入口，并从正常或 recovery publication/review 的可信 Git 成功结果在写事务释放、Vault reconcile 后自动接力同一 latest-wins 等待器 |
-| HTML 传输预算 | done | 十二条关键路由的稳定生产 raw/Node gzip 基线、160 KiB 紧急上限、20%/2 KiB gzip 余量公式、本地稳定 host 与部署后实际 origin 双验证、逐路由余量报告与覆盖失败关闭；0112 基线来自 `c2e1d96` 稳定生产响应并覆盖固定 404 |
+| HTML 传输预算 | done | 十三条关键路由的稳定生产 raw/Node gzip 基线、160 KiB 紧急上限、20%/2 KiB gzip 余量公式、本地稳定 host 与部署后实际 origin 双验证、逐路由余量报告与覆盖失败关闭；0119 基线来自 `5fb508c` 稳定生产响应并覆盖活动页与固定 404 |
 | 结构化发现传输预算 | done | 清单、Schema、JSON Feed、RSS、Sitemap、robots、OpenSearch 的稳定生产 raw/gzip 基线、50% + raw 4 KiB/gzip 1 KiB 余量、逐端点报告与恰好一次覆盖门 |
 | 恢复能力 | done | Vercel 显式目标回滚、当前版本恢复、再次冒烟 |
 | 内容知识网络 | done | GFM 行内/引用式/自引用链接、页面与标题锚点构建门、文章/项目双向引用账本，以及复用专题、标签和已验证图边的可解释推荐 |
@@ -42,11 +42,12 @@ MyBlog 是 Zach424 的个人技术知识库与公开工程日志。它把学习�
 - 时间档案：`createContentArchive()` 从同一公开 `ContentRecord` 复制后按发布日期倒序、`zh-CN` 标题和 `en` URL 稳定决胜，再按年/月生成计数账本；`/archive` 以纯 Server Component 输出原生日期、类型、标题和摘要，主导航、Sitemap、320px、深浅色、打印与生产 smoke 共用该事实；
 - 订阅入口：`createSubscriptionCatalog()` 把既有 RSS、JSON Feed、OpenSearch、内容清单/Schema 与单篇 Markdown 投影为五条只读通道，并从同一公开集合稳定选择最新 Markdown 示例；`/subscribe` 用纯 Server Component 输出 MIME、Freshness、真实端点动作与只读边界，不复制协议数据、不增加客户端请求；
 - 错误恢复：根级 `not-found` 保持真实 404、`no-store`、显式 `noindex` 与单一 H1，以 KEYWORD/TIME/NOTES/BUILDS 四路账本连接搜索、档案、文章和项目；CSS Module、390px、深浅色、打印、SSR、生产 smoke 和固定路由预算共同锁定，无客户端请求或软 404；
-- 公开路由事实：`createPublicRouteInventory()` 把 10 条静态页面与公开文章、项目、专题、标签组合为唯一有序清单；Sitemap 序列化 routes，首页 Evidence Rail 使用同一 total，`LATEST` 使用与根 `lastmod` 相同的最新公开内容日期；重复 path 失败关闭，空库不伪造日期，无 Git/API/客户端读取；
+- 公开路由事实：`createPublicRouteInventory()` 把 11 条静态页面与公开文章、项目、专题、标签组合为唯一有序清单；Sitemap 序列化 routes，首页 Evidence Rail 使用同一 total，`LATEST` 使用与根 `lastmod` 相同的最新公开内容日期；重复 path 失败关闭，空库不伪造日期，无 Git/API/客户端读取；
 - 首页内容证据：`createHomepageEvidence()` 只接收精选项目与最新文章的标题、状态/类型、日期、stack/tags，派生 Building、Learned 和 Current focus；前 N 项 + `+N` 控制元数据密度，长标题保留原文，空项目/文章诚实降级，无第二份运行状态或客户端读取；
 - About 系统档案：`createAboutProfile()` 从公开 posts/projects/series/tags、共享路由 total/latestModified 与精选项目派生集合计数、记录/路由 meta、最近更新、中文状态和完整 stack；`content-presentation.ts` 与首页共享状态翻译，空集合明确降级，无 Git/API/客户端读取；
 - 项目状态展示：`getProjectStatusPresentation()` 为 planning/building/maintained/archived 输出唯一中文 label、大写 code 与 `label · CODE` meta；首页项目卡、项目集合和项目详情使用 meta，About/Evidence 自然句使用 label，机器内容仍保留原始 enum；
 - 内容日期展示：`getContentDatePresentation()` 仅在 `updatedAt > publishedAt` 时输出 UPDATED/更新日，否则输出 PUBLISHED/首发日；`ContentIndexList`、搜索结果、知识图 SVG 节点与孤立记录共同消费，搜索/图谱仍按首发日排序，archive 继续使用独立首发时间线；
+- 内容活动：`createContentActivity()` 为每条公开记录派生一次 PUBLISHED，仅在更新日晚于首发日时再派生 UPDATED；`/activity` 以纯 Server Component 按日输出 diff rail，明确排除 `reviewedAt`，archive 只提供入口且继续保留首次发布日期职责；
 - 运行时：Next.js 16.3.0、React 19.2.6、TypeScript 5、Node.js 22+；
 - 内容：仓库内 Markdown、YAML、Zod，GitHub 是唯一事实源；
 - 发现：`/content.json` 从公开 getter 稳定生成 4 条机器清单，逐项提供同 origin HTML/Markdown URL 与最终源文 SHA-256；`/content.schema.json` 使用 Draft 2020-12 固定 version 1 结构，并以 describedby/describes Link 与清单双向关联。清单、Schema、JSON Feed、RSS、Sitemap、robots、OpenSearch 都以最终正文生成 SHA-256 ETag 并支持空 304；清单另有 Last-Modified，Feed/RSS/Sitemap/OpenSearch 保留一小时 fresh/一天 SWR，robots 保留一天 fresh；
@@ -60,21 +61,21 @@ MyBlog 是 Zach424 的个人技术知识库与公开工程日志。它把学习�
 - 路由：严格 YAML + Zod 永久重定向注册表、Next `redirects()` 308、构建期现行路由与静态文件交叉校验；
 - 知识图：纯函数派生有向节点/边、语义 SVG + HTML 账本、零客户端布局依赖与 320px 明确降级；
 - 托管：Vercel 原生 Next.js，当前链路不依赖 Cloudflare；
-- 质量：ESLint、Node test、TypeScript、Next build、真实生产服务器 HTTP 测试、npm audit、YAML workflow 契约、官方 action 完整 SHA 共享门禁、十二路 HTML 与七端点结构化发现的 `Buffer.byteLength`/Node zlib raw-gzip 双层预算、源站/边缘 ETag 等价验证与线上实际 origin 冒烟。
+- 质量：ESLint、Node test、TypeScript、Next build、真实生产服务器 HTTP 测试、npm audit、YAML workflow 契约、官方 action 完整 SHA 共享门禁、十三路 HTML 与七端点结构化发现的 `Buffer.byteLength`/Node zlib raw-gzip 双层预算、源站/边缘 ETag 等价验证与线上实际 origin 冒烟。
 
 ## 当前运行状态
 
 - 仓库：<https://github.com/Zach424/MyBlog>，生产分支 `main`；
 - 生产站：<https://blog-iota-five-59.vercel.app>；
-- 本轮功能提交：`a0ddd5b`（搜索与知识图谱日期语义），已推送 `main` 并由 Vercel 部署；
-- 自动交付：稳定生产搜索结果、知识图 SVG 节点和孤立记录均已显示 UPDATED 与真实更新日，搜索和图谱仍按首发语义排序，archive 继续显示发布日期；完整 smoke 为 26 routes、OAuth 302，十二条 HTML 与七个结构化发现端点全部 PASS；
-- 最新完成迭代：0118 搜索与知识图谱日期语义；
+- 本轮功能提交：`5fb508c`（内容活动账本）与 `0138ad0`（第十三路 HTML 预算），已推送 `main` 并由 Vercel 部署；
+- 自动交付：稳定生产 `/activity` 显示 8 个事件、5 个日期组、4 个 PUBLISHED 与 4 个 UPDATED，零 REVIEWED 事件；完整 smoke 为 27 routes、OAuth 302，十三条 HTML 与七个结构化发现端点全部 PASS；
+- 最新完成迭代：0119 内容活动时间线；
 - Obsidian 状态：仓库根目录就是 Vault，`docs/STATUS.md`、`docs/iterations/*.md` 与 `docs/knowledge/*.md` 是同一份本地文件，可直接阅读和维护；
 - 手动外部接入：自定义域名、统计、评论、公开邮箱均暂缓，不阻塞当前开发。
 
 ## 本轮新增能力
 
-搜索和知识图谱不再把维护后的记录展示成首发日。`createSearchDocuments()` 与 `deriveKnowledgeGraph()` 保留可选 `updatedAt`，`SearchExperience`、SVG 节点和孤立记录复用统一 presenter；空搜索标题与行尾原因明确为“按首发时间/首发顺序”。两条失败优先测试先证明派生边界丢失更新日，再由实现转绿；完整验证为 521/521 单元测试、51 个构建页面、29/29 应用测试。真实 Chromium 覆盖 390×844 深色搜索、移动图谱与 1280px 深色 SVG，验证日期、断点、单一 H1、根宽和 console。稳定生产 smoke 为 26 routes、OAuth 302；`/search?q=cloudflare` 41251/14704 B、`/knowledge` 40497/8013 B（raw/gzip），十二条 HTML 与七端点预算全部 PASS。搜索相关性、首发决胜、知识图排序、frontmatter、机器接口和 archive 时间线未改变。本轮中文状态、迭代归档和知识笔记都位于同一 Obsidian Vault。
+站点新增纯服务端 `/activity`。`createContentActivity()` 从四条公开记录派生四个首次发布事件，只在 `updatedAt > publishedAt` 时再派生四个更新事件，并按日期、模式、标题和 URL 稳定排序为五个日期组；`reviewedAt` 明确不进入活动。失败优先测试先证明模块缺失，再覆盖同日更新、同日模式决胜、输入不变与空集合。完整验证为 524/524 单元测试、52 个构建页面、30/30 应用测试。真实 Chromium 覆盖 390×844 与 1280×900 深色模式，验证节点、日期、单一 H1、根宽和 0 console errors。稳定生产 smoke 为 27 routes、OAuth 302；活动页为 37888/6401 B（raw/gzip），十三条 HTML 与七端点预算全部 PASS。archive、搜索、知识图、frontmatter 与机器接口的既有语义未改变。本轮中文状态、迭代归档和知识笔记都位于同一 Obsidian Vault。
 
 ## 风险与下一步
 
@@ -99,10 +100,10 @@ MyBlog 是 Zach424 的个人技术知识库与公开工程日志。它把学习�
 19. 首页站点名称会被 Google 与页面标题、`og:site_name`、首页可见文字等多信号共同判断；当前 `WebSite` 只能表达偏好，不能保证采用或展示。站点名称不支持 Rich Results Test，应使用 Schema Markup Validator 做语法抽查。0107 九路 HTML 基线已绑定 `668d26fb` 稳定生产；自定义域名启用时必须同步验证根 URL、内容/站点 `@id`、canonical、Open Graph、Feed/清单和全部生产门，不能沿用 Vercel 域名证据。
 20. 当前内容身份生成器有意要求 canonical 与站点同 origin，避免把外部页面错误声明为本博客内部节点；内容契约仍允许 HTTPS canonical，因此未来若要转载或迁移到外部 canonical，必须先明确“本地页面身份、原始作品身份与 `isPartOf`”的语义，再调整契约和生成器，不能绕过同源门。文章/项目完整 JSON-LD 已收口为纯生成器；作者 `Person` 仍只有现有姓名和 GitHub URL，在所有者确认更多人物事实前不增加独立 `@id` 或 ProfilePage。
 21. `wordCount`/`timeRequired` 是内容契约的确定性启发式，不是每位读者的精确承诺：中文按 CJK 字符、拉丁文按 token，分别以 300/200 每分钟估算并至少为 1。代码块、公式和语言分布会影响结果；算法变更时必须同步页面 Read Time、JSON-LD、测试与生产基线。
-22. `/archive` 当前只有一个年份和月份，但跨年、跨月、同日决胜、空集合和输入不变已经由夹具固定。内容增长前不提前增加客户端筛选、分页或年份锚点；若分组或 DOM 规模开始触及十二路预算，再依据真实数据选择增强方式。
+22. `/archive` 当前只有一个年份和月份，但跨年、跨月、同日决胜、空集合和输入不变已经由夹具固定。内容增长前不提前增加客户端筛选、分页或年份锚点；若分组或 DOM 规模开始触及十三路预算，再依据真实数据选择增强方式。
 23. `/subscribe` 已把五类现有开放接口集中为可见目录，但它有意保持只读：不会收集邮箱、创建账户、保存订阅状态或代理第三方阅读器。未来若需要邮件订阅，必须由所有者单独选择供应商、隐私告知与数据保留策略，不能把当前目录误解为邮件服务。
 24. 404 恢复语境已经闭环，但本地 Next 自动 noindex 与 Vercel 最终 HTML 不一致；组件显式 meta 后本地有两个相同指令、生产一个。相同指令不改变语义，升级 Next/Vercel 时仍必须用最终生产 HTML 验证。错误页继承根首页 canonical，本轮没有为非索引页面启用实验性 global-not-found。
-25. 首页、About、项目 status、通用列表、搜索和知识图已使用共享展示事实；archive 有意只保留首次发布日期，因此读者还没有一个按事件查看“何时发布、何时真正更新”的统一活动流。下一轮应从公开记录纯派生 Published/Updated 事件，保持 archive 不变，并明确排除只代表复核的 `reviewedAt`。
+25. `/activity` 已提供按事件查看“何时发布、何时真正更新”的统一活动流，archive 继续只保留首次发布日期。活动数按每条记录最多两个事件线性增长；当前无需筛选或分页，首页若增加最近活动摘要必须直接复用同一模型，不复制排序或日期规则。
 26. 本机浏览器使用系统代理时，Git for Windows 与 Node `fetch` 不一定自动继承代理配置，可能出现网页可达而 Git/生产 smoke 直连超时。0115 通过单次命令注入系统代理完成 push 和 smoke，没有写入仓库或全局 Git 配置；以后仍先区分站点失败与本地网络分流，不能把传输失败误判为部署失败。
 
-下一轮唯一主任务：新增纯服务端内容活动时间线，从每条公开记录派生一次 PUBLISHED 事件，并仅在 `updatedAt > publishedAt` 时派生一次 UPDATED 事件；按事件日期倒序稳定排列，提供从 archive/发现路径进入的公开页面，同时保持 archive、搜索、知识图、frontmatter 与机器接口不变，不把 `reviewedAt` 当成内容变化，也不新增请求、数据库或云配置。
+下一轮唯一主任务：在首页增加纯服务端“最近活动”摘要，直接复用 `createContentActivity()` 的前三个事件并链接完整 `/activity`；保持首页现有 Building/Learned/Current focus、活动排序、archive、搜索、知识图与机器接口不变，不新增客户端请求、数据库、追踪或云配置。

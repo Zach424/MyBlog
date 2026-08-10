@@ -26,6 +26,7 @@ app/
   studio/                           Studio HTML、内容复核队列、配置、媒体清单/预检、slug 控件、公式预览与版本化 CMS 运行时路由
   posts/ projects/ series/ tags/   集合、详情页与嵌套 source.md Route Handler
   archive/                          文章、TIL 与项目的服务端年月时间档案
+  activity/                         首次发布与真实更新事件的服务端活动账本
   subscribe/                        现有订阅与开放接口的服务端可见路由表
   knowledge/ search/ about/         知识地图、搜索和关于页
   content.json/ content.schema.json/ feed.json/ rss.xml/ sitemap.xml/ robots.txt/ opensearch.xml/ 站点级发现端点
@@ -50,6 +51,7 @@ lib/
   website.ts                        首页站点身份与同源内容节点身份生成器
   content/                          内容契约、维护报告、文件读取、派生索引与引用关系
     archive.ts                     公开内容的确定性年/月分组与同日稳定排序
+    activity.ts                    公开内容到 PUBLISHED/UPDATED 事件的确定性投影
     recommendations.ts             从专题、标签和已验证关系派生解释性继续阅读排序
     author-doctor.ts                本机作者环境 legacy v1、bundle v2 与 Git provenance v3 报告
     publisher-plugin-provenance.ts  四个插件路径的 HEAD/index/worktree 只读判定
@@ -97,9 +99,11 @@ vercel.json                         Vercel Next.js 框架声明
 
 `lib/content/archive.ts` 只接收已验证的公开 `ContentRecord`，复制后按 `publishedAt` 倒序、`zh-CN` 标题与 `en` URL 依次决胜，再用插入顺序稳定生成年/月账本和每年计数；调用方数组不会被改写，空集合返回空档案。`app/archive/page.tsx` 直接消费这一纯投影，以 Server Component 输出原生 `ol`/`section`/`time`/链接，并把 Article、TIL 与 Project 放回一条时间轴；页面没有数据库、客户端请求、第二份内容索引或作者维护字段。
 
+`lib/content/activity.ts` 从同一公开 `ContentRecord` 为每条记录派生一次 `PUBLISHED`，仅在 `updatedAt > publishedAt` 时再派生一次 `UPDATED`；事件按日期倒序、模式、中文标题与英文 URL 稳定决胜，再按日组成不可变账本。`reviewedAt` 不进入事件，因为复核不等于事实变化。`app/activity/page.tsx` 是纯 Server Component，以实心/双环节点、原生 `<time>` 和链接输出当前事件；`/archive` 保留首次发布日期职责，只提供进入活动账本的链接。该边界不修改 frontmatter、搜索、知识图或机器发现接口，也不新增客户端请求、数据库和云配置。
+
 `lib/subscriptions.ts` 把既有读取能力投影为固定五通道目录：RSS、JSON Feed、OpenSearch、公开清单/Schema 和单篇 Markdown。静态协议事实与从公开记录稳定选择的最新 `source.md` 示例在纯函数中汇合；`app/subscribe/page.tsx` 只负责把它们服务端渲染成可见路由表。页面不代理端点、不复制正文、不发起客户端请求，也不把只读接口误写成发布 API；发布入口仍是 Studio/Obsidian → Git。
 
-`lib/public-routes.ts` 是可索引公开路由的唯一派生边界。10 条静态页面声明 path、日期来源、change frequency 与 priority；文章、项目、专题和标签从同一公开内容/索引自动追加。最终清单检查跨集合 path 唯一性，并输出 routes、total 与最新公开内容日期。`createSitemapXml()` 只把 routes 序列化为 XML；首页 Evidence Rail 使用同一个 total，`LATEST` 使用与 Sitemap 根 URL `lastmod` 相同的日期。Feed、Studio、OAuth、错误页和其他 noindex 端点有意不属于该集合。整个边界只在服务端运行，不读取 Git、不发起 API 请求，也不持有第二份计数。
+`lib/public-routes.ts` 是可索引公开路由的唯一派生边界。11 条静态页面声明 path、日期来源、change frequency 与 priority；文章、项目、专题和标签从同一公开内容/索引自动追加。最终清单检查跨集合 path 唯一性，并输出 routes、total 与最新公开内容日期。`createSitemapXml()` 只把 routes 序列化为 XML；首页 Evidence Rail 使用同一个 total，`LATEST` 使用与 Sitemap 根 URL `lastmod` 相同的日期。Feed、Studio、OAuth、错误页和其他 noindex 端点有意不属于该集合。整个边界只在服务端运行，不读取 Git、不发起 API 请求，也不持有第二份计数。
 
 `lib/homepage-evidence.ts` 是公开内容事实到首页 Evidence Rail 的专用 view-model。它只接收精选项目的标题、status、stack、日期与最新文章的标题、type、tags、日期，再映射 Building、Learned 和 Current focus；stack/tag 以“前 N 项 + 剩余数量”控制密度，标题保持原文，空项目/空文章输出明确等待状态。首页组件不再解释状态或维护运行摘要；该纯函数不读取文件、不发起请求，也不扩展内容 schema。
 
@@ -276,7 +280,7 @@ Obsidian 草稿中的 Wiki 图片嵌入、指向 `public/uploads` 的 Markdown �
 
 ## 7. 部署与回滚
 
-Vercel GitHub Integration 负责每个分支的 Preview 和 `main` 的 Production，不再维护重复的部署 Action。GitHub `deployment_status` 成功事件触发生产冒烟，检查代表页面、时间档案、订阅路由表、全 Sitemap、Studio/OAuth、Feed、公开内容清单及 Schema、OpenSearch、文章/项目 Markdown 源文、安全头和 404；清单、Schema、JSON Feed、RSS、Sitemap、robots、OpenSearch 的最终正文验证器及条件读取也在线复核，并逐项输出十二条 HTML 与七个结构化发现端点的 raw/gzip 基线、上限和余量。
+Vercel GitHub Integration 负责每个分支的 Preview 和 `main` 的 Production，不再维护重复的部署 Action。GitHub `deployment_status` 成功事件触发生产冒烟，检查代表页面、时间档案、内容活动、订阅路由表、全 Sitemap、Studio/OAuth、Feed、公开内容清单及 Schema、OpenSearch、文章/项目 Markdown 源文、安全头和 404；清单、Schema、JSON Feed、RSS、Sitemap、robots、OpenSearch 的最终正文验证器及条件读取也在线复核，并逐项输出十三条 HTML 与七个结构化发现端点的 raw/gzip 基线、上限和余量。
 
 Quality、生产冒烟与回滚工作流均使用 Node 24 runtime 的 checkout/setup-node v6，但实际执行仓库脚本时仍固定 Node.js 22。显式 `cache: npm` 避免 setup-node major 的自动缓存探测改变现有行为；GitHub-hosted runner 由平台维护，不引入自托管 runner 版本责任。升级 action 时必须先更新结构契约测试，再同时验证 push、定时触发结构、deployment status 与手动回滚权限。
 

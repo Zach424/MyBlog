@@ -6,19 +6,21 @@
 npm run check
 ```
 
-顺序为 ESLint → 521 项内容/时间档案/订阅目录/维护/inbox/暂存媒体/关系/推荐/站点身份/公开路由事实/首页内容证据/About 系统档案/项目状态与内容日期展示/面包屑/标题锚点与永久链接/脚注/数学公式/打印版式/知识图/外链库存与检查/搜索/OpenSearch/公开清单/发现端点验证器与预算/公开 Markdown/OAuth/Studio/Obsidian/媒体/重定向/代码复制/交付单元测试 → Next 路由类型生成与 TypeScript → 原生 Next.js 生产构建（51 个页面，并包含动态 Route Handler）→ 29 项真实生产 HTTP 与质量审计。任何一步失败都阻止合并和生产部署。
+顺序为 ESLint → 524 项内容/时间档案/内容活动/订阅目录/维护/inbox/暂存媒体/关系/推荐/站点身份/公开路由事实/首页内容证据/About 系统档案/项目状态与内容日期展示/面包屑/标题锚点与永久链接/脚注/数学公式/打印版式/知识图/外链库存与检查/搜索/OpenSearch/公开清单/发现端点验证器与预算/公开 Markdown/OAuth/Studio/Obsidian/媒体/重定向/代码复制/交付单元测试 → Next 路由类型生成与 TypeScript → 原生 Next.js 生产构建（52 个页面，并包含动态 Route Handler）→ 30 项真实生产 HTTP 与质量审计。任何一步失败都阻止合并和生产部署。
 
-公开路由事实质量门不把 `26` 复制成两个独立断言：纯函数夹具锁定静态/动态顺序、total、最新日期、输入不变和重复 path 失败关闭；真实 Next 测试并行请求首页与 Sitemap，从实际 `<loc>` 数量派生首页期望文字，并要求首页 `LATEST` 等于 Sitemap 根 URL 的 `lastmod`。测试同时拒绝遗留 `REV. <数字>`。这样内容增长会自动改变两端，任一消费者脱离共享事实才失败。
+公开路由事实质量门不把 `27` 复制成两个独立断言：纯函数夹具锁定静态/动态顺序、total、最新日期、输入不变和重复 path 失败关闭；真实 Next 测试并行请求首页与 Sitemap，从实际 `<loc>` 数量派生首页期望文字，并要求首页 `LATEST` 等于 Sitemap 根 URL 的 `lastmod`。测试同时拒绝遗留 `REV. <数字>`。这样内容增长会自动改变两端，任一消费者脱离共享事实才失败。
 
 首页内容证据纯函数测试精确比较精选项目的标题、状态/技术栈摘要，最新文章的标题、类型/日期/标签摘要，以及 Current focus；空项目、空文章和全空集合不得产生虚构内容，公开路由数必须是非负整数。SSR 还要求最终 HTML 出现真实内容并拒绝三条旧手写状态；390×844 深色浏览器验证长中文标题完整换行、单一 H1 与零横向溢出，首页继续受 raw/gzip 预算约束。
 
-About 系统档案纯函数测试精确比较四类集合计数、记录/路由 meta、最新日期、精选项目链接、共享中文状态和完整 stack；所有计数必须是非负整数，空集合必须显示零记录、静态公开路由和等待项目，不能发明日期或技术栈。SSR 锁定真实 `4 RECORDS / 26 ROUTES / UPDATED 2026-08-06`、五项 stack，并拒绝旧的手写技术基线句；390×844 深色浏览器验证单一 H1、零横向溢出、长标题和标签换行，`/about` 继续受既有 raw/gzip 预算约束。
+About 系统档案纯函数测试精确比较四类集合计数、记录/路由 meta、最新日期、精选项目链接、共享中文状态和完整 stack；所有计数必须是非负整数，空集合必须显示零记录、静态公开路由和等待项目，不能发明日期或技术栈。SSR 锁定真实 `4 RECORDS / 27 ROUTES / UPDATED 2026-08-06`、五项 stack，并拒绝旧的手写技术基线句；390×844 深色浏览器验证单一 H1、零横向溢出、长标题和标签换行，`/about` 继续受既有 raw/gzip 预算约束。
 
 项目 status presenter 测试枚举 planning/building/maintained/archived，逐项锁定中文 label、大写 code 和统一 meta。SSR 并行请求首页、`/projects` 和 `/projects/myblog`，三处都必须出现 `持续维护 · MAINTAINED`，并分别拒绝旧 `Maintained`、孤立 `MAINTAINED` 和 `Project / maintained`。390×844 深色浏览器逐页验证文本、一个 H1、零横向溢出和 console 0 errors；原始 enum 仍由公开 Markdown、清单、Schema 和 Studio 既有测试保护。
 
 内容日期 presenter 测试覆盖晚于首发的更新、无 `updatedAt`、同日 `updatedAt` 和输入不变。SSR 要求 `/posts`、`/projects`、专题、标签和项目引用账本都输出带真实 `dateTime` 的 UPDATED 元数据；`/archive` 必须没有 `.content-index-date`，并继续输出“发布日期”与首发日。390×844 深色浏览器检查项目/文章三层元数据、一个 H1、零横向溢出；archive 浏览器断言共享日期组件为 0。所有受影响路由继续受既有 raw/gzip 预算约束。
 
-搜索与知识图日期扩展还必须证明“携带更新日”和“保持首发排序”同时成立：纯函数夹具把首发较早但更新较晚的记录与首发较新的记录并置，要求派生对象保留 `updatedAt`，顺序仍由 `publishedAt` 决定；SSR 要求搜索结果、SVG 节点和孤立记录显示 UPDATED 与真实日期，空查询出现“按首发时间”和四个“首发顺序”，archive 继续隔离。Playwright 分别在 390×844 深色搜索/移动图谱和 1280px 深色 SVG 检查日期、单一 H1、断点行为、根宽与 console；搜索和知识图继续受原十二路 HTML 预算约束。
+搜索与知识图日期扩展还必须证明“携带更新日”和“保持首发排序”同时成立：纯函数夹具把首发较早但更新较晚的记录与首发较新的记录并置，要求派生对象保留 `updatedAt`，顺序仍由 `publishedAt` 决定；SSR 要求搜索结果、SVG 节点和孤立记录显示 UPDATED 与真实日期，空查询出现“按首发时间”和四个“首发顺序”，archive 继续隔离。Playwright 分别在 390×844 深色搜索/移动图谱和 1280px 深色 SVG 检查日期、单一 H1、断点行为、根宽与 console；搜索和知识图继续受十三路 HTML 预算约束。
+
+内容活动纯函数测试必须覆盖发布加后续更新、同日更新不形成事件、同日 UPDATED 先于 PUBLISHED、标题/URL 决胜、输入不变和空集合。SSR 与生产 smoke 要求当前公开内容形成八个事件、五个日期组、四个发布、四个更新、零复核事件，并验证 canonical、真实 `<time>`、链接、archive 入口与 Sitemap。Playwright 在 390×844 和 1280×900 深色模式检查节点语义、首项日期、单一 H1、零横向溢出和 0 console errors；活动页必须进入第十三条 HTML raw/gzip 预算。
 
 发布候选额外执行：
 
@@ -82,7 +84,7 @@ npm run production:smoke -- https://example.vercel.app --expect-oauth
 
 订阅目录必须返回 200、具有 `/subscribe` canonical，并在可见 HTML 中恰好渲染 RSS、JSON Feed、OpenSearch、清单/Schema 与 Markdown 五条只读通道；页脚、Sitemap 和全部原生端点链接必须可达。纯目录测试锁定通道顺序、MIME/路径、清单双链接、最新 Markdown 的日期/标题/URL 决胜、输入不变和空集合说明；真实 SSR、生产 smoke 与 390px 浏览器还要验证页内真实链接、只读边界、无横向溢出和零 console error。
 
-检查代表内容、时间档案、订阅目录、搜索、Studio HTML/配置/媒体清单/媒体预检/稳定 slug 控件/公式预览模块/版本化 KaTeX CSS/同源 CMS 运行时、OAuth、OpenSearch、公开内容清单及 Schema、JSON Feed、RSS、robots、全 Sitemap、永久重定向、安全头、缓存与固定 404。OpenSearch 必须具有 1.1 namespace、唯一 ShortName/Description、同源 results/self URL、安全 `{searchTerms}` 模板、示例查询、语言/编码、准确 MIME、`noindex`、最终正文 SHA-256 ETag 与空 304；首页和搜索结果页必须声明绝对 `rel="search"`，端点不能进入 Sitemap。公开内容清单必须由根 HTML 发现，使用 version 1、同 origin 绝对 HTML/Markdown URL、字段白名单、稳定顺序和与全部真实源文相同的 SHA-256 digest；清单自身 ETag、Last-Modified、空 304、`noindex` 与 Vercel 等价缓存必须成立，并与 JSON Feed/RSS 保持同一公开 id 顺序。Schema 必须使用 Draft 2020-12 和 `application/schema+json`，具有同源 `$id`、严格字段结构、与清单双向 registered Link relation、SHA-256 ETag、空 304、`noindex` 与等价缓存；Ajv 2020 还要验证真实清单并拒绝结构反例。JSON Feed 必须使用 1.1 version 和 `application/feed+json`，顶层 origin、作者、语言、icon 正确，item 必须有唯一同值 id/url、纯文本正文、RFC 3339 发布日期且不泄漏内部字段。JSON Feed、RSS、Sitemap、robots 和 OpenSearch 还必须证明 ETag 等于各自最终正文 SHA-256，并用源响应标签完成同 digest、同缓存策略、零正文的 304；缓存验证接受源响应的一小时 fresh/一天 SWR，以及 Vercel CDN 消费 SWR 后的等价一小时策略，robots 则必须保持明确的一天 public fresh。错误 TTL、`private` 或 `no-store` 仍失败关闭。十二条关键 HTML 路由和七个结构化发现端点还必须在实际传入的生产域名下逐条输出 raw/gzip 实测、阈值、基线和带正负号的余量；缺失、重复、意外端点或超限都失败关闭。线上公式 POST 必须返回两条公式、KaTeX、MathML 与生产管线标记，CSS 必须内联 WOFF2 且不残留 package 相对字体路径。媒体清单必须是 `version: 1`、根为 `public/uploads`，每项包含安全路径、正整数节数与 64 位 SHA-256，并保持 `no-store`。永久重定向检查要求 `/blog` 返回 308、同源 `Location` 直达 `/posts`，且目标只需一次请求即返回 200。`--expect-oauth` 只用于已配置 GitHub OAuth 的生产环境；本地和 Preview 允许 OAuth 以 503 安全关闭。
+检查代表内容、时间档案、内容活动、订阅目录、搜索、Studio HTML/配置/媒体清单/媒体预检/稳定 slug 控件/公式预览模块/版本化 KaTeX CSS/同源 CMS 运行时、OAuth、OpenSearch、公开内容清单及 Schema、JSON Feed、RSS、robots、全 Sitemap、永久重定向、安全头、缓存与固定 404。OpenSearch 必须具有 1.1 namespace、唯一 ShortName/Description、同源 results/self URL、安全 `{searchTerms}` 模板、示例查询、语言/编码、准确 MIME、`noindex`、最终正文 SHA-256 ETag 与空 304；首页和搜索结果页必须声明绝对 `rel="search"`，端点不能进入 Sitemap。公开内容清单必须由根 HTML 发现，使用 version 1、同 origin 绝对 HTML/Markdown URL、字段白名单、稳定顺序和与全部真实源文相同的 SHA-256 digest；清单自身 ETag、Last-Modified、空 304、`noindex` 与 Vercel 等价缓存必须成立，并与 JSON Feed/RSS 保持同一公开 id 顺序。Schema 必须使用 Draft 2020-12 和 `application/schema+json`，具有同源 `$id`、严格字段结构、与清单双向 registered Link relation、SHA-256 ETag、空 304、`noindex` 与等价缓存；Ajv 2020 还要验证真实清单并拒绝结构反例。JSON Feed 必须使用 1.1 version 和 `application/feed+json`，顶层 origin、作者、语言、icon 正确，item 必须有唯一同值 id/url、纯文本正文、RFC 3339 发布日期且不泄漏内部字段。JSON Feed、RSS、Sitemap、robots 和 OpenSearch 还必须证明 ETag 等于各自最终正文 SHA-256，并用源响应标签完成同 digest、同缓存策略、零正文的 304；缓存验证接受源响应的一小时 fresh/一天 SWR，以及 Vercel CDN 消费 SWR 后的等价一小时策略，robots 则必须保持明确的一天 public fresh。错误 TTL、`private` 或 `no-store` 仍失败关闭。十三条关键 HTML 路由和七个结构化发现端点还必须在实际传入的生产域名下逐条输出 raw/gzip 实测、阈值、基线和带正负号的余量；缺失、重复、意外端点或超限都失败关闭。线上公式 POST 必须返回两条公式、KaTeX、MathML 与生产管线标记，CSS 必须内联 WOFF2 且不残留 package 相对字体路径。媒体清单必须是 `version: 1`、根为 `public/uploads`，每项包含安全路径、正整数节数与 64 位 SHA-256，并保持 `no-store`。永久重定向检查要求 `/blog` 返回 308、同源 `Location` 直达 `/posts`，且目标只需一次请求即返回 200。`--expect-oauth` 只用于已配置 GitHub OAuth 的生产环境；本地和 Preview 允许 OAuth 以 503 安全关闭。
 
 搜索质量必须覆盖全角/大小写 NFKC、组合重音、兼容字符、多词 AND、摘要/正文证据选择、重叠分段、原文重组和空查询。真实 Next 与生产 smoke 不能只在 RSC 序列化载荷中找到文档标题：Cloudflare 查询必须出现真实 `<mark>`、来源和字段原因，Wrangler 必须是 1 条“正文”证据，B_i 必须是 0 条且没有 mark。组件源码不得使用 `dangerouslySetInnerHTML`；浅深色 ink/trace 对比必须达到 4.5:1，320px 不得横向溢出，搜索输入必须有选择器优先级足够的 `:focus-visible` 轮廓。
 
@@ -143,13 +145,13 @@ npm run production:smoke -- https://example.vercel.app --expect-oauth
 | 最大客户端 JavaScript | `< 300 KB` |
 | 全局 CSS | `< 100 KB` |
 | 单页服务端 HTML raw 紧急上限 | `≤ 160 KiB` |
-| 十二条关键路由 gzip 传输模拟 | `生产基线 + max(20%, 2 KiB)`，再向上取整到 `1 KiB` |
+| 十三条关键路由 gzip 传输模拟 | `生产基线 + max(20%, 2 KiB)`，再向上取整到 `1 KiB` |
 | 七个结构化发现端点 raw | 各自 `生产基线 + max(50%, 4 KiB)`，再向上取整到 `1 KiB` |
 | 七个结构化发现端点 gzip | 各自 `生产基线 + max(50%, 1 KiB)`，再向上取整到 `512 B` |
 
-`scripts/html-budget.mjs` 保存稳定生产 origin、基线日期、来源提交及十二条路由的 raw/Node zlib gzip 基线。本地生产测试用该稳定 origin 作为 forwarded host，对完整响应执行 `Buffer.byteLength` 与 `gzipSync`；部署后的 `production:smoke` 再对实际输入域名执行同一模块，二者都输出实测、阈值、基线和余量。raw 160 KiB 只防止异常解压/文档膨胀；性能回归由按生产基线推导的 gzip 门判断，因此高度重复但可压缩的 100KB 以上页面不会被旧统一门误伤，高熵增长仍会失败。404 采用固定 `/definitely-missing`，避免随机路径本身进入 RSC 载荷后改变测量值。
+`scripts/html-budget.mjs` 保存稳定生产 origin、基线日期、来源提交及十三条路由的 raw/Node zlib gzip 基线。本地生产测试用该稳定 origin 作为 forwarded host，对完整响应执行 `Buffer.byteLength` 与 `gzipSync`；部署后的 `production:smoke` 再对实际输入域名执行同一模块，二者都输出实测、阈值、基线和余量。raw 160 KiB 只防止异常解压/文档膨胀；性能回归由按生产基线推导的 gzip 门判断，因此高度重复但可压缩的 100KB 以上页面不会被旧统一门误伤，高熵增长仍会失败。404 采用固定 `/definitely-missing`，避免随机路径本身进入 RSC 载荷后改变测量值。
 
-Iteration 0112 以显式 noindex 修复后的稳定生产提交 `c2e1d968` 在 2026-08-11 统一冻结十二条基线：`/` 32044/6867、`/posts` 22532/5054、代表文章 56639/13122、代表项目 112803/25247、`/archive` 24933/5503、`/subscribe` 33680/6487、专题 22285/5077、标签 22106/5051、搜索 40955/14650、知识地图 40537/8004、关于页 19658/4719、固定 404 25370/4459 B（raw/gzip）。十二条 gzip 上限依次为 9216、7168、16384、30720、8192、9216、7168、7168、18432、10240、7168、7168 B。来源提交、日期和完整路径清单由脚本与测试共同锁定；基线仍不能自动追随当前输出。
+Iteration 0119 以内容活动功能提交 `5fb508c` 的稳定生产响应在 2026-08-11 统一重测十三条基线：`/` 32195/6821、`/posts` 23165/5101、代表文章 57125/13190、代表项目 113705/25394、`/archive` 25184/5543、`/activity` 37888/6401、`/subscribe` 33680/6485、专题 22707/5113、标签 22560/5110、搜索 41251/14704、知识地图 40497/8011、关于页 21811/5105、固定 404 25370/4455 B（raw/gzip）。十三条 gzip 上限依次为 9216、7168、16384、30720、8192、9216、9216、7168、7168、18432、10240、7168、7168 B。来源提交、日期和完整路径清单由脚本与测试共同锁定；基线仍不能自动追随当前输出。
 
 `scripts/discovery-budget.mjs` 独立保存七个结构化端点的 stable-origin raw/gzip 基线和逐端点推导上限。它同时约束 raw 与 gzip：可压缩的异常正文不能只靠 gzip 通过，高熵增长也不能只靠 raw 通过。本地应用测试与生产冒烟必须各自恰好覆盖清单、Schema、JSON Feed、RSS、Sitemap、robots、OpenSearch 一次，并输出 `[discovery-budget]` 报告；Iteration 0111 以稳定生产提交 `5ab34a7` 重新确认来源，依次为 3009/921、3278/755、20697/9876、3238/1241、4882/524、155/127、700/462 B（raw/gzip）。
 
