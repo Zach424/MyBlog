@@ -1,6 +1,6 @@
 # 搜索与发布发现
 
-- 状态：RSS/Sitemap/robots implemented in iteration 0006；JSON Feed 1.1 implemented in iteration 0088；公开内容清单 implemented in iteration 0091；清单 JSON Schema implemented in iteration 0099；既有结构化端点条件读取 completed in iteration 0101；OpenSearch 1.1 discovery completed in iteration 0102；可解释搜索命中证据 completed in iteration 0103；可解释继续阅读 completed in iteration 0104；详情页结构化面包屑 completed in iteration 0105；首页站点身份 completed in iteration 0106；文章/项目内容身份图 completed in iteration 0107
+- 状态：RSS/Sitemap/robots implemented in iteration 0006；JSON Feed 1.1 implemented in iteration 0088；公开内容清单 implemented in iteration 0091；清单 JSON Schema implemented in iteration 0099；既有结构化端点条件读取 completed in iteration 0101；OpenSearch 1.1 discovery completed in iteration 0102；可解释搜索命中证据 completed in iteration 0103；可解释继续阅读 completed in iteration 0104；详情页结构化面包屑 completed in iteration 0105；首页站点身份 completed in iteration 0106；文章/项目内容身份图 completed in iteration 0107；完整内容结构化数据纯生成边界 completed in iteration 0108
 - 目标：让公开内容可搜索、可订阅、可被搜索引擎发现，同时保持 Git 内容源和无数据库架构。
 
 ## 站内搜索
@@ -31,7 +31,7 @@
 
 Google 站点名称契约要求 `WebSite` 只位于域名或子域名首页，内部集合、详情、搜索、地图和关于页因此都必须为零。当前没有经过确认的简称，也没有需要远程执行的搜索 API，所以不输出 `alternateName` 或 `SearchAction`。站点名称不受 Google Rich Results Test 支持；自动门验证 Schema 与真实 HTML，人工抽查应使用 Schema Markup Validator，最终搜索展示仍由搜索引擎决定。
 
-文章 `BlogPosting` 与项目 `SoftwareSourceCode` 使用各自同 origin canonical 加 `#content` 作为稳定 `@id`，并通过只含 `@id` 的 `isPartOf` 节点引用 `<root>#website`。W3C JSON-LD 1.1 允许只含 `@id` 的 node reference；Schema.org 将 `isPartOf` 定义在 `CreativeWork` 上，适用于这两类内容。内部页不复制完整 `WebSite`，404 不输出内容节点，已有标题、日期、URL、图片、作者、代码仓库和语言字段保持不变。
+文章 `BlogPosting` 与项目 `SoftwareSourceCode` 使用各自同 origin canonical 加 `#content` 作为稳定 `@id`，并通过只含 `@id` 的 `isPartOf` 节点引用 `<root>#website`。W3C JSON-LD 1.1 允许只含 `@id` 的 node reference；Schema.org 将 `isPartOf` 定义在 `CreativeWork` 上，适用于这两类内容。完整文档由 `lib/content/structured-data.ts` 的两个类型收窄纯函数生成：身份、语言和作者只有一个复用边界，tags/stack 与 URL 不保留调用方可变引用，可选图片/仓库在 JSON 序列化时省略。详情页不再内联字段映射；内部页不复制完整 `WebSite`，404 不输出内容节点，已有标题、日期、URL、图片、作者、代码仓库和语言字段保持不变。
 
 ## OpenSearch 1.1
 

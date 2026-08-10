@@ -140,7 +140,7 @@ npm run production:smoke -- https://your-production.example --expect-oauth
 
 首页站点身份要核对根页面恰有一个 `WebSite`，`@id` 为实际生产根地址加 `#website`，`name`、`description`、`inLanguage` 与站点事实一致，`url` 为本次冒烟 origin 的规范根地址；代表集合、详情、搜索、地图和关于页必须全部没有 `WebSite`。不得为了字段丰富度添加未经确认的 `alternateName` 或 `SearchAction`。Google Rich Results Test 不支持站点名称，发布前人工语法抽查使用 Schema Markup Validator；自动门和人工语法通过都不代表搜索引擎一定采用该站点名。
 
-内容身份还要核对代表文章的 `BlogPosting` 与代表项目的 `SoftwareSourceCode` 各恰好一个，`@id` 分别是实际生产 canonical 加 `#content`，`url` 与文章 `mainEntityOfPage` 不漂移，`isPartOf` 只含同一生产根 `#website` 引用，非首页不重复完整 `WebSite`。未知文章/项目必须 404 且没有两类内容文档。自定义域名启用时，这些 ID 与引用必须和主页、canonical、Feed、清单一起重新测量，不能继续沿用 Vercel 域名。
+内容身份还要核对代表文章的 `BlogPosting` 与代表项目的 `SoftwareSourceCode` 各恰好一个，`@id` 分别是实际生产 canonical 加 `#content`，`url` 与文章 `mainEntityOfPage` 不漂移，`isPartOf` 只含同一生产根 `#website` 引用，非首页不重复完整 `WebSite`；标题、描述、日期、语言、标签、图片、作者、仓库和技术栈也必须来自纯生成器的既有字段。未知文章/项目必须 404 且没有两类内容文档。生成器重构若线上 raw 未变化，不得重置 HTML 基线；自定义域名启用时，这些 ID 与引用必须和主页、canonical、Feed、清单一起重新测量，不能继续沿用 Vercel 域名。
 
 同一命令还会为清单、Schema、JSON Feed、RSS、Sitemap、robots 与 OpenSearch 输出 `[discovery-budget]` 七行 raw/gzip 证据。任一路由缺失、重复、超出自己的冻结上限都会阻止冒烟；不要通过删除检查或自动采用当前输出解决失败。若增长是一次有意的内容/协议变化，先核对实际正文与公开集合，再在稳定生产重新测量七端点，同时更新基线数值、日期、来源提交、测试和迭代归档。域名变化会改变绝对 URL 和正文大小，必须以新稳定 origin 重新建立有来源基线。
 

@@ -8,11 +8,11 @@
 | 4. 作者自助写作 | done | `/studio` OAuth + editorial workflow PR、Obsidian Vault/模板/附件/真实 `--push` |
 | 5. Vercel 原生迁移 | production live | 原生 Next.js、无 Cloudflare 依赖、24 路由生产冒烟通过 |
 | 6. 所有者生产上线 | done | Git 自动 Production、稳定域名自动冒烟、双端发布、回滚与恢复均已验收 |
-| 7. 持续内容与作者体验 | in progress | Iteration 0107 发布文章/项目稳定内容身份、主页站点节点引用与真实生产图谱门 |
+| 7. 持续内容与作者体验 | in progress | Iteration 0108 收口文章/项目完整 JSON-LD 纯生成器并证明生产 HTML 不变 |
 
 ## 当前唯一主线
 
-进入持续内容与作者体验阶段。Iteration 0107 已让现有 `BlogPosting` 与 `SoftwareSourceCode` 使用同 origin canonical 的稳定 `@id`，并以最小 `isPartOf` 节点引用主页 `#website`；纯函数、SSR、浏览器 DOM、404、生产烟测与 HTML 预算都已闭环。下一主线是把两类详情页仍内联的完整 JSON-LD 对象提取为纯生成器，用精确字段测试统一作者、日期、图片、代码仓库和可选字段边界，减少后续 schema 漂移，但不新增公开人物事实、客户端代码、数据库或内容字段；首次真实 Obsidian 人机验收继续保留为所有者可执行事项，需要品牌域名时再绑定自定义域名。
+进入持续内容与作者体验阶段。Iteration 0108 已把 `BlogPosting` 与 `SoftwareSourceCode` 的完整对象收口为两个类型收窄纯生成器，精确锁定字段顺序、数组/URL 不变性和可选字段省略；SSR、浏览器 DOM、生产烟测均证明公开语义不变，九路 raw 与 0107 基线完全相同。下一主线是在文章生成器中复用现有 `wordCount` 与 `readMinutes`，增加 Schema.org 整数 `wordCount` 和 ISO 8601 Duration `timeRequired`，先以纯函数和真实页面测试固定映射，再在稳定生产重测代表文章基线；不新增 frontmatter、公开人物事实、客户端代码或数据库。首次真实 Obsidian 人机验收继续保留为所有者可执行事项，需要品牌域名时再绑定自定义域名。
 
 ## 已知风险
 
