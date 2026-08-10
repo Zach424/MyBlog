@@ -42,6 +42,8 @@ content/
 .obsidian/plugins/myblog-publisher/ Obsidian 创建、改名、检查、发布、复核与交付恢复入口
 public/uploads/<slug>/              按内容隔离的公开图片附件
 lib/
+  about-profile.ts                  公开集合/路由/精选项目到 About 系统档案的纯投影
+  content-presentation.ts           跨公开页面共享的项目状态展示语义
   breadcrumbs.ts                    同源绝对 URL、稳定 position 与路径不变量生成器
   homepage-evidence.ts              公开项目/文章到首页证据与当前焦点的纯投影
   public-routes.ts                  首页与 Sitemap 共享的公开路由、总数和最新日期事实
@@ -100,6 +102,8 @@ vercel.json                         Vercel Next.js 框架声明
 `lib/public-routes.ts` 是可索引公开路由的唯一派生边界。10 条静态页面声明 path、日期来源、change frequency 与 priority；文章、项目、专题和标签从同一公开内容/索引自动追加。最终清单检查跨集合 path 唯一性，并输出 routes、total 与最新公开内容日期。`createSitemapXml()` 只把 routes 序列化为 XML；首页 Evidence Rail 使用同一个 total，`LATEST` 使用与 Sitemap 根 URL `lastmod` 相同的日期。Feed、Studio、OAuth、错误页和其他 noindex 端点有意不属于该集合。整个边界只在服务端运行，不读取 Git、不发起 API 请求，也不持有第二份计数。
 
 `lib/homepage-evidence.ts` 是公开内容事实到首页 Evidence Rail 的专用 view-model。它只接收精选项目的标题、status、stack、日期与最新文章的标题、type、tags、日期，再映射 Building、Learned 和 Current focus；stack/tag 以“前 N 项 + 剩余数量”控制密度，标题保持原文，空项目/空文章输出明确等待状态。首页组件不再解释状态或维护运行摘要；该纯函数不读取文件、不发起请求，也不扩展内容 schema。
+
+`lib/about-profile.ts` 把公开 posts/projects/series/tags 的数量、共享公开路由 total/latestModified 和精选项目投影为 `/about` 专用系统档案。输出包含可导航的集合计数、公开 URL、最近更新、项目标题/链接、中文状态和完整 stack；零内容时返回明确的等待状态，所有计数在边界检查为非负整数。`lib/content-presentation.ts` 集中项目 status 到中文展示语义，首页与 About 不各自维护映射。About 页面仍是纯 Server Component，不读取 Git、不请求自身 API，也不新增内容字段。
 
 `lib/public-markdown.ts` 把同一公开 `ContentRecord` 投影为可移植 Markdown，而不是读取并透传作者原文件。YAML 只按文章/项目显式白名单输出公开阅读字段、canonical 与可选封面；`draft`、`featured`、源文件路径和构建派生字段不会进入响应。正文复用共享 GFM + math AST 的节点位置，只改写真实 link/image/definition URL：根相对站内地址、媒体地址与自页面 fragment 转为当前请求 origin 下的绝对 URL，外部 URL、代码和围栏代码保持不变，无法证明节点位置时失败关闭。最终 UTF-8 表示生成 `"sha256-<64 hex>"` 源站强 ETag；`Last-Modified` 取 published/updated/reviewed 中最新日期的 UTC 零点。`If-None-Match` 按 GET 弱比较语义接受单值、列表、`W/` 与 `*`，源站命中返回带共享响应头的空 304，畸形条件头按普通 200 处理。Vercel 对 Brotli 表示可把同一 opaque tag 弱化为 `W/`，并按 HTTP 语义把边缘 304 收敛为 ETag、Cache-Control 等缓存更新元数据；生产验证比较强弱标签中的相同 SHA-256 身份，并只校验仍出现的可选元数据不能漂移。文章与项目的嵌套 `source.md` Route Handler 只调用公开 getter，因此草稿、未来内容和未知 slug 都返回不可缓存的 404。
 
