@@ -479,4 +479,9 @@ test("keeps the root layout fluid at 320px viewports", async () => {
     css,
     /\.content-recommendation-list > li\s*{[^}]*min-width:\s*0/s,
   );
+  assert.match(css, /\.breadcrumbs a\s*{[^}]*flex-shrink:\s*0/s);
+  assert.match(
+    css,
+    /\.breadcrumbs \[aria-current="page"\]\s*{[^}]*min-width:\s*0[^}]*overflow-wrap:\s*anywhere/s,
+  );
 });

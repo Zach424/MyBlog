@@ -2,6 +2,7 @@ import type { Metadata } from "next";
 import Link from "next/link";
 import { headers } from "next/headers";
 import { notFound } from "next/navigation";
+import { BreadcrumbTrail } from "@/components/BreadcrumbTrail";
 import {
   ContentHeader,
   ContentNeighbors,
@@ -122,13 +123,14 @@ export default async function PostPage({ params }: PostPageProps) {
           },
         }}
       />
-      <nav className="breadcrumbs" aria-label="面包屑">
-        <Link href="/">首页</Link>
-        <span aria-hidden="true">/</span>
-        <Link href="/posts">文章</Link>
-        <span aria-hidden="true">/</span>
-        <span aria-current="page">{post.type === "til" ? "TIL" : "Article"}</span>
-      </nav>
+      <BreadcrumbTrail
+        items={[
+          { href: "/", name: "首页" },
+          { href: "/posts", name: "文章" },
+          { href: post.url, name: post.title },
+        ]}
+        siteUrl={siteUrl}
+      />
       <ContentHeader
         eyebrow={post.type === "til" ? "Today I learned" : "Engineering note"}
         title={post.title}

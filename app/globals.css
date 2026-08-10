@@ -792,8 +792,14 @@ input:focus-visible {
 }
 
 .breadcrumbs a {
+  flex-shrink: 0;
   color: var(--muted);
   text-decoration: none;
+}
+
+.breadcrumbs [aria-current="page"] {
+  min-width: 0;
+  overflow-wrap: anywhere;
 }
 
 .breadcrumbs a:hover {

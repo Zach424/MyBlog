@@ -1,7 +1,7 @@
 import type { Metadata } from "next";
-import Link from "next/link";
 import { headers } from "next/headers";
 import { notFound } from "next/navigation";
+import { BreadcrumbTrail } from "@/components/BreadcrumbTrail";
 import {
   ContentHeader,
   ContentRecommendations,
@@ -114,13 +114,14 @@ export default async function ProjectPage({ params }: ProjectPageProps) {
           },
         }}
       />
-      <nav className="breadcrumbs" aria-label="面包屑">
-        <Link href="/">首页</Link>
-        <span aria-hidden="true">/</span>
-        <Link href="/projects">项目</Link>
-        <span aria-hidden="true">/</span>
-        <span aria-current="page">{project.status}</span>
-      </nav>
+      <BreadcrumbTrail
+        items={[
+          { href: "/", name: "首页" },
+          { href: "/projects", name: "项目" },
+          { href: project.url, name: project.title },
+        ]}
+        siteUrl={siteUrl}
+      />
       <ContentHeader
         eyebrow={`Project / ${project.status}`}
         title={project.title}

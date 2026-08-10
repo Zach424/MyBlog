@@ -19,6 +19,52 @@ function invariant(condition, message) {
   if (!condition) throw new Error(message);
 }
 
+function visibleDocument(html) {
+  const documentEnd = html.indexOf("</html>");
+  return documentEnd >= 0 ? html.slice(0, documentEnd + 7) : html;
+}
+
+function structuredDataByType(html, type) {
+  return [
+    ...visibleDocument(html).matchAll(
+      /<script(?=[^>]*\btype="application\/ld\+json")[^>]*>([\s\S]*?)<\/script>/giu,
+    ),
+  ]
+    .map((match) => JSON.parse(match[1]))
+    .filter((document) => document["@type"] === type);
+}
+
+function assertBreadcrumbList(origin, pathname, html, items) {
+  const documents = structuredDataByType(html, "BreadcrumbList");
+  invariant(documents.length === 1, `${pathname} BreadcrumbList 数量异常`);
+  const expected = items.map((entry, index) => ({
+    "@type": "ListItem",
+    position: index + 1,
+    name: entry.name,
+    item: new URL(entry.href, origin).href,
+  }));
+  invariant(
+    documents[0]["@context"] === "https://schema.org" &&
+      JSON.stringify(documents[0].itemListElement) === JSON.stringify(expected),
+    `${pathname} BreadcrumbList 路径异常`,
+  );
+
+  const nav = visibleDocument(html)
+    .replaceAll("<!-- -->", "")
+    .match(/<nav class="breadcrumbs" aria-label="面包屑">([\s\S]*?)<\/nav>/u)?.[1];
+  invariant(Boolean(nav), `${pathname} 缺少可见面包屑`);
+  for (const entry of items.slice(0, -1)) {
+    invariant(
+      nav.includes(`<a href="${entry.href}">${entry.name}</a>`),
+      `${pathname} 可见面包屑链接异常`,
+    );
+  }
+  invariant(
+    nav.includes(`<span aria-current="page">${items.at(-1).name}</span>`),
+    `${pathname} 可见当前面包屑异常`,
+  );
+}
+
 const RETRYABLE_STATUS = new Set([429, 500, 502, 503, 504]);
 
 async function fetchWithRetry(url, init = {}, attempts = 3) {
@@ -215,6 +261,63 @@ export async function runProductionSmoke(originInput, { expectOAuth = false } = 
     (relatedProject.match(/class="content-recommendation"/gu) ?? []).length === 3 &&
       relatedProject.includes("共同标签 · Design Systems"),
     "项目相关内容推荐异常",
+  );
+  for (const [pathname, items] of [
+    [
+      "/posts/building-a-maintainable-blog",
+      [
+        { href: "/", name: "首页" },
+        { href: "/posts", name: "文章" },
+        {
+          href: "/posts/building-a-maintainable-blog",
+          name: "从零搭建可维护的个人技术博客",
+        },
+      ],
+    ],
+    [
+      "/projects/myblog",
+      [
+        { href: "/", name: "首页" },
+        { href: "/projects", name: "项目" },
+        { href: "/projects/myblog", name: "MyBlog — 把学习记录做成工程资产" },
+      ],
+    ],
+    [
+      "/series/build-my-blog",
+      [
+        { href: "/", name: "首页" },
+        { href: "/series", name: "专题" },
+        { href: "/series/build-my-blog", name: "从零构建个人博客" },
+      ],
+    ],
+    [
+      "/tags/typescript",
+      [
+        { href: "/", name: "首页" },
+        { href: "/tags", name: "标签" },
+        { href: "/tags/typescript", name: "TypeScript" },
+      ],
+    ],
+  ]) {
+    assertBreadcrumbList(
+      origin,
+      pathname,
+      htmlPages.get(pathname)?.body ?? "",
+      items,
+    );
+  }
+  const missingBreadcrumbPages = await Promise.all(
+    ["posts", "projects", "series", "tags"].map((kind) =>
+      request(origin, `/${kind}/structured-data-missing`),
+    ),
+  );
+  invariant(
+    missingBreadcrumbPages.every(
+      ({ response, body }) =>
+        response.status === 404 &&
+        structuredDataByType(body, "BreadcrumbList").length === 0,
+    ),
+    "未知详情页不得输出 BreadcrumbList",
   );
   assertHtmlBudgetCoverage(htmlBudgetReports);
   assertHtmlBudgets(htmlBudgetReports);

@@ -1,8 +1,10 @@
 import type { Metadata } from "next";
-import Link from "next/link";
+import { headers } from "next/headers";
 import { notFound } from "next/navigation";
+import { BreadcrumbTrail } from "@/components/BreadcrumbTrail";
 import { CollectionIntro, ContentIndexList } from "@/components/ContentViews";
 import { getSeriesBySlug, getSeriesIndex } from "@/lib/content";
+import { resolveSiteUrl } from "@/lib/site";
 
 type SeriesDetailProps = {
   params: Promise<{ slug: string }>;
@@ -34,16 +36,18 @@ export default async function SeriesDetailPage({ params }: SeriesDetailProps) {
   const { slug } = await params;
   const series = getSeriesBySlug(slug);
   if (!series) notFound();
+  const siteUrl = resolveSiteUrl(await headers());
 
   return (
     <main className="collection-page page-shell" id="main-content">
-      <nav className="breadcrumbs" aria-label="面包屑">
-        <Link href="/">首页</Link>
-        <span aria-hidden="true">/</span>
-        <Link href="/series">专题</Link>
-        <span aria-hidden="true">/</span>
-        <span aria-current="page">{series.title}</span>
-      </nav>
+      <BreadcrumbTrail
+        items={[
+          { href: "/", name: "首页" },
+          { href: "/series", name: "专题" },
+          { href: `/series/${series.slug}`, name: series.title },
+        ]}
+        siteUrl={siteUrl}
+      />
       <CollectionIntro
         eyebrow="Series trace"
         title={series.title}

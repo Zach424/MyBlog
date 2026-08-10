@@ -31,6 +31,29 @@ function visibleDocument(html) {
   return documentEnd >= 0 ? html.slice(0, documentEnd + 7) : html;
 }
 
+function structuredDataByType(html, type) {
+  return [
+    ...visibleDocument(html).matchAll(
+      /<script(?=[^>]*\btype="application\/ld\+json")[^>]*>([\s\S]*?)<\/script>/giu,
+    ),
+  ]
+    .map((match) => JSON.parse(match[1]))
+    .filter((document) => document["@type"] === type);
+}
+
+function expectedBreadcrumbList(items) {
+  return {
+    "@context": "https://schema.org",
+    "@type": "BreadcrumbList",
+    itemListElement: items.map((item, index) => ({
+      "@type": "ListItem",
+      position: index + 1,
+      name: item.name,
+      item: new URL(item.href, "https://blog.example.test").href,
+    })),
+  };
+}
+
 test("server-renders the engineering log homepage", async () => {
   const response = await render();
   assert.equal(response.status, 200);
@@ -111,6 +134,86 @@ test("server-renders every public content collection and detail route", async ()
     const response = await render(pathname);
     assert.equal(response.status, 200, pathname);
     assert.match(await response.text(), expectation, pathname);
+  }
+});
+
+test("keeps visible and machine breadcrumbs identical on every detail route", async () => {
+  const routeExpectations = [
+    [
+      "/posts/building-a-maintainable-blog",
+      [
+        { href: "/", name: "首页" },
+        { href: "/posts", name: "文章" },
+        {
+          href: "/posts/building-a-maintainable-blog",
+          name: "从零搭建可维护的个人技术博客",
+        },
+      ],
+    ],
+    [
+      "/projects/myblog",
+      [
+        { href: "/", name: "首页" },
+        { href: "/projects", name: "项目" },
+        { href: "/projects/myblog", name: "MyBlog — 把学习记录做成工程资产" },
+      ],
+    ],
+    [
+      "/series/build-my-blog",
+      [
+        { href: "/", name: "首页" },
+        { href: "/series", name: "专题" },
+        { href: "/series/build-my-blog", name: "从零构建个人博客" },
+      ],
+    ],
+    [
+      "/tags/typescript",
+      [
+        { href: "/", name: "首页" },
+        { href: "/tags", name: "标签" },
+        { href: "/tags/typescript", name: "TypeScript" },
+      ],
+    ],
+  ];
+
+  for (const [pathname, items] of routeExpectations) {
+    const response = await render(pathname);
+    assert.equal(response.status, 200, pathname);
+    const html = visibleDocument(await response.text()).replaceAll("<!-- -->", "");
+    const documents = structuredDataByType(html, "BreadcrumbList");
+    assert.equal(documents.length, 1, `${pathname} BreadcrumbList count`);
+    assert.deepEqual(documents[0], expectedBreadcrumbList(items), pathname);
+
+    const nav = html.match(
+      /<nav class="breadcrumbs" aria-label="面包屑">([\s\S]*?)<\/nav>/u,
+    )?.[1];
+    assert.ok(nav, `${pathname} visible breadcrumbs`);
+    for (const item of items.slice(0, -1)) {
+      assert.ok(
+        nav.includes(`<a href="${item.href}">${item.name}</a>`),
+        `${pathname} visible link ${item.name}`,
+      );
+    }
+    const current = items.at(-1);
+    assert.ok(
+      nav.includes(`<span aria-current="page">${current.name}</span>`),
+      `${pathname} visible current item`,
+    );
+  }
+
+  for (const pathname of [
+    "/posts/structured-data-missing",
+    "/projects/structured-data-missing",
+    "/series/structured-data-missing",
+    "/tags/structured-data-missing",
+  ]) {
+    const response = await render(pathname);
+    assert.equal(response.status, 404, pathname);
+    assert.equal(
+      structuredDataByType(await response.text(), "BreadcrumbList").length,
+      0,
+      pathname,
+    );
   }
 });
 
