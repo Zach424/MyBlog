@@ -46,3 +46,16 @@ test("defines a scoped A4 print reading and pagination contract", async () => {
   assert.match(styles, /\.content-relation-group\s*\{[\s\S]*?break-inside:\s*avoid-page;/u);
   assert.match(styles, /\.content-relation-group \.content-index-row\s*\{\s*min-height:\s*0;/u);
 });
+
+test("keeps the chronological archive server-rendered and printable", async () => {
+  const [page, styles] = await Promise.all([
+    readFile(new URL("../app/archive/page.tsx", import.meta.url), "utf8"),
+    readFile(new URL("../app/globals.css", import.meta.url), "utf8"),
+  ]);
+
+  assert.doesNotMatch(page, /["']use client["']/u);
+  assert.match(page, /createContentArchive\(records\)/u);
+  assert.match(page, /<time[\s\S]*?dateTime=\{record\.publishedAt\}/u);
+  assert.match(styles, /@media print[\s\S]*?\.archive-entry\s*\{[\s\S]*?break-inside:\s*avoid-page;/u);
+  assert.match(styles, /@media print[\s\S]*?\.archive-page \.collection-links\s*\{\s*display:\s*none;/u);
+});

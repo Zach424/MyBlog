@@ -142,3 +142,5 @@ export type {
   ContentRecommendation,
   ContentRecommendationReason,
 } from "./recommendations";
+export { createContentArchive } from "./archive";
+export type { ContentArchiveMonth, ContentArchiveYear } from "./archive";

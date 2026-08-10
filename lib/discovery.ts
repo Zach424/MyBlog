@@ -155,6 +155,7 @@ export function createSitemapXml(siteUrl: URL, input: SitemapInput) {
     { path: "/", lastModified: siteDate, changeFrequency: "weekly", priority: 1 },
     { path: "/posts", lastModified: newestDate(input.posts), changeFrequency: "weekly", priority: 0.9 },
     { path: "/projects", lastModified: newestDate(input.projects), changeFrequency: "monthly", priority: 0.8 },
+    { path: "/archive", lastModified: siteDate, changeFrequency: "weekly", priority: 0.7 },
     { path: "/series", lastModified: newestDate(input.posts), changeFrequency: "monthly", priority: 0.7 },
     { path: "/tags", lastModified: siteDate, changeFrequency: "monthly", priority: 0.6 },
     { path: "/knowledge", lastModified: siteDate, changeFrequency: "monthly", priority: 0.7 },

@@ -117,7 +117,7 @@ test("server-renders the engineering log homepage", async () => {
   assert.match(html, /从零搭建可维护的个人技术博客/);
   assert.match(html, /MyBlog — 把学习记录做成工程资产/);
   assert.match(html, /公开生产上线/);
-  assert.match(html, /Guest · 24 public URLs · Browser QA/);
+  assert.match(html, /Guest · 25 public URLs · Browser QA/);
   assert.match(html, /持续内容发布与维护/);
   assert.match(html, /权限变更也要做未登录验收/);
   const revisionDate = /REV\. 010 · (\d{4}-\d{2}-\d{2})/u.exec(visibleHtml)?.[1];
@@ -149,6 +149,7 @@ test("publishes one authoritative WebSite identity on the homepage only", async 
     "/posts",
     "/posts/building-a-maintainable-blog",
     "/projects/myblog",
+    "/archive",
     "/series/build-my-blog",
     "/tags/typescript",
     "/search",
@@ -268,6 +269,7 @@ test("server-renders every public content collection and detail route", async ()
   const routeExpectations = [
     ["/posts", /文章与 TIL/],
     ["/projects", /项目复盘/],
+    ["/archive", /时间档案/],
     ["/series", /连续专题/],
     ["/series/build-my-blog", /从零搭建可维护的个人技术博客/],
     ["/tags", /技术标签/],
@@ -282,6 +284,35 @@ test("server-renders every public content collection and detail route", async ()
     assert.equal(response.status, 200, pathname);
     assert.match(await response.text(), expectation, pathname);
   }
+});
+
+test("server-renders one mixed chronological archive with real dates and types", async () => {
+  const response = await render("/archive");
+  assert.equal(response.status, 200);
+
+  const html = visibleDocument(await response.text()).replaceAll("<!-- -->", "");
+  assert.match(
+    html,
+    /<link rel="canonical" href="https:\/\/blog\.example\.test\/archive"/u,
+  );
+  assert.match(html, /<ol class="archive-ledger" aria-label="公开内容时间档案">/u);
+  assert.equal((html.match(/class="archive-entry"/gu) ?? []).length, 4);
+  assert.match(html, /<h2>2026<\/h2>/u);
+  assert.match(html, /<span class="visually-hidden">2026 年<\/span>07 月/u);
+  assert.match(html, /dateTime="2026-07-18"/u);
+  assert.match(html, />Article<\/span>/u);
+  assert.match(html, />TIL<\/span>/u);
+  assert.match(html, />Project<\/span>/u);
+
+  const titles = [
+    "从零搭建可维护的个人技术博客",
+    "MyBlog — 把学习记录做成工程资产",
+    "Windows 下的跨平台 npm scripts",
+    "为什么先写项目章程，再写首页",
+  ];
+  const positions = titles.map((title) => html.indexOf(title));
+  assert.ok(positions.every((position) => position >= 0));
+  assert.deepEqual(positions, [...positions].sort((left, right) => left - right));
 });
 
 test("keeps visible and machine breadcrumbs identical on every detail route", async () => {
@@ -899,6 +930,7 @@ test("publishes the structured discovery suite from one public origin", async (c
   );
   assert.match(sitemap, /https:\/\/blog\.example\.test\/search/);
   assert.match(sitemap, /https:\/\/blog\.example\.test\/knowledge/);
+  assert.match(sitemap, /https:\/\/blog\.example\.test\/archive/);
   assert.match(sitemap, /https:\/\/blog\.example\.test\/tags\/typescript/);
   assert.match(sitemap, /https:\/\/blog\.example\.test\/series\/build-my-blog/);
   assert.doesNotMatch(sitemap, /opensearch\.xml/u);

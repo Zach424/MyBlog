@@ -161,6 +161,7 @@ test("creates a complete sitemap and a linked robots policy", () => {
 
   assert.match(sitemap, /https:\/\/blog\.example\.test\/search/);
   assert.match(sitemap, /https:\/\/blog\.example\.test\/knowledge/);
+  assert.match(sitemap, /https:\/\/blog\.example\.test\/archive/);
   assert.match(sitemap, /https:\/\/blog\.example\.test\/posts\/build-worker/);
   assert.match(sitemap, /<lastmod>2026-07-19<\/lastmod>/);
   assert.match(robots, /Allow: \/$/m);

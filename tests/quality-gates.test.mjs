@@ -393,6 +393,7 @@ test("keeps every visible internal navigation target healthy", async () => {
     "/posts/cross-platform-npm-scripts",
     "/projects",
     "/projects/myblog",
+    "/archive",
     "/series",
     "/tags",
     "/search",

@@ -290,6 +290,7 @@ export async function runProductionSmoke(originInput, { expectOAuth = false } = 
   for (const [pathname, marker] of [
     ["/posts", "文章与 TIL"],
     ["/projects", "项目复盘"],
+    ["/archive", "时间档案"],
     ["/knowledge", "知识之间，应该看得见来路"],
     ["/posts/building-a-maintainable-blog", "从零搭建可维护的个人技术博客"],
     ["/projects/myblog", "MyBlog"],
@@ -1081,7 +1082,8 @@ export async function runProductionSmoke(originInput, { expectOAuth = false } = 
         sitemap.response.headers.get("etag"),
         sha256Etag(sitemap.body),
       ) &&
-      sitemapUrls.length >= 23,
+      sitemapUrls.includes(`${origin.origin}/archive`) &&
+      sitemapUrls.length >= 24,
     "Sitemap URL 数量或条件验证器异常",
   );
   invariant(
