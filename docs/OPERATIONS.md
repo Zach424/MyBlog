@@ -31,7 +31,7 @@ Secret 只保存在 Vercel/GitHub 的加密设置中，不进入 `.env.example`�
 6. 让质量门通过，再把提交合并到 `main`；
 7. Obsidian 1.41.0 在所有 Git 写入口前先校验运行代码/runtime manifest/磁盘插件版本、main/manifest/styles 的三份 bundle 摘要，以及 bundle/main/manifest/styles 的 Git HEAD/index/worktree provenance；兼容后，正常 `--push` 或两条可信恢复交付成功会校验 receipt/handoff、释放可能存在的作者事务并完成 Vault reconcile，再自动启动单篇生产等待。等待失败不改变已经完成的 Git 交付；Studio 与普通 Git 仍需手动运行“等待当前正式内容上线”；
 8. Vercel 自动创建生产部署，deployment status 工作流检查稳定公开生产域名；
-9. 打开文章、`/subscribe`、公开内容清单、清单 Schema、JSON Feed、RSS、Sitemap 和 OpenSearch，确认新内容与五条公开读取通道可见且绝对 URL 指向当前生产域名；清单中的 `markdown_etag` 应与对应源文响应一致，`/content.json` 与 `/content.schema.json` 应通过 describedby/describes Link 双向关联，七个结构化端点应带最终正文 SHA-256 ETag 并支持空正文 304，首页应声明绝对 OpenSearch `rel="search"`。
+9. 打开首页、文章、`/subscribe`、公开内容清单、清单 Schema、JSON Feed、RSS、Sitemap 和 OpenSearch，确认新内容与五条公开读取通道可见且绝对 URL 指向当前生产域名；首页 `Guest · <n> public URLs · Sitemap synced` 的数字必须等于 Sitemap `<loc>` 数量，首页 `LATEST` 必须等于 Sitemap 根 URL 的 `lastmod`，且不能再出现手写 `REV. <数字>`；清单中的 `markdown_etag` 应与对应源文响应一致，`/content.json` 与 `/content.schema.json` 应通过 describedby/describes Link 双向关联，七个结构化端点应带最终正文 SHA-256 ETag 并支持空正文 304，首页应声明绝对 OpenSearch `rel="search"`。
 
 ## URL 迁移
 
@@ -137,6 +137,8 @@ Iteration 0110 起，关键 HTML 覆盖由九条增为十条，新增 `/archive`
 Iteration 0111 起，关键 HTML 覆盖由十条增为十一条，新增 `/subscribe`。该路由必须返回 200、使用 `/subscribe` canonical、出现在 Sitemap 与页脚，并以可见 HTML 恰好列出五条只读通道；逐项检查真实端点链接、MIME、Freshness、最新 Markdown 示例与“这些接口只负责读取”边界。稳定生产基线绑定功能提交 `5ab34a7`，订阅页为 29108/5727 B（raw/gzip），Sitemap 同批次为 4882/524 B、26 URLs。
 
 Iteration 0112 起，关键 HTML 覆盖由十一条增为十二条，新增固定 `/definitely-missing`。它必须返回 404、`no-store`、至少一个 `robots=noindex`、单一 H1 和搜索/档案/文章/项目四条恢复链接，不得自动跳转、输出 BreadcrumbList 或内容身份。稳定生产基线绑定修复提交 `c2e1d968`，404 为 25370/4459 B（raw/gzip）；全部十二条同批生产响应统一重测，预算实现提交为 `928c0bf`。随机未知路由仍可用于状态抽查，但不能用作体积基线，因为请求路径会进入 RSC 载荷。
+
+Iteration 0113 起，首页运行事实与 Sitemap 使用 `lib/public-routes.ts` 的同一清单。发布后除完整 smoke 外，应直接核对首页公开 URL 数量、Sitemap `<loc>` 数量和根 `lastmod`；新增可索引静态页面必须登记 `STATIC_PUBLIC_ROUTE_FACTS`，文章、项目、专题和标签由公开索引自动加入。协议、Studio、OAuth、404 与其他 noindex 端点不得为了“总数更大”而进入该清单。功能提交 `28449b9` 的稳定生产 smoke 为 26 routes、OAuth 302；首页 32048/6866 B、Sitemap 4882/524 B（raw/gzip），均继续使用既有预算，无需重建基线。
 
 搜索路径还要分别核对 `/search?q=cloudflare`、`/search?q=Wrangler` 与 `/search?q=B_i`：第一条必须出现可见命中 mark、来源和字段原因，第二条必须只有 1 条正文证据，第三条必须显示 0 条且不存在 mark。不要用 HTML 内 RSC 序列化的完整搜索文档冒充可见结果；生产 smoke 以真实 `<mark class="search-hit">`、来源标签和结果计数作为证据。
 

@@ -43,6 +43,7 @@ content/
 public/uploads/<slug>/              按内容隔离的公开图片附件
 lib/
   breadcrumbs.ts                    同源绝对 URL、稳定 position 与路径不变量生成器
+  public-routes.ts                  首页与 Sitemap 共享的公开路由、总数和最新日期事实
   website.ts                        首页站点身份与同源内容节点身份生成器
   content/                          内容契约、维护报告、文件读取、派生索引与引用关系
     archive.ts                     公开内容的确定性年/月分组与同日稳定排序
@@ -89,11 +90,13 @@ vercel.json                         Vercel Next.js 框架声明
 
 ## 4. 内容与构建
 
-`next.config.ts` 在开发和构建开始时冻结作者时区日期，并行执行内容、媒体文件、内容—媒体关系与永久重定向校验。内容校验器先验证全部 Markdown，再对已公开内容执行关系完整性与新鲜度检查；媒体校验器递归扫描 `public/uploads`，拒绝符号链接、非图片、损坏图片、扩展名伪装和预算超限；媒体关系校验器用标准 Markdown AST 读取正式 posts/projects 的 `cover`、行内图片与引用式图片，核对精确文件路径和 slug 所有权，再拒绝无人引用的已归档附件；重定向校验器交叉检查当前公开 HTML 路由、静态文件、运维命名空间与 `content/redirects.yml`。纯净 Git 检出尚无上传目录时等价于零张图片；目录一旦存在，所有文件和正式引用都必须通过校验。`lib/content/index.ts` 在构建/服务端从 `content/posts` 与 `content/projects` 读取文件，解析为统一记录，过滤草稿和未来内容，再派生专题、标签、时间档案、搜索、公开内容清单、JSON Feed、RSS、单篇 Markdown 源文与 Sitemap。
+`next.config.ts` 在开发和构建开始时冻结作者时区日期，并行执行内容、媒体文件、内容—媒体关系与永久重定向校验。内容校验器先验证全部 Markdown，再对已公开内容执行关系完整性与新鲜度检查；媒体校验器递归扫描 `public/uploads`，拒绝符号链接、非图片、损坏图片、扩展名伪装和预算超限；媒体关系校验器用标准 Markdown AST 读取正式 posts/projects 的 `cover`、行内图片与引用式图片，核对精确文件路径和 slug 所有权，再拒绝无人引用的已归档附件；重定向校验器交叉检查当前公开 HTML 路由、静态文件、运维命名空间与 `content/redirects.yml`。纯净 Git 检出尚无上传目录时等价于零张图片；目录一旦存在，所有文件和正式引用都必须通过校验。`lib/content/index.ts` 在构建/服务端从 `content/posts` 与 `content/projects` 读取文件，解析为统一记录，过滤草稿和未来内容，再派生专题、标签、时间档案、搜索、公开内容清单、JSON Feed、RSS 与单篇 Markdown 源文；Sitemap 再通过共享公开路由事实模块组合这些索引与静态页面。
 
 `lib/content/archive.ts` 只接收已验证的公开 `ContentRecord`，复制后按 `publishedAt` 倒序、`zh-CN` 标题与 `en` URL 依次决胜，再用插入顺序稳定生成年/月账本和每年计数；调用方数组不会被改写，空集合返回空档案。`app/archive/page.tsx` 直接消费这一纯投影，以 Server Component 输出原生 `ol`/`section`/`time`/链接，并把 Article、TIL 与 Project 放回一条时间轴；页面没有数据库、客户端请求、第二份内容索引或作者维护字段。
 
 `lib/subscriptions.ts` 把既有读取能力投影为固定五通道目录：RSS、JSON Feed、OpenSearch、公开清单/Schema 和单篇 Markdown。静态协议事实与从公开记录稳定选择的最新 `source.md` 示例在纯函数中汇合；`app/subscribe/page.tsx` 只负责把它们服务端渲染成可见路由表。页面不代理端点、不复制正文、不发起客户端请求，也不把只读接口误写成发布 API；发布入口仍是 Studio/Obsidian → Git。
+
+`lib/public-routes.ts` 是可索引公开路由的唯一派生边界。10 条静态页面声明 path、日期来源、change frequency 与 priority；文章、项目、专题和标签从同一公开内容/索引自动追加。最终清单检查跨集合 path 唯一性，并输出 routes、total 与最新公开内容日期。`createSitemapXml()` 只把 routes 序列化为 XML；首页 Evidence Rail 使用同一个 total，`LATEST` 使用与 Sitemap 根 URL `lastmod` 相同的日期。Feed、Studio、OAuth、错误页和其他 noindex 端点有意不属于该集合。整个边界只在服务端运行，不读取 Git、不发起 API 请求，也不持有第二份计数。
 
 `lib/public-markdown.ts` 把同一公开 `ContentRecord` 投影为可移植 Markdown，而不是读取并透传作者原文件。YAML 只按文章/项目显式白名单输出公开阅读字段、canonical 与可选封面；`draft`、`featured`、源文件路径和构建派生字段不会进入响应。正文复用共享 GFM + math AST 的节点位置，只改写真实 link/image/definition URL：根相对站内地址、媒体地址与自页面 fragment 转为当前请求 origin 下的绝对 URL，外部 URL、代码和围栏代码保持不变，无法证明节点位置时失败关闭。最终 UTF-8 表示生成 `"sha256-<64 hex>"` 源站强 ETag；`Last-Modified` 取 published/updated/reviewed 中最新日期的 UTC 零点。`If-None-Match` 按 GET 弱比较语义接受单值、列表、`W/` 与 `*`，源站命中返回带共享响应头的空 304，畸形条件头按普通 200 处理。Vercel 对 Brotli 表示可把同一 opaque tag 弱化为 `W/`，并按 HTTP 语义把边缘 304 收敛为 ETag、Cache-Control 等缓存更新元数据；生产验证比较强弱标签中的相同 SHA-256 身份，并只校验仍出现的可选元数据不能漂移。文章与项目的嵌套 `source.md` Route Handler 只调用公开 getter，因此草稿、未来内容和未知 slug 都返回不可缓存的 404。
 

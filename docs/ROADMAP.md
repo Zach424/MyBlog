@@ -8,11 +8,11 @@
 | 4. 作者自助写作 | done | `/studio` OAuth + editorial workflow PR、Obsidian Vault/模板/附件/真实 `--push` |
 | 5. Vercel 原生迁移 | production live | 原生 Next.js、无 Cloudflare 依赖、26 路由生产冒烟通过 |
 | 6. 所有者生产上线 | done | Git 自动 Production、稳定域名自动冒烟、双端发布、回滚与恢复均已验收 |
-| 7. 持续内容与作者体验 | in progress | Iteration 0112 发布 404 恢复路口，并把生产预算扩展到十二条 HTML 路由 |
+| 7. 持续内容与作者体验 | in progress | Iteration 0113 建立首页/Sitemap 公开路由单一事实源，运行状态随内容自动更新 |
 
 ## 当前唯一主线
 
-进入持续内容与作者体验阶段。Iteration 0112 已发布服务端 404 恢复路口：未知 URL 保持真实 404、`no-store` 和显式 `noindex`，并按关键词、时间、文章、项目四类线索恢复；CSS Module、真实 SSR、390px 深浅色、打印、生产 smoke 与第十二条 HTML 预算均已闭环。稳定功能修复提交 `c2e1d96` 与基线提交 `928c0bf` 已通过本地门，功能提交对应 Quality Gate/生产 smoke 也成功。全局复盘发现首页 Evidence Rail 仍硬编码 `25 public URLs` 与无来源的 `REV. 010`，已落后于当前 26 URL Sitemap；下一主线是建立 Sitemap 与首页共享的公开路由事实清单，用真实内容日期/统计替代手写运行事实。首次真实 Obsidian 人机验收继续保留为所有者可执行事项，需要品牌域名时再绑定自定义域名。
+进入持续内容与作者体验阶段。Iteration 0113 已建立 `lib/public-routes.ts`：10 条静态页面与公开文章、项目、专题、标签生成唯一有序路由清单，Sitemap、首页 URL 总数和 `LATEST` 日期共同消费它；重复 path 失败关闭，空库不伪造日期。功能提交 `28449b9` 已通过 510 项单元测试、51 页构建、26 项应用测试、390px 深色浏览器验收与稳定生产 smoke；线上仍为 26 routes、OAuth 302，十二条 HTML 和七个发现端点预算全部通过。下一主线是把首页 Evidence Rail 剩余的 Building、Learned 与 Current focus 从精选项目和最新文章事实派生，继续减少长期手写状态。首次真实 Obsidian 人机验收保留为所有者可执行事项，需要品牌域名时再绑定自定义域名。
 
 ## 已知风险
 
@@ -41,7 +41,7 @@
 - 当前结构化生产 raw/gzip 基线为：清单 3009/921 B、Schema 3278/755 B、JSON Feed 20697/9876 B、RSS 3238/1241 B、Sitemap 4882/524 B、robots 155/127 B、OpenSearch 700/462 B；逐端点推导上限和覆盖门已闭环。新增 `/subscribe` 只使 Sitemap 发生可解释增长；基线更新必须伴随产品价值复核、真实生产重测、来源提交和归档，不能自动跟随输出自我放行；
 - `/subscribe` 只说明并直达现有公开读取协议，不提供邮件订阅、推送通知、写入 API 或账号系统。若未来需要邮件列表，必须先明确供应商、隐私、退订、发送身份与成本，不能把当前只读目录当成已具备投递能力；
 - 根级 404 现在有四条恢复路径并显式 noindex，但本地 Next 与 Vercel 对自动 noindex 的最终数量不同；质量门只要求语义存在，版本升级继续以稳定生产 HTML 为准。404 继承根首页 canonical，本轮没有为非索引错误页启用实验性 global-not-found；
-- 首页 Evidence Rail 仍写死 `25 public URLs` 与 `REV. 010`，当前 Sitemap 已是 26 URLs。下一轮必须先抽取共享公开路由事实，不能只把数字手改成 26 继续留下漂移源；
+- 首页 Verified 数量与 `LATEST` 已由共享公开路由事实派生；Building、Learned 与 Current focus 仍是手写叙述，下一轮应从精选项目状态/技术栈和最新公开文章派生，同时为空集合与长标题保留诚实降级；
 - JSON Feed、RSS、Sitemap、robots 已有最终正文 ETag 与条件读取，但有意不为 robots 伪造 Last-Modified；Vercel 对部分压缩 200 响应使用弱标签、对 304 省略 Content-Type，生产门按 HTTP 等价语义验收；
 - OpenSearch 1.1 已提供标准描述和 HTML 自动发现，但不同浏览器对内置搜索引擎安装的支持并不一致；端点只承诺开放协议和同源查询模板，不把浏览器 UI 行为当成本站可控能力，也不公开内部搜索索引；
 - 搜索首屏仍把 4 条完整纯文本搜索文档序列化给客户端；当前生产 `/search?q=cloudflare` 为 40955/14650 B raw/gzip，远低于 163840/18432 B 上限。内容规模显著增长时必须先由 HTML 预算报警，再评估分片索引或按需加载，不能为了提前优化牺牲首屏结果与无网络本地筛选；
