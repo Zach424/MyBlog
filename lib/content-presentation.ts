@@ -1,5 +1,15 @@
 import type { ProjectRecord } from "./content/contract.ts";
 
+export interface ContentDatePresentationInput {
+  publishedAt: string;
+  updatedAt?: string;
+}
+
+export interface ContentDatePresentation {
+  label: "PUBLISHED" | "UPDATED";
+  date: string;
+}
+
 export interface ProjectStatusPresentation {
   label: string;
   code: string;
@@ -26,4 +36,14 @@ export function getProjectStatusPresentation(status: ProjectRecord["status"]) {
 
 export function getProjectStatusLabel(status: ProjectRecord["status"]) {
   return getProjectStatusPresentation(status).label;
+}
+
+export function getContentDatePresentation(
+  record: ContentDatePresentationInput,
+): ContentDatePresentation {
+  if (record.updatedAt && record.updatedAt > record.publishedAt) {
+    return { label: "UPDATED", date: record.updatedAt };
+  }
+
+  return { label: "PUBLISHED", date: record.publishedAt };
 }

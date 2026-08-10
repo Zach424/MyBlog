@@ -1,6 +1,9 @@
 import assert from "node:assert/strict";
 import test from "node:test";
-import { getProjectStatusPresentation } from "../lib/content-presentation.ts";
+import {
+  getContentDatePresentation,
+  getProjectStatusPresentation,
+} from "../lib/content-presentation.ts";
 
 test("presents every project status with one human and machine identity", () => {
   const expectations = {
@@ -17,4 +20,32 @@ test("presents every project status with one human and machine identity", () => 
   for (const [status, expected] of Object.entries(expectations)) {
     assert.deepEqual(getProjectStatusPresentation(status), expected);
   }
+});
+
+test("presents a later content update without mutating the record", () => {
+  const record = {
+    publishedAt: "2026-07-18",
+    updatedAt: "2026-08-06",
+  };
+  const snapshot = structuredClone(record);
+
+  assert.deepEqual(getContentDatePresentation(record), {
+    label: "UPDATED",
+    date: "2026-08-06",
+  });
+  assert.deepEqual(record, snapshot);
+});
+
+test("keeps missing and same-day updates on the published date", () => {
+  assert.deepEqual(
+    getContentDatePresentation({ publishedAt: "2026-07-18" }),
+    { label: "PUBLISHED", date: "2026-07-18" },
+  );
+  assert.deepEqual(
+    getContentDatePresentation({
+      publishedAt: "2026-07-18",
+      updatedAt: "2026-07-18",
+    }),
+    { label: "PUBLISHED", date: "2026-07-18" },
+  );
 });

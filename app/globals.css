@@ -904,6 +904,18 @@ input:focus-visible {
   text-transform: uppercase;
 }
 
+.content-index-date {
+  display: flex;
+  flex-direction: column;
+  gap: 0.125rem;
+}
+
+.content-index-date-label {
+  color: var(--faint);
+  font-size: 0.5rem;
+  letter-spacing: 0.08em;
+}
+
 .content-index-copy {
   display: flex;
   flex-direction: column;

@@ -375,6 +375,36 @@ test("server-renders one bilingual project status across public project surfaces
   assert.doesNotMatch(htmlDocuments[2], />Project \/ maintained</u);
 });
 
+test("server-renders updated dates in shared content lists without changing the archive", async () => {
+  const routeDates = [
+    ["/posts", "2026-08-05"],
+    ["/projects", "2026-08-06"],
+    ["/series/build-my-blog", "2026-08-05"],
+    ["/tags/typescript", "2026-08-06"],
+    ["/projects/myblog", "2026-08-05"],
+  ];
+
+  for (const [pathname, date] of routeDates) {
+    const response = await render(pathname);
+    assert.equal(response.status, 200, pathname);
+    const html = visibleDocument(await response.text()).replaceAll("<!-- -->", "");
+    assert.match(
+      html,
+      new RegExp(
+        `<time class="content-index-date" dateTime="${date}"><span class="content-index-date-label">UPDATED</span>${date}</time>`,
+        "u",
+      ),
+      pathname,
+    );
+  }
+
+  const archiveResponse = await render("/archive");
+  assert.equal(archiveResponse.status, 200);
+  const archiveHtml = visibleDocument(await archiveResponse.text());
+  assert.doesNotMatch(archiveHtml, /content-index-date/u);
+  assert.match(archiveHtml, /aria-label="发布日期 2026-07-18"/u);
+});
+
 test("server-renders one read-only subscription switchboard with real endpoints", async () => {
   const response = await render("/subscribe");
   assert.equal(response.status, 200);

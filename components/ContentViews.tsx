@@ -7,7 +7,10 @@ import type {
   ProjectRecord,
 } from "@/lib/content";
 import type { TableOfContentsItem } from "@/lib/content/markdown";
-import { getProjectStatusPresentation } from "@/lib/content-presentation";
+import {
+  getContentDatePresentation,
+  getProjectStatusPresentation,
+} from "@/lib/content-presentation";
 
 function recordType(record: ContentRecord) {
   if (record.kind === "project") return "Project";
@@ -34,24 +37,35 @@ export function ContentIndexList({
 
   return (
     <div className="content-index-list">
-      {items.map((item, index) => (
-        <Link className="content-index-row" href={item.url} key={`${item.kind}-${item.slug}`}>
-          <span className="content-index-seq">
-            {String(index + 1).padStart(2, "0")}
-          </span>
-          <span className="content-index-meta">
-            <strong>{recordType(item)}</strong>
-            <time dateTime={item.publishedAt}>{item.publishedAt}</time>
-          </span>
-          <span className="content-index-copy">
-            <strong>{item.title}</strong>
-            <span>{item.description}</span>
-          </span>
-          <span className="content-index-end">
-            {recordMeta(item)} <span aria-hidden="true">→</span>
-          </span>
-        </Link>
-      ))}
+      {items.map((item, index) => {
+        const contentDate = getContentDatePresentation(item);
+
+        return (
+          <Link
+            className="content-index-row"
+            href={item.url}
+            key={`${item.kind}-${item.slug}`}
+          >
+            <span className="content-index-seq">
+              {String(index + 1).padStart(2, "0")}
+            </span>
+            <span className="content-index-meta">
+              <strong>{recordType(item)}</strong>
+              <time className="content-index-date" dateTime={contentDate.date}>
+                <span className="content-index-date-label">{contentDate.label}</span>
+                {contentDate.date}
+              </time>
+            </span>
+            <span className="content-index-copy">
+              <strong>{item.title}</strong>
+              <span>{item.description}</span>
+            </span>
+            <span className="content-index-end">
+              {recordMeta(item)} <span aria-hidden="true">→</span>
+            </span>
+          </Link>
+        );
+      })}
     </div>
   );
 }
