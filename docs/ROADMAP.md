@@ -8,11 +8,11 @@
 | 4. 作者自助写作 | done | `/studio` OAuth + editorial workflow PR、Obsidian Vault/模板/附件/真实 `--push` |
 | 5. Vercel 原生迁移 | production live | 原生 Next.js、无 Cloudflare 依赖、26 路由生产冒烟通过 |
 | 6. 所有者生产上线 | done | Git 自动 Production、稳定域名自动冒烟、双端发布、回滚与恢复均已验收 |
-| 7. 持续内容与作者体验 | in progress | Iteration 0116 统一所有公开项目表面的双语状态语义 |
+| 7. 持续内容与作者体验 | in progress | Iteration 0117 让共享内容列表明确区分首发日与更新日 |
 
 ## 当前唯一主线
 
-进入持续内容与作者体验阶段。Iteration 0116 已让首页精选项目卡、项目集合和项目详情共同消费 `lib/content-presentation.ts` 的 `中文 label · UPPERCASE CODE` meta；四种 status 都有唯一展示映射，自然句只消费中文 label，内容 contract 与机器接口继续保留原始 enum。功能提交 `c42cd18` 已通过 517 项单元测试、51 页构建、28 项应用测试、三页 390px 深色验收与稳定生产 smoke；线上仍为 26 routes、OAuth 302，十二条 HTML 和七个发现端点预算全部通过。下一主线是让通用内容列表区分 Published 与 Updated：当前 MyBlog 等记录虽然最近更新到 2026-08-06，集合行仍只显示 2026-07-18，容易把维护中的内容误读为未更新。首次真实 Obsidian 人机验收保留为所有者可执行事项，需要品牌域名时再绑定自定义域名。
+进入持续内容与作者体验阶段。Iteration 0117 已让 `ContentIndexList` 从 `publishedAt/updatedAt` 派生 `PUBLISHED/UPDATED` 和真实显示日期，文章、项目、专题、标签与引用账本共同使用；无更新和同日更新保留首发语义，`/archive` 明确隔离并继续按首发日组织。功能提交 `c73eb2c` 已通过 519 项单元测试、51 页构建、29 项应用测试、390px 深色列表/档案验收与稳定生产 smoke；线上仍为 26 routes、OAuth 302，十二条 HTML 和七个发现端点预算全部通过。下一主线是把相同日期语义延伸到搜索结果与知识地图节点：两者仍只携带并显示 `publishedAt`，但排序继续保持现有首发/相关性契约。首次真实 Obsidian 人机验收保留为所有者可执行事项，需要品牌域名时再绑定自定义域名。
 
 ## 已知风险
 
@@ -41,7 +41,7 @@
 - 当前结构化生产 raw/gzip 基线为：清单 3009/921 B、Schema 3278/755 B、JSON Feed 20697/9876 B、RSS 3238/1241 B、Sitemap 4882/524 B、robots 155/127 B、OpenSearch 700/462 B；逐端点推导上限和覆盖门已闭环。新增 `/subscribe` 只使 Sitemap 发生可解释增长；基线更新必须伴随产品价值复核、真实生产重测、来源提交和归档，不能自动跟随输出自我放行；
 - `/subscribe` 只说明并直达现有公开读取协议，不提供邮件订阅、推送通知、写入 API 或账号系统。若未来需要邮件列表，必须先明确供应商、隐私、退订、发送身份与成本，不能把当前只读目录当成已具备投递能力；
 - 根级 404 现在有四条恢复路径并显式 noindex，但本地 Next 与 Vercel 对自动 noindex 的最终数量不同；质量门只要求语义存在，版本升级继续以稳定生产 HTML 为准。404 继承根首页 canonical，本轮没有为非索引错误页启用实验性 global-not-found；
-- 首页、About 与项目状态的可变事实均已统一；通用 `ContentIndexList` 仍只显示 `publishedAt`，所以 MyBlog 等有 `updatedAt` 的维护中记录在项目、标签、专题或关系列表里看起来仍停在首发日。下一轮应从同一记录派生 `PUBLISHED/UPDATED` 标签和实际展示日期，同时保持 archive 的首发时间线语义不变；
+- 通用内容列表日期已统一，但 `SearchDocument` 与 `KnowledgeGraphNode` 当前只携带 `publishedAt`，搜索结果和知识地图仍把更新过的记录显示为首发日。下一轮应只扩展显示数据和 presenter 消费，保持搜索相关性/首发决胜与知识图排序不变，并通过 HTML 预算观察客户端序列化增长；
 - JSON Feed、RSS、Sitemap、robots 已有最终正文 ETag 与条件读取，但有意不为 robots 伪造 Last-Modified；Vercel 对部分压缩 200 响应使用弱标签、对 304 省略 Content-Type，生产门按 HTTP 等价语义验收；
 - OpenSearch 1.1 已提供标准描述和 HTML 自动发现，但不同浏览器对内置搜索引擎安装的支持并不一致；端点只承诺开放协议和同源查询模板，不把浏览器 UI 行为当成本站可控能力，也不公开内部搜索索引；
 - 搜索首屏仍把 4 条完整纯文本搜索文档序列化给客户端；当前生产 `/search?q=cloudflare` 为 40955/14650 B raw/gzip，远低于 163840/18432 B 上限。内容规模显著增长时必须先由 HTML 预算报警，再评估分片索引或按需加载，不能为了提前优化牺牲首屏结果与无网络本地筛选；

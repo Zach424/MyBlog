@@ -46,6 +46,7 @@ MyBlog 是 Zach424 的个人技术知识库与公开工程日志。它把学习�
 - 首页内容证据：`createHomepageEvidence()` 只接收精选项目与最新文章的标题、状态/类型、日期、stack/tags，派生 Building、Learned 和 Current focus；前 N 项 + `+N` 控制元数据密度，长标题保留原文，空项目/文章诚实降级，无第二份运行状态或客户端读取；
 - About 系统档案：`createAboutProfile()` 从公开 posts/projects/series/tags、共享路由 total/latestModified 与精选项目派生集合计数、记录/路由 meta、最近更新、中文状态和完整 stack；`content-presentation.ts` 与首页共享状态翻译，空集合明确降级，无 Git/API/客户端读取；
 - 项目状态展示：`getProjectStatusPresentation()` 为 planning/building/maintained/archived 输出唯一中文 label、大写 code 与 `label · CODE` meta；首页项目卡、项目集合和项目详情使用 meta，About/Evidence 自然句使用 label，机器内容仍保留原始 enum；
+- 内容列表日期：`getContentDatePresentation()` 仅在 `updatedAt > publishedAt` 时输出 UPDATED/更新日，否则输出 PUBLISHED/首发日；`ContentIndexList` 的文章、项目、专题、标签与引用账本共同消费，archive 继续使用独立首发时间线；
 - 运行时：Next.js 16.3.0、React 19.2.6、TypeScript 5、Node.js 22+；
 - 内容：仓库内 Markdown、YAML、Zod，GitHub 是唯一事实源；
 - 发现：`/content.json` 从公开 getter 稳定生成 4 条机器清单，逐项提供同 origin HTML/Markdown URL 与最终源文 SHA-256；`/content.schema.json` 使用 Draft 2020-12 固定 version 1 结构，并以 describedby/describes Link 与清单双向关联。清单、Schema、JSON Feed、RSS、Sitemap、robots、OpenSearch 都以最终正文生成 SHA-256 ETag 并支持空 304；清单另有 Last-Modified，Feed/RSS/Sitemap/OpenSearch 保留一小时 fresh/一天 SWR，robots 保留一天 fresh；
@@ -65,15 +66,15 @@ MyBlog 是 Zach424 的个人技术知识库与公开工程日志。它把学习�
 
 - 仓库：<https://github.com/Zach424/MyBlog>，生产分支 `main`；
 - 生产站：<https://blog-iota-five-59.vercel.app>；
-- 本轮功能提交：`c42cd18`（统一公开项目状态展示），已推送 `main` 并由 Vercel 部署；
-- 自动交付：稳定生产首页、项目集合和项目详情均已显示 `持续维护 · MAINTAINED`；完整 smoke 为 26 routes、OAuth 302，十二条 HTML 与七个结构化发现端点全部 PASS；
-- 最新完成迭代：0116 公开项目状态展示一致性；
+- 本轮功能提交：`c73eb2c`（共享内容列表更新日期语义），已推送 `main` 并由 Vercel 部署；
+- 自动交付：稳定生产文章、项目、专题、标签和引用账本均已显示 UPDATED 与真实更新日，archive 继续显示发布日期；完整 smoke 为 26 routes、OAuth 302，十二条 HTML 与七个结构化发现端点全部 PASS；
+- 最新完成迭代：0117 共享内容列表日期语义；
 - Obsidian 状态：仓库根目录就是 Vault，`docs/STATUS.md`、`docs/iterations/*.md` 与 `docs/knowledge/*.md` 是同一份本地文件，可直接阅读和维护；
 - 手动外部接入：自定义域名、统计、评论、公开邮箱均暂缓，不阻塞当前开发。
 
 ## 本轮新增能力
 
-公开项目 status 不再因页面不同而改变语言或大小写。`lib/content-presentation.ts` 从四种原始 enum 派生中文 label、大写 code 和统一 meta；首页精选项目卡、项目集合尾注与详情 eyebrow 均显示 `持续维护 · MAINTAINED`，About 与首页 Evidence 的自然句仍只显示“持续维护”。失败优先测试先因 presenter 导出不存在而失败；完整验证为 517/517 单元测试、51 个构建页面、28/28 应用测试。真实 Chromium 逐页覆盖 390×844、深色、双语换行、根宽与 console；稳定生产 smoke 为 26 routes、OAuth 302，首页 32195/6822 B、项目详情 112835/25276 B（raw/gzip），十二条 HTML 与七端点预算全部 PASS。公开 Markdown、清单、Schema、Studio 和内容 contract 未改变。本轮中文状态、迭代归档和知识笔记都位于同一 Obsidian Vault。
+共享内容列表不再把更新中的记录展示成首发日。`lib/content-presentation.ts` 从 `publishedAt/updatedAt` 派生 UPDATED/PUBLISHED 与实际显示日期；`ContentIndexList` 的文章、项目、专题、标签和引用账本统一输出 TYPE / DATE MODE / DATE。失败优先测试先因日期 presenter 不存在而失败；完整验证为 519/519 单元测试、51 个构建页面、29/29 应用测试。真实 Chromium 覆盖项目/文章 390×844 深色三层元数据、根宽与 console，并证明 archive 没有共享日期组件、仍用“发布日期”。稳定生产 smoke 为 26 routes、OAuth 302；`/posts` 23165/5101 B、项目详情 113705/25393 B（raw/gzip），十二条 HTML 与七端点预算全部 PASS。排序、frontmatter、机器接口和 archive 时间线未改变。本轮中文状态、迭代归档和知识笔记都位于同一 Obsidian Vault。
 
 ## 风险与下一步
 
@@ -101,7 +102,7 @@ MyBlog 是 Zach424 的个人技术知识库与公开工程日志。它把学习�
 22. `/archive` 当前只有一个年份和月份，但跨年、跨月、同日决胜、空集合和输入不变已经由夹具固定。内容增长前不提前增加客户端筛选、分页或年份锚点；若分组或 DOM 规模开始触及十二路预算，再依据真实数据选择增强方式。
 23. `/subscribe` 已把五类现有开放接口集中为可见目录，但它有意保持只读：不会收集邮箱、创建账户、保存订阅状态或代理第三方阅读器。未来若需要邮件订阅，必须由所有者单独选择供应商、隐私告知与数据保留策略，不能把当前目录误解为邮件服务。
 24. 404 恢复语境已经闭环，但本地 Next 自动 noindex 与 Vercel 最终 HTML 不一致；组件显式 meta 后本地有两个相同指令、生产一个。相同指令不改变语义，升级 Next/Vercel 时仍必须用最终生产 HTML 验证。错误页继承根首页 canonical，本轮没有为非索引页面启用实验性 global-not-found。
-25. 首页、About 与项目 status 已使用共享展示事实；通用 `ContentIndexList` 仍只渲染 `publishedAt`，即使记录存在更晚的 `updatedAt`。MyBlog 在集合行显示 2026-07-18，但公开最新事实是 2026-08-06；下一轮应明确显示 `UPDATED` 与实际日期，未更新记录继续显示 `PUBLISHED`，时间档案仍按首发日组织。
+25. 首页、About、项目 status 与通用列表日期已使用共享展示事实；搜索索引文档与知识图节点仍只包含 `publishedAt`，因此两个探索界面会继续把维护后的内容标成首发日。下一轮应加入可选 `updatedAt` 并消费相同日期 presenter，但保持搜索相关性/首发排序和知识图排序不变，避免把“展示最近维护”偷换成“按维护日重排”。
 26. 本机浏览器使用系统代理时，Git for Windows 与 Node `fetch` 不一定自动继承代理配置，可能出现网页可达而 Git/生产 smoke 直连超时。0115 通过单次命令注入系统代理完成 push 和 smoke，没有写入仓库或全局 Git 配置；以后仍先区分站点失败与本地网络分流，不能把传输失败误判为部署失败。
 
-下一轮唯一主任务：让通用内容列表从 `publishedAt/updatedAt` 派生明确的 `PUBLISHED/UPDATED` 日期语义，使项目、文章、专题、标签和关系列表显示当前维护日期；保持 `/archive` 的首发时间线、内容字段和机器接口不变，覆盖无 updatedAt、同日、SSR、390px 与现有预算，不新增客户端请求、数据库或云配置。
+下一轮唯一主任务：让搜索结果和知识地图节点携带可选 `updatedAt` 并复用内容日期 presenter，显示 `PUBLISHED/UPDATED` 与真实日期；保持现有搜索相关性、首发决胜、知识图排序、frontmatter 和机器接口不变，覆盖纯投影、SSR/客户端水合、390px 与 HTML 预算，不新增请求、数据库或云配置。
