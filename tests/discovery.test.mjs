@@ -7,6 +7,7 @@ import {
   createRssXml,
   createSitemapXml,
 } from "../lib/discovery.ts";
+import { createFeedLastModified } from "../lib/feed-http.ts";
 import { createPublicRouteInventory } from "../lib/public-routes.ts";
 import { resolveSiteUrl } from "../lib/site.ts";
 
@@ -76,6 +77,27 @@ test("creates one bounded same-origin OpenSearch 1.1 description", () => {
   assert.equal((xml.match(/<ShortName>/gu) ?? []).length, 1);
   assert.equal((xml.match(/<Description>/gu) ?? []).length, 1);
   assert.equal(xml.endsWith("\n"), true);
+});
+
+test("derives each Feed validator from content and its representation revision", () => {
+  const records = [project, post];
+  const originalOrder = records.map((record) => record.url);
+
+  assert.equal(
+    createFeedLastModified("json", []),
+    "Thu, 06 Aug 2026 10:09:53 GMT",
+  );
+  assert.equal(
+    createFeedLastModified("rss", []),
+    "Mon, 10 Aug 2026 21:26:25 GMT",
+  );
+  assert.equal(
+    createFeedLastModified("rss", [
+      { ...post, updatedAt: "2026-08-12" },
+    ]),
+    "Tue, 11 Aug 2026 16:00:00 GMT",
+  );
+  assert.deepEqual(records.map((record) => record.url), originalOrder);
 });
 
 test("creates escaped RSS with stable identities and explicit modification dates", () => {

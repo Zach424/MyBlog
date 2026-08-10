@@ -927,6 +927,9 @@ export async function runProductionSmoke(originInput, { expectOAuth = false } = 
   const manifestIds = manifestItems.map((item) => item.id);
   const rssItems = extractRssItems(rss.body);
   const rssIds = rssItems.map((item) => item.guid);
+  const jsonFeedLastModified =
+    jsonFeed.response.headers.get("last-modified");
+  const rssLastModified = rss.response.headers.get("last-modified");
   const rssUpdateContractValid = rssItems.length === jsonFeedItems.length &&
     rssItems.every((item, index) => {
       const feedItem = jsonFeedItems[index];
@@ -1121,6 +1124,7 @@ export async function runProductionSmoke(originInput, { expectOAuth = false } = 
         jsonFeed.response.headers.get("etag"),
         sha256Etag(jsonFeed.body),
       ) &&
+      jsonFeedLastModified === "Thu, 06 Aug 2026 10:09:53 GMT" &&
       jsonFeedPayload.version === "https://jsonfeed.org/version/1.1" &&
       jsonFeedPayload.home_page_url === `${origin.origin}/` &&
       jsonFeedPayload.feed_url === `${origin.origin}/feed.json` &&
@@ -1155,6 +1159,7 @@ export async function runProductionSmoke(originInput, { expectOAuth = false } = 
         rss.response.headers.get("etag"),
         sha256Etag(rss.body),
       ) &&
+      rssLastModified === "Mon, 10 Aug 2026 21:26:25 GMT" &&
       rss.body.includes(
         '<rss version="2.0" xmlns:atom="http://www.w3.org/2005/Atom" xmlns:dcterms="http://purl.org/dc/terms/">',
       ) &&
@@ -1227,6 +1232,9 @@ export async function runProductionSmoke(originInput, { expectOAuth = false } = 
       ],
     ][index];
     const conditionalType = conditional.response.headers.get("content-type");
+    const sourceLastModified = source.response.headers.get("last-modified");
+    const conditionalLastModified =
+      conditional.response.headers.get("last-modified");
     invariant(
       conditional.response.status === 304 &&
         conditional.body === "" &&
@@ -1236,10 +1244,88 @@ export async function runProductionSmoke(originInput, { expectOAuth = false } = 
         ) &&
         cachePolicy(conditional.response.headers.get("cache-control")) &&
         (conditionalType === null ||
-          conditionalType === source.response.headers.get("content-type")),
+          conditionalType === source.response.headers.get("content-type")) &&
+        (sourceLastModified === null
+          ? conditionalLastModified === null
+          : conditionalLastModified === null ||
+            conditionalLastModified === sourceLastModified),
       `${pathname} 条件请求契约异常`,
     );
   }
+  const [jsonDateMatch, rssDateMatch, staleTagWins, staleDate, malformedDate] =
+    await Promise.all([
+      request(origin, "/feed.json", {
+        accept: "application/feed+json",
+        headers: { "if-modified-since": jsonFeedLastModified },
+      }),
+      request(origin, "/rss.xml", {
+        accept: "application/rss+xml",
+        headers: { "if-modified-since": rssLastModified },
+      }),
+      request(origin, "/feed.json", {
+        accept: "application/feed+json",
+        headers: {
+          "if-none-match": '"sha256-stale"',
+          "if-modified-since": jsonFeedLastModified,
+        },
+      }),
+      request(origin, "/rss.xml", {
+        accept: "application/rss+xml",
+        headers: {
+          "if-modified-since": "Mon, 10 Aug 2026 21:26:24 GMT",
+        },
+      }),
+      request(origin, "/rss.xml", {
+        accept: "application/rss+xml",
+        headers: { "if-modified-since": "2026-08-10T21:26:25Z" },
+      }),
+    ]);
+  for (const [pathname, conditional, source, lastModified, cachePolicy] of [
+    [
+      "/feed.json",
+      jsonDateMatch,
+      jsonFeed,
+      jsonFeedLastModified,
+      hasJsonFeedCachePolicy,
+    ],
+    [
+      "/rss.xml",
+      rssDateMatch,
+      rss,
+      rssLastModified,
+      hasJsonFeedCachePolicy,
+    ],
+  ]) {
+    const conditionalLastModified =
+      conditional.response.headers.get("last-modified");
+    invariant(
+      conditional.response.status === 304 &&
+        conditional.body === "" &&
+        sameMarkdownSourceEtag(
+          conditional.response.headers.get("etag"),
+          source.response.headers.get("etag"),
+        ) &&
+        cachePolicy(conditional.response.headers.get("cache-control")) &&
+        (conditionalLastModified === null ||
+          conditionalLastModified === lastModified),
+      `${pathname} If-Modified-Since 契约异常`,
+    );
+  }
+  invariant(
+    staleTagWins.response.status === 200 &&
+      staleTagWins.body === jsonFeed.body &&
+      staleTagWins.response.headers.get("last-modified") ===
+        jsonFeedLastModified,
+    "JSON Feed 未保持 If-None-Match 优先级",
+  );
+  invariant(
+    staleDate.response.status === 200 && staleDate.body === rss.body,
+    "RSS 旧 If-Modified-Since 不应命中",
+  );
+  invariant(
+    malformedDate.response.status === 200 && malformedDate.body === rss.body,
+    "RSS 非 HTTP-date 条件不应命中",
+  );
   const routeResponses = await Promise.all(
     sitemapUrls.map((url) => fetchWithRetry(url, { redirect: "manual" })),
   );

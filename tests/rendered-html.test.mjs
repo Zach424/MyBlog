@@ -1062,6 +1062,8 @@ test("publishes the structured discovery suite from one public origin", async (c
   );
   const jsonFeedSource = await jsonFeedResponse.text();
   const jsonFeedEtag = jsonFeedResponse.headers.get("etag");
+  const jsonFeedLastModified = jsonFeedResponse.headers.get("last-modified");
+  assert.equal(jsonFeedLastModified, "Thu, 06 Aug 2026 10:09:53 GMT");
   assert.equal(
     jsonFeedEtag,
     `"sha256-${createHash("sha256").update(jsonFeedSource, "utf8").digest("hex")}"`,
@@ -1103,6 +1105,8 @@ test("publishes the structured discovery suite from one public origin", async (c
   );
   const rss = await rssResponse.text();
   const rssEtag = rssResponse.headers.get("etag");
+  const rssLastModified = rssResponse.headers.get("last-modified");
+  assert.equal(rssLastModified, "Mon, 10 Aug 2026 21:26:25 GMT");
   assert.equal(
     rssEtag,
     `"sha256-${createHash("sha256").update(rss, "utf8").digest("hex")}"`,
@@ -1280,33 +1284,76 @@ test("publishes the structured discovery suite from one public origin", async (c
     }),
   ]);
   for (const [index, response] of conditionalDiscoveryResponses.entries()) {
-    const [pathname, etag, cacheControl, contentType] = [
+    const [pathname, etag, cacheControl, contentType, lastModified] = [
       [
         "/feed.json",
         jsonFeedEtag,
         "public, max-age=3600, stale-while-revalidate=86400",
         "application/feed+json; charset=utf-8",
+        jsonFeedLastModified,
       ],
       [
         "/rss.xml",
         rssEtag,
         "public, max-age=3600, stale-while-revalidate=86400",
         "application/rss+xml; charset=utf-8",
+        rssLastModified,
       ],
       [
         "/sitemap.xml",
         sitemapEtag,
         "public, max-age=3600, stale-while-revalidate=86400",
         "application/xml; charset=utf-8",
+        null,
       ],
-      ["/robots.txt", robotsEtag, "public, max-age=86400", "text/plain; charset=utf-8"],
+      [
+        "/robots.txt",
+        robotsEtag,
+        "public, max-age=86400",
+        "text/plain; charset=utf-8",
+        null,
+      ],
     ][index];
     assert.equal(response.status, 304, pathname);
     assert.equal(await response.text(), "", pathname);
     assert.equal(response.headers.get("etag"), etag, pathname);
     assert.equal(response.headers.get("cache-control"), cacheControl, pathname);
     assert.equal(response.headers.get("content-type"), contentType, pathname);
+    assert.equal(response.headers.get("last-modified"), lastModified, pathname);
   }
+
+  const [jsonDateMatch, rssDateMatch, staleTagWins, malformedDate] =
+    await Promise.all([
+      render("/feed.json", {
+        headers: { "if-modified-since": jsonFeedLastModified },
+      }),
+      render("/rss.xml", {
+        headers: { "if-modified-since": rssLastModified },
+      }),
+      render("/feed.json", {
+        headers: {
+          "if-none-match": '"sha256-stale"',
+          "if-modified-since": jsonFeedLastModified,
+        },
+      }),
+      render("/rss.xml", {
+        headers: { "if-modified-since": "2026-08-10T21:26:25Z" },
+      }),
+    ]);
+
+  for (const [pathname, response, etag, lastModified] of [
+    ["/feed.json", jsonDateMatch, jsonFeedEtag, jsonFeedLastModified],
+    ["/rss.xml", rssDateMatch, rssEtag, rssLastModified],
+  ]) {
+    assert.equal(response.status, 304, pathname);
+    assert.equal(await response.text(), "", pathname);
+    assert.equal(response.headers.get("etag"), etag, pathname);
+    assert.equal(response.headers.get("last-modified"), lastModified, pathname);
+  }
+  assert.equal(staleTagWins.status, 200);
+  assert.equal(await staleTagWins.text(), jsonFeedSource);
+  assert.equal(malformedDate.status, 200);
+  assert.equal(await malformedDate.text(), rss);
 });
 
 test("publishes portable Markdown sources without author-only fields", async () => {
