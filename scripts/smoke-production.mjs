@@ -1055,6 +1055,10 @@ export async function runProductionSmoke(originInput, { expectOAuth = false } = 
       pathname: "/tags/typescript/rss.xml",
       body: tagRss.body,
     }),
+    measureDiscoveryBudget({
+      pathname: "/series/build-my-blog/rss.xml",
+      body: seriesRss.body,
+    }),
     measureDiscoveryBudget({ pathname: "/sitemap.xml", body: sitemap.body }),
     measureDiscoveryBudget({ pathname: "/robots.txt", body: robots.body }),
     measureDiscoveryBudget({

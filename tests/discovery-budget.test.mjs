@@ -113,7 +113,7 @@ test("reports actual bytes, limits, baselines, and signed headroom", () => {
 
   assert.match(
     output,
-    /^\[discovery-budget\] policy origin=https:\/\/blog-iota-five-59\.vercel\.app revision=d4e26b86 measured=2026-08-11/u,
+    /^\[discovery-budget\] policy origin=https:\/\/blog-iota-five-59\.vercel\.app revision=cf3c6313 measured=2026-08-11/u,
   );
   assert.match(
     output,
@@ -156,7 +156,7 @@ test("pins measured endpoint baselines to the stable production revision", async
   );
   assert.deepEqual(DISCOVERY_BUDGET_BASELINE_PROVENANCE, {
     measuredAt: "2026-08-11",
-    sourceRevision: "d4e26b86027fe78dcc1c28edb0956bc6b9b336fe",
+    sourceRevision: "cf3c6313d5788dfc2d6d569ec82fb6308086f29e",
   });
   assert.ok(readme.includes(DISCOVERY_BUDGET_ORIGIN.origin));
   assert.deepEqual(DISCOVERY_ROUTE_BASELINES, {
@@ -187,6 +187,12 @@ test("pins measured endpoint baselines to the stable production revision", async
     "/tags/typescript/rss.xml": {
       rawBytes: 2_059,
       gzipBytes: 923,
+      rawLimitBytes: 7_168,
+      gzipLimitBytes: 2_048,
+    },
+    "/series/build-my-blog/rss.xml": {
+      rawBytes: 2_065,
+      gzipBytes: 983,
       rawLimitBytes: 7_168,
       gzipLimitBytes: 2_048,
     },
