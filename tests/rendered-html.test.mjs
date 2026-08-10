@@ -356,6 +356,25 @@ test("server-renders the about system profile from public content facts", async 
   assert.doesNotMatch(html, /TypeScript、React、Next\.js 与 Vercel/u);
 });
 
+test("server-renders one bilingual project status across public project surfaces", async () => {
+  const [homeResponse, projectsResponse, projectResponse] = await Promise.all([
+    render(),
+    render("/projects"),
+    render("/projects/myblog"),
+  ]);
+  const responses = [homeResponse, projectsResponse, projectResponse];
+  const htmlDocuments = await Promise.all(responses.map((response) => response.text()));
+
+  for (const [index, response] of responses.entries()) {
+    assert.equal(response.status, 200);
+    assert.match(htmlDocuments[index], /持续维护 · MAINTAINED/u);
+  }
+
+  assert.doesNotMatch(htmlDocuments[0], />Maintained</u);
+  assert.doesNotMatch(htmlDocuments[1], />MAINTAINED\s*<span/u);
+  assert.doesNotMatch(htmlDocuments[2], />Project \/ maintained</u);
+});
+
 test("server-renders one read-only subscription switchboard with real endpoints", async () => {
   const response = await render("/subscribe");
   assert.equal(response.status, 200);

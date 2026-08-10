@@ -649,6 +649,8 @@ input:focus-visible {
   align-items: center;
   gap: 0.4375rem;
   color: var(--signal);
+  line-height: 1.5;
+  text-align: right;
 }
 
 .project-state::before {

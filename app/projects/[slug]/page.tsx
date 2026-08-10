@@ -24,6 +24,7 @@ import {
 import { extractTableOfContents } from "@/lib/content/markdown";
 import { getContentCover } from "@/lib/content/media";
 import { createSoftwareSourceCodeStructuredData } from "@/lib/content/structured-data";
+import { getProjectStatusPresentation } from "@/lib/content-presentation";
 import { getPublicMarkdownPath } from "@/lib/public-markdown";
 import { absoluteSiteUrl, resolveSiteUrl } from "@/lib/site";
 
@@ -78,6 +79,7 @@ export default async function ProjectPage({ params }: ProjectPageProps) {
   const { slug } = await params;
   const project = getProjectBySlug(slug);
   if (!project) notFound();
+  const projectStatus = getProjectStatusPresentation(project.status);
   const cover = await getContentCover(project);
 
   const toc = extractTableOfContents(project.body);
@@ -111,7 +113,7 @@ export default async function ProjectPage({ params }: ProjectPageProps) {
         siteUrl={siteUrl}
       />
       <ContentHeader
-        eyebrow={`Project / ${project.status}`}
+        eyebrow={`Project / ${projectStatus.meta}`}
         title={project.title}
         description={project.description}
         publishedAt={project.publishedAt}

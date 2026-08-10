@@ -9,6 +9,7 @@ import {
   getTagIndex,
 } from "@/lib/content";
 import { createHomepageEvidence } from "@/lib/homepage-evidence";
+import { getProjectStatusPresentation } from "@/lib/content-presentation";
 import { createPublicRouteInventory } from "@/lib/public-routes";
 import { resolveSiteUrl } from "@/lib/site";
 import { createWebsiteStructuredData } from "@/lib/website";
@@ -22,6 +23,9 @@ export default async function Home() {
   const publicRoutes = createPublicRouteInventory({ posts, projects, series, tags });
   const journalEntries = posts.slice(0, 3);
   const featuredProject = getFeaturedProject();
+  const featuredProjectStatus = featuredProject
+    ? getProjectStatusPresentation(featuredProject.status)
+    : undefined;
   const topicTags = tags.slice(0, 4);
   const homepageEvidence = createHomepageEvidence({
     publicRouteCount: publicRoutes.total,
@@ -130,7 +134,7 @@ export default async function Home() {
                   <p>{entry.description}</p>
                 </Link>
 
-                {index === 0 && featuredProject ? (
+                {index === 0 && featuredProject && featuredProjectStatus ? (
                   <Link
                     className="project"
                     id="project"
@@ -139,10 +143,7 @@ export default async function Home() {
                   >
                     <div className="project-topline">
                       <span className="project-kicker">Featured project</span>
-                      <span className="project-state">
-                        {featuredProject.status.charAt(0).toUpperCase() +
-                          featuredProject.status.slice(1)}
-                      </span>
+                      <span className="project-state">{featuredProjectStatus.meta}</span>
                     </div>
                     <h3>{featuredProject.title}</h3>
                     <p>{featuredProject.description}</p>

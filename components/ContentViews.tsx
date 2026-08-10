@@ -7,6 +7,7 @@ import type {
   ProjectRecord,
 } from "@/lib/content";
 import type { TableOfContentsItem } from "@/lib/content/markdown";
+import { getProjectStatusPresentation } from "@/lib/content-presentation";
 
 function recordType(record: ContentRecord) {
   if (record.kind === "project") return "Project";
@@ -14,7 +15,9 @@ function recordType(record: ContentRecord) {
 }
 
 function recordMeta(record: ContentRecord) {
-  if (record.kind === "project") return record.status.toUpperCase();
+  if (record.kind === "project") {
+    return getProjectStatusPresentation(record.status).meta;
+  }
   return `${record.readingMinutes} MIN READ`;
 }
 
