@@ -6,7 +6,7 @@
 npm run check
 ```
 
-顺序为 ESLint → 524 项内容/时间档案/内容活动/订阅目录/维护/inbox/暂存媒体/关系/推荐/站点身份/公开路由事实/首页内容证据/About 系统档案/项目状态与内容日期展示/面包屑/标题锚点与永久链接/脚注/数学公式/打印版式/知识图/外链库存与检查/搜索/OpenSearch/公开清单/发现端点验证器与预算/公开 Markdown/OAuth/Studio/Obsidian/媒体/重定向/代码复制/交付单元测试 → Next 路由类型生成与 TypeScript → 原生 Next.js 生产构建（52 个页面，并包含动态 Route Handler）→ 30 项真实生产 HTTP 与质量审计。任何一步失败都阻止合并和生产部署。
+顺序为 ESLint → 531 项内容/时间档案/内容活动/订阅目录/维护/inbox/暂存媒体/关系/推荐/站点身份/公开路由事实/首页内容证据/About 系统档案/项目状态与内容日期展示/面包屑/标题锚点与永久链接/脚注/数学公式/打印版式/知识图/外链库存与检查/搜索/OpenSearch/公开清单/根与标签 RSS/发现端点验证器与预算/公开 Markdown/OAuth/Studio/Obsidian/媒体/重定向/代码复制/交付单元测试 → Next 路由类型生成与 TypeScript → 原生 Next.js 生产构建（63 个生成页面，并包含动态 Route Handler）→ 32 项真实生产 HTTP 与质量审计。任何一步失败都阻止合并和生产部署。
 
 公开路由事实质量门不把 `27` 复制成两个独立断言：纯函数夹具锁定静态/动态顺序、total、最新日期、输入不变和重复 path 失败关闭；真实 Next 测试并行请求首页与 Sitemap，从实际 `<loc>` 数量派生首页期望文字，并要求首页 `LATEST` 等于 Sitemap 根 URL 的 `lastmod`。测试同时拒绝遗留 `REV. <数字>`。这样内容增长会自动改变两端，任一消费者脱离共享事实才失败。
 
@@ -86,7 +86,7 @@ npm run production:smoke -- https://example.vercel.app --expect-oauth
 
 订阅目录必须返回 200、具有 `/subscribe` canonical，并在可见 HTML 中恰好渲染 RSS、JSON Feed、OpenSearch、清单/Schema 与 Markdown 五条只读通道；页脚、Sitemap 和全部原生端点链接必须可达。纯目录测试锁定通道顺序、MIME/路径、清单双链接、最新 Markdown 的日期/标题/URL 决胜、输入不变和空集合说明；真实 SSR、生产 smoke 与 390px 浏览器还要验证页内真实链接、只读边界、无横向溢出和零 console error。
 
-检查代表内容、时间档案、内容活动、订阅目录、搜索、Studio HTML/配置/媒体清单/媒体预检/稳定 slug 控件/公式预览模块/版本化 KaTeX CSS/同源 CMS 运行时、OAuth、OpenSearch、公开内容清单及 Schema、JSON Feed、RSS、robots、全 Sitemap、永久重定向、安全头、缓存与固定 404。OpenSearch 必须具有 1.1 namespace、唯一 ShortName/Description、同源 results/self URL、安全 `{searchTerms}` 模板、示例查询、语言/编码、准确 MIME、`noindex`、最终正文 SHA-256 ETag 与空 304；首页和搜索结果页必须声明绝对 `rel="search"`，端点不能进入 Sitemap。公开内容清单必须由根 HTML 发现，使用 version 1、同 origin 绝对 HTML/Markdown URL、字段白名单、稳定顺序和与全部真实源文相同的 SHA-256 digest；清单自身 ETag、Last-Modified、空 304、`noindex` 与 Vercel 等价缓存必须成立，并与 JSON Feed/RSS 保持同一公开 id 顺序。Schema 必须使用 Draft 2020-12 和 `application/schema+json`，具有同源 `$id`、严格字段结构、与清单双向 registered Link relation、SHA-256 ETag、空 304、`noindex` 与等价缓存；Ajv 2020 还要验证真实清单并拒绝结构反例。JSON Feed 必须使用 1.1 version 和 `application/feed+json`，顶层 origin、作者、语言、icon 正确，item 必须有唯一同值 id/url、纯文本正文、RFC 3339 发布日期且不泄漏内部字段。JSON Feed、RSS、Sitemap、robots 和 OpenSearch 还必须证明 ETag 等于各自最终正文 SHA-256，并用源响应标签完成同 digest、同缓存策略、零正文的 304；两个 Feed 另需证明规范 Last-Modified、日期命中 304、旧/非法日期 200 和 ETag 优先级，本地接受三种 HTTP-date，生产允许边缘 304 省略可选表示元数据。缓存验证接受源响应的一小时 fresh/一天 SWR，以及 Vercel CDN 消费 SWR 后的等价一小时策略，robots 则必须保持明确的一天 public fresh。错误 TTL、`private` 或 `no-store` 仍失败关闭。十三条关键 HTML 路由和七个结构化发现端点还必须在实际传入的生产域名下逐条输出 raw/gzip 实测、阈值、基线和带正负号的余量；缺失、重复、意外端点或超限都失败关闭。线上公式 POST 必须返回两条公式、KaTeX、MathML 与生产管线标记，CSS 必须内联 WOFF2 且不残留 package 相对字体路径。媒体清单必须是 `version: 1`、根为 `public/uploads`，每项包含安全路径、正整数节数与 64 位 SHA-256，并保持 `no-store`。永久重定向检查要求 `/blog` 返回 308、同源 `Location` 直达 `/posts`，且目标只需一次请求即返回 200。`--expect-oauth` 只用于已配置 GitHub OAuth 的生产环境；本地和 Preview 允许 OAuth 以 503 安全关闭。
+检查代表内容、时间档案、内容活动、订阅目录、标签订阅发现、搜索、Studio HTML/配置/媒体清单/媒体预检/稳定 slug 控件/公式预览模块/版本化 KaTeX CSS/同源 CMS 运行时、OAuth、OpenSearch、公开内容清单及 Schema、JSON Feed、根/标签 RSS、robots、全 Sitemap、永久重定向、安全头、缓存与固定 404。OpenSearch 必须具有 1.1 namespace、唯一 ShortName/Description、同源 results/self URL、安全 `{searchTerms}` 模板、示例查询、语言/编码、准确 MIME、`noindex`、最终正文 SHA-256 ETag 与空 304；首页和搜索结果页必须声明绝对 `rel="search"`，端点不能进入 Sitemap。公开内容清单必须由根 HTML 发现，使用 version 1、同 origin 绝对 HTML/Markdown URL、字段白名单、稳定顺序和与全部真实源文相同的 SHA-256 digest；清单自身 ETag、Last-Modified、空 304、`noindex` 与 Vercel 等价缓存必须成立，并与 JSON Feed/根 RSS 保持同一公开 id 顺序。Schema 必须使用 Draft 2020-12 和 `application/schema+json`，具有同源 `$id`、严格字段结构、与清单双向 registered Link relation、SHA-256 ETag、空 304、`noindex` 与等价缓存；Ajv 2020 还要验证真实清单并拒绝结构反例。JSON Feed 必须使用 1.1 version 和 `application/feed+json`，顶层 origin、作者、语言、icon 正确，item 必须有唯一同值 id/url、纯文本正文、RFC 3339 发布日期且不泄漏内部字段。标签 RSS 必须由同名 tags 子集派生，页面可见/alternate 发现一致，channel home/self、文件名、Link/noindex 正确，未知标签 GET/HEAD 为无验证器 `no-store` 404，且 Feed 不进入 Sitemap。JSON Feed、根/标签 RSS、Sitemap、robots 和 OpenSearch 还必须证明 ETag 等于各自最终正文 SHA-256，并用源响应标签完成同 digest、同缓存策略、零正文的 304；Feed 另需证明规范 Last-Modified、日期命中 304、旧/非法日期 200 和 ETag 优先级，本地接受三种 HTTP-date，生产允许边缘 304 省略可选表示元数据。缓存验证接受源响应的一小时 fresh/一天 SWR，以及 Vercel CDN 消费 SWR 后的等价一小时策略，robots 则必须保持明确的一天 public fresh。错误 TTL、`private` 或成功响应 `no-store` 仍失败关闭。十三条关键 HTML 路由和八个结构化发现端点还必须在实际传入的生产域名下逐条输出 raw/gzip 实测、阈值、基线和带正负号的余量；缺失、重复、意外端点或超限都失败关闭。线上公式 POST 必须返回两条公式、KaTeX、MathML 与生产管线标记，CSS 必须内联 WOFF2 且不残留 package 相对字体路径。媒体清单必须是 `version: 1`、根为 `public/uploads`，每项包含安全路径、正整数节数与 64 位 SHA-256，并保持 `no-store`。永久重定向检查要求 `/blog` 返回 308、同源 `Location` 直达 `/posts`，且目标只需一次请求即返回 200。`--expect-oauth` 只用于已配置 GitHub OAuth 的生产环境；本地和 Preview 允许 OAuth 以 503 安全关闭。
 
 搜索质量必须覆盖全角/大小写 NFKC、组合重音、兼容字符、多词 AND、摘要/正文证据选择、重叠分段、原文重组和空查询。真实 Next 与生产 smoke 不能只在 RSC 序列化载荷中找到文档标题：Cloudflare 查询必须出现真实 `<mark>`、来源和字段原因，Wrangler 必须是 1 条“正文”证据，B_i 必须是 0 条且没有 mark。组件源码不得使用 `dangerouslySetInnerHTML`；浅深色 ink/trace 对比必须达到 4.5:1，320px 不得横向溢出，搜索输入必须有选择器优先级足够的 `:focus-visible` 轮廓。
 
@@ -122,9 +122,9 @@ npm run production:smoke -- https://example.vercel.app --expect-oauth
 - 文章、项目、专题与标签详情必须从同一 `{ name, href }` 数组服务端输出可见面包屑与 `BreadcrumbList`；末级可见项使用真实标题及 `aria-current="page"`，窄屏上级路径保持可读、当前长标题自然换行且根页面不横向溢出；
 - 文章/项目详情必须服务端输出无 JavaScript 可见的 canonical 与 Markdown 源文链接，并声明 `text/markdown` alternate；分享与复制控件只能渐进增强，不能成为唯一访问路径；
 - 根 HTML 必须服务端声明 `/content.json` 的 `application/json` alternate；清单 version 1 的顶层和 item 字段顺序、公开 allowlist、同 Feed/RSS 顺序、同 origin URL 与逐项源文 ETag 必须稳定，内容/origin 变化要更新清单与对应标签；清单自身必须支持 SHA-256 ETag、Last-Modified、ETag/日期条件空 304、旧/坏日期 200、ETag 优先、分层缓存和 `noindex`，并以 `describedby` 指向 `/content.schema.json`；Schema 必须反向 `describes` 清单、使用当前 origin 的 `$id`、以 Ajv 2020 接受真实清单并拒绝代表性结构漂移，同时支持自身 SHA-256 ETag、空 304、分层缓存和 `noindex`；
-- JSON Feed、RSS、Sitemap 与 robots 的强 ETag 必须等于最终响应正文 SHA-256；`If-None-Match` 的精确/弱值、列表与 `*` 命中必须返回保留原 ETag/MIME/缓存策略的空 304，错值与畸形列表返回完整 200；JSON Feed/RSS 的 Last-Modified 必须取各自表示修订时间和最新公开内容的最大值，发送端只用 IMF-fixdate，接收端兼容三种 HTTP-date，日期相等/更晚返回空 304，旧值、重复值、日历或星期错误返回完整 200，任何存在的 `If-None-Match` 都优先；RSS 还必须声明准确的 Dublin Core Terms 命名空间，逐项保持 `guid`、首发排序与 `pubDate`，仅对严格更晚的更新输出一个与 JSON Feed `date_modified` 相同的 `dcterms:modified`，并拒绝 item 级 `atom:updated`；前三者保留一小时 fresh/一天 SWR，robots 保留一天 public fresh；
+- JSON Feed、根/标签 RSS、Sitemap 与 robots 的强 ETag 必须等于最终响应正文 SHA-256；`If-None-Match` 的精确/弱值、列表与 `*` 命中必须返回保留原 ETag/MIME/缓存策略的空 304，错值与畸形列表返回完整 200；JSON Feed/RSS 的 Last-Modified 必须取各自表示修订时间和最新公开内容的最大值，发送端只用 IMF-fixdate，接收端兼容三种 HTTP-date，日期相等/更晚返回空 304，旧值、重复值、日历或星期错误返回完整 200，任何存在的 `If-None-Match` 都优先；RSS 还必须声明准确的 Dublin Core Terms 命名空间，逐项保持 `guid`、首发排序与 `pubDate`，仅对严格更晚的更新输出一个与 JSON Feed `date_modified` 相同的 `dcterms:modified`，并拒绝 item 级 `atom:updated`；标签 RSS 只允许同名 tag 子集，频道和 Link 指向对应标签语境；这些 Feed 与 Sitemap 保留一小时 fresh/一天 SWR，robots 保留一天 public fresh；
 - 公开 Markdown 源文必须验证字段 allowlist、正文结构、站内链接/媒体绝对化、外链/代码稳定、MIME、安全文件名、HTML canonical `Link`、`noindex` 和公开缓存；源站强 ETag 必须等于最终 UTF-8 字节的 SHA-256，内容/origin 变化必须换值，Last-Modified 使用最新公开日期的 UTC 零点；`If-None-Match` 精确/弱值、列表与 `*` 命中必须返回空 304，错值和畸形列表必须返回完整 200；不存在 ETag 条件时，同值日期返回空 304，旧/坏日期返回 200，陈旧 ETag 必须屏蔽日期命中。本地源站测试锁定完整 304 头，生产冒烟允许 Vercel 对 Brotli ETag 增加 `W/` 并省略 304 representation metadata，但必须保持相同 SHA-256 opaque tag、Cache-Control 和零正文，任何仍存在的 Last-Modified/canonical/noindex 不得漂移；草稿、未来内容与未知 slug 必须返回不缓存的 404；
-- 七个结构化端点与文章/项目 `source.md` 必须在真实 Next 生产构建中证明 HEAD 200/304 零正文，并保持 GET 的 ETag、Last-Modified、MIME、缓存、文件名、Link/noindex；所有端点覆盖 ETag HEAD，带日期资源还覆盖 IMS 命中、旧/坏日期和 ETag 优先。稳定生产允许 304 精简可选表示元数据，但同一 opaque digest、缓存和零正文不可改变；未知源文 HEAD 必须是 `no-store` 404 且不得生成验证器；
+- 八个结构化端点与文章/项目 `source.md` 必须在真实 Next 生产构建中证明 HEAD 200/304 零正文，并保持 GET 的 ETag、Last-Modified、MIME、缓存、文件名、Link/noindex；所有端点覆盖 ETag HEAD，带日期资源还覆盖 IMS 命中、旧/坏日期和 ETag 优先。稳定生产允许 304 精简可选表示元数据，但同一 opaque digest、缓存和零正文不可改变；未知源文与未知标签 RSS HEAD 必须是 `no-store` 404 且不得生成验证器；
 - 所有可见内部导航目标返回成功；
 - 有站内关系的文章/项目必须服务端渲染语义独立的 outgoing/backlinks 分组；两侧都为空时不渲染空账本；
 - 文章/项目详情的继续阅读必须只使用公开记录与已验证关系，最多 3 条，逐条输出专题、标签或引用理由；自身、零信号记录与空推荐区不得渲染；
@@ -149,8 +149,8 @@ npm run production:smoke -- https://example.vercel.app --expect-oauth
 | 全局 CSS | `< 100 KB` |
 | 单页服务端 HTML raw 紧急上限 | `≤ 160 KiB` |
 | 十三条关键路由 gzip 传输模拟 | `生产基线 + max(20%, 2 KiB)`，再向上取整到 `1 KiB` |
-| 七个结构化发现端点 raw | 各自 `生产基线 + max(50%, 4 KiB)`，再向上取整到 `1 KiB` |
-| 七个结构化发现端点 gzip | 各自 `生产基线 + max(50%, 1 KiB)`，再向上取整到 `512 B` |
+| 八个结构化发现端点 raw | 各自 `生产基线 + max(50%, 4 KiB)`，再向上取整到 `1 KiB` |
+| 八个结构化发现端点 gzip | 各自 `生产基线 + max(50%, 1 KiB)`，再向上取整到 `512 B` |
 
 `scripts/html-budget.mjs` 保存稳定生产 origin、基线日期、来源提交及十三条路由的 raw/Node zlib gzip 基线。本地生产测试用该稳定 origin 作为 forwarded host，对完整响应执行 `Buffer.byteLength` 与 `gzipSync`；部署后的 `production:smoke` 再对实际输入域名执行同一模块，二者都输出实测、阈值、基线和余量。raw 160 KiB 只防止异常解压/文档膨胀；性能回归由按生产基线推导的 gzip 门判断，因此高度重复但可压缩的 100KB 以上页面不会被旧统一门误伤，高熵增长仍会失败。404 采用固定 `/definitely-missing`，避免随机路径本身进入 RSC 载荷后改变测量值。
 
@@ -158,7 +158,7 @@ Iteration 0119 以内容活动功能提交 `5fb508c` 的稳定生产响应在 20
 
 Iteration 0120 以首页最近活动功能提交 `c54535e` 的稳定生产响应再次统一重测十三条基线：`/` 38722/7641、`/posts` 23165/5100、代表文章 57125/13189、代表项目 113705/25391、`/archive` 25184/5542、`/activity` 41778/6507、`/subscribe` 33680/6483、专题 22707/5112、标签 22560/5110、搜索 41251/14701、知识地图 40497/8009、关于页 21811/5104、固定 404 25370/4451 B（raw/gzip）。预算提交 `67a127a` 只更新实测值、日期/来源断言与派生上限；首页 gzip 上限仍为 10240 B，活动页仍为 9216 B，其余上限按同一公式推导。活动专属规则迁入 CSS Module 后，全局 CSS 从 99,995 B 降至 95,383 B，保留 4,612 B 硬门余量；路由级 CSS 不通过扩大全局阈值获得豁免。
 
-`scripts/discovery-budget.mjs` 独立保存七个结构化端点的 stable-origin raw/gzip 基线和逐端点推导上限。它同时约束 raw 与 gzip：可压缩的异常正文不能只靠 gzip 通过，高熵增长也不能只靠 raw 通过。本地应用测试与生产冒烟必须各自恰好覆盖清单、Schema、JSON Feed、RSS、Sitemap、robots、OpenSearch 一次，并输出 `[discovery-budget]` 报告；Iteration 0121 以 RSS 修改时间功能提交 `97eabce` 的稳定生产响应统一重测，依次为 3009/921、3278/755、20697/9876、3536/1298、5059/532、155/127、700/462 B（raw/gzip）。预算提交 `52d6a18` 只更新来源与实测值；七个推导上限依次仍为 7168/2048、8192/2048、31744/14848、8192/2560、9216/2048、5120/1536、5120/1536 B（raw/gzip）。
+`scripts/discovery-budget.mjs` 独立保存八个结构化端点的 stable-origin raw/gzip 基线和逐端点推导上限。它同时约束 raw 与 gzip：可压缩的异常正文不能只靠 gzip 通过，高熵增长也不能只靠 raw 通过。本地应用测试与生产冒烟必须各自恰好覆盖清单、Schema、JSON Feed、根 RSS、代表 TypeScript 标签 RSS、Sitemap、robots、OpenSearch 一次，并输出 `[discovery-budget]` 报告；Iteration 0126 以标签 RSS 功能提交 `d4e26b8` 的稳定生产响应统一绑定来源，依次为 3009/921、3278/755、20697/9876、3400/1284、2059/923、5059/532、155/127、700/462 B（raw/gzip）。预算提交 `4bda63a` 只接入第八条实测与来源；八个推导上限依次为 7168/2048、8192/2048、31744/14848、8192/2560、7168/2048、9216/2048、5120/1536、5120/1536 B（raw/gzip）。
 
 Iteration 0122 只改变 JSON Feed/RSS 响应头与条件分支，稳定生产正文、SHA-256 ETag 和 raw/gzip 实测逐字节保持 20697/9876、3536/1298 B；因此继续使用 `97eabce` 的七端点 body 基线，不创建自我放行式重测提交。功能提交 `237fd8d` 的 530 项单元、52 页构建、30 项应用测试和线上 smoke 单独证明响应头价值与边缘行为。
 
@@ -167,6 +167,8 @@ Iteration 0123 只把内容清单与单篇 Markdown 已存在的 Last-Modified �
 Iteration 0124 没有改运行时响应生成，而是把 Next/Vercel 的 HEAD 发送行为从隐式依赖提升为回归契约。失败优先部署测试先因 smoke 缺少 `method: "HEAD"` 以 5/6 失败；提交 `64ab9dd` 后为真实应用新增第 31 项测试，并让生产 smoke 覆盖九端点 HEAD 矩阵。完整证据为 530 项单元、52 页构建、31 项应用测试和线上 27 routes/OAuth 302；正文、ETag 与 raw/gzip 基线不变。
 
 Iteration 0125 先以逐 item 精确数组断言证明旧 RSS 错把内容类型混入 tags，失败证据为 discovery 测试 7/8。功能提交 `f9bd0d0` 后，单元层覆盖 XML 特殊字符转义，真实应用与生产 smoke 都在解码 XML 后要求 RSS categories 和 JSON Feed tags 数量、顺序和值一致；完整门为 ESLint、TypeScript、530 项单元、52 页构建、31 项应用测试，稳定生产为 27 routes/OAuth 302。新生产 RSS 为 3400/1284 B（raw/gzip）；预算提交 `0b1f81d` 把七端点基线来源绑定到已部署功能提交 `f9bd0d0`，其余六端点实测不变，RSS 推导上限仍为 8192/2560 B。
+
+Iteration 0126 先让 scoped RSS 生成与生产 smoke 以 13/15 失败，再实现共享 RSS 响应、标签过滤、页面发现和未知标签边界。真实应用测试又连续捕获 `/tags/:path*` 配置覆盖成功 Feed 与未知 404 两种缓存错误，最终通过收窄 HTML 路径规则解决。功能提交 `d4e26b8` 后完整门为 ESLint、TypeScript、531 项单元、63 个生成页面、32 项应用测试，稳定生产为 27 routes/OAuth 302。TypeScript Feed 有 2 项、2059/923 B（raw/gzip）；预算提交 `4bda63a` 把它纳入第八条发现端点，推导上限 7168/2048 B。
 
 基线不是自动追随当前页面的自我放行值。只有在确认增长属于有价值的产品变化、真实生产重新测量且完整门通过后，才能同时更新数值、日期和来源提交；不得只为失败路由调高单个阈值。预算用于捕获意外回归，不代替真实网络与 Web Vitals；未来若接入观测服务，仍应以真实用户传输和渲染数据补充。
 
