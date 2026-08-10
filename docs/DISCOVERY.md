@@ -1,6 +1,6 @@
 # 搜索与发布发现
 
-- 状态：RSS/Sitemap/robots implemented in iteration 0006；JSON Feed 1.1 implemented in iteration 0088；公开内容清单 implemented in iteration 0091；清单 JSON Schema implemented in iteration 0099；既有结构化端点条件读取 completed in iteration 0101；OpenSearch 1.1 discovery completed in iteration 0102；可解释搜索命中证据 completed in iteration 0103；可解释继续阅读 completed in iteration 0104；详情页结构化面包屑 completed in iteration 0105
+- 状态：RSS/Sitemap/robots implemented in iteration 0006；JSON Feed 1.1 implemented in iteration 0088；公开内容清单 implemented in iteration 0091；清单 JSON Schema implemented in iteration 0099；既有结构化端点条件读取 completed in iteration 0101；OpenSearch 1.1 discovery completed in iteration 0102；可解释搜索命中证据 completed in iteration 0103；可解释继续阅读 completed in iteration 0104；详情页结构化面包屑 completed in iteration 0105；首页站点身份 completed in iteration 0106
 - 目标：让公开内容可搜索、可订阅、可被搜索引擎发现，同时保持 Git 内容源和无数据库架构。
 
 ## 站内搜索
@@ -24,6 +24,12 @@
 文章、项目、专题和标签详情统一输出“首页 → 对应集合 → 当前真实标题”。同一 `{ name, href }` 数组既渲染可见 `<nav aria-label="面包屑">`，也生成 Schema.org `BreadcrumbList`；每个 `ListItem` 都有从 1 开始的稳定 `position`、可见同名 `name` 与当前请求 origin 下的绝对 `item` URL。
 
 生成器拒绝少于两级、空名称、外部或协议相对地址、查询、fragment 和重复 URL。页面先完成公开记录查找，未知 slug 直接进入 `notFound()`，所以 404 不会携带一份看似有效的机器路径。实现使用原生服务端 `<script type="application/ld+json">` 并复用既有 `<` 转义边界，不增加客户端代码、数据库、分析服务或内容字段。
+
+## 首页站点身份
+
+域名根首页输出唯一 Schema.org `WebSite`，字段固定为 `@id`、`name`、`url`、`description` 与 `inLanguage`。名称、描述和语言分别复用 `SITE_TITLE`、`SITE_DESCRIPTION`、`SITE_LANGUAGE`；`url` 使用当前可信请求 origin 的规范根地址，`@id` 稳定为 `<root>#website`。页面继续使用 Next Server Component 和原生 JSON-LD script，不增加客户端 JavaScript。
+
+Google 站点名称契约要求 `WebSite` 只位于域名或子域名首页，内部集合、详情、搜索、地图和关于页因此都必须为零。当前没有经过确认的简称，也没有需要远程执行的搜索 API，所以不输出 `alternateName` 或 `SearchAction`。站点名称不受 Google Rich Results Test 支持；自动门验证 Schema 与真实 HTML，人工抽查应使用 Schema Markup Validator，最终搜索展示仍由搜索引擎决定。
 
 ## OpenSearch 1.1
 

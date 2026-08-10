@@ -7,7 +7,7 @@
 - GitHub：<https://github.com/Zach424/MyBlog>
 - 当前生产站：<https://blog-iota-five-59.vercel.app>
 - 迁移期回退站：<https://zach424-engineering-notes.zhiqingchen792.chatgpt.site>
-- 发布状态：Vercel 原生 Next.js、GitHub `main` 自动部署、Studio editorial workflow 与只读内容复核队列、Obsidian `--push`、活动正式笔记有界生产收敛等待、内部链接/标题锚点门禁、反向引用、公开知识地图、NFKC/AND 本地全文搜索及安全命中证据、文章/项目详情的可解释继续阅读推荐、四类详情页可见路径与 `BreadcrumbList` JSON-LD 单一事实源、RSS 与 JSON Feed 1.1、可供 Obsidian/自动化发现的 `/content.json` 清单及 `/content.schema.json` JSON Schema、可由浏览器发现的 OpenSearch 1.1 描述、七个结构化发现端点的 SHA-256 ETag/条件请求、带内容 ETag/条件请求的文章/项目可移植 Markdown 源文、详情页规范链接分享与 Markdown 引用复制、可解释的 HTML 与结构化发现 raw/gzip 双层预算、版本化永久重定向、生产冒烟、回滚恢复与六处官方 Actions 不可变 SHA 门禁均已验收
+- 发布状态：Vercel 原生 Next.js、GitHub `main` 自动部署、Studio editorial workflow 与只读内容复核队列、Obsidian `--push`、活动正式笔记有界生产收敛等待、内部链接/标题锚点门禁、反向引用、公开知识地图、NFKC/AND 本地全文搜索及安全命中证据、文章/项目详情的可解释继续阅读推荐、首页唯一 `WebSite` 与四类详情页 `BreadcrumbList` JSON-LD、RSS 与 JSON Feed 1.1、可供 Obsidian/自动化发现的 `/content.json` 清单及 `/content.schema.json` JSON Schema、可由浏览器发现的 OpenSearch 1.1 描述、七个结构化发现端点的 SHA-256 ETag/条件请求、带内容 ETag/条件请求的文章/项目可移植 Markdown 源文、详情页规范链接分享与 Markdown 引用复制、可解释的 HTML 与结构化发现 raw/gzip 双层预算、版本化永久重定向、生产冒烟、回滚恢复与六处官方 Actions 不可变 SHA 门禁均已验收
 - 内容入口：`/studio` 网页后台、`/studio/maintenance` 已公开 Current 内容复核队列、仓库根目录 Obsidian Vault、普通 Git 编辑器
 - 数据模型：仓库内 Markdown + YAML frontmatter，无数据库；公开内容标明当前维护/历史快照和最近复核日期
 

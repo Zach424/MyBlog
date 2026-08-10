@@ -14,14 +14,14 @@ MyBlog 是 Zach424 的个人技术知识库与公开工程日志。它把学习�
 | 公开阅读 | done | 首页、文章、项目、专题、标签、搜索、关于、响应式、深色模式与详情页封面；搜索结果提供 Unicode 安全命中证据，文章/项目详情提供最多 3 条带可见理由的继续阅读 |
 | 读者分享 | done | 文章/项目服务端规范链接、Web Share、URL/Markdown 引用 Clipboard、全 ASCII 标点转义、取消静默、共享 single-flight、`aria-live` 回执、无 JavaScript 恢复路径与 print 隔离 |
 | Markdown | done | GFM、代码高亮、语言标签、渐进增强的一键复制、与实际渲染一致的 H1–H6 heading id、H2/H3 目录与原生永久链接、Obsidian 兼容脚注/尾注与行内/块级数学公式、A4 打印/PDF 版式、阅读时间、相邻文章与响应式正文图片 |
-| 内容发现 | done | SEO、内容级 OG/Twitter 封面、文章/项目/专题/标签可见路径与 `BreadcrumbList` JSON-LD、OpenSearch 1.1、version 1 公开内容清单及 Draft 2020-12 JSON Schema、JSON Feed 1.1、RSS、文章/项目可移植 Markdown 源文、Sitemap、robots、NFKC/AND 本地全文搜索；七个结构化端点与源文均有 SHA-256 ETag/条件读取 |
+| 内容发现 | done | SEO、内容级 OG/Twitter 封面、首页唯一 `WebSite`、文章/项目/专题/标签可见路径与 `BreadcrumbList` JSON-LD、OpenSearch 1.1、version 1 公开内容清单及 Draft 2020-12 JSON Schema、JSON Feed 1.1、RSS、文章/项目可移植 Markdown 源文、Sitemap、robots、NFKC/AND 本地全文搜索；七个结构化端点与源文均有 SHA-256 ETag/条件读取 |
 | 网页写作 | done | `/studio`、GitHub OAuth、Decap workflow、PR、按 slug 归档媒体、稳定 slug 锁定、双层 SHA-256 冲突预检、快速重选 latest-wins、生产规则公式预览与全字段只读发布清单 |
 | Obsidian 写作 | done | Vault、三类受信模板、桌面插件 1.41.0、文件名唯一草稿身份、原子新建/改名/旧身份清理、source-scoped 作者意图与来源行导航、发布/复核 single-flight、三方版本联锁、bundle SHA-256 完整性、四路径 Git HEAD/index/worktree provenance、sealed Git 交付恢复、维护台账、全库生产同步、手动单篇收敛与正常/恢复交付自动接力 |
 | Inbox 发布就绪 | done | version 6/read-only 全草稿 ready/scheduled/blocked、每个可读来源的原始字节 SHA-256、Article/TIL/Project、精确站内目标/源码行/重复次数、媒体 COVER/BODY 用途/出现次数/源码行/最终替代文本及来源、空文本与文件名回退阻塞、真实媒体候选、目标/共享附件诊断、CLI 全库或 `--source` 聚焦 JSON 与 Obsidian 当前草稿原生摘要 |
 | 附件发布 | done | Wiki/Markdown 图片转换、按内容隔离、稳定命名、越界保护、失败回滚 |
 | 自动交付 | done | GitHub `main` → Vercel Production → 稳定域名冒烟；checkout/setup-node v6 Node 24 action runtime 的六处引用固定到官方完整 SHA，应用 Node 22 与 workflow 语义由共享结构/发布门禁保护 |
 | 生产内容同步 | done | `content:production` 输出全库 deployed/pending/missing/unexpected；`content:production:wait` 冻结单篇来源 SHA-256/ETag，以条件 GET 有界等待 deployed；Obsidian 1.41.0 提供手动入口，并从正常或 recovery publication/review 的可信 Git 成功结果在写事务释放、Vault reconcile 后自动接力同一 latest-wins 等待器 |
-| HTML 传输预算 | done | 九条关键路由的稳定生产 raw/Node gzip 基线、160 KiB 紧急上限、20%/2 KiB gzip 余量公式、本地稳定 host 与部署后实际 origin 双验证、逐路由余量报告与覆盖失败关闭；0105 基线来自 `ccd494e` 稳定生产响应 |
+| HTML 传输预算 | done | 九条关键路由的稳定生产 raw/Node gzip 基线、160 KiB 紧急上限、20%/2 KiB gzip 余量公式、本地稳定 host 与部署后实际 origin 双验证、逐路由余量报告与覆盖失败关闭；0106 基线来自 `62e8943` 稳定生产响应 |
 | 结构化发现传输预算 | done | 清单、Schema、JSON Feed、RSS、Sitemap、robots、OpenSearch 的稳定生产 raw/gzip 基线、50% + raw 4 KiB/gzip 1 KiB 余量、逐端点报告与恰好一次覆盖门 |
 | 恢复能力 | done | Vercel 显式目标回滚、当前版本恢复、再次冒烟 |
 | 内容知识网络 | done | GFM 行内/引用式/自引用链接、页面与标题锚点构建门、文章/项目双向引用账本，以及复用专题、标签和已验证图边的可解释推荐 |
@@ -42,6 +42,7 @@ MyBlog 是 Zach424 的个人技术知识库与公开工程日志。它把学习�
 - 运行时：Next.js 16.3.0、React 19.2.6、TypeScript 5、Node.js 22+；
 - 内容：仓库内 Markdown、YAML、Zod，GitHub 是唯一事实源；
 - 发现：`/content.json` 从公开 getter 稳定生成 4 条机器清单，逐项提供同 origin HTML/Markdown URL 与最终源文 SHA-256；`/content.schema.json` 使用 Draft 2020-12 固定 version 1 结构，并以 describedby/describes Link 与清单双向关联。清单、Schema、JSON Feed、RSS、Sitemap、robots、OpenSearch 都以最终正文生成 SHA-256 ETag 并支持空 304；清单另有 Last-Modified，Feed/RSS/Sitemap/OpenSearch 保留一小时 fresh/一天 SWR，robots 保留一天 fresh；
+- 结构化身份：`SITE_TITLE`、`SITE_DESCRIPTION`、`SITE_LANGUAGE` 与可信请求 origin 生成仅首页存在的唯一 `WebSite`，根 URL 与 `#website` 身份稳定；四类详情面包屑继续由可见路径单一来源生成。全部使用原生服务端 JSON-LD script，不增加客户端代码、数据库、虚构别名或 SearchAction；
 - 搜索：服务端 Markdown AST 生成纯文本索引，客户端使用 NFKC、`zh-CN` 小写和多词 AND 排名；规范化命中通过 grapheme 边界映射回作者原文，只以 React 文本节点和原生 `<mark>` 渲染。摘要/正文选择覆盖查询词更多的证据，字段原因与来源标签、浅深色 AA 对比和显式 `:focus-visible` 共同提供可解释反馈；
 - 推荐：服务端纯函数从公开记录和 outgoing/backlink 索引派生，按双向引用 120、当前引用 80、反向引用 70、同专题 60、每个共同标签 15 排序；最多 3 条、同分稳定决胜、逐条显示实际理由，无客户端请求、数据库或新增内容字段；
 - 阅读：react-markdown、remark-gfm、remark-math、rehype-slug、rehype-highlight、rehype-katex 与 KaTeX；服务端 Markdown、中文脚注语义与回链、HTML + MathML 数学公式、MarkdownHeading 永久链接、PrintSource 可信来源与字段受限的可移植 `source.md`，最终 UTF-8 SHA-256 ETag、公开日期 Last-Modified 与 `If-None-Match` 弱比较，最小 CodeBlock/ShareTrace 客户端岛、Web Share/Clipboard API、CommonMark 全 ASCII 标点引用转义、共享 single-flight 与 aria-live；GFM + math 共享 mdast 继续复现标题、链接、媒体、搜索和源文 URL 改写语义，生产阅读与 Studio 共享 remark/rehype/KaTeX/安全 URL 规则，构建期公式使用 `trust: false`/严格资源上限；A4 `@page` 与 scoped print CSS 只重排既有语义 DOM；
@@ -57,15 +58,15 @@ MyBlog 是 Zach424 的个人技术知识库与公开工程日志。它把学习�
 
 - 仓库：<https://github.com/Zach424/MyBlog>，生产分支 `main`；
 - 生产站：<https://blog-iota-five-59.vercel.app>；
-- 本轮实现提交：`ccd494e`（四类详情页可见路径与结构化面包屑）；
-- 自动交付：[Quality Gate #197](https://github.com/Zach424/MyBlog/actions/runs/31347998558) 与 [Production Smoke #190](https://github.com/Zach424/MyBlog/actions/runs/31348029169) 均成功；
-- 最新完成迭代：0105 真实路径结构化面包屑；
+- 本轮实现提交：`62e8943`（首页唯一站点身份）；
+- 自动交付：[Quality Gate #199](https://github.com/Zach424/MyBlog/actions/runs/31349618719) 与 [Production Smoke #192](https://github.com/Zach424/MyBlog/actions/runs/31349646923) 均成功；
+- 最新完成迭代：0106 首页 `WebSite` 站点身份；
 - Obsidian 状态：仓库根目录就是 Vault，`docs/STATUS.md` 与 `docs/iterations/*.md` 可直接阅读和维护；
 - 手动外部接入：自定义域名、统计、评论、公开邮箱均暂缓，不阻塞当前开发。
 
 ## 本轮新增能力
 
-文章、项目、专题与标签详情现在从同一 `{ name, href }` 数组服务端输出可见面包屑和 Schema.org `BreadcrumbList`。共享纯函数拒绝少于两级、空名称、外部/协议相对、查询、fragment 与重复 URL，并把可信请求 origin、稳定 position、可见同名 name 和当前页绝对 URL绑定成一份机器路径；页面先查找公开记录再构造路径，因此四类未知 slug 的 404 均无误导性结构数据。移动端上级路径不收缩，当前长标题负责自然换行，320px 与 1440px 均无横向溢出；不新增客户端脚本、数据库或内容字段。功能门为 492/492 单元测试、49 个构建页面、21/21 应用测试、生产依赖审计 0；真实生产 24 路由与 OAuth 302 通过，四条代表详情各恰有一个精确 `BreadcrumbList`，四条未知详情均为 404 且结构数据为零。九路稳定生产 HTML 已基于 `ccd494e` 重测，gzip 余量仍为 +2296 至 +5290 B。
+域名根首页现在从 `SITE_TITLE`、`SITE_DESCRIPTION`、`SITE_LANGUAGE` 与可信请求 origin 服务端生成唯一 Schema.org `WebSite`。`url` 规范到根地址，`@id` 固定为 `<root>#website`；HTTP(S) 与无凭据边界失败关闭，输入 URL 不被修改。根 `<html lang>` 同时复用 `SITE_LANGUAGE`，站点语言不再分叉；当前没有确认的简称或远程搜索动作，因此不输出 `alternateName`、`potentialAction` 或 `SearchAction`。集合、文章、项目、专题、标签、搜索、知识地图和关于页均明确为零节点。功能门为 495/495 单元测试、49 个构建页面、22/22 应用测试、生产依赖审计 0；浏览器确认首页唯一节点、文章页仅有 `BlogPosting + BreadcrumbList`、console 为空且视觉无变化；真实生产 24 路由与 OAuth 302 全部通过。九路 HTML 已用 `62e8943` 稳定生产重新冻结，首页为 27309/5994 B（raw/gzip），gzip 余量 +2198 B，其余路由保持 +2296 至 +5292 B。
 
 ## 风险与下一步
 
@@ -87,5 +88,6 @@ MyBlog 是 Zach424 的个人技术知识库与公开工程日志。它把学习�
 16. 搜索首屏仍向客户端序列化 4 条完整纯文本文档。当前生产 `/search?q=cloudflare` 为 36194/13826 B raw/gzip，体积在冻结预算内；内容规模增长时应先由 HTML raw/gzip 门报警，再评估索引分片或按需加载。当前实现依赖 Next.js/目标浏览器已支持的 `Intl.Segmenter`，且坚持以数据分段和 React 转义渲染，不能为兼容或高亮改回 raw HTML。
 17. 推荐排序在当前小型内容库里可解释且稳定，但内容与标签增长后，泛化共同标签可能逐步压过稀有关系。先保留可见理由和 HTML 预算证据，积累真实内容分布后再评估标签稀有度或多样性约束；不接入点击追踪或黑盒模型。
 18. 结构化面包屑会增加四类详情 HTML，且只有与可见路径一致时才可信；0105 的九路基线已用 `ccd494e` 稳定生产重新冻结，后续不能用本地输出或未部署提交自我放行。当前自动门证明语法、路径、同源与 404 边界，不保证搜索引擎一定展示富媒体结果；后续变更仍应使用官方 Rich Results Test 或 Schema Markup Validator 做必要的发布前抽查。
+19. 首页站点名称会被 Google 与页面标题、`og:site_name`、首页可见文字等多信号共同判断；当前 `WebSite` 只能表达偏好，不能保证采用或展示。站点名称不支持 Rich Results Test，应使用 Schema Markup Validator 做语法抽查。0106 九路 HTML 基线已绑定 `62e8943` 稳定生产；自定义域名启用时必须同步验证根 URL、`@id`、canonical、Open Graph、Feed/清单和全部生产门，不能沿用 Vercel 域名证据。
 
-下一轮唯一主任务：为首页补齐唯一 `WebSite` JSON-LD。复用 `SITE_TITLE`、`SITE_DESCRIPTION` 与可信请求 origin，输出稳定 `@id`、`name`、`url`、`description`、`inLanguage`；只在首页服务端输出，不增加 `SearchAction`、客户端代码、数据库或新的内容字段。
+下一轮唯一主任务：让文章 `BlogPosting` 与项目 `SoftwareSourceCode` 使用各自 canonical 的稳定 `@id`，并以 `isPartOf: { "@id": "<root>#website" }` 引用首页站点身份。复用同一纯生成器派生站点节点 ID，保持服务端输出、现有可见页面与字段不变，不新增 Person/ProfilePage、客户端代码、数据库或内容字段。

@@ -138,6 +138,8 @@ npm run production:smoke -- https://your-production.example --expect-oauth
 
 结构化面包屑要核对文章、项目、专题、标签四条代表详情：每页可见路径与唯一 `BreadcrumbList` 的名称、顺序和 URL 必须逐级完全一致，`position` 从 1 连续递增，`item` 必须使用本次冒烟传入的真实 origin。四类随机未知 slug 必须返回 404 且不包含 `BreadcrumbList`。只解析真实 `<nav aria-label="面包屑">` 和 `application/ld+json` script，不得把 RSC 序列化载荷里的字符串当成可见或机器语义。自动门证明页面契约，不保证搜索引擎一定展示富媒体结果；重要结构变化上线前可再用 Google Rich Results Test 或 Schema Markup Validator 抽查。
 
+首页站点身份要核对根页面恰有一个 `WebSite`，`@id` 为实际生产根地址加 `#website`，`name`、`description`、`inLanguage` 与站点事实一致，`url` 为本次冒烟 origin 的规范根地址；代表集合、详情、搜索、地图和关于页必须全部没有 `WebSite`。不得为了字段丰富度添加未经确认的 `alternateName` 或 `SearchAction`。Google Rich Results Test 不支持站点名称，发布前人工语法抽查使用 Schema Markup Validator；自动门和人工语法通过都不代表搜索引擎一定采用该站点名。
+
 同一命令还会为清单、Schema、JSON Feed、RSS、Sitemap、robots 与 OpenSearch 输出 `[discovery-budget]` 七行 raw/gzip 证据。任一路由缺失、重复、超出自己的冻结上限都会阻止冒烟；不要通过删除检查或自动采用当前输出解决失败。若增长是一次有意的内容/协议变化，先核对实际正文与公开集合，再在稳定生产重新测量七端点，同时更新基线数值、日期、来源提交、测试和迭代归档。域名变化会改变绝对 URL 和正文大小，必须以新稳定 origin 重新建立有来源基线。
 
 ## 故障等级
