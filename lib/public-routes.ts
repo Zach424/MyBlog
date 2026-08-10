@@ -47,6 +47,7 @@ export const STATIC_PUBLIC_ROUTE_FACTS = [
     priority: 0.8,
   },
   { path: "/archive", dateSource: "site", changeFrequency: "weekly", priority: 0.7 },
+  { path: "/activity", dateSource: "site", changeFrequency: "weekly", priority: 0.7 },
   {
     path: "/subscribe",
     dateSource: "site",

@@ -166,6 +166,7 @@ test("derives one public route inventory for homepage facts and Sitemap output",
       "/posts",
       "/projects",
       "/archive",
+      "/activity",
       "/subscribe",
       "/series",
       "/tags",
@@ -178,7 +179,7 @@ test("derives one public route inventory for homepage facts and Sitemap output",
       "/tags/typescript",
     ],
   );
-  assert.equal(inventory.total, 14);
+  assert.equal(inventory.total, 15);
   assert.equal(inventory.latestModified, "2026-07-19");
   assert.equal(inventory.routes[0]?.lastModified, inventory.latestModified);
   assert.equal(
@@ -208,6 +209,7 @@ test("creates a complete sitemap and a linked robots policy", () => {
   assert.match(sitemap, /https:\/\/blog\.example\.test\/search/);
   assert.match(sitemap, /https:\/\/blog\.example\.test\/knowledge/);
   assert.match(sitemap, /https:\/\/blog\.example\.test\/archive/);
+  assert.match(sitemap, /https:\/\/blog\.example\.test\/activity/);
   assert.match(sitemap, /https:\/\/blog\.example\.test\/subscribe/);
   assert.match(sitemap, /https:\/\/blog\.example\.test\/posts\/build-worker/);
   assert.match(sitemap, /<lastmod>2026-07-19<\/lastmod>/);

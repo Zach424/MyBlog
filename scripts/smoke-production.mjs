@@ -291,6 +291,7 @@ export async function runProductionSmoke(originInput, { expectOAuth = false } = 
     ["/posts", "文章与 TIL"],
     ["/projects", "项目复盘"],
     ["/archive", "时间档案"],
+    ["/activity", "内容活动"],
     ["/subscribe", "订阅与开放接口"],
     ["/knowledge", "知识之间，应该看得见来路"],
     ["/posts/building-a-maintainable-blog", "从零搭建可维护的个人技术博客"],
@@ -336,6 +337,14 @@ export async function runProductionSmoke(originInput, { expectOAuth = false } = 
       subscribe.includes("/source.md") &&
       subscribe.includes("这些接口只负责读取"),
     "订阅与开放接口目录异常",
+  );
+  const activity = htmlPages.get("/activity")?.body ?? "";
+  invariant(
+    activity.includes("8 EVENTS / 4 PUBLISHED / 4 UPDATED") &&
+      (activity.match(/class="activity-event activity-event-published"/gu) ?? []).length === 4 &&
+      (activity.match(/class="activity-event activity-event-updated"/gu) ?? []).length === 4 &&
+      !activity.includes("activity-event-reviewed"),
+    "内容活动事件账本异常",
   );
   assertContentIdentity(origin, htmlPages);
   const relatedPost = htmlPages.get("/posts/building-a-maintainable-blog")?.body ?? "";
@@ -1116,8 +1125,9 @@ export async function runProductionSmoke(originInput, { expectOAuth = false } = 
         sha256Etag(sitemap.body),
       ) &&
       sitemapUrls.includes(`${origin.origin}/archive`) &&
+      sitemapUrls.includes(`${origin.origin}/activity`) &&
       sitemapUrls.includes(`${origin.origin}/subscribe`) &&
-      sitemapUrls.length >= 26,
+      sitemapUrls.length >= 27,
     "Sitemap URL 数量或条件验证器异常",
   );
   invariant(

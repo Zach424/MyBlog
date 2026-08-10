@@ -106,6 +106,7 @@ export default function ArchivePage() {
       )}
 
       <nav className="collection-links" aria-label="继续发现">
+        <Link href="/activity">查看发布与更新活动 <span aria-hidden="true">→</span></Link>
         <Link href="/posts">按文章类型浏览 <span aria-hidden="true">→</span></Link>
         <Link href="/projects">查看项目复盘 <span aria-hidden="true">→</span></Link>
         <Link href="/knowledge">沿引用关系阅读 <span aria-hidden="true">→</span></Link>

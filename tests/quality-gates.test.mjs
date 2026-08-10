@@ -401,6 +401,7 @@ test("keeps every visible internal navigation target healthy", async () => {
     "/projects",
     "/projects/myblog",
     "/archive",
+    "/activity",
     "/subscribe",
     "/series",
     "/tags",

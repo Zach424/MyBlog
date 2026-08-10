@@ -202,6 +202,7 @@ test("publishes one authoritative WebSite identity on the homepage only", async 
     "/posts/building-a-maintainable-blog",
     "/projects/myblog",
     "/archive",
+    "/activity",
     "/subscribe",
     "/series/build-my-blog",
     "/tags/typescript",
@@ -323,6 +324,7 @@ test("server-renders every public content collection and detail route", async ()
     ["/posts", /文章与 TIL/],
     ["/projects", /项目复盘/],
     ["/archive", /时间档案/],
+    ["/activity", /内容活动/],
     ["/subscribe", /订阅与开放接口/],
     ["/series", /连续专题/],
     ["/series/build-my-blog", /从零搭建可维护的个人技术博客/],
@@ -345,7 +347,7 @@ test("server-renders the about system profile from public content facts", async 
   assert.equal(response.status, 200);
   const html = await response.text();
 
-  assert.match(html, /4 RECORDS \/ 26 ROUTES \/ UPDATED 2026-08-06/u);
+  assert.match(html, /4 RECORDS \/ 27 ROUTES \/ UPDATED 2026-08-06/u);
   assert.match(html, /公开系统档案/u);
   assert.match(html, /文章与 TIL/u);
   assert.match(html, /MyBlog — 把学习记录做成工程资产/u);
@@ -457,6 +459,7 @@ test("server-renders one mixed chronological archive with real dates and types",
   assert.match(html, />Article<\/span>/u);
   assert.match(html, />TIL<\/span>/u);
   assert.match(html, />Project<\/span>/u);
+  assert.match(html, /href="\/activity"/u);
 
   const titles = [
     "从零搭建可维护的个人技术博客",
@@ -467,6 +470,29 @@ test("server-renders one mixed chronological archive with real dates and types",
   const positions = titles.map((title) => html.indexOf(title));
   assert.ok(positions.every((position) => position >= 0));
   assert.deepEqual(positions, [...positions].sort((left, right) => left - right));
+});
+
+test("server-renders a content activity ledger from publish and update events", async () => {
+  const response = await render("/activity");
+  assert.equal(response.status, 200);
+
+  const html = visibleDocument(await response.text()).replaceAll("<!-- -->", "");
+  assert.match(
+    html,
+    /<link rel="canonical" href="https:\/\/blog\.example\.test\/activity"/u,
+  );
+  assert.match(html, /8 EVENTS \/ 4 PUBLISHED \/ 4 UPDATED/u);
+  assert.equal((html.match(/class="activity-day"/gu) ?? []).length, 5);
+  assert.equal((html.match(/class="activity-event activity-event-published"/gu) ?? []).length, 4);
+  assert.equal((html.match(/class="activity-event activity-event-updated"/gu) ?? []).length, 4);
+  assert.equal((html.match(/class="activity-event-link"/gu) ?? []).length, 8);
+  assert.match(html, /<time dateTime="2026-08-06">/u);
+  assert.match(html, /UPDATED[\s\S]*?内容更新 · Project[\s\S]*?MyBlog — 把学习记录做成工程资产/u);
+  assert.match(html, /PUBLISHED[\s\S]*?首次发布 · Article/u);
+  assert.match(html, /REVIEWED[\s\S]*?不等同于内容发生变化/u);
+  assert.doesNotMatch(html, /activity-event-reviewed/u);
+  assert.ok(html.indexOf("2026-08-06") < html.indexOf("2026-07-18"));
+  assert.match(html, /href="\/archive"/u);
 });
 
 test("keeps visible and machine breadcrumbs identical on every detail route", async () => {
@@ -1091,6 +1117,7 @@ test("publishes the structured discovery suite from one public origin", async (c
   assert.match(sitemap, /https:\/\/blog\.example\.test\/search/);
   assert.match(sitemap, /https:\/\/blog\.example\.test\/knowledge/);
   assert.match(sitemap, /https:\/\/blog\.example\.test\/archive/);
+  assert.match(sitemap, /https:\/\/blog\.example\.test\/activity/);
   assert.match(sitemap, /https:\/\/blog\.example\.test\/subscribe/);
   assert.match(sitemap, /https:\/\/blog\.example\.test\/tags\/typescript/);
   assert.match(sitemap, /https:\/\/blog\.example\.test\/series\/build-my-blog/);

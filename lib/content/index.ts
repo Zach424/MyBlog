@@ -144,3 +144,11 @@ export type {
 } from "./recommendations";
 export { createContentArchive } from "./archive";
 export type { ContentArchiveMonth, ContentArchiveYear } from "./archive";
+export { createContentActivity } from "./activity";
+export type {
+  ContentActivity,
+  ContentActivityDay,
+  ContentActivityEvent,
+  ContentActivityMode,
+  ContentActivityType,
+} from "./activity";
