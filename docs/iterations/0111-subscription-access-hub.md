@@ -86,7 +86,7 @@
 - 功能提交：`5ab34a702aec87777f6d33030dc9215a99343190 feat: publish subscription access hub`；
 - 基线提交：`8c392412d4f6fbe55e232d7d1cb7e632f7c73335 test(performance): baseline subscription access hub`；
 - GitHub：[Quality Gate #211](https://github.com/Zach424/MyBlog/actions/runs/31409262889) 1m12s、[Quality Gate #212](https://github.com/Zach424/MyBlog/actions/runs/31409845698) 1m13s，均成功；
-- Vercel：[Verify Vercel production #203](https://github.com/Zach424/MyBlog/actions/runs/31409329481) 49s 成功；基线提交仅修改预算数据，未产生新的生产部署；
+- Vercel：[Verify Vercel production #203](https://github.com/Zach424/MyBlog/actions/runs/31409329481) 49s、[Verify Vercel production #204](https://github.com/Zach424/MyBlog/actions/runs/31409904998) 46s，均成功；
 - 稳定生产 smoke：26 routes、OAuth 302；十一路 HTML 与七个发现端点全部 PASS；
 - 十一路稳定生产基线（raw/gzip B）：`/` 27419/6016、`/posts` 17972/4265、代表文章 51975/12279、代表项目 108139/24490、`/archive` 20386/4742、`/subscribe` 29108/5727、专题 17621/4184、标签 17442/4154、搜索 36304/13847、知识地图 36018/7262、关于页 15022/3870；
 - 七端点基线（raw/gzip B）：清单 3009/921、Schema 3278/755、JSON Feed 20697/9876、RSS 3238/1241、Sitemap 4882/524、robots 155/127、OpenSearch 700/462。
@@ -102,7 +102,7 @@
 7. 浏览器扩展的 `ERR_BLOCKED_BY_CLIENT` 不能替代 HTTP 证据，协议端点应以响应状态、MIME、缓存和正文契约判断；
 8. 视觉上使用 Evidence Rail 比通用卡片网格更适合表达“同一事实源、多个读取端口”的关系；
 9. 390px 实际 layout viewport 可能因浏览器环境显示为 375 CSS px，验收重点应是 `scrollWidth === clientWidth` 和关键内容可达；
-10. 基线必须绑定已部署的功能 SHA；测试数据提交不触发 Vercel 部署并不影响这条证据链；
+10. 基线必须绑定已部署的功能 SHA，而不是基线提交自身；基线提交即使再次部署并通过冒烟，也只是确认协议未漂移，不能反过来充当测量来源；
 11. 并行工作区中的用户文档属于独立资产，持续使用显式路径暂存可避免误提交。
 
 ## 9. 全局状态、风险与未解决问题
