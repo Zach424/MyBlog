@@ -1,10 +1,10 @@
 import type {
   ContentRecord,
-  PostRecord,
-  ProjectRecord,
-  SeriesIndexEntry,
-  TagIndexEntry,
 } from "./content";
+import {
+  createPublicRouteInventory,
+  type PublicRouteInventoryInput,
+} from "./public-routes.ts";
 import { markdownToPlainText } from "./search-index.ts";
 import { absoluteSiteUrl, SITE_DESCRIPTION, SITE_TITLE } from "./site.ts";
 
@@ -134,61 +134,10 @@ ${items}
 </rss>`;
 }
 
-interface SitemapInput {
-  posts: PostRecord[];
-  projects: ProjectRecord[];
-  series: SeriesIndexEntry[];
-  tags: TagIndexEntry[];
-}
+export function createSitemapXml(siteUrl: URL, input: PublicRouteInventoryInput) {
+  const { routes } = createPublicRouteInventory(input);
 
-interface SitemapEntry {
-  path: string;
-  lastModified?: string;
-  changeFrequency: "weekly" | "monthly";
-  priority: number;
-}
-
-export function createSitemapXml(siteUrl: URL, input: SitemapInput) {
-  const records: ContentRecord[] = [...input.posts, ...input.projects];
-  const siteDate = newestDate(records);
-  const entries: SitemapEntry[] = [
-    { path: "/", lastModified: siteDate, changeFrequency: "weekly", priority: 1 },
-    { path: "/posts", lastModified: newestDate(input.posts), changeFrequency: "weekly", priority: 0.9 },
-    { path: "/projects", lastModified: newestDate(input.projects), changeFrequency: "monthly", priority: 0.8 },
-    { path: "/archive", lastModified: siteDate, changeFrequency: "weekly", priority: 0.7 },
-    { path: "/subscribe", lastModified: siteDate, changeFrequency: "monthly", priority: 0.6 },
-    { path: "/series", lastModified: newestDate(input.posts), changeFrequency: "monthly", priority: 0.7 },
-    { path: "/tags", lastModified: siteDate, changeFrequency: "monthly", priority: 0.6 },
-    { path: "/knowledge", lastModified: siteDate, changeFrequency: "monthly", priority: 0.7 },
-    { path: "/search", lastModified: siteDate, changeFrequency: "weekly", priority: 0.7 },
-    { path: "/about", lastModified: siteDate, changeFrequency: "monthly", priority: 0.5 },
-    ...input.posts.map((post) => ({
-      path: post.url,
-      lastModified: contentDate(post),
-      changeFrequency: "monthly" as const,
-      priority: 0.8,
-    })),
-    ...input.projects.map((project) => ({
-      path: project.url,
-      lastModified: contentDate(project),
-      changeFrequency: "monthly" as const,
-      priority: 0.7,
-    })),
-    ...input.series.map((entry) => ({
-      path: `/series/${entry.slug}`,
-      lastModified: newestDate(entry.posts),
-      changeFrequency: "monthly" as const,
-      priority: 0.6,
-    })),
-    ...input.tags.map((tag) => ({
-      path: `/tags/${tag.slug}`,
-      lastModified: newestDate(tag.items),
-      changeFrequency: "monthly" as const,
-      priority: 0.5,
-    })),
-  ];
-
-  const urls = entries
+  const urls = routes
     .map(
       (entry) => `  <url>
     <loc>${escapeXml(absoluteSiteUrl(siteUrl, entry.path))}</loc>${

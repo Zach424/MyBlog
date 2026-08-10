@@ -69,12 +69,20 @@ function expectedWebsiteIdentity(origin) {
 }
 
 test("server-renders the engineering log homepage", async () => {
-  const response = await render();
+  const [response, sitemapResponse] = await Promise.all([
+    render(),
+    render("/sitemap.xml", { accept: "application/xml" }),
+  ]);
   assert.equal(response.status, 200);
   assert.match(response.headers.get("content-type") ?? "", /^text\/html\b/i);
+  assert.equal(sitemapResponse.status, 200);
 
   const html = await response.text();
+  const sitemap = await sitemapResponse.text();
   const visibleHtml = html.replaceAll("<!-- -->", "");
+  const sitemapUrls = [...sitemap.matchAll(/<loc>([^<]+)<\/loc>/gu)].map(
+    (match) => match[1],
+  );
   assert.match(html, /<html lang="zh-CN">/i);
   assert.match(html, /<title>Zach424 \/ Engineering Notes<\/title>/i);
   assert.match(
@@ -117,15 +125,21 @@ test("server-renders the engineering log homepage", async () => {
   assert.match(html, /从零搭建可维护的个人技术博客/);
   assert.match(html, /MyBlog — 把学习记录做成工程资产/);
   assert.match(html, /公开生产上线/);
-  assert.match(html, /Guest · 25 public URLs · Browser QA/);
+  assert.match(
+    visibleHtml,
+    new RegExp(`Guest · ${sitemapUrls.length} public URLs · Sitemap synced`, "u"),
+  );
   assert.match(html, /持续内容发布与维护/);
   assert.match(html, /权限变更也要做未登录验收/);
-  const revisionDate = /REV\. 010 · (\d{4}-\d{2}-\d{2})/u.exec(visibleHtml)?.[1];
-  const newestTraceDate = /class="trace-date" dateTime="(\d{4}-\d{2}-\d{2})"/u.exec(
-    visibleHtml,
-  )?.[1];
-  assert.ok(revisionDate, "首页应显示带日期的版本标识");
-  assert.equal(revisionDate, newestTraceDate, "版本日期应跟随最新公开文章");
+  const latestDate = /LATEST · (\d{4}-\d{2}-\d{2})/u.exec(visibleHtml)?.[1];
+  const sitemapHomeDate = new RegExp(
+    `<loc>https://blog\\.example\\.test/<\\/loc>\\s*<lastmod>(\\d{4}-\\d{2}-\\d{2})<\\/lastmod>`,
+    "u",
+  ).exec(sitemap)?.[1];
+  assert.ok(sitemapUrls.length >= 26, "Sitemap 应保留完整公开路由集合");
+  assert.ok(latestDate, "首页应显示最新公开内容日期");
+  assert.equal(latestDate, sitemapHomeDate, "首页日期应与 Sitemap 首页事实一致");
+  assert.doesNotMatch(visibleHtml, /REV\.\s*\d+/u);
   assert.match(visibleHtml, /Design Systems · 3/);
   assert.doesNotMatch(html, developmentPreviewMeta);
   assert.doesNotMatch(html, /Starter Project|react-loading-skeleton|Your site is taking shape/);

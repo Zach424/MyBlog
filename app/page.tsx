@@ -3,39 +3,49 @@ import { headers } from "next/headers";
 import { StructuredData } from "@/components/StructuredData";
 import {
   getAllPosts,
+  getAllProjects,
   getFeaturedProject,
+  getSeriesIndex,
   getTagIndex,
 } from "@/lib/content";
+import { createPublicRouteInventory } from "@/lib/public-routes";
 import { resolveSiteUrl } from "@/lib/site";
 import { createWebsiteStructuredData } from "@/lib/website";
 
-const evidenceItems = [
-  {
-    state: "Verified",
-    mark: "verified",
-    value: "公开生产上线",
-    meta: "Guest · 25 public URLs · Browser QA",
-  },
-  {
-    state: "Building",
-    mark: "building",
-    value: "持续内容发布与维护",
-    meta: "Markdown · Checks · Feeds",
-  },
-  {
-    state: "Learned",
-    mark: "learned",
-    value: "权限变更也要做未登录验收",
-    meta: "Access · Guest · Canonical",
-  },
-] as const;
+function createEvidenceItems(publicUrlCount: number) {
+  return [
+    {
+      state: "Verified",
+      mark: "verified",
+      value: "公开生产上线",
+      meta: `Guest · ${publicUrlCount} public URLs · Sitemap synced`,
+    },
+    {
+      state: "Building",
+      mark: "building",
+      value: "持续内容发布与维护",
+      meta: "Markdown · Checks · Feeds",
+    },
+    {
+      state: "Learned",
+      mark: "learned",
+      value: "权限变更也要做未登录验收",
+      meta: "Access · Guest · Canonical",
+    },
+  ] as const;
+}
 
 export default async function Home() {
   const siteUrl = resolveSiteUrl(await headers());
-  const journalEntries = getAllPosts().slice(0, 3);
+  const posts = getAllPosts();
+  const projects = getAllProjects();
+  const series = getSeriesIndex();
+  const tags = getTagIndex();
+  const publicRoutes = createPublicRouteInventory({ posts, projects, series, tags });
+  const evidenceItems = createEvidenceItems(publicRoutes.total);
+  const journalEntries = posts.slice(0, 3);
   const featuredProject = getFeaturedProject();
-  const topicTags = getTagIndex().slice(0, 4);
-  const latestDate = journalEntries[0]?.publishedAt ?? "2026-07-18";
+  const topicTags = tags.slice(0, 4);
 
   return (
     <>
@@ -45,7 +55,9 @@ export default async function Home() {
           <div className="hero-copy">
             <p className="eyebrow">
               <span>Independent engineering log</span>
-              <span>REV. 010 · {latestDate}</span>
+              <span>
+                LATEST · {publicRoutes.latestModified ?? "NO PUBLIC CONTENT"}
+              </span>
             </p>
             <h1 id="hero-title">
               把写过的代码，

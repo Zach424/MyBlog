@@ -7,6 +7,7 @@ import {
   createRssXml,
   createSitemapXml,
 } from "../lib/discovery.ts";
+import { createPublicRouteInventory } from "../lib/public-routes.ts";
 import { resolveSiteUrl } from "../lib/site.ts";
 
 const post = {
@@ -147,6 +148,51 @@ test("sorts JSON Feed items without mutating the caller's public records", () =>
 
   assert.deepEqual(records.map((record) => record.url), originalOrder);
   assert.deepEqual(feed.items.map((item) => item.title), ["Alpha", "Zulu"]);
+});
+
+test("derives one public route inventory for homepage facts and Sitemap output", () => {
+  const input = {
+    posts: [post],
+    projects: [project],
+    series: [{ slug: "build-blog", title: "Build Blog", posts: [post] }],
+    tags: [{ name: "TypeScript", slug: "typescript", count: 1, items: [post] }],
+  };
+  const inventory = createPublicRouteInventory(input);
+
+  assert.deepEqual(
+    inventory.routes.map((route) => route.path),
+    [
+      "/",
+      "/posts",
+      "/projects",
+      "/archive",
+      "/subscribe",
+      "/series",
+      "/tags",
+      "/knowledge",
+      "/search",
+      "/about",
+      "/posts/build-worker",
+      "/projects/myblog",
+      "/series/build-blog",
+      "/tags/typescript",
+    ],
+  );
+  assert.equal(inventory.total, 14);
+  assert.equal(inventory.latestModified, "2026-07-19");
+  assert.equal(inventory.routes[0]?.lastModified, inventory.latestModified);
+  assert.equal(
+    new Set(inventory.routes.map((route) => route.path)).size,
+    inventory.total,
+  );
+  assert.throws(
+    () =>
+      createPublicRouteInventory({
+        ...input,
+        posts: [{ ...post, url: "/" }],
+      }),
+    /公开路由事实清单存在重复路径：\//u,
+  );
 });
 
 test("creates a complete sitemap and a linked robots policy", () => {
