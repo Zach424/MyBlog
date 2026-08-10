@@ -99,7 +99,7 @@ test("reports actual bytes, limits, baselines, and signed headroom per route", (
   });
   const output = formatHtmlBudgetReport([passing, failing]);
 
-  assert.match(output, /^\[html-budget\] policy origin=https:\/\/blog-iota-five-59\.vercel\.app revision=c2e1d968 measured=2026-08-11 raw=/u);
+  assert.match(output, /^\[html-budget\] policy origin=https:\/\/blog-iota-five-59\.vercel\.app revision=5fb508c0 measured=2026-08-11 raw=/u);
   assert.match(output, /\/fixtures\/passing raw=\d+\/163840 headroom=\+\d+ baseline=1000 gzip=\d+\/3072 headroom=\+\d+ baseline=1000/u);
   assert.match(output, /\/fixtures\/failing .*headroom=-\d+.*FAIL/u);
 });
@@ -134,7 +134,7 @@ test("pins the deterministic local origin to the documented stable production si
   assert.equal(HTML_BUDGET_ORIGIN.origin, "https://blog-iota-five-59.vercel.app");
   assert.deepEqual(HTML_BUDGET_BASELINE_PROVENANCE, {
     measuredAt: "2026-08-11",
-    sourceRevision: "c2e1d96818305d1a58e7b4713f5cc5d7e940273c",
+    sourceRevision: "5fb508c092176a8a8ee44bef99cc4a631e51041f",
   });
   assert.ok(readme.includes(HTML_BUDGET_ORIGIN.origin));
   assert.deepEqual(Object.keys(HTML_ROUTE_BASELINES), [
@@ -143,6 +143,7 @@ test("pins the deterministic local origin to the documented stable production si
     "/posts/building-a-maintainable-blog",
     "/projects/myblog",
     "/archive",
+    "/activity",
     "/subscribe",
     "/series/build-my-blog",
     "/tags/typescript",

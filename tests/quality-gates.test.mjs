@@ -356,6 +356,7 @@ test("keeps key HTML routes structurally valid and within explainable transfer b
     "/posts/building-a-maintainable-blog",
     "/projects/myblog",
     "/archive",
+    "/activity",
     "/subscribe",
     "/series/build-my-blog",
     "/tags/typescript",
