@@ -417,6 +417,26 @@ export async function runProductionSmoke(originInput, { expectOAuth = false } = 
     ),
     "未知详情页不得输出内容结构化身份",
   );
+  const missing = await request(origin, "/definitely-missing");
+  invariant(missing.response.status === 404, `未知路由状态 ${missing.response.status}`);
+  invariant(
+    (missing.response.headers.get("cache-control") ?? "").includes("no-store"),
+    "404 必须 no-store",
+  );
+  invariant(
+    missing.body.includes('<meta name="robots" content="noindex"') &&
+      missing.body.includes("这条轨迹在这里中断。") &&
+      (missing.body.match(/class="not-found-route [^"]+"/gu) ?? []).length === 4 &&
+      missing.body.includes('href="/search"') &&
+      missing.body.includes('href="/archive"') &&
+      missing.body.includes('href="/posts"') &&
+      missing.body.includes('href="/projects"') &&
+      !missing.body.includes('http-equiv="refresh"'),
+    "404 恢复路径或 noindex 契约异常",
+  );
+  htmlBudgetReports.push(
+    measureHtmlBudget({ pathname: "/definitely-missing", html: missing.body }),
+  );
   assertHtmlBudgetCoverage(htmlBudgetReports);
   assertHtmlBudgets(htmlBudgetReports);
 
@@ -1156,24 +1176,6 @@ export async function runProductionSmoke(originInput, { expectOAuth = false } = 
     .map((response, index) => ({ status: response.status, url: sitemapUrls[index] }))
     .filter((entry) => entry.status !== 200);
   invariant(failedRoutes.length === 0, `Sitemap 路由失败：${JSON.stringify(failedRoutes)}`);
-
-  const missing = await request(origin, `/definitely-missing-${Date.now()}`);
-  invariant(missing.response.status === 404, `未知路由状态 ${missing.response.status}`);
-  invariant(
-    (missing.response.headers.get("cache-control") ?? "").includes("no-store"),
-    "404 必须 no-store",
-  );
-  invariant(
-    missing.body.includes('<meta name="robots" content="noindex"') &&
-      missing.body.includes("这条轨迹在这里中断。") &&
-      (missing.body.match(/class="not-found-route [^"]+"/gu) ?? []).length === 4 &&
-      missing.body.includes('href="/search"') &&
-      missing.body.includes('href="/archive"') &&
-      missing.body.includes('href="/posts"') &&
-      missing.body.includes('href="/projects"') &&
-      !missing.body.includes('http-equiv="refresh"'),
-    "404 恢复路径或 noindex 契约异常",
-  );
 
   return {
     origin: origin.origin,

@@ -362,13 +362,14 @@ test("keeps key HTML routes structurally valid and within explainable transfer b
     "/search?q=cloudflare",
     "/knowledge",
     "/about",
+    "/definitely-missing",
   ];
 
   const budgetReports = [];
 
   for (const pathname of paths) {
     const response = await request(pathname);
-    assert.equal(response.status, 200, pathname);
+    assert.equal(response.status, pathname === "/definitely-missing" ? 404 : 200, pathname);
     const responseHtml = await response.text();
     const html = visibleDocument(responseHtml);
     budgetReports.push(measureHtmlBudget({ pathname, html: responseHtml }));
