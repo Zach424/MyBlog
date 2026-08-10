@@ -291,6 +291,7 @@ export async function runProductionSmoke(originInput, { expectOAuth = false } = 
     ["/posts", "文章与 TIL"],
     ["/projects", "项目复盘"],
     ["/archive", "时间档案"],
+    ["/subscribe", "订阅与开放接口"],
     ["/knowledge", "知识之间，应该看得见来路"],
     ["/posts/building-a-maintainable-blog", "从零搭建可维护的个人技术博客"],
     ["/projects/myblog", "MyBlog"],
@@ -324,6 +325,18 @@ export async function runProductionSmoke(originInput, { expectOAuth = false } = 
       htmlBudgetReports.push(measureHtmlBudget({ pathname, html: page.body }));
     }
   }
+  const subscribe = htmlPages.get("/subscribe")?.body ?? "";
+  invariant(
+    (subscribe.match(/class="subscription-route"/gu) ?? []).length === 5 &&
+      subscribe.includes('href="/rss.xml"') &&
+      subscribe.includes('href="/feed.json"') &&
+      subscribe.includes('href="/opensearch.xml"') &&
+      subscribe.includes('href="/content.json"') &&
+      subscribe.includes('href="/content.schema.json"') &&
+      subscribe.includes("/source.md") &&
+      subscribe.includes("这些接口只负责读取"),
+    "订阅与开放接口目录异常",
+  );
   assertContentIdentity(origin, htmlPages);
   const relatedPost = htmlPages.get("/posts/building-a-maintainable-blog")?.body ?? "";
   invariant(
@@ -1083,7 +1096,8 @@ export async function runProductionSmoke(originInput, { expectOAuth = false } = 
         sha256Etag(sitemap.body),
       ) &&
       sitemapUrls.includes(`${origin.origin}/archive`) &&
-      sitemapUrls.length >= 24,
+      sitemapUrls.includes(`${origin.origin}/subscribe`) &&
+      sitemapUrls.length >= 26,
     "Sitemap URL 数量或条件验证器异常",
   );
   invariant(

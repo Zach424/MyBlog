@@ -143,6 +143,7 @@ test("pins the deterministic local origin to the documented stable production si
     "/posts/building-a-maintainable-blog",
     "/projects/myblog",
     "/archive",
+    "/subscribe",
     "/series/build-my-blog",
     "/tags/typescript",
     "/search?q=cloudflare",

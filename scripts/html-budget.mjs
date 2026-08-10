@@ -22,6 +22,7 @@ const measuredRouteBaselines = {
   "/posts/building-a-maintainable-blog": { rawBytes: 51_963, gzipBytes: 12_277 },
   "/projects/myblog": { rawBytes: 108_127, gzipBytes: 24_492 },
   "/archive": { rawBytes: 20_374, gzipBytes: 4_742 },
+  "/subscribe": { rawBytes: 28_755, gzipBytes: 5_698 },
   "/series/build-my-blog": { rawBytes: 17_609, gzipBytes: 4_182 },
   "/tags/typescript": { rawBytes: 17_430, gzipBytes: 4_155 },
   "/search?q=cloudflare": { rawBytes: 36_292, gzipBytes: 13_846 },

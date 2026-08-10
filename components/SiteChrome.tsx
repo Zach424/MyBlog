@@ -28,7 +28,7 @@ export function SiteFooter() {
       </p>
       <nav className="footer-links" aria-label="订阅与源码">
         <Link href="/search">搜索</Link>
-        <a href="/rss.xml">RSS</a>
+        <Link href="/subscribe">订阅</Link>
         <a href="/studio" rel="nofollow">写作后台</a>
         <a href="https://github.com/Zach424/MyBlog" target="_blank" rel="noreferrer">
           源码 <span aria-hidden="true">↗</span>

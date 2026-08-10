@@ -150,6 +150,7 @@ test("publishes one authoritative WebSite identity on the homepage only", async 
     "/posts/building-a-maintainable-blog",
     "/projects/myblog",
     "/archive",
+    "/subscribe",
     "/series/build-my-blog",
     "/tags/typescript",
     "/search",
@@ -270,6 +271,7 @@ test("server-renders every public content collection and detail route", async ()
     ["/posts", /文章与 TIL/],
     ["/projects", /项目复盘/],
     ["/archive", /时间档案/],
+    ["/subscribe", /订阅与开放接口/],
     ["/series", /连续专题/],
     ["/series/build-my-blog", /从零搭建可维护的个人技术博客/],
     ["/tags", /技术标签/],
@@ -284,6 +286,35 @@ test("server-renders every public content collection and detail route", async ()
     assert.equal(response.status, 200, pathname);
     assert.match(await response.text(), expectation, pathname);
   }
+});
+
+test("server-renders one read-only subscription switchboard with real endpoints", async () => {
+  const response = await render("/subscribe");
+  assert.equal(response.status, 200);
+
+  const html = visibleDocument(await response.text()).replaceAll("<!-- -->", "");
+  assert.match(
+    html,
+    /<link rel="canonical" href="https:\/\/blog\.example\.test\/subscribe"/u,
+  );
+  assert.match(
+    html,
+    /<ol class="subscription-routes" aria-label="公开订阅与读取通道">/u,
+  );
+  assert.equal((html.match(/class="subscription-route"/gu) ?? []).length, 5);
+  for (const href of [
+    "/rss.xml",
+    "/feed.json",
+    "/opensearch.xml",
+    "/content.json",
+    "/content.schema.json",
+    "/posts/building-a-maintainable-blog/source.md",
+  ]) {
+    assert.ok(html.includes(`href="${href}"`), href);
+  }
+  assert.match(html, /这些接口只负责读取/u);
+  assert.match(html, /公开、只读、不要求账号/u);
+  assert.match(html, /<a href="\/subscribe">订阅<\/a>/u);
 });
 
 test("server-renders one mixed chronological archive with real dates and types", async () => {
@@ -931,6 +962,7 @@ test("publishes the structured discovery suite from one public origin", async (c
   assert.match(sitemap, /https:\/\/blog\.example\.test\/search/);
   assert.match(sitemap, /https:\/\/blog\.example\.test\/knowledge/);
   assert.match(sitemap, /https:\/\/blog\.example\.test\/archive/);
+  assert.match(sitemap, /https:\/\/blog\.example\.test\/subscribe/);
   assert.match(sitemap, /https:\/\/blog\.example\.test\/tags\/typescript/);
   assert.match(sitemap, /https:\/\/blog\.example\.test\/series\/build-my-blog/);
   assert.doesNotMatch(sitemap, /opensearch\.xml/u);
