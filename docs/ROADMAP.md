@@ -12,7 +12,7 @@
 
 ## 当前唯一主线
 
-进入持续内容与作者体验阶段。Iteration 0115 已把 `/about` 改为公开系统档案：四类集合计数、公开 URL、最近更新和 Intro meta 来自公开集合/路由，当前项目标题、中文状态与完整 stack 来自精选项目；空集合和非法计数由 `lib/about-profile.ts` 集中处理，首页与 About 共享 `lib/content-presentation.ts` 的状态语义。功能提交 `ca21c5c` 已通过 516 项单元测试、51 页构建、27 项应用测试、390px 深色长标题/stack 验收与本地预算；当前仅因 GitHub HTTPS 传输超时尚未推送，生产证据必须在远端恢复后补齐。下一主线是统一首页项目卡、项目集合和项目详情的 status 展示语义，消除仍存在的 `Maintained`、`MAINTAINED` 与 `Project / maintained` 三种格式。首次真实 Obsidian 人机验收保留为所有者可执行事项，需要品牌域名时再绑定自定义域名。
+进入持续内容与作者体验阶段。Iteration 0115 已把 `/about` 改为公开系统档案：四类集合计数、公开 URL、最近更新和 Intro meta 来自公开集合/路由，当前项目标题、中文状态与完整 stack 来自精选项目；空集合和非法计数由 `lib/about-profile.ts` 集中处理，首页与 About 共享 `lib/content-presentation.ts` 的状态语义。功能提交 `ca21c5c` 已通过 516 项单元测试、51 页构建、27 项应用测试、390px 深色长标题/stack 验收与稳定生产 smoke；线上仍为 26 routes、OAuth 302，十二条 HTML 和七个发现端点预算全部通过。下一主线是统一首页项目卡、项目集合和项目详情的 status 展示语义，消除仍存在的 `Maintained`、`MAINTAINED` 与 `Project / maintained` 三种格式。首次真实 Obsidian 人机验收保留为所有者可执行事项，需要品牌域名时再绑定自定义域名。
 
 ## 已知风险
 

@@ -64,15 +64,15 @@ MyBlog 是 Zach424 的个人技术知识库与公开工程日志。它把学习�
 
 - 仓库：<https://github.com/Zach424/MyBlog>，生产分支 `main`；
 - 生产站：<https://blog-iota-five-59.vercel.app>；
-- 本轮功能提交：`ca21c5c`（About 内容事实系统档案），本地提交完整；GitHub HTTPS 当前超时，远端仍停在 `ddb1384`；
-- 自动交付：等待 GitHub 传输恢复后推送 `main`、等待 Vercel 部署，并对稳定域名补跑 26 routes、OAuth 与全部预算；本地生产候选已通过完整质量门；
-- 最新完成迭代：0115 About 内容事实系统档案（生产交付待网络恢复）；
+- 本轮功能提交：`ca21c5c`（About 内容事实系统档案），归档提交 `857ff05`；均已推送 `main` 并由 Vercel 部署；
+- 自动交付：稳定生产 About 已显示 `4 RECORDS / 26 ROUTES / UPDATED 2026-08-06`、六项系统事实、精选项目与五项 stack；完整 smoke 为 26 routes、OAuth 302，十二条 HTML 与七个结构化发现端点全部 PASS；
+- 最新完成迭代：0115 About 内容事实系统档案；
 - Obsidian 状态：仓库根目录就是 Vault，`docs/STATUS.md`、`docs/iterations/*.md` 与 `docs/knowledge/*.md` 是同一份本地文件，可直接阅读和维护；
 - 手动外部接入：自定义域名、统计、评论、公开邮箱均暂缓，不阻塞当前开发。
 
 ## 本轮新增能力
 
-`/about` 不再手写技术栈或模糊描述规模。`lib/about-profile.ts` 从 3 篇文章/TIL、1 个项目、1 个专题、11 个标签、26 条公开 URL 和最新日期生成系统档案，从精选 MyBlog 项目生成完整标题、持续维护状态及五项 stack；方法原则和 GitHub-only 联系边界保持不变。项目状态翻译移入 `lib/content-presentation.ts` 并与首页共享。失败优先测试先因模块不存在而失败；完整验证为 516/516 单元测试、51 个构建页面、27/27 应用测试。真实 Chromium 覆盖桌面、390×844、深色、长标题/stack 换行、根宽与 console；本地 `/about` 为 21571/5094 B（raw/gzip），预算 PASS。功能提交 `ca21c5c` 已完成，但 GitHub HTTPS 连续超时，尚未进入远端和 Vercel；生产验证不会用旧页面冒充。本轮中文状态、迭代归档和知识笔记都位于同一 Obsidian Vault。
+`/about` 不再手写技术栈或模糊描述规模。`lib/about-profile.ts` 从 3 篇文章/TIL、1 个项目、1 个专题、11 个标签、26 条公开 URL 和最新日期生成系统档案，从精选 MyBlog 项目生成完整标题、持续维护状态及五项 stack；方法原则和 GitHub-only 联系边界保持不变。项目状态翻译移入 `lib/content-presentation.ts` 并与首页共享。失败优先测试先因模块不存在而失败；完整验证为 516/516 单元测试、51 个构建页面、27/27 应用测试。真实 Chromium 覆盖桌面、390×844、深色、长标题/stack 换行、根宽与 console；本地 `/about` 为 21571/5094 B（raw/gzip）。提交上线后的稳定生产 `/about` 为 21811/5103 B，完整 smoke 为 26 routes、OAuth 302，十二条 HTML 与七端点预算全部 PASS。本轮中文状态、迭代归档和知识笔记都位于同一 Obsidian Vault。
 
 ## 风险与下一步
 
@@ -101,6 +101,6 @@ MyBlog 是 Zach424 的个人技术知识库与公开工程日志。它把学习�
 23. `/subscribe` 已把五类现有开放接口集中为可见目录，但它有意保持只读：不会收集邮箱、创建账户、保存订阅状态或代理第三方阅读器。未来若需要邮件订阅，必须由所有者单独选择供应商、隐私告知与数据保留策略，不能把当前目录误解为邮件服务。
 24. 404 恢复语境已经闭环，但本地 Next 自动 noindex 与 Vercel 最终 HTML 不一致；组件显式 meta 后本地有两个相同指令、生产一个。相同指令不改变语义，升级 Next/Vercel 时仍必须用最终生产 HTML 验证。错误页继承根首页 canonical，本轮没有为非索引页面启用实验性 global-not-found。
 25. 首页与 About 的可变事实均已数据驱动；项目 status 的公开展示仍有三种大小写/语言形式：首页项目卡为 `Maintained`，项目集合为 `MAINTAINED`，详情 eyebrow 为 `Project / maintained`。下一轮应让这些表面复用共享状态 presenter，同时保留 schema、Markdown 和机器接口中的原始 enum。
-26. 功能提交 `ca21c5c` 当前比 `origin/main` 领先 1 个提交；GitHub 网页 HTTPS 可达，但 Git for Windows 的 HTTPS push 连续出现 443 timeout。不得把本地通过或旧生产页面写成已部署；网络恢复后先推送、等待 Vercel 收敛，再补稳定生产证据。
+26. 本机浏览器使用系统代理时，Git for Windows 与 Node `fetch` 不一定自动继承代理配置，可能出现网页可达而 Git/生产 smoke 直连超时。0115 通过单次命令注入系统代理完成 push 和 smoke，没有写入仓库或全局 Git 配置；以后仍先区分站点失败与本地网络分流，不能把传输失败误判为部署失败。
 
 下一轮唯一主任务：统一首页项目卡、项目集合和项目详情的公开 status 展示语义，复用 `lib/content-presentation.ts` 输出一致的人类标签与稳定机器标签；覆盖四种状态、SSR、390px 和现有预算，不修改内容 enum、Markdown/API 输出、CMS 字段、数据库或云配置。

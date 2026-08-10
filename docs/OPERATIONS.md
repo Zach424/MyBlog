@@ -142,7 +142,7 @@ Iteration 0113 起，首页运行事实与 Sitemap 使用 `lib/public-routes.ts`
 
 Iteration 0114 起，首页 Building 必须等于当前精选项目标题，并显示内容 status 的中文映射与 stack 摘要；Learned 必须等于最新公开文章标题，并显示 type、`publishedAt` 与 tag 摘要；Current focus 必须由同一项目/文章和公开最新日期组成。发布后检查旧的“持续内容发布与维护”“权限变更也要做未登录验收”“公开运行 / 内容发布 / 维护反馈”均不存在。功能提交 `047ef40` 的稳定生产首页为 32163/6814 B（raw/gzip），26 routes、OAuth 302 和全部预算继续通过。
 
-Iteration 0115 起，`/about` 必须从公开 getter 与 `createPublicRouteInventory()` 生成集合计数、公开 URL 和最近更新，从精选项目生成完整标题、中文状态与全部 stack。发布后应核对 `4 RECORDS / 26 ROUTES / UPDATED 2026-08-06`、3/1/1/11 集合计数、五项技术栈和旧手写“TypeScript、React、Next.js 与 Vercel”句子不存在；方法原则和 GitHub-only 联系边界必须保留。局部构建候选为 21571/5094 B（raw/gzip），继续使用既有 About 预算；稳定生产数字只在功能提交真正进入 Production 后归档。
+Iteration 0115 起，`/about` 必须从公开 getter 与 `createPublicRouteInventory()` 生成集合计数、公开 URL 和最近更新，从精选项目生成完整标题、中文状态与全部 stack。发布后应核对 `4 RECORDS / 26 ROUTES / UPDATED 2026-08-06`、3/1/1/11 集合计数、五项技术栈和旧手写“TypeScript、React、Next.js 与 Vercel”句子不存在；方法原则和 GitHub-only 联系边界必须保留。功能提交 `ca21c5c`、归档提交 `857ff05` 的稳定生产 `/about` 为 21811/5103 B（raw/gzip），26 routes、OAuth 302、十二条 HTML 与七个发现端点全部 PASS，继续使用既有预算。
 
 搜索路径还要分别核对 `/search?q=cloudflare`、`/search?q=Wrangler` 与 `/search?q=B_i`：第一条必须出现可见命中 mark、来源和字段原因，第二条必须只有 1 条正文证据，第三条必须显示 0 条且不存在 mark。不要用 HTML 内 RSC 序列化的完整搜索文档冒充可见结果；生产 smoke 以真实 `<mark class="search-hit">`、来源标签和结果计数作为证据。
 

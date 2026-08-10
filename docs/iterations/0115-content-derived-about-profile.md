@@ -1,6 +1,6 @@
 # Iteration 0115：内容驱动的 About 系统档案
 
-> 本地实现、验证与归档：2026-08-11 · Vault：仓库根目录 · 生产交付待 GitHub 网络恢复
+> 实现、验证、上线与归档：2026-08-11 · Vault：仓库根目录
 
 ## 1. 范围与成功标准
 
@@ -91,7 +91,11 @@ Intro 的等宽 meta 为 `4 RECORDS / 26 ROUTES / UPDATED 2026-08-06`。计数�
 - 移动首屏截图：`output/playwright/iteration-0115/.playwright-cli/page-2026-08-10T18-45-36-189Z.png`；
 - 移动项目局部截图：`output/playwright/iteration-0115/.playwright-cli/page-2026-08-10T18-47-52-282Z.png`；以上均在忽略目录，不进入 Git；
 - 功能提交：`ca21c5c`（`feat: derive about profile from content`）；
-- 交付状态：本地 `HEAD` 比 `origin/main` 领先 1；GitHub 网页 HTTPS 返回 200，但 Git for Windows HTTPS push 连续 443 timeout，尚不能诚实记录 Vercel 部署或稳定生产 smoke。
+- 功能提交：`ca21c5c`；首份归档提交：`857ff05`；两者已推送 `main` 并触发 Vercel Production；
+- Git/Node 直连曾因未继承系统代理出现 GitHub 443 timeout 与 `fetch failed`；只对对应命令注入系统代理后恢复，没有写入仓库或全局配置；
+- 稳定生产页面已出现 `4 RECORDS / 26 ROUTES / UPDATED 2026-08-06`、六项档案、精选项目和五项 stack，旧手写技术句为零；
+- 稳定生产 smoke：26 routes、OAuth 302；十二条 HTML 与七个发现端点全部 PASS；
+- 稳定生产 `/about`：21811/5103 B（raw/gzip），相对基线 +2153/+384 B，仍有 +142029/+2065 B 余量，无需更新阈值。
 
 ## 8. 经验与教训
 
@@ -106,9 +110,10 @@ Intro 的等宽 meta 为 `4 RECORDS / 26 ROUTES / UPDATED 2026-08-06`。计数�
 9. 空集合不能只把数字变成 0，还要同时取消日期与项目陈述；
 10. 防御性复制能保证 view-model 不把调用者数组直接泄漏给 UI；
 11. SSR 既断言新事实又拒绝旧句子，才能证明第二份真相确实删除；
-12. 本地生产测试和浏览器截图不能替代稳定生产证据；Git push 失败时必须明确记录交付缺口；
-13. GitHub 网页可达不代表 Git 客户端传输可用，网络诊断要区分协议/客户端；
-14. Obsidian 状态、迭代档案和知识笔记仍是同一 Vault 中的 Git 文件，不需要再复制到另一个目录。
+12. 本地生产测试和浏览器截图不能替代稳定生产证据；Git push 失败时必须先明确记录交付缺口，再在恢复后补齐证据；
+13. GitHub 网页可达不代表 Git/Node 客户端自动继承相同系统代理，网络诊断要区分站点、协议与客户端；
+14. 临时网络修复应限定在单次命令，不把个人机器代理地址持久化到项目或全局 Git；
+15. Obsidian 状态、迭代档案和知识笔记仍是同一 Vault 中的 Git 文件，不需要再复制到另一个目录。
 
 ## 9. 全局状态、风险与未解决问题
 
@@ -116,7 +121,7 @@ Intro 的等宽 meta 为 `4 RECORDS / 26 ROUTES / UPDATED 2026-08-06`。计数�
 
 新投影依赖作者继续正确维护 frontmatter；这是内容契约责任，不是 About 第二套数据。stack 保留作者顺序，尚未定义权重。状态中文翻译已经共享，但全局审计发现首页项目卡、项目集合和项目详情仍分别输出 `Maintained`、`MAINTAINED` 与 `Project / maintained`，这成为下一处展示语义分叉。
 
-当前唯一交付缺口是 Git for Windows 无法连接 GitHub 443；本地提交、测试和文档均完整，但不能把远端 `ddb1384` 或旧 Vercel 页面写成新功能上线。恢复后必须依次 push、确认 `origin/main`、等待稳定域名出现 `4 RECORDS / 26 ROUTES`，再跑完整生产 smoke 并更新本档案、Operations、Roadmap 与 Status。
+Git for Windows 与 Node `fetch` 的直连超时已经通过单次命令继承系统代理解决；`origin/main`、Vercel Production 和稳定域名均已收敛。此问题没有产生项目配置变更，但留下了可复用的诊断边界：网页 200、Git push 和 Node smoke 是三条不同网络路径，必须分别验证。
 
 首次真实 Obsidian 人机验收、自定义域名、统计、评论和公开邮箱继续需要所有者操作或选择，不进入自动主线。
 
@@ -124,4 +129,4 @@ Intro 的等宽 meta 为 `4 RECORDS / 26 ROUTES / UPDATED 2026-08-06`。计数�
 
 统一所有公开项目表面的 status 展示语义：首页项目卡、项目集合列表和项目详情复用 `lib/content-presentation.ts`，输出一致的人类标签与稳定机器标签；保持内容 contract、Markdown/source、清单、Studio 和 Schema 中的原始 enum 不变。
 
-覆盖 planning/building/maintained/archived 四种状态、SSR、390px、深色和既有 HTML 预算；不新增作者字段、客户端请求、Git 运行时读取、数据库或云配置。开始该功能前，先完成本轮 push 与稳定生产收敛。
+覆盖 planning/building/maintained/archived 四种状态、SSR、390px、深色和既有 HTML 预算；不新增作者字段、客户端请求、Git 运行时读取、数据库或云配置。
