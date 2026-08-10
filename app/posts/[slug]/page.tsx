@@ -5,6 +5,7 @@ import { notFound } from "next/navigation";
 import {
   ContentHeader,
   ContentNeighbors,
+  ContentRecommendations,
   ContentReferenceLedger,
   PrintSource,
   TableOfContents,
@@ -16,6 +17,7 @@ import { StructuredData } from "@/components/StructuredData";
 import {
   getAllPosts,
   getBacklinksFor,
+  getContentRecommendationsFor,
   getOutgoingReferencesFor,
   getPostBySlug,
   getSeriesBySlug,
@@ -89,6 +91,7 @@ export default async function PostPage({ params }: PostPageProps) {
   const toc = extractTableOfContents(post.body);
   const backlinks = getBacklinksFor(post);
   const outgoing = getOutgoingReferencesFor(post);
+  const recommendations = getContentRecommendationsFor(post);
   const siteUrl = resolveSiteUrl(await headers());
   const canonicalUrl = post.canonical ?? absoluteSiteUrl(siteUrl, post.url);
   const sourceUrl = absoluteSiteUrl(siteUrl, getPublicMarkdownPath(post));
@@ -164,6 +167,7 @@ export default async function PostPage({ params }: PostPageProps) {
         </article>
         <TableOfContents items={toc} />
       </div>
+      <ContentRecommendations items={recommendations} />
       <ContentReferenceLedger outgoing={outgoing} backlinks={backlinks} />
       <ContentNeighbors previous={previous} next={next} />
     </main>

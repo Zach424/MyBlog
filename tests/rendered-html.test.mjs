@@ -26,6 +26,11 @@ async function render(pathname = "/", options = {}) {
   });
 }
 
+function visibleDocument(html) {
+  const documentEnd = html.indexOf("</html>");
+  return documentEnd >= 0 ? html.slice(0, documentEnd + 7) : html;
+}
+
 test("server-renders the engineering log homepage", async () => {
   const response = await render();
   assert.equal(response.status, 200);
@@ -214,6 +219,19 @@ test("renders Markdown articles with metadata, anchors, code and navigation", as
   assert.match(html, /这条记录引用/);
   assert.match(html, /引用这条记录/);
   assert.match(html, /href="\/projects\/myblog"/);
+  const visibleHtml = visibleDocument(html);
+  assert.match(
+    visibleHtml,
+    /<section class="content-recommendations" aria-labelledby="related-content-title">/,
+  );
+  assert.match(visibleHtml, /id="related-content-title">继续阅读<\/h2>/);
+  assert.equal(
+    (visibleHtml.match(/class="content-recommendation"/g) ?? []).length,
+    2,
+  );
+  assert.match(visibleHtml, /双向引用/);
+  assert.match(visibleHtml, /同专题 · 从零构建个人博客/);
+  assert.match(visibleHtml, /共同标签 · Next\.js \/ TypeScript \/ Design Systems/);
   assert.match(html, /"@type":"BlogPosting"/);
   assert.match(html, /"mainEntityOfPage":"https:\/\/blog\.example\.test\/posts\/building-a-maintainable-blog"/);
   assert.match(
@@ -273,7 +291,13 @@ test("renders Markdown articles with metadata, anchors, code and navigation", as
 
   const isolatedResponse = await render("/posts/project-charter-before-homepage");
   assert.equal(isolatedResponse.status, 200);
-  assert.doesNotMatch(await isolatedResponse.text(), /class="content-relations"/);
+  const isolatedHtml = visibleDocument(await isolatedResponse.text());
+  assert.doesNotMatch(isolatedHtml, /class="content-relations"/);
+  assert.match(isolatedHtml, /class="content-recommendations"/);
+  assert.equal(
+    (isolatedHtml.match(/class="content-recommendation"/g) ?? []).length,
+    2,
+  );
 
   const mixedCodeResponse = await render("/posts/cross-platform-npm-scripts");
   assert.equal(mixedCodeResponse.status, 200);
@@ -324,6 +348,17 @@ test("renders project Markdown and returns a real 404 for unknown content", asyn
   assert.match(projectHtml, /引用这条记录/);
   assert.match(projectHtml, /href="\/posts\/building-a-maintainable-blog"/);
   assert.match(projectHtml, /href="\/posts\/cross-platform-npm-scripts"/);
+  const visibleProjectHtml = visibleDocument(projectHtml);
+  assert.match(visibleProjectHtml, /class="content-recommendations"/);
+  assert.equal(
+    (visibleProjectHtml.match(/class="content-recommendation"/g) ?? []).length,
+    3,
+  );
+  assert.equal(
+    (visibleProjectHtml.match(/class="content-recommendation-trace"/g) ?? []).length,
+    3,
+  );
+  assert.match(visibleProjectHtml, /共同标签 · Design Systems/);
   assert.match(projectHtml, /"@type":"SoftwareSourceCode"/);
   assert.match(projectHtml, /<figure class="content-cover">/);
   assert.match(projectHtml, /<figcaption class="content-cover-rail">/);

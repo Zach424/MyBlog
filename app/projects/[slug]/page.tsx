@@ -4,6 +4,7 @@ import { headers } from "next/headers";
 import { notFound } from "next/navigation";
 import {
   ContentHeader,
+  ContentRecommendations,
   ContentReferenceLedger,
   PrintSource,
   TableOfContents,
@@ -15,6 +16,7 @@ import { StructuredData } from "@/components/StructuredData";
 import {
   getAllProjects,
   getBacklinksFor,
+  getContentRecommendationsFor,
   getOutgoingReferencesFor,
   getProjectBySlug,
   getTagSlug,
@@ -80,6 +82,7 @@ export default async function ProjectPage({ params }: ProjectPageProps) {
   const toc = extractTableOfContents(project.body);
   const backlinks = getBacklinksFor(project);
   const outgoing = getOutgoingReferencesFor(project);
+  const recommendations = getContentRecommendationsFor(project);
   const siteUrl = resolveSiteUrl(await headers());
   const projectUrl = absoluteSiteUrl(siteUrl, project.url);
   const sourceUrl = absoluteSiteUrl(siteUrl, getPublicMarkdownPath(project));
@@ -158,6 +161,7 @@ export default async function ProjectPage({ params }: ProjectPageProps) {
         </article>
         <TableOfContents items={toc} />
       </div>
+      <ContentRecommendations items={recommendations} />
       <ContentReferenceLedger outgoing={outgoing} backlinks={backlinks} />
     </main>
   );

@@ -202,6 +202,20 @@ export async function runProductionSmoke(originInput, { expectOAuth = false } = 
       htmlBudgetReports.push(measureHtmlBudget({ pathname, html: page.body }));
     }
   }
+  const relatedPost = htmlPages.get("/posts/building-a-maintainable-blog")?.body ?? "";
+  invariant(
+    (relatedPost.match(/class="content-recommendation"/gu) ?? []).length === 2 &&
+      relatedPost.includes("双向引用") &&
+      relatedPost.includes("同专题 · 从零构建个人博客") &&
+      relatedPost.includes("共同标签 · Next.js / TypeScript / Design Systems"),
+    "文章相关内容推荐异常",
+  );
+  const relatedProject = htmlPages.get("/projects/myblog")?.body ?? "";
+  invariant(
+    (relatedProject.match(/class="content-recommendation"/gu) ?? []).length === 3 &&
+      relatedProject.includes("共同标签 · Design Systems"),
+    "项目相关内容推荐异常",
+  );
   assertHtmlBudgetCoverage(htmlBudgetReports);
   assertHtmlBudgets(htmlBudgetReports);
 

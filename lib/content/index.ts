@@ -12,6 +12,7 @@ import {
 } from "./contract";
 import { deriveContentRelations } from "./relations";
 import { deriveKnowledgeGraph } from "./knowledge-graph";
+import { deriveContentRecommendations } from "./recommendations";
 
 function readMarkdownDirectory(kind: "posts" | "projects") {
   const directory = path.join(process.cwd(), "content", kind);
@@ -48,9 +49,16 @@ const publishedProjects = sortProjects(
   allProjects.filter((project) => isPublished(project, contentBuildDate)),
 );
 const indexes = deriveContentIndexes(publishedPosts, publishedProjects);
-const relations = deriveContentRelations([...publishedPosts, ...publishedProjects]);
+const publishedContent = [...publishedPosts, ...publishedProjects];
+const relations = deriveContentRelations(publishedContent);
+const recommendationsByUrl = new Map(
+  publishedContent.map((record) => [
+    record.url,
+    deriveContentRecommendations(record, publishedContent, relations),
+  ]),
+);
 const knowledgeGraph = deriveKnowledgeGraph(
-  [...publishedPosts, ...publishedProjects],
+  publishedContent,
   relations,
 );
 
@@ -63,7 +71,7 @@ export function getAllProjects() {
 }
 
 export function getAllContent() {
-  return [...publishedPosts, ...publishedProjects].sort(
+  return [...publishedContent].sort(
     (left, right) =>
       right.publishedAt.localeCompare(left.publishedAt) ||
       left.title.localeCompare(right.title, "zh-CN"),
@@ -110,6 +118,10 @@ export function getOutgoingReferencesFor(record: ContentRecord) {
   return relations.outgoingByUrl.get(record.url) ?? [];
 }
 
+export function getContentRecommendationsFor(record: ContentRecord) {
+  return recommendationsByUrl.get(record.url) ?? [];
+}
+
 export function getKnowledgeGraph() {
   return knowledgeGraph;
 }
@@ -126,3 +138,7 @@ export type {
   KnowledgeGraphEdge,
   KnowledgeGraphNode,
 } from "./knowledge-graph";
+export type {
+  ContentRecommendation,
+  ContentRecommendationReason,
+} from "./recommendations";

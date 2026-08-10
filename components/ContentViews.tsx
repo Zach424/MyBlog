@@ -1,6 +1,7 @@
 import type { ReactNode } from "react";
 import Link from "next/link";
 import type {
+  ContentRecommendation,
   ContentRecord,
   PostRecord,
   ProjectRecord,
@@ -204,6 +205,53 @@ export function ContentNeighbors({
         </Link>
       ) : null}
     </nav>
+  );
+}
+
+export function ContentRecommendations({
+  items,
+}: {
+  items: ContentRecommendation[];
+}) {
+  if (items.length === 0) return null;
+
+  return (
+    <section
+      className="content-recommendations"
+      aria-labelledby="related-content-title"
+    >
+      <header className="content-recommendations-intro">
+        <div>
+          <p className="section-label">Continue trace</p>
+          <h2 id="related-content-title">继续阅读</h2>
+        </div>
+        <p>
+          按专题、共同标签和正文引用综合排序；每条建议都保留可复核的推荐依据。
+        </p>
+      </header>
+      <ol className="content-recommendation-list">
+        {items.map(({ reasons, record }, index) => (
+          <li key={record.url}>
+            <Link className="content-recommendation" href={record.url}>
+              <span className="content-recommendation-trace" aria-hidden="true">
+                Trace {String(index + 1).padStart(2, "0")}
+              </span>
+              <span className="content-recommendation-copy">
+                <strong className="content-recommendation-title">
+                  {record.title}
+                </strong>
+                <span className="content-recommendation-evidence">
+                  {recordType(record)} · {reasons.map((reason) => reason.label).join(" · ")}
+                </span>
+              </span>
+              <span className="content-recommendation-end" aria-hidden="true">
+                →
+              </span>
+            </Link>
+          </li>
+        ))}
+      </ol>
+    </section>
   );
 }
 

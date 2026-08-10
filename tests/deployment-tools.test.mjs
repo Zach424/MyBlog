@@ -111,6 +111,9 @@ test("connects Vercel verification, maintenance reporting, rollback, and Studio 
   assert.match(smoke, /搜索命中证据异常/u);
   assert.match(smoke, /搜索正文证据异常/u);
   assert.match(smoke, /搜索空结果证据异常/u);
+  assert.match(smoke, /文章相关内容推荐异常/u);
+  assert.match(smoke, /项目相关内容推荐异常/u);
+  assert.match(smoke, /class="content-recommendation"/u);
   assert.match(smoke, /\/search\?q=Wrangler/u);
   assert.match(smoke, /\/search\?q=B_i/u);
   assert.match(smoke, /https:\/\/jsonfeed\.org\/version\/1\.1/);

@@ -2,7 +2,7 @@ import assert from "node:assert/strict";
 import { readFile } from "node:fs/promises";
 import test from "node:test";
 
-test("keeps print provenance server-rendered on both detail routes", async () => {
+test("keeps print provenance and recommendations server-rendered on detail routes", async () => {
   const [views, postPage, projectPage] = await Promise.all([
     readFile(new URL("../components/ContentViews.tsx", import.meta.url), "utf8"),
     readFile(new URL("../app/posts/[slug]/page.tsx", import.meta.url), "utf8"),
@@ -11,10 +11,13 @@ test("keeps print provenance server-rendered on both detail routes", async () =>
 
   assert.doesNotMatch(views, /["']use client["']/u);
   assert.match(views, /export function PrintSource/u);
+  assert.match(views, /export function ContentRecommendations/u);
   assert.match(views, /<p className="print-source">/u);
   assert.match(views, /Source \/ <a href=\{url\}>\{url\}<\/a>/u);
   assert.match(postPage, /<PrintSource url=\{canonicalUrl\} \/>/u);
   assert.match(projectPage, /<PrintSource url=\{projectUrl\} \/>/u);
+  assert.match(postPage, /<ContentRecommendations items=\{recommendations\} \/>/u);
+  assert.match(projectPage, /<ContentRecommendations items=\{recommendations\} \/>/u);
 });
 
 test("defines a scoped A4 print reading and pagination contract", async () => {
@@ -27,7 +30,7 @@ test("defines a scoped A4 print reading and pagination contract", async () => {
   assert.match(styles, /@media print\s*\{[\s\S]*?color-scheme:\s*light;/u);
   assert.match(
     styles,
-    /\.site-header,[\s\S]*?\.content-toc,[\s\S]*?\.content-neighbors,[\s\S]*?\.code-copy-button,[\s\S]*?display:\s*none !important;/u,
+    /\.site-header,[\s\S]*?\.content-toc,[\s\S]*?\.content-neighbors,[\s\S]*?\.content-recommendations,[\s\S]*?\.code-copy-button,[\s\S]*?display:\s*none !important;/u,
   );
   assert.match(styles, /\.print-source\s*\{[\s\S]*?display:\s*flex;/u);
   assert.match(styles, /\.content-facts dl\s*\{[\s\S]*?repeat\(5, minmax\(0, 1fr\)\)/u);

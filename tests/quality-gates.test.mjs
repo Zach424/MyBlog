@@ -471,4 +471,12 @@ test("keeps the root layout fluid at 320px viewports", async () => {
     css,
     /\.search-input-row input:focus-visible\s*{[^}]*outline:\s*0\.125rem solid var\(--signal\)[^}]*outline-offset:\s*0\.3125rem/s,
   );
+  assert.match(
+    css,
+    /@media \(max-width:\s*55rem\)[\s\S]*?\.content-recommendation-list\s*{[^}]*grid-template-columns:\s*minmax\(0, 1fr\)/s,
+  );
+  assert.match(
+    css,
+    /\.content-recommendation-list > li\s*{[^}]*min-width:\s*0/s,
+  );
 });
