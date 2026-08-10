@@ -134,6 +134,8 @@ npm run production:smoke -- https://your-production.example --expect-oauth
 
 搜索路径还要分别核对 `/search?q=cloudflare`、`/search?q=Wrangler` 与 `/search?q=B_i`：第一条必须出现可见命中 mark、来源和字段原因，第二条必须只有 1 条正文证据，第三条必须显示 0 条且不存在 mark。不要用 HTML 内 RSC 序列化的完整搜索文档冒充可见结果；生产 smoke 以真实 `<mark class="search-hit">`、来源标签和结果计数作为证据。
 
+继续阅读路径要核对代表文章恰有 2 个、代表项目恰有 3 个真实 `<a class="content-recommendation">`，并包含“当前记录引用”“引用当前记录”“同专题”或“共同标签”等实际理由。不要用 RSC 数据中的标题或推荐对象冒充可点击结果；链接数量、`Continue trace` 标题和理由必须都来自服务端可见 HTML。推荐变化属于关键 HTML 增长，部署后先观察文章/项目 raw-gzip 余量，再用同一提交的稳定生产响应更新有来源基线。
+
 同一命令还会为清单、Schema、JSON Feed、RSS、Sitemap、robots 与 OpenSearch 输出 `[discovery-budget]` 七行 raw/gzip 证据。任一路由缺失、重复、超出自己的冻结上限都会阻止冒烟；不要通过删除检查或自动采用当前输出解决失败。若增长是一次有意的内容/协议变化，先核对实际正文与公开集合，再在稳定生产重新测量七端点，同时更新基线数值、日期、来源提交、测试和迭代归档。域名变化会改变绝对 URL 和正文大小，必须以新稳定 origin 重新建立有来源基线。
 
 ## 故障等级

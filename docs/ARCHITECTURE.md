@@ -40,6 +40,7 @@ content/
 public/uploads/<slug>/              按内容隔离的公开图片附件
 lib/
   content/                          内容契约、维护报告、文件读取、派生索引与引用关系
+    recommendations.ts             从专题、标签和已验证关系派生解释性继续阅读排序
     author-doctor.ts                本机作者环境 legacy v1、bundle v2 与 Git provenance v3 报告
     publisher-plugin-provenance.ts  四个插件路径的 HEAD/index/worktree 只读判定
     inbox-readiness.ts              全部 Obsidian 草稿的只读发布就绪聚合
@@ -231,7 +232,9 @@ Obsidian 草稿中的 Wiki 图片嵌入、指向 `public/uploads` 的 Markdown �
 
 同一发布阶段还会读取 `content/posts` 与 `content/projects` 的稳定文件名和正文，把 Obsidian Wiki/Markdown 笔记链接转换为站点 URL。裸 slug 只有在文章和项目之间唯一时才可使用；显式 `posts/<slug>`、`projects/<slug>`、别名和标题链接均受支持，块引用被明确拒绝。转换后用目标正文的实际 heading inventory 校验 fragment，所以 `--check-only` 与 inbox readiness 无需先写正式文件即可发现标题漂移。转换跳过行内代码和围栏代码，避免把教程中的语法示例当成真实关系。
 
-`lib/content/markdown.ts` 以与渲染相同的 GFM AST 抽取行内、引用式和自引用链接，并按 H1–H6 全局顺序生成与 `rehype-slug` 一致的 heading id；`lib/content/relations.ts` 校验目标页面、URL 编码和 fragment 后，一次派生 `outgoingByUrl`/`backlinksByUrl`。关系按内容 URL 去重，自引用和 fragment 不制造额外图边。`lib/content/index.ts` 只暴露两个只读查询，文章与项目详情页在服务端把它们交给同一 Reference ledger：`→` 追溯当前正文引用的依据，`←` 继续阅读引用当前记录的后续实践；空方向省略，两侧都空时不产生账本。关系不存入 frontmatter、客户端状态或数据库，正文链接就是唯一事实源；草稿或未来目标不在公开集合中，因此公开内容不能引用尚未公开的目标。
+`lib/content/markdown.ts` 以与渲染相同的 GFM AST 抽取行内、引用式和自引用链接，并按 H1–H6 全局顺序生成与 `rehype-slug` 一致的 heading id；`lib/content/relations.ts` 校验目标页面、URL 编码和 fragment 后，一次派生 `outgoingByUrl`/`backlinksByUrl`。关系按内容 URL 去重，自引用和 fragment 不制造额外图边。`lib/content/index.ts` 暴露只读关系查询，文章与项目详情页在服务端把它们交给同一 Reference ledger：`→` 追溯当前正文引用的依据，`←` 展示引用当前记录的后续实践；空方向省略，两侧都空时不产生账本。
+
+`lib/content/recommendations.ts` 在同一公开内容快照与已验证关系上计算最多 3 条继续阅读建议。互相引用、当前记录引用、反向引用、同专题、每个共同标签依次贡献 120/80/70/60/15 分；分数只负责排序，页面显示的是“双向引用”“当前记录引用”“引用当前记录”“同专题 · …”“共同标签 · …”等可复核理由。同分使用发布日期、中文标题和 URL 稳定排序；自身和零信号记录不会出现。`lib/content/index.ts` 在服务端一次缓存按 URL 派生的推荐映射，详情页直接读取，不新增客户端请求、内容字段、数据库或第二份关系事实源。
 
 ## 6. 安全与缓存
 

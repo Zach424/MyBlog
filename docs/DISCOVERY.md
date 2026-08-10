@@ -1,6 +1,6 @@
 # 搜索与发布发现
 
-- 状态：RSS/Sitemap/robots implemented in iteration 0006；JSON Feed 1.1 implemented in iteration 0088；公开内容清单 implemented in iteration 0091；清单 JSON Schema implemented in iteration 0099；既有结构化端点条件读取 completed in iteration 0101；OpenSearch 1.1 discovery completed in iteration 0102；可解释搜索命中证据 completed in iteration 0103
+- 状态：RSS/Sitemap/robots implemented in iteration 0006；JSON Feed 1.1 implemented in iteration 0088；公开内容清单 implemented in iteration 0091；清单 JSON Schema implemented in iteration 0099；既有结构化端点条件读取 completed in iteration 0101；OpenSearch 1.1 discovery completed in iteration 0102；可解释搜索命中证据 completed in iteration 0103；可解释继续阅读 completed in iteration 0104
 - 目标：让公开内容可搜索、可订阅、可被搜索引擎发现，同时保持 Git 内容源和无数据库架构。
 
 ## 站内搜索
@@ -12,6 +12,12 @@
 搜索页通过 `?q=` 接收初始查询并服务端输出首屏结果。后续输入在浏览器本地匹配，同时用 `history.replaceState` 更新可分享 URL，不产生网络搜索请求，也不使用分析服务。
 
 每条查询结果同时给出字段原因、摘要/正文来源与真实命中片段。摘要和正文比较覆盖的不同查询词数量，覆盖更多者成为上下文；正文片段围绕首个规范化命中截取。高亮先在规范化文本定位，再映射回 grapheme 边界，因而全角大小写、组合重音和兼容字符仍显示作者原文。重叠范围合并后由 React 文本节点与原生 `<mark>` 渲染，不使用 `dangerouslySetInnerHTML`。trace 背景、signal 底线、字段文字和来源标签共同表达证据；深浅色命中文字对比达到 AA，搜索输入保留明确 `:focus-visible`。
+
+## 详情页继续阅读
+
+文章与项目详情在服务端从同一公开内容集合、专题、标签及经过目标/fragment 校验的正文关系派生最多 3 条建议。排序权重为双向引用 120、当前记录引用 80、引用当前记录 70、同专题 60、每个共同标签 15；同分按发布日期、中文标题和规范 URL 稳定决胜，自身与没有任何信号的记录排除。
+
+页面不公开难以解释的总分，而是逐条显示实际命中的关系、专题和共同标签理由。推荐映射在内容索引加载时缓存，详情页以 Server Component 输出，既不把全库索引再发给浏览器，也不增加数据库、分析服务、客户端请求或新的 frontmatter 字段。原始 Reference ledger 与推荐承担不同职责：前者完整列出可审计图边，后者综合已有事实给出有限的下一跳。
 
 ## OpenSearch 1.1
 
