@@ -33,6 +33,12 @@ function jsonFeedDate(date: string) {
   return `${date}T00:00:00Z`;
 }
 
+function rssModifiedDate(record: ContentRecord) {
+  return record.updatedAt && record.updatedAt > record.publishedAt
+    ? jsonFeedDate(record.updatedAt)
+    : undefined;
+}
+
 function sortContentRecords(records: ContentRecord[]) {
   return records.slice().sort(
     (left, right) =>
@@ -105,6 +111,7 @@ export function createRssXml(siteUrl: URL, records: ContentRecord[]) {
   const items = sortContentRecords(records)
     .map((record) => {
       const url = absoluteSiteUrl(siteUrl, record.url);
+      const modifiedDate = rssModifiedDate(record);
       const categories = [record.kind === "project" ? "Project" : record.type, ...record.tags]
         .map((category) => `      <category>${escapeXml(category)}</category>`)
         .join("\n");
@@ -114,14 +121,14 @@ export function createRssXml(siteUrl: URL, records: ContentRecord[]) {
       <link>${escapeXml(url)}</link>
       <guid isPermaLink="true">${escapeXml(url)}</guid>
       <pubDate>${rssDate(record.publishedAt)}</pubDate>
-      <description>${escapeXml(record.description)}</description>
+${modifiedDate ? `      <dcterms:modified>${modifiedDate}</dcterms:modified>\n` : ""}      <description>${escapeXml(record.description)}</description>
 ${categories}
     </item>`;
     })
     .join("\n");
 
   return `<?xml version="1.0" encoding="UTF-8"?>
-<rss version="2.0" xmlns:atom="http://www.w3.org/2005/Atom">
+<rss version="2.0" xmlns:atom="http://www.w3.org/2005/Atom" xmlns:dcterms="http://purl.org/dc/terms/">
   <channel>
     <title>${escapeXml(SITE_TITLE)}</title>
     <link>${escapeXml(homeUrl)}</link>

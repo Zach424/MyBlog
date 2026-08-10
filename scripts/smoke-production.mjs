@@ -166,6 +166,22 @@ export function extractSitemapUrls(xml) {
   return [...xml.matchAll(/<loc>([^<]+)<\/loc>/gu)].map((match) => match[1]);
 }
 
+function extractRssItems(xml) {
+  return [...xml.matchAll(/<item>([\s\S]*?)<\/item>/gu)].map((match) => {
+    const item = match[1];
+    return {
+      guid:
+        item.match(/<guid isPermaLink="true">([^<]+)<\/guid>/u)?.[1] ?? "",
+      modifiedDates: [
+        ...item.matchAll(
+          /<dcterms:modified>([^<]+)<\/dcterms:modified>/gu,
+        ),
+      ].map((modifiedMatch) => modifiedMatch[1]),
+      pubDate: item.match(/<pubDate>([^<]+)<\/pubDate>/u)?.[1] ?? "",
+    };
+  });
+}
+
 function cacheDirectives(value) {
   if (typeof value !== "string") return false;
 
@@ -901,15 +917,32 @@ export async function runProductionSmoke(originInput, { expectOAuth = false } = 
   ];
   assertDiscoveryBudgetCoverage(discoveryBudgetReports);
   assertDiscoveryBudgets(discoveryBudgetReports);
-  const jsonFeedIds = Array.isArray(jsonFeedPayload.items)
-    ? jsonFeedPayload.items.map((item) => item.id)
+  const jsonFeedItems = Array.isArray(jsonFeedPayload.items)
+    ? jsonFeedPayload.items
     : [];
+  const jsonFeedIds = jsonFeedItems.map((item) => item.id);
   const manifestItems = Array.isArray(contentManifestPayload.items)
     ? contentManifestPayload.items
     : [];
   const manifestIds = manifestItems.map((item) => item.id);
-  const rssIds = [...rss.body.matchAll(/<guid isPermaLink="true">([^<]+)<\/guid>/gu)]
-    .map((match) => match[1]);
+  const rssItems = extractRssItems(rss.body);
+  const rssIds = rssItems.map((item) => item.guid);
+  const rssUpdateContractValid = rssItems.length === jsonFeedItems.length &&
+    rssItems.every((item, index) => {
+      const feedItem = jsonFeedItems[index];
+      const expectedModified =
+        typeof feedItem.date_modified === "string" &&
+        feedItem.date_modified > feedItem.date_published
+          ? feedItem.date_modified
+          : undefined;
+
+      return (
+        item.guid === feedItem.id &&
+        item.pubDate === new Date(feedItem.date_published).toUTCString() &&
+        JSON.stringify(item.modifiedDates) ===
+          JSON.stringify(expectedModified ? [expectedModified] : [])
+      );
+    });
   const manifestEtag = contentManifest.response.headers.get("etag");
   invariant(
     contentManifest.response.status === 200 &&
@@ -1095,7 +1128,7 @@ export async function runProductionSmoke(originInput, { expectOAuth = false } = 
       jsonFeedPayload.icon === `${origin.origin}/icon.png` &&
       jsonFeedIds.length >= 4 &&
       new Set(jsonFeedIds).size === jsonFeedIds.length &&
-      jsonFeedPayload.items.every(
+      jsonFeedItems.every(
         (item) =>
           item.id === item.url &&
           item.id.startsWith(`${origin.origin}/`) &&
@@ -1104,6 +1137,8 @@ export async function runProductionSmoke(originInput, { expectOAuth = false } = 
           typeof item.content_text === "string" &&
           item.content_text.length > 0 &&
           /^\d{4}-\d{2}-\d{2}T00:00:00Z$/u.test(item.date_published) &&
+          (!Object.hasOwn(item, "date_modified") ||
+            /^\d{4}-\d{2}-\d{2}T00:00:00Z$/u.test(item.date_modified)) &&
           !Object.hasOwn(item, "body") &&
           !Object.hasOwn(item, "draft") &&
           !Object.hasOwn(item, "sourcePath"),
@@ -1120,7 +1155,12 @@ export async function runProductionSmoke(originInput, { expectOAuth = false } = 
         rss.response.headers.get("etag"),
         sha256Etag(rss.body),
       ) &&
-      (rss.body.match(/<item>/gu) ?? []).length >= 4,
+      rss.body.includes(
+        '<rss version="2.0" xmlns:atom="http://www.w3.org/2005/Atom" xmlns:dcterms="http://purl.org/dc/terms/">',
+      ) &&
+      !rss.body.includes("<atom:updated>") &&
+      rssItems.length >= 4 &&
+      rssUpdateContractValid,
     "RSS 条目或条件验证器异常",
   );
   invariant(

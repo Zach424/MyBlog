@@ -78,13 +78,59 @@ test("creates one bounded same-origin OpenSearch 1.1 description", () => {
   assert.equal(xml.endsWith("\n"), true);
 });
 
-test("creates escaped RSS with stable absolute item URLs", () => {
-  const xml = createRssXml(new URL("https://blog.example.test"), [post, project]);
+test("creates escaped RSS with stable identities and explicit modification dates", () => {
+  const sameDayUpdate = {
+    ...post,
+    title: "Same-day metadata",
+    publishedAt: "2026-07-16",
+    updatedAt: "2026-07-16",
+    url: "/posts/same-day",
+  };
+  const records = [sameDayUpdate, project, post];
+  const originalOrder = records.map((record) => record.url);
+  const xml = createRssXml(new URL("https://blog.example.test"), records);
+  const items = [...xml.matchAll(/<item>([\s\S]*?)<\/item>/gu)].map(
+    (match) => match[1],
+  );
+  const itemByGuid = (guid) =>
+    items.find((item) =>
+      item.includes(`<guid isPermaLink="true">${guid}</guid>`),
+    );
+  const postItem = itemByGuid("https://blog.example.test/posts/build-worker");
+  const projectItem = itemByGuid("https://blog.example.test/projects/myblog");
+  const sameDayItem = itemByGuid("https://blog.example.test/posts/same-day");
 
   assert.match(xml, /<title>Build &amp; verify &lt;Worker&gt;<\/title>/);
   assert.match(xml, /<atom:link href="https:\/\/blog\.example\.test\/rss\.xml"/);
-  assert.match(xml, /<guid isPermaLink="true">https:\/\/blog\.example\.test\/posts\/build-worker<\/guid>/);
-  assert.equal((xml.match(/<item>/g) ?? []).length, 2);
+  assert.match(
+    xml,
+    /xmlns:dcterms="http:\/\/purl\.org\/dc\/terms\/"/u,
+  );
+  assert.ok(postItem);
+  assert.match(
+    postItem,
+    /<pubDate>Sat, 18 Jul 2026 00:00:00 GMT<\/pubDate>/u,
+  );
+  assert.match(
+    postItem,
+    /<dcterms:modified>2026-07-19T00:00:00Z<\/dcterms:modified>/u,
+  );
+  assert.ok(projectItem);
+  assert.doesNotMatch(projectItem, /<dcterms:modified>/u);
+  assert.ok(sameDayItem);
+  assert.doesNotMatch(sameDayItem, /<dcterms:modified>/u);
+  assert.doesNotMatch(xml, /<atom:updated>/u);
+  assert.deepEqual(
+    [...xml.matchAll(/<guid isPermaLink="true">([^<]+)<\/guid>/gu)].map(
+      (match) => match[1],
+    ),
+    [
+      "https://blog.example.test/posts/build-worker",
+      "https://blog.example.test/projects/myblog",
+      "https://blog.example.test/posts/same-day",
+    ],
+  );
+  assert.deepEqual(records.map((record) => record.url), originalOrder);
 });
 
 test("creates a JSON Feed 1.1 document with stable plain-text items", () => {

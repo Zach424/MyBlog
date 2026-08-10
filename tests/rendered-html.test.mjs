@@ -1108,14 +1108,44 @@ test("publishes the structured discovery suite from one public origin", async (c
     `"sha256-${createHash("sha256").update(rss, "utf8").digest("hex")}"`,
   );
   assert.match(rss, /https:\/\/blog\.example\.test\/rss\.xml/);
+  assert.match(
+    rss,
+    /<rss version="2\.0" xmlns:atom="http:\/\/www\.w3\.org\/2005\/Atom" xmlns:dcterms="http:\/\/purl\.org\/dc\/terms\/">/u,
+  );
+  assert.doesNotMatch(rss, /<atom:updated>/u);
   assert.match(rss, /从零搭建可维护的个人技术博客/);
   assert.match(rss, /MyBlog — 把学习记录做成工程资产/);
-  const rssUrls = [...rss.matchAll(/<guid isPermaLink="true">([^<]+)<\/guid>/gu)].map(
+  const rssItems = [...rss.matchAll(/<item>([\s\S]*?)<\/item>/gu)].map(
     (match) => match[1],
+  );
+  const rssUrls = rssItems.map(
+    (item) =>
+      item.match(/<guid isPermaLink="true">([^<]+)<\/guid>/u)?.[1] ?? "",
   );
   assert.ok(rssUrls.length >= 4, "RSS 至少应包含初始公开内容");
   assert.equal(new Set(rssUrls).size, rssUrls.length, "RSS 内容 URL 不能重复");
   assert.deepEqual(jsonFeedUrls, rssUrls, "JSON Feed 与 RSS 必须保持同一公开顺序");
+  for (const [index, item] of rssItems.entries()) {
+    const feedItem = jsonFeed.items[index];
+    const modifiedDates = [
+      ...item.matchAll(/<dcterms:modified>([^<]+)<\/dcterms:modified>/gu),
+    ].map((match) => match[1]);
+    const expectedModified =
+      feedItem.date_modified && feedItem.date_modified > feedItem.date_published
+        ? feedItem.date_modified
+        : undefined;
+
+    assert.match(
+      item,
+      new RegExp(`<pubDate>${new Date(feedItem.date_published).toUTCString()}</pubDate>`, "u"),
+      "RSS pubDate 必须继续表达 JSON Feed 的首发时间",
+    );
+    assert.deepEqual(
+      modifiedDates,
+      expectedModified ? [expectedModified] : [],
+      "RSS dcterms:modified 必须与严格更晚的 JSON Feed 修改时间一致",
+    );
+  }
 
   assert.equal(sitemapResponse.status, 200);
   assert.match(sitemapResponse.headers.get("content-type") ?? "", /^application\/xml/i);
