@@ -613,6 +613,174 @@ test("publishes one discoverable conditional RSS projection for each public tag"
   }
 });
 
+test("publishes a newest-first RSS subscription for an ordered public series", async () => {
+  const [pageResponse, feedResponse, jsonFeedResponse, missingResponse, missingHead] =
+    await Promise.all([
+      render("/series/build-my-blog"),
+      render("/series/build-my-blog/rss.xml", {
+        accept: "application/rss+xml",
+      }),
+      render("/feed.json", { accept: "application/feed+json" }),
+      render("/series/not-a-real-series/rss.xml", {
+        accept: "application/rss+xml",
+      }),
+      render("/series/not-a-real-series/rss.xml", {
+        accept: "application/rss+xml",
+        method: "HEAD",
+      }),
+    ]);
+
+  assert.equal(pageResponse.status, 200);
+  const page = await pageResponse.text();
+  assert.match(
+    page,
+    /<link(?=[^>]*rel="alternate")(?=[^>]*type="application\/rss\+xml")(?=[^>]*href="https:\/\/blog\.example\.test\/series\/build-my-blog\/rss\.xml")[^>]*>/iu,
+  );
+  const visiblePage = visibleDocument(page);
+  assert.match(
+    visiblePage,
+    /<a href="\/series\/build-my-blog\/rss\.xml" type="application\/rss\+xml">订阅此专题 RSS/u,
+  );
+  const chapterPaths = [
+    ...visiblePage.matchAll(/<a class="content-index-row" href="([^"]+)"/gu),
+  ].map((match) => match[1]);
+  assert.deepEqual(chapterPaths, [
+    "/posts/project-charter-before-homepage",
+    "/posts/building-a-maintainable-blog",
+  ]);
+
+  assert.equal(feedResponse.status, 200);
+  assert.equal(
+    feedResponse.headers.get("content-type"),
+    "application/rss+xml; charset=utf-8",
+  );
+  assert.equal(
+    feedResponse.headers.get("cache-control"),
+    "public, max-age=3600, stale-while-revalidate=86400",
+  );
+  assert.equal(
+    feedResponse.headers.get("content-disposition"),
+    'inline; filename="build-my-blog.rss.xml"',
+  );
+  assert.equal(feedResponse.headers.get("x-robots-tag"), "noindex");
+  assert.equal(
+    feedResponse.headers.get("link"),
+    '<https://blog.example.test/series/build-my-blog/rss.xml>; rel="self"; type="application/rss+xml", <https://blog.example.test/series/build-my-blog>; rel="up"; type="text/html"',
+  );
+  const feed = await feedResponse.text();
+  const etag = feedResponse.headers.get("etag");
+  const lastModified = feedResponse.headers.get("last-modified");
+  assert.equal(lastModified, "Mon, 10 Aug 2026 22:25:11 GMT");
+  assert.equal(
+    etag,
+    `"sha256-${createHash("sha256").update(feed, "utf8").digest("hex")}"`,
+  );
+  assert.match(
+    feed,
+    /<title>从零构建个人博客 — Zach424 \/ Engineering Notes<\/title>/u,
+  );
+  assert.match(
+    feed,
+    /<description>专题“从零构建个人博客”，按最新发布顺序订阅，共 2 篇文章。<\/description>/u,
+  );
+  assert.match(
+    feed,
+    /<link>https:\/\/blog\.example\.test\/series\/build-my-blog<\/link>/u,
+  );
+  assert.match(
+    feed,
+    /<atom:link href="https:\/\/blog\.example\.test\/series\/build-my-blog\/rss\.xml" rel="self" type="application\/rss\+xml" \/>/u,
+  );
+
+  assert.equal(jsonFeedResponse.status, 200);
+  const jsonFeed = await jsonFeedResponse.json();
+  const chapterIds = chapterPaths.map(
+    (pathname) => `https://blog.example.test${pathname}`,
+  );
+  const expectedItems = jsonFeed.items
+    .filter((item) => chapterIds.includes(item.id))
+    .sort(
+      (left, right) =>
+        right.date_published.localeCompare(left.date_published) ||
+        left.title.localeCompare(right.title, "zh-CN"),
+    );
+  const items = [...feed.matchAll(/<item>([\s\S]*?)<\/item>/gu)].map(
+    (match) => match[1],
+  );
+  const feedIds = items.map(
+    (item) =>
+      item.match(/<guid isPermaLink="true">([^<]+)<\/guid>/u)?.[1] ?? "",
+  );
+  assert.deepEqual(feedIds, expectedItems.map((item) => item.id));
+  assert.deepEqual(feedIds, [...chapterIds].reverse());
+  for (const [index, item] of items.entries()) {
+    const expected = expectedItems[index];
+    const categories = [
+      ...item.matchAll(/<category>([^<]+)<\/category>/gu),
+    ].map((match) => match[1]);
+    const modifiedDates = [
+      ...item.matchAll(/<dcterms:modified>([^<]+)<\/dcterms:modified>/gu),
+    ].map((match) => match[1]);
+    assert.deepEqual(categories, expected.tags);
+    assert.match(
+      item,
+      new RegExp(
+        `<pubDate>${new Date(expected.date_published).toUTCString()}</pubDate>`,
+        "u",
+      ),
+    );
+    assert.deepEqual(
+      modifiedDates,
+      expected.date_modified && expected.date_modified > expected.date_published
+        ? [expected.date_modified]
+        : [],
+    );
+  }
+  assert.doesNotMatch(feed, /\/projects\/myblog/u);
+  assert.doesNotMatch(feed, /\/posts\/cross-platform-npm-scripts/u);
+
+  const [tagMatch, dateMatch, staleTagWins] = await Promise.all([
+    render("/series/build-my-blog/rss.xml", {
+      accept: "application/rss+xml",
+      headers: { "if-none-match": `W/${etag}` },
+    }),
+    render("/series/build-my-blog/rss.xml", {
+      accept: "application/rss+xml",
+      headers: { "if-modified-since": lastModified },
+    }),
+    render("/series/build-my-blog/rss.xml", {
+      accept: "application/rss+xml",
+      headers: {
+        "if-none-match": '"sha256-stale"',
+        "if-modified-since": lastModified,
+      },
+    }),
+  ]);
+  for (const response of [tagMatch, dateMatch]) {
+    assert.equal(response.status, 304);
+    assert.equal(await response.text(), "");
+    assert.equal(response.headers.get("etag"), etag);
+    assert.equal(response.headers.get("last-modified"), lastModified);
+  }
+  assert.equal(staleTagWins.status, 200);
+  assert.equal(await staleTagWins.text(), feed);
+
+  assert.equal(missingResponse.status, 404);
+  assert.equal(await missingResponse.text(), "Series RSS not found.\n");
+  assert.equal(missingHead.status, 404);
+  assert.equal(await missingHead.text(), "");
+  for (const response of [missingResponse, missingHead]) {
+    assert.equal(response.headers.get("cache-control"), "no-store");
+    assert.equal(
+      response.headers.get("content-type"),
+      "text/plain; charset=utf-8",
+    );
+    assert.equal(response.headers.get("x-robots-tag"), "noindex");
+    assert.equal(response.headers.get("etag"), null);
+    assert.equal(response.headers.get("last-modified"), null);
+  }
+});
+
 test("server-renders one mixed chronological archive with real dates and types", async () => {
   const response = await render("/archive");
   assert.equal(response.status, 200);
@@ -1364,6 +1532,7 @@ test("publishes the structured discovery suite from one public origin", async (c
   assert.match(sitemap, /https:\/\/blog\.example\.test\/series\/build-my-blog/);
   assert.doesNotMatch(sitemap, /opensearch\.xml/u);
   assert.doesNotMatch(sitemap, /\/tags\/typescript\/rss\.xml/u);
+  assert.doesNotMatch(sitemap, /\/series\/build-my-blog\/rss\.xml/u);
   const sitemapContentUrls = [
     ...sitemap.matchAll(
       /<loc>(https:\/\/blog\.example\.test\/(?:posts|projects)\/[^<]+)<\/loc>/gu,
@@ -1691,6 +1860,7 @@ test("keeps every public conditional HEAD response bodyless and GET-equivalent",
     ["/feed.json", "application/feed+json"],
     ["/rss.xml", "application/rss+xml"],
     ["/tags/typescript/rss.xml", "application/rss+xml"],
+    ["/series/build-my-blog/rss.xml", "application/rss+xml"],
     ["/sitemap.xml", "application/xml"],
     ["/robots.txt", "text/plain"],
     ["/opensearch.xml", "application/opensearchdescription+xml"],

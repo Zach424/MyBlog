@@ -202,6 +202,46 @@ test("creates a scoped RSS channel while preserving shared item identities", () 
   );
 });
 
+test("keeps a scoped RSS subscription newest-first when its caller is chapter-ordered", () => {
+  const chapterOne = {
+    ...post,
+    title: "Project charter",
+    publishedAt: "2026-07-17",
+    updatedAt: "2026-07-18",
+    url: "/posts/project-charter",
+  };
+  const chapterTwo = {
+    ...post,
+    title: "Build the blog",
+    publishedAt: "2026-07-18",
+    updatedAt: "2026-07-19",
+    url: "/posts/build-the-blog",
+  };
+  const chapterOrder = [chapterOne, chapterTwo];
+  const originalOrder = chapterOrder.map((record) => record.url);
+  const xml = createRssXml(
+    new URL("https://blog.example.test"),
+    chapterOrder,
+    {
+      description: "专题按最新发布顺序订阅，共 2 篇文章。",
+      feedPath: "/series/build-my-blog/rss.xml",
+      homePath: "/series/build-my-blog",
+      title: "从零构建个人博客 — Zach424 / Engineering Notes",
+    },
+  );
+
+  assert.deepEqual(
+    [...xml.matchAll(/<guid isPermaLink="true">([^<]+)<\/guid>/gu)].map(
+      (match) => match[1],
+    ),
+    [
+      "https://blog.example.test/posts/build-the-blog",
+      "https://blog.example.test/posts/project-charter",
+    ],
+  );
+  assert.deepEqual(chapterOrder.map((record) => record.url), originalOrder);
+});
+
 test("creates a JSON Feed 1.1 document with stable plain-text items", () => {
   const source = createJsonFeed(new URL("https://blog.example.test"), [project, post]);
   const feed = JSON.parse(source);

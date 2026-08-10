@@ -6,6 +6,17 @@ import { createSha256ConditionalResponse } from "./http-validators";
 export const RSS_CACHE_CONTROL =
   "public, max-age=3600, stale-while-revalidate=86400";
 
+export function createRssNotFoundResponse(scope: string) {
+  return new Response(`${scope} RSS not found.\n`, {
+    status: 404,
+    headers: {
+      "cache-control": "no-store",
+      "content-type": "text/plain; charset=utf-8",
+      "x-robots-tag": "noindex",
+    },
+  });
+}
+
 interface RssResponseOptions extends RssChannelOptions {
   headers?: HeadersInit;
 }

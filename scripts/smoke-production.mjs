@@ -24,6 +24,16 @@ function visibleDocument(html) {
   return documentEnd >= 0 ? html.slice(0, documentEnd + 7) : html;
 }
 
+function extractContentIndexPaths(html) {
+  const list = visibleDocument(html).match(
+    /<div class="content-index-list">([\s\S]*?)<\/div>/u,
+  )?.[1];
+  if (!list) return [];
+  return [
+    ...list.matchAll(/<a class="content-index-row" href="([^"]+)"/gu),
+  ].map((match) => match[1]);
+}
+
 function structuredDataByType(html, type) {
   return [
     ...visibleDocument(html).matchAll(
@@ -192,6 +202,27 @@ function extractRssItems(xml) {
       pubDate: item.match(/<pubDate>([^<]+)<\/pubDate>/u)?.[1] ?? "",
     };
   });
+}
+
+function rssItemsMatchJsonFeed(rssItems, feedItems) {
+  return (
+    rssItems.length === feedItems.length &&
+    rssItems.every((item, index) => {
+      const feedItem = feedItems[index];
+      const expectedModified =
+        typeof feedItem?.date_modified === "string" &&
+        feedItem.date_modified > feedItem.date_published
+          ? [feedItem.date_modified]
+          : [];
+
+      return (
+        item.guid === feedItem?.id &&
+        item.pubDate === new Date(feedItem.date_published).toUTCString() &&
+        JSON.stringify(item.modifiedDates) === JSON.stringify(expectedModified) &&
+        JSON.stringify(item.categories) === JSON.stringify(feedItem.tags)
+      );
+    })
+  );
 }
 
 function cacheDirectives(value) {
@@ -398,6 +429,20 @@ export async function runProductionSmoke(originInput, { expectOAuth = false } = 
         '<a href="/tags/typescript/rss.xml" type="application/rss+xml">订阅此标签 RSS',
       ),
     "标签 RSS 发现入口异常",
+  );
+  const seriesPage = htmlPages.get("/series/build-my-blog")?.body ?? "";
+  const seriesChapterPaths = extractContentIndexPaths(seriesPage);
+  invariant(
+    seriesPage.includes(`${origin.origin}/series/build-my-blog/rss.xml`) &&
+      visibleDocument(seriesPage).includes(
+        '<a href="/series/build-my-blog/rss.xml" type="application/rss+xml">订阅此专题 RSS',
+      ) &&
+      JSON.stringify(seriesChapterPaths) ===
+        JSON.stringify([
+          "/posts/project-charter-before-homepage",
+          "/posts/building-a-maintainable-blog",
+        ]),
+    "专题 RSS 发现入口或章节顺序异常",
   );
   const subscribe = htmlPages.get("/subscribe")?.body ?? "";
   invariant(
@@ -960,12 +1005,15 @@ export async function runProductionSmoke(originInput, { expectOAuth = false } = 
     invariant([302, 503].includes(oauth.response.status), `OAuth 状态 ${oauth.response.status}`);
   }
 
-  const [contentManifest, contentSchema, jsonFeed, rss, tagRss, robots, sitemap, openSearch] = await Promise.all([
+  const [contentManifest, contentSchema, jsonFeed, rss, tagRss, seriesRss, robots, sitemap, openSearch] = await Promise.all([
     request(origin, "/content.json", { accept: "application/json" }),
     request(origin, "/content.schema.json", { accept: "application/schema+json" }),
     request(origin, "/feed.json", { accept: "application/feed+json" }),
     request(origin, "/rss.xml", { accept: "application/rss+xml" }),
     request(origin, "/tags/typescript/rss.xml", {
+      accept: "application/rss+xml",
+    }),
+    request(origin, "/series/build-my-blog/rss.xml", {
       accept: "application/rss+xml",
     }),
     request(origin, "/robots.txt", { accept: "text/plain" }),
@@ -1032,27 +1080,29 @@ export async function runProductionSmoke(originInput, { expectOAuth = false } = 
     (item) => Array.isArray(item.tags) && item.tags.includes("TypeScript"),
   );
   const expectedTagIds = expectedTagItems.map((item) => item.id);
+  const seriesRssItems = extractRssItems(seriesRss.body);
+  const seriesRssIds = seriesRssItems.map((item) => item.guid);
+  const expectedSeriesItems = seriesChapterPaths
+    .map((pathname) =>
+      jsonFeedItems.find((item) => item.id === `${origin.origin}${pathname}`),
+    )
+    .filter(Boolean)
+    .sort(
+      (left, right) =>
+        right.date_published.localeCompare(left.date_published) ||
+        left.title.localeCompare(right.title, "zh-CN"),
+    );
+  const expectedSeriesIds = expectedSeriesItems.map((item) => item.id);
   const jsonFeedLastModified =
     jsonFeed.response.headers.get("last-modified");
   const rssLastModified = rss.response.headers.get("last-modified");
   const tagRssLastModified = tagRss.response.headers.get("last-modified");
-  const rssUpdateContractValid = rssItems.length === jsonFeedItems.length &&
-    rssItems.every((item, index) => {
-      const feedItem = jsonFeedItems[index];
-      const expectedModified =
-        typeof feedItem.date_modified === "string" &&
-        feedItem.date_modified > feedItem.date_published
-          ? feedItem.date_modified
-          : undefined;
-
-      return (
-        item.guid === feedItem.id &&
-        item.pubDate === new Date(feedItem.date_published).toUTCString() &&
-        JSON.stringify(item.categories) === JSON.stringify(feedItem.tags) &&
-        JSON.stringify(item.modifiedDates) ===
-          JSON.stringify(expectedModified ? [expectedModified] : [])
-      );
-    });
+  const seriesRssLastModified =
+    seriesRss.response.headers.get("last-modified");
+  const rssUpdateContractValid = rssItemsMatchJsonFeed(
+    rssItems,
+    jsonFeedItems,
+  );
   const manifestEtag = contentManifest.response.headers.get("etag");
   invariant(
     contentManifest.response.status === 200 &&
@@ -1342,22 +1392,10 @@ export async function runProductionSmoke(originInput, { expectOAuth = false } = 
       rssUpdateContractValid,
     "RSS 条目、标签或条件验证器异常",
   );
-  const tagRssUpdateContractValid =
-    tagRssItems.length === expectedTagItems.length &&
-    tagRssItems.every((item, index) => {
-      const feedItem = expectedTagItems[index];
-      const expectedModified =
-        typeof feedItem.date_modified === "string" &&
-        feedItem.date_modified > feedItem.date_published
-          ? [feedItem.date_modified]
-          : [];
-
-      return (
-        item.pubDate === new Date(feedItem.date_published).toUTCString() &&
-        JSON.stringify(item.modifiedDates) === JSON.stringify(expectedModified) &&
-        JSON.stringify(item.categories) === JSON.stringify(feedItem.tags)
-      );
-    });
+  const tagRssUpdateContractValid = rssItemsMatchJsonFeed(
+    tagRssItems,
+    expectedTagItems,
+  );
   invariant(
     tagRss.response.status === 200 &&
       tagRss.response.headers
@@ -1387,6 +1425,51 @@ export async function runProductionSmoke(originInput, { expectOAuth = false } = 
       !tagRssIds.includes(`${origin.origin}/posts/project-charter-before-homepage`) &&
       tagRssUpdateContractValid,
     "标签 RSS 条目、发现或条件响应异常",
+  );
+  const seriesRssUpdateContractValid = rssItemsMatchJsonFeed(
+    seriesRssItems,
+    expectedSeriesItems,
+  );
+  invariant(
+    seriesRss.response.status === 200 &&
+      seriesRss.response.headers
+        .get("content-type")
+        ?.startsWith("application/rss+xml") &&
+      hasJsonFeedCachePolicy(seriesRss.response.headers.get("cache-control")) &&
+      sameMarkdownSourceEtag(
+        seriesRss.response.headers.get("etag"),
+        sha256Etag(seriesRss.body),
+      ) &&
+      seriesRssLastModified === "Mon, 10 Aug 2026 22:25:11 GMT" &&
+      seriesRss.response.headers.get("content-disposition") ===
+        'inline; filename="build-my-blog.rss.xml"' &&
+      seriesRss.response.headers.get("x-robots-tag") === "noindex" &&
+      seriesRss.response.headers.get("link") ===
+        `<${origin.origin}/series/build-my-blog/rss.xml>; rel="self"; type="application/rss+xml", <${origin.origin}/series/build-my-blog>; rel="up"; type="text/html"` &&
+      seriesRss.body.includes(
+        "<title>从零构建个人博客 — Zach424 / Engineering Notes</title>",
+      ) &&
+      seriesRss.body.includes(
+        "<description>专题“从零构建个人博客”，按最新发布顺序订阅，共 2 篇文章。</description>",
+      ) &&
+      seriesRss.body.includes(
+        `<link>${origin.origin}/series/build-my-blog</link>`,
+      ) &&
+      seriesRss.body.includes(
+        `<atom:link href="${origin.origin}/series/build-my-blog/rss.xml" rel="self" type="application/rss+xml" />`,
+      ) &&
+      expectedSeriesIds.length === seriesChapterPaths.length &&
+      JSON.stringify(seriesRssIds) === JSON.stringify(expectedSeriesIds) &&
+      JSON.stringify(seriesRssIds) ===
+        JSON.stringify(
+          [...seriesChapterPaths]
+            .reverse()
+            .map((pathname) => `${origin.origin}${pathname}`),
+        ) &&
+      !seriesRssIds.includes(`${origin.origin}/projects/myblog`) &&
+      !seriesRssIds.includes(`${origin.origin}/posts/cross-platform-npm-scripts`) &&
+      seriesRssUpdateContractValid,
+    "专题 RSS 条目、发现或条件响应异常",
   );
   invariant(
     robots.response.status === 200 &&
@@ -1424,11 +1507,16 @@ export async function runProductionSmoke(originInput, { expectOAuth = false } = 
     !sitemap.body.includes("/tags/typescript/rss.xml"),
     "标签 RSS 不应进入 Sitemap",
   );
+  invariant(
+    !sitemap.body.includes("/series/build-my-blog/rss.xml"),
+    "专题 RSS 不应进入 Sitemap",
+  );
   const conditionalDiscoveryResponses = await Promise.all(
     [
       ["/feed.json", "application/feed+json", jsonFeed],
       ["/rss.xml", "application/rss+xml", rss],
       ["/tags/typescript/rss.xml", "application/rss+xml", tagRss],
+      ["/series/build-my-blog/rss.xml", "application/rss+xml", seriesRss],
       ["/sitemap.xml", "application/xml", sitemap],
       ["/robots.txt", "text/plain", robots],
       [
@@ -1451,6 +1539,12 @@ export async function runProductionSmoke(originInput, { expectOAuth = false } = 
         "/tags/typescript/rss.xml",
         "application/rss+xml",
         tagRss,
+        hasJsonFeedCachePolicy,
+      ],
+      [
+        "/series/build-my-blog/rss.xml",
+        "application/rss+xml",
+        seriesRss,
         hasJsonFeedCachePolicy,
       ],
       ["/sitemap.xml", "application/xml", sitemap, hasJsonFeedCachePolicy],
@@ -1483,7 +1577,7 @@ export async function runProductionSmoke(originInput, { expectOAuth = false } = 
       `${pathname} 条件请求契约异常`,
     );
   }
-  const [jsonDateMatch, rssDateMatch, tagRssDateMatch, staleTagWins, staleDate, malformedDate] =
+  const [jsonDateMatch, rssDateMatch, tagRssDateMatch, seriesRssDateMatch, staleTagWins, staleDate, malformedDate] =
     await Promise.all([
       request(origin, "/feed.json", {
         accept: "application/feed+json",
@@ -1496,6 +1590,10 @@ export async function runProductionSmoke(originInput, { expectOAuth = false } = 
       request(origin, "/tags/typescript/rss.xml", {
         accept: "application/rss+xml",
         headers: { "if-modified-since": tagRssLastModified },
+      }),
+      request(origin, "/series/build-my-blog/rss.xml", {
+        accept: "application/rss+xml",
+        headers: { "if-modified-since": seriesRssLastModified },
       }),
       request(origin, "/feed.json", {
         accept: "application/feed+json",
@@ -1535,6 +1633,13 @@ export async function runProductionSmoke(originInput, { expectOAuth = false } = 
       tagRssDateMatch,
       tagRss,
       tagRssLastModified,
+      hasJsonFeedCachePolicy,
+    ],
+    [
+      "/series/build-my-blog/rss.xml",
+      seriesRssDateMatch,
+      seriesRss,
+      seriesRssLastModified,
       hasJsonFeedCachePolicy,
     ],
   ]) {
@@ -1582,6 +1687,12 @@ export async function runProductionSmoke(originInput, { expectOAuth = false } = 
       "/tags/typescript/rss.xml",
       "application/rss+xml",
       tagRss,
+      hasJsonFeedCachePolicy,
+    ],
+    [
+      "/series/build-my-blog/rss.xml",
+      "application/rss+xml",
+      seriesRss,
       hasJsonFeedCachePolicy,
     ],
     ["/sitemap.xml", "application/xml", sitemap, hasJsonFeedCachePolicy],
@@ -1724,6 +1835,32 @@ export async function runProductionSmoke(originInput, { expectOAuth = false } = 
           result.response.headers.get("last-modified") === null,
       ),
     "未知标签 RSS 不得生成公开验证器",
+  );
+  const [missingSeriesRss, missingSeriesRssHead] = await Promise.all([
+    request(origin, "/series/not-a-real-series/rss.xml", {
+      accept: "application/rss+xml",
+      redirect: "manual",
+    }),
+    request(origin, "/series/not-a-real-series/rss.xml", {
+      accept: "application/rss+xml",
+      method: "HEAD",
+      redirect: "manual",
+    }),
+  ]);
+  invariant(
+    missingSeriesRss.response.status === 404 &&
+      missingSeriesRss.body === "Series RSS not found.\n" &&
+      missingSeriesRssHead.response.status === 404 &&
+      missingSeriesRssHead.body === "" &&
+      [missingSeriesRss, missingSeriesRssHead].every(
+        (result) =>
+          result.response.headers.get("cache-control") === "no-store" &&
+          result.response.headers.get("content-type")?.startsWith("text/plain") &&
+          result.response.headers.get("x-robots-tag") === "noindex" &&
+          result.response.headers.get("etag") === null &&
+          result.response.headers.get("last-modified") === null,
+      ),
+    "未知专题 RSS 不得生成公开验证器",
   );
   const routeResponses = await Promise.all(
     sitemapUrls.map((url) => fetchWithRetry(url, { redirect: "manual" })),

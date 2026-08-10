@@ -19,11 +19,15 @@ export async function generateMetadata({ params }: SeriesDetailProps): Promise<M
   const series = getSeriesBySlug(slug);
   if (!series) return { title: "专题不存在" };
   const description = `专题“${series.title}”，共 ${series.posts.length} 篇文章。`;
+  const feedPath = `/series/${series.slug}/rss.xml`;
 
   return {
     title: series.title,
     description,
-    alternates: { canonical: `/series/${series.slug}` },
+    alternates: {
+      canonical: `/series/${series.slug}`,
+      types: { "application/rss+xml": feedPath },
+    },
     openGraph: {
       title: `${series.title} — Zach424`,
       description,
@@ -54,6 +58,11 @@ export default async function SeriesDetailPage({ params }: SeriesDetailProps) {
         description="按专题顺序阅读，从最初约束到具体实现和验证结果。"
         meta={`${series.posts.length} PARTS / ORDERED`}
       />
+      <nav className="collection-links" aria-label={`${series.title} 订阅`}>
+        <a href={`/series/${series.slug}/rss.xml`} type="application/rss+xml">
+          订阅此专题 RSS <span aria-hidden="true">→</span>
+        </a>
+      </nav>
       <ContentIndexList items={series.posts} />
     </main>
   );

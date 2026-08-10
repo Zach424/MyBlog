@@ -1,5 +1,5 @@
 import { getTagBySlug, getTagIndex } from "@/lib/content";
-import { createRssResponse } from "@/lib/rss";
+import { createRssNotFoundResponse, createRssResponse } from "@/lib/rss";
 import { absoluteSiteUrl, resolveSiteUrl, SITE_TITLE } from "@/lib/site";
 
 type TagRssContext = {
@@ -15,14 +15,7 @@ export async function GET(request: Request, { params }: TagRssContext) {
   const tag = getTagBySlug(slug);
 
   if (!tag) {
-    return new Response("Tag RSS not found.\n", {
-      status: 404,
-      headers: {
-        "cache-control": "no-store",
-        "content-type": "text/plain; charset=utf-8",
-        "x-robots-tag": "noindex",
-      },
-    });
+    return createRssNotFoundResponse("Tag");
   }
 
   const siteUrl = resolveSiteUrl(request.headers, request.url);
