@@ -148,6 +148,8 @@ Iteration 0116 起，首页精选项目卡、`/projects` 集合行和项目详�
 
 Iteration 0117 起，所有 `ContentIndexList` 消费者必须在类型下显示 `UPDATED/PUBLISHED` 与实际日期；`updatedAt` 只有严格晚于 `publishedAt` 才能替代显示日。同一次发布必须检查 `/posts`、`/projects`、专题、标签和项目引用账本，同时确认 `/archive` 没有 `.content-index-date` 且继续声明“发布日期”。功能提交 `c73eb2c` 的稳定生产 `/posts` 为 23165/5101 B、项目详情为 113705/25393 B、专题为 22707/5112 B、标签为 22560/5109 B（raw/gzip）；26 routes、OAuth 302 和全部预算继续通过。
 
+Iteration 0118 起，搜索文档与知识图节点必须保留可选 `updatedAt`，并由共享 presenter 输出 UPDATED/PUBLISHED；排序仍以 `publishedAt` 为现有首发语义。发布收敛检查要同时命中搜索 `.search-result-date`、“首发顺序”、知识图 `PROJECT / UPDATED / 2026-08-06` 与 `POST / UPDATED / 2026-08-05`，并反向确认 archive 没有共享日期组件。功能提交 `a0ddd5b` 的稳定生产 `/search?q=cloudflare` 为 41251/14704 B、`/knowledge` 为 40497/8013 B（raw/gzip）；26 routes、OAuth 302、十二条 HTML 与七个发现端点全部 PASS，无需调整预算。
+
 搜索路径还要分别核对 `/search?q=cloudflare`、`/search?q=Wrangler` 与 `/search?q=B_i`：第一条必须出现可见命中 mark、来源和字段原因，第二条必须只有 1 条正文证据，第三条必须显示 0 条且不存在 mark。不要用 HTML 内 RSC 序列化的完整搜索文档冒充可见结果；生产 smoke 以真实 `<mark class="search-hit">`、来源标签和结果计数作为证据。
 
 继续阅读路径要核对代表文章恰有 2 个、代表项目恰有 3 个真实 `<a class="content-recommendation">`，并包含“当前记录引用”“引用当前记录”“同专题”或“共同标签”等实际理由。不要用 RSC 数据中的标题或推荐对象冒充可点击结果；链接数量、`Continue trace` 标题和理由必须都来自服务端可见 HTML。推荐变化属于关键 HTML 增长，部署后先观察文章/项目 raw-gzip 余量，再用同一提交的稳定生产响应更新有来源基线。

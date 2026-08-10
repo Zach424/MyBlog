@@ -68,7 +68,7 @@ lib/
   markdown-pipeline.ts              生产阅读与 Studio 共享的 remark/rehype/安全 URL 配置
   studio-math-preview.ts            同源作者预览的公式校验、HTML 输出与无障碍语义
   studio-maintenance.ts             公开 Current 内容到最小维护队列快照的适配层
-  search-index.ts                   服务端 Markdown AST 到搜索纯文本/文档索引
+  search-index.ts                   服务端 Markdown AST 到搜索纯文本/含更新日文档索引
   search.ts                         客户端安全查询、排名、证据片段与 Unicode 原文分段
   media-policy.ts                   原图安全包络、WebP 优化与公开媒体预算的共享策略
   studio-media-manifest.ts          已归档媒体路径、字节数与 SHA-256 的确定性清单
@@ -107,6 +107,8 @@ vercel.json                         Vercel Next.js 框架声明
 
 同一 `lib/content-presentation.ts` 还把 `publishedAt/updatedAt` 投影为通用列表日期：只有 `updatedAt > publishedAt` 才输出 `UPDATED` 和更新日，无更新或同日更新输出 `PUBLISHED` 和首发日。`ContentIndexList` 的文章、项目、专题、标签与引用账本消费者共同使用这个结果，排序和记录本身不变。`/archive` 继续使用独立的首发日期组件、`createContentArchive()` 和“发布日期”无障碍标签，不进入通用日期 presenter。
 
+`createSearchDocuments()` 与 `deriveKnowledgeGraph()` 在各自最小派生对象中继续保留 `publishedAt`，并新增可选字符串 `updatedAt`；搜索客户端 props 因而仍由普通对象、字符串和数组组成，不跨 Server/Client 边界传递函数、Date 或内容记录的作者字段。`SearchExperience`、知识地图 SVG 节点与孤立记录都复用 `getContentDatePresentation()`；搜索空查询文案及行尾原因明确声明“首发时间/首发顺序”。搜索相关性后的决胜、空查询输入顺序和知识图节点排序仍只使用 `publishedAt`，显示维护日不会隐式重排探索结果。`/archive` 继续完全隔离。
+
 `lib/public-markdown.ts` 把同一公开 `ContentRecord` 投影为可移植 Markdown，而不是读取并透传作者原文件。YAML 只按文章/项目显式白名单输出公开阅读字段、canonical 与可选封面；`draft`、`featured`、源文件路径和构建派生字段不会进入响应。正文复用共享 GFM + math AST 的节点位置，只改写真实 link/image/definition URL：根相对站内地址、媒体地址与自页面 fragment 转为当前请求 origin 下的绝对 URL，外部 URL、代码和围栏代码保持不变，无法证明节点位置时失败关闭。最终 UTF-8 表示生成 `"sha256-<64 hex>"` 源站强 ETag；`Last-Modified` 取 published/updated/reviewed 中最新日期的 UTC 零点。`If-None-Match` 按 GET 弱比较语义接受单值、列表、`W/` 与 `*`，源站命中返回带共享响应头的空 304，畸形条件头按普通 200 处理。Vercel 对 Brotli 表示可把同一 opaque tag 弱化为 `W/`，并按 HTTP 语义把边缘 304 收敛为 ETag、Cache-Control 等缓存更新元数据；生产验证比较强弱标签中的相同 SHA-256 身份，并只校验仍出现的可选元数据不能漂移。文章与项目的嵌套 `source.md` Route Handler 只调用公开 getter，因此草稿、未来内容和未知 slug 都返回不可缓存的 404。
 
 `lib/content-manifest.ts` 把同一个公开记录集合投影为版本 1 的 `/content.json`。顶层只声明站点、清单、语言和稳定排序 items；每项只含公开 kind/type、标题、HTML/Markdown 绝对 URL、发布/更新/复核日、标签，以及用同一 origin 最终源文字节计算的强 `markdown_etag`。清单不含正文、摘要、canonical、草稿、featured、slug 或源文件路径；根布局以 `application/json` alternate 公开发现入口。`lib/http-validators.ts` 为源文和清单共享 SHA-256、实体标签列表解析、GET 弱比较和浏览器复核/CDN 缓存策略；清单自身也以最终 JSON 字节生成 ETag，最新公开日期事实生成 Last-Modified，命中返回空 304。
@@ -135,7 +137,7 @@ vercel.json                         Vercel Next.js 框架声明
 
 `lib/content/external-links.ts` 用与正文渲染一致的 GFM AST 读取公开文章/项目正文，并从同一 `ContentRecord` 读取文章 canonical、项目 repository/demo。每个 occurrence 标明 `sourceField`；正文另保留相对行和可见标签，字段显示 `frontmatter.<field>`。URL 规范化后统一聚合，因此正文与结构化字段指向同一地址时只形成一个 link entry 和一次健康检查；图片、代码、站内链接、锚点、邮件链接和 `demo: null` 不参与。正文中的 HTTP、协议相对、无效 HTTPS 与含凭据 URL 进入本地 issue 且凭据不会写入报告；结构化字段继续由 schema 先保证 HTTPS。`scripts/report-external-links.mjs` 默认只输出确定性文本/JSON 库存并进入本地 `release:check`。只有显式 `--check` 才发送 HEAD：每跳限制 HTTPS/443/无凭据，拒绝本地命名空间和任一私网/回环/链路本地/保留 DNS 结果，再把连接固定到已验证公网地址以收窄 DNS rebinding；并发 1–8、超时 500–30000ms、重试 0–2、重定向 0–10。响应头到达后立即关闭，不下载或保存正文。404/410、其他确定 4xx、安全或重定向错误才计入 broken；403/429/HEAD 不支持、5xx、超时和网络错误保留为暂不可确认。实时检查不进入 Actions 或默认构建硬门。
 
-`lib/content/knowledge-graph.ts` 接收同一公开文章/项目集合与已经校验的引用关系，确定性派生节点、有向边、每个节点的 outgoing/backlinks、唯一邻居数和孤立状态。`app/knowledge/page.tsx` 在服务端读取该结果；`KnowledgeMap.tsx` 同时输出可聚焦的 SVG 链接信号场、原生 HTML 有序关系账本和孤立记录列表。桌面端按文章/项目双列绘制，互相引用分轨显示；`≤ 42rem` 隐藏需要宽画布的 SVG，保留完整关系账本和说明，因此辅助技术、搜索引擎、无 JavaScript 与 320px 设备都不依赖 Canvas、客户端布局或另一份索引。新增/修改正文站内链接会在下一次构建自动更新详情页与知识地图。
+`lib/content/knowledge-graph.ts` 接收同一公开文章/项目集合与已经校验的引用关系，确定性派生节点、有向边、每个节点的 outgoing/backlinks、唯一邻居数、孤立状态和可选更新日。`app/knowledge/page.tsx` 在服务端读取该结果；`KnowledgeMap.tsx` 同时输出可聚焦的 SVG 链接信号场、原生 HTML 有序关系账本和孤立记录列表。桌面端按文章/项目双列绘制，互相引用分轨显示，节点以 `TYPE / UPDATED|PUBLISHED / DATE` 标明内容版本时间；`≤ 42rem` 隐藏需要宽画布的 SVG，保留完整关系账本、带日期的孤立记录和说明，因此辅助技术、搜索引擎、无 JavaScript 与 320px 设备都不依赖 Canvas、客户端布局或另一份索引。新增/修改正文站内链接或内容日期会在下一次构建自动更新详情页与知识地图，图节点次序仍按首发日决定。
 
 `lib/breadcrumbs.ts` 接收页面实际使用的 `{ name, href }` 路径，要求至少两级、非空名称、根相对且无查询/fragment 的唯一同源 URL，再按数组顺序生成 1 起始的 Schema.org `BreadcrumbList`。`BreadcrumbTrail.tsx` 用同一数组同时输出原生可见导航和经过 `<` 转义的 JSON-LD；末级在视觉与辅助技术中是 `aria-current="page"`，在机器数据中仍携带当前页绝对 URL。文章、项目、专题、标签都只接入这一服务端边界；未知记录在 `notFound()` 前不构造路径，因此 404 不输出误导性结构化数据。
 

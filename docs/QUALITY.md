@@ -6,7 +6,7 @@
 npm run check
 ```
 
-顺序为 ESLint → 519 项内容/时间档案/订阅目录/维护/inbox/暂存媒体/关系/推荐/站点身份/公开路由事实/首页内容证据/About 系统档案/项目状态与内容日期展示/面包屑/标题锚点与永久链接/脚注/数学公式/打印版式/知识图/外链库存与检查/搜索/OpenSearch/公开清单/发现端点验证器与预算/公开 Markdown/OAuth/Studio/Obsidian/媒体/重定向/代码复制/交付单元测试 → Next 路由类型生成与 TypeScript → 原生 Next.js 生产构建（51 个页面，并包含动态 Route Handler）→ 29 项真实生产 HTTP 与质量审计。任何一步失败都阻止合并和生产部署。
+顺序为 ESLint → 521 项内容/时间档案/订阅目录/维护/inbox/暂存媒体/关系/推荐/站点身份/公开路由事实/首页内容证据/About 系统档案/项目状态与内容日期展示/面包屑/标题锚点与永久链接/脚注/数学公式/打印版式/知识图/外链库存与检查/搜索/OpenSearch/公开清单/发现端点验证器与预算/公开 Markdown/OAuth/Studio/Obsidian/媒体/重定向/代码复制/交付单元测试 → Next 路由类型生成与 TypeScript → 原生 Next.js 生产构建（51 个页面，并包含动态 Route Handler）→ 29 项真实生产 HTTP 与质量审计。任何一步失败都阻止合并和生产部署。
 
 公开路由事实质量门不把 `26` 复制成两个独立断言：纯函数夹具锁定静态/动态顺序、total、最新日期、输入不变和重复 path 失败关闭；真实 Next 测试并行请求首页与 Sitemap，从实际 `<loc>` 数量派生首页期望文字，并要求首页 `LATEST` 等于 Sitemap 根 URL 的 `lastmod`。测试同时拒绝遗留 `REV. <数字>`。这样内容增长会自动改变两端，任一消费者脱离共享事实才失败。
 
@@ -17,6 +17,8 @@ About 系统档案纯函数测试精确比较四类集合计数、记录/路由 
 项目 status presenter 测试枚举 planning/building/maintained/archived，逐项锁定中文 label、大写 code 和统一 meta。SSR 并行请求首页、`/projects` 和 `/projects/myblog`，三处都必须出现 `持续维护 · MAINTAINED`，并分别拒绝旧 `Maintained`、孤立 `MAINTAINED` 和 `Project / maintained`。390×844 深色浏览器逐页验证文本、一个 H1、零横向溢出和 console 0 errors；原始 enum 仍由公开 Markdown、清单、Schema 和 Studio 既有测试保护。
 
 内容日期 presenter 测试覆盖晚于首发的更新、无 `updatedAt`、同日 `updatedAt` 和输入不变。SSR 要求 `/posts`、`/projects`、专题、标签和项目引用账本都输出带真实 `dateTime` 的 UPDATED 元数据；`/archive` 必须没有 `.content-index-date`，并继续输出“发布日期”与首发日。390×844 深色浏览器检查项目/文章三层元数据、一个 H1、零横向溢出；archive 浏览器断言共享日期组件为 0。所有受影响路由继续受既有 raw/gzip 预算约束。
+
+搜索与知识图日期扩展还必须证明“携带更新日”和“保持首发排序”同时成立：纯函数夹具把首发较早但更新较晚的记录与首发较新的记录并置，要求派生对象保留 `updatedAt`，顺序仍由 `publishedAt` 决定；SSR 要求搜索结果、SVG 节点和孤立记录显示 UPDATED 与真实日期，空查询出现“按首发时间”和四个“首发顺序”，archive 继续隔离。Playwright 分别在 390×844 深色搜索/移动图谱和 1280px 深色 SVG 检查日期、单一 H1、断点行为、根宽与 console；搜索和知识图继续受原十二路 HTML 预算约束。
 
 发布候选额外执行：
 
