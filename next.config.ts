@@ -124,7 +124,8 @@ export default async function createNextConfig(): Promise<NextConfig> {
         { source: "/projects", headers: [contentCacheHeader] },
         { source: "/projects/:slug", headers: [contentCacheHeader] },
         { source: "/series/:path*", headers: [contentCacheHeader] },
-        { source: "/tags/:path*", headers: [contentCacheHeader] },
+        { source: "/tags", headers: [contentCacheHeader] },
+        { source: "/tags/:slug", headers: [contentCacheHeader] },
         { source: "/search", headers: [contentCacheHeader] },
         { source: "/about", headers: [contentCacheHeader] },
       ];

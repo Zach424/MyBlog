@@ -391,6 +391,14 @@ export async function runProductionSmoke(originInput, { expectOAuth = false } = 
       htmlBudgetReports.push(measureHtmlBudget({ pathname, html: page.body }));
     }
   }
+  const tagPage = htmlPages.get("/tags/typescript")?.body ?? "";
+  invariant(
+    tagPage.includes(`${origin.origin}/tags/typescript/rss.xml`) &&
+      visibleDocument(tagPage).includes(
+        '<a href="/tags/typescript/rss.xml" type="application/rss+xml">订阅此标签 RSS',
+      ),
+    "标签 RSS 发现入口异常",
+  );
   const subscribe = htmlPages.get("/subscribe")?.body ?? "";
   invariant(
     (subscribe.match(/class="subscription-route"/gu) ?? []).length === 5 &&
@@ -952,11 +960,14 @@ export async function runProductionSmoke(originInput, { expectOAuth = false } = 
     invariant([302, 503].includes(oauth.response.status), `OAuth 状态 ${oauth.response.status}`);
   }
 
-  const [contentManifest, contentSchema, jsonFeed, rss, robots, sitemap, openSearch] = await Promise.all([
+  const [contentManifest, contentSchema, jsonFeed, rss, tagRss, robots, sitemap, openSearch] = await Promise.all([
     request(origin, "/content.json", { accept: "application/json" }),
     request(origin, "/content.schema.json", { accept: "application/schema+json" }),
     request(origin, "/feed.json", { accept: "application/feed+json" }),
     request(origin, "/rss.xml", { accept: "application/rss+xml" }),
+    request(origin, "/tags/typescript/rss.xml", {
+      accept: "application/rss+xml",
+    }),
     request(origin, "/robots.txt", { accept: "text/plain" }),
     request(origin, "/sitemap.xml", { accept: "application/xml" }),
     request(origin, "/opensearch.xml", {
@@ -1011,9 +1022,16 @@ export async function runProductionSmoke(originInput, { expectOAuth = false } = 
   const manifestIds = manifestItems.map((item) => item.id);
   const rssItems = extractRssItems(rss.body);
   const rssIds = rssItems.map((item) => item.guid);
+  const tagRssItems = extractRssItems(tagRss.body);
+  const tagRssIds = tagRssItems.map((item) => item.guid);
+  const expectedTagItems = jsonFeedItems.filter(
+    (item) => Array.isArray(item.tags) && item.tags.includes("TypeScript"),
+  );
+  const expectedTagIds = expectedTagItems.map((item) => item.id);
   const jsonFeedLastModified =
     jsonFeed.response.headers.get("last-modified");
   const rssLastModified = rss.response.headers.get("last-modified");
+  const tagRssLastModified = tagRss.response.headers.get("last-modified");
   const rssUpdateContractValid = rssItems.length === jsonFeedItems.length &&
     rssItems.every((item, index) => {
       const feedItem = jsonFeedItems[index];
@@ -1320,6 +1338,52 @@ export async function runProductionSmoke(originInput, { expectOAuth = false } = 
       rssUpdateContractValid,
     "RSS 条目、标签或条件验证器异常",
   );
+  const tagRssUpdateContractValid =
+    tagRssItems.length === expectedTagItems.length &&
+    tagRssItems.every((item, index) => {
+      const feedItem = expectedTagItems[index];
+      const expectedModified =
+        typeof feedItem.date_modified === "string" &&
+        feedItem.date_modified > feedItem.date_published
+          ? [feedItem.date_modified]
+          : [];
+
+      return (
+        item.pubDate === new Date(feedItem.date_published).toUTCString() &&
+        JSON.stringify(item.modifiedDates) === JSON.stringify(expectedModified) &&
+        JSON.stringify(item.categories) === JSON.stringify(feedItem.tags)
+      );
+    });
+  invariant(
+    tagRss.response.status === 200 &&
+      tagRss.response.headers
+        .get("content-type")
+        ?.startsWith("application/rss+xml") &&
+      hasJsonFeedCachePolicy(tagRss.response.headers.get("cache-control")) &&
+      sameMarkdownSourceEtag(
+        tagRss.response.headers.get("etag"),
+        sha256Etag(tagRss.body),
+      ) &&
+      tagRssLastModified === "Mon, 10 Aug 2026 22:25:11 GMT" &&
+      tagRss.response.headers.get("content-disposition") ===
+        'inline; filename="typescript.rss.xml"' &&
+      tagRss.response.headers.get("x-robots-tag") === "noindex" &&
+      tagRss.response.headers.get("link") ===
+        `<${origin.origin}/tags/typescript/rss.xml>; rel="self"; type="application/rss+xml", <${origin.origin}/tags/typescript>; rel="up"; type="text/html"` &&
+      tagRss.body.includes(
+        "<title>TypeScript — Zach424 / Engineering Notes</title>",
+      ) &&
+      tagRss.body.includes(`<link>${origin.origin}/tags/typescript</link>`) &&
+      tagRss.body.includes(
+        `<atom:link href="${origin.origin}/tags/typescript/rss.xml" rel="self" type="application/rss+xml" />`,
+      ) &&
+      expectedTagIds.length >= 1 &&
+      JSON.stringify(tagRssIds) === JSON.stringify(expectedTagIds) &&
+      !tagRssIds.includes(`${origin.origin}/posts/cross-platform-npm-scripts`) &&
+      !tagRssIds.includes(`${origin.origin}/posts/project-charter-before-homepage`) &&
+      tagRssUpdateContractValid,
+    "标签 RSS 条目、发现或条件响应异常",
+  );
   invariant(
     robots.response.status === 200 &&
       robots.response.headers.get("content-type")?.startsWith("text/plain") &&
@@ -1352,10 +1416,15 @@ export async function runProductionSmoke(originInput, { expectOAuth = false } = 
     !sitemap.body.includes("/opensearch.xml"),
     "OpenSearch 描述不应进入 Sitemap",
   );
+  invariant(
+    !sitemap.body.includes("/tags/typescript/rss.xml"),
+    "标签 RSS 不应进入 Sitemap",
+  );
   const conditionalDiscoveryResponses = await Promise.all(
     [
       ["/feed.json", "application/feed+json", jsonFeed],
       ["/rss.xml", "application/rss+xml", rss],
+      ["/tags/typescript/rss.xml", "application/rss+xml", tagRss],
       ["/sitemap.xml", "application/xml", sitemap],
       ["/robots.txt", "text/plain", robots],
       [
@@ -1374,6 +1443,12 @@ export async function runProductionSmoke(originInput, { expectOAuth = false } = 
     const [pathname, , source, cachePolicy] = [
       ["/feed.json", "application/feed+json", jsonFeed, hasJsonFeedCachePolicy],
       ["/rss.xml", "application/rss+xml", rss, hasJsonFeedCachePolicy],
+      [
+        "/tags/typescript/rss.xml",
+        "application/rss+xml",
+        tagRss,
+        hasJsonFeedCachePolicy,
+      ],
       ["/sitemap.xml", "application/xml", sitemap, hasJsonFeedCachePolicy],
       ["/robots.txt", "text/plain", robots, hasRobotsCachePolicy],
       [
@@ -1404,7 +1479,7 @@ export async function runProductionSmoke(originInput, { expectOAuth = false } = 
       `${pathname} 条件请求契约异常`,
     );
   }
-  const [jsonDateMatch, rssDateMatch, staleTagWins, staleDate, malformedDate] =
+  const [jsonDateMatch, rssDateMatch, tagRssDateMatch, staleTagWins, staleDate, malformedDate] =
     await Promise.all([
       request(origin, "/feed.json", {
         accept: "application/feed+json",
@@ -1413,6 +1488,10 @@ export async function runProductionSmoke(originInput, { expectOAuth = false } = 
       request(origin, "/rss.xml", {
         accept: "application/rss+xml",
         headers: { "if-modified-since": rssLastModified },
+      }),
+      request(origin, "/tags/typescript/rss.xml", {
+        accept: "application/rss+xml",
+        headers: { "if-modified-since": tagRssLastModified },
       }),
       request(origin, "/feed.json", {
         accept: "application/feed+json",
@@ -1445,6 +1524,13 @@ export async function runProductionSmoke(originInput, { expectOAuth = false } = 
       rssDateMatch,
       rss,
       rssLastModified,
+      hasJsonFeedCachePolicy,
+    ],
+    [
+      "/tags/typescript/rss.xml",
+      tagRssDateMatch,
+      tagRss,
+      tagRssLastModified,
       hasJsonFeedCachePolicy,
     ],
   ]) {
@@ -1488,6 +1574,12 @@ export async function runProductionSmoke(originInput, { expectOAuth = false } = 
     ],
     ["/feed.json", "application/feed+json", jsonFeed, hasJsonFeedCachePolicy],
     ["/rss.xml", "application/rss+xml", rss, hasJsonFeedCachePolicy],
+    [
+      "/tags/typescript/rss.xml",
+      "application/rss+xml",
+      tagRss,
+      hasJsonFeedCachePolicy,
+    ],
     ["/sitemap.xml", "application/xml", sitemap, hasJsonFeedCachePolicy],
     ["/robots.txt", "text/plain", robots, hasRobotsCachePolicy],
     [
@@ -1602,6 +1694,32 @@ export async function runProductionSmoke(originInput, { expectOAuth = false } = 
       missingMarkdownHead.response.headers.get("etag") === null &&
       missingMarkdownHead.response.headers.get("last-modified") === null,
     "未知 Markdown HEAD 不得生成公开验证器",
+  );
+  const [missingTagRss, missingTagRssHead] = await Promise.all([
+    request(origin, "/tags/not-a-real-tag/rss.xml", {
+      accept: "application/rss+xml",
+      redirect: "manual",
+    }),
+    request(origin, "/tags/not-a-real-tag/rss.xml", {
+      accept: "application/rss+xml",
+      method: "HEAD",
+      redirect: "manual",
+    }),
+  ]);
+  invariant(
+    missingTagRss.response.status === 404 &&
+      missingTagRss.body === "Tag RSS not found.\n" &&
+      missingTagRssHead.response.status === 404 &&
+      missingTagRssHead.body === "" &&
+      [missingTagRss, missingTagRssHead].every(
+        (result) =>
+          result.response.headers.get("cache-control") === "no-store" &&
+          result.response.headers.get("content-type")?.startsWith("text/plain") &&
+          result.response.headers.get("x-robots-tag") === "noindex" &&
+          result.response.headers.get("etag") === null &&
+          result.response.headers.get("last-modified") === null,
+      ),
+    "未知标签 RSS 不得生成公开验证器",
   );
   const routeResponses = await Promise.all(
     sitemapUrls.map((url) => fetchWithRetry(url, { redirect: "manual" })),

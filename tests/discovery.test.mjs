@@ -169,6 +169,39 @@ test("creates escaped RSS with stable identities and explicit modification dates
   assert.deepEqual(records.map((record) => record.url), originalOrder);
 });
 
+test("creates a scoped RSS channel while preserving shared item identities", () => {
+  const xml = createRssXml(new URL("https://blog.example.test"), [post], {
+    description: "与 TypeScript 相关的文章和项目，共 1 条。",
+    feedPath: "/tags/typescript/rss.xml",
+    homePath: "/tags/typescript",
+    title: "TypeScript — Zach424 / Engineering Notes",
+  });
+
+  assert.match(
+    xml,
+    /<title>TypeScript — Zach424 \/ Engineering Notes<\/title>/u,
+  );
+  assert.match(
+    xml,
+    /<link>https:\/\/blog\.example\.test\/tags\/typescript<\/link>/u,
+  );
+  assert.match(
+    xml,
+    /<description>与 TypeScript 相关的文章和项目，共 1 条。<\/description>/u,
+  );
+  assert.match(
+    xml,
+    /<atom:link href="https:\/\/blog\.example\.test\/tags\/typescript\/rss\.xml" rel="self" type="application\/rss\+xml" \/>/u,
+  );
+  assert.doesNotMatch(xml, /href="https:\/\/blog\.example\.test\/rss\.xml"/u);
+  assert.deepEqual(
+    [...xml.matchAll(/<guid isPermaLink="true">([^<]+)<\/guid>/gu)].map(
+      (match) => match[1],
+    ),
+    ["https://blog.example.test/posts/build-worker"],
+  );
+});
+
 test("creates a JSON Feed 1.1 document with stable plain-text items", () => {
   const source = createJsonFeed(new URL("https://blog.example.test"), [project, post]);
   const feed = JSON.parse(source);

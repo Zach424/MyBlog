@@ -8,6 +8,13 @@ import {
 import { markdownToPlainText } from "./search-index.ts";
 import { absoluteSiteUrl, SITE_DESCRIPTION, SITE_TITLE } from "./site.ts";
 
+export interface RssChannelOptions {
+  description?: string;
+  feedPath?: string;
+  homePath?: string;
+  title?: string;
+}
+
 function escapeXml(value: string) {
   return value
     .replaceAll("&", "&amp;")
@@ -104,9 +111,15 @@ export function createJsonFeed(siteUrl: URL, records: ContentRecord[]) {
   )}\n`;
 }
 
-export function createRssXml(siteUrl: URL, records: ContentRecord[]) {
-  const feedUrl = absoluteSiteUrl(siteUrl, "/rss.xml");
-  const homeUrl = absoluteSiteUrl(siteUrl, "/");
+export function createRssXml(
+  siteUrl: URL,
+  records: ContentRecord[],
+  options: RssChannelOptions = {},
+) {
+  const feedUrl = absoluteSiteUrl(siteUrl, options.feedPath ?? "/rss.xml");
+  const homeUrl = absoluteSiteUrl(siteUrl, options.homePath ?? "/");
+  const title = options.title ?? SITE_TITLE;
+  const description = options.description ?? SITE_DESCRIPTION;
   const lastBuildDate = newestDate(records) ?? "2026-07-18";
   const items = sortContentRecords(records)
     .map((record) => {
@@ -130,9 +143,9 @@ ${categories}
   return `<?xml version="1.0" encoding="UTF-8"?>
 <rss version="2.0" xmlns:atom="http://www.w3.org/2005/Atom" xmlns:dcterms="http://purl.org/dc/terms/">
   <channel>
-    <title>${escapeXml(SITE_TITLE)}</title>
+    <title>${escapeXml(title)}</title>
     <link>${escapeXml(homeUrl)}</link>
-    <description>${escapeXml(SITE_DESCRIPTION)}</description>
+    <description>${escapeXml(description)}</description>
     <language>zh-CN</language>
     <lastBuildDate>${rssDate(lastBuildDate)}</lastBuildDate>
     <atom:link href="${escapeXml(feedUrl)}" rel="self" type="application/rss+xml" />
