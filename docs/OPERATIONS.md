@@ -150,7 +150,9 @@ Iteration 0117 起，所有 `ContentIndexList` 消费者必须在类型下显示
 
 Iteration 0118 起，搜索文档与知识图节点必须保留可选 `updatedAt`，并由共享 presenter 输出 UPDATED/PUBLISHED；排序仍以 `publishedAt` 为现有首发语义。发布收敛检查要同时命中搜索 `.search-result-date`、“首发顺序”、知识图 `PROJECT / UPDATED / 2026-08-06` 与 `POST / UPDATED / 2026-08-05`，并反向确认 archive 没有共享日期组件。功能提交 `a0ddd5b` 的稳定生产 `/search?q=cloudflare` 为 41251/14704 B、`/knowledge` 为 40497/8013 B（raw/gzip）；26 routes、OAuth 302、十二条 HTML 与七个发现端点全部 PASS，无需调整预算。
 
-Iteration 0119 起，`/activity` 必须从同一公开记录纯派生事件：每条记录恰有一个 PUBLISHED，只有严格更晚的更新日才有一个 UPDATED，`reviewedAt` 不得产生事件。生产检查要求 `8 EVENTS / 4 PUBLISHED / 4 UPDATED`、五个日期组、四个 `.activity-event-published`、四个 `.activity-event-updated`、零 `.activity-event-reviewed`，并确认 `/archive` 可进入该页、Sitemap 总数为 27。功能提交 `5fb508c` 的稳定生产活动页为 37888/6401 B（raw/gzip）；预算提交 `0138ad0` 把该页加入第十三条 HTML 基线并用同一生产版本统一重测全部基线，OAuth 继续为 302。
+Iteration 0119 起，`/activity` 必须从同一公开记录纯派生事件：每条记录恰有一个 PUBLISHED，只有严格更晚的更新日才有一个 UPDATED，`reviewedAt` 不得产生事件。生产检查要求 `8 EVENTS / 4 PUBLISHED / 4 UPDATED`、五个 `data-activity-day="true"`、四个 `data-activity-mode="published"`、四个 `data-activity-mode="updated"`、零 reviewed 模式，并确认 `/archive` 可进入该页、Sitemap 总数为 27。功能提交 `5fb508c` 的稳定生产活动页为 37888/6401 B（raw/gzip）；预算提交 `0138ad0` 把该页加入第十三条 HTML 基线并用同一生产版本统一重测全部基线，OAuth 继续为 302。
+
+Iteration 0120 起，首页必须服务端输出 `data-home-activity="latest-three"`，并从同一活动账本按既有全局顺序精确选择前三项。当前生产应依次为 MyBlog `2026-08-06` UPDATED、维护博客文章 `2026-08-05` UPDATED、项目章程文章 `2026-08-04` UPDATED，且只有三条 `data-home-activity-event="true"`、存在进入 `/activity` 的“完整活动账本”链接。检查不能依赖 CSS Module 哈希类名，也不能把 RSC 载荷当作可见事件。功能提交 `c54535e` 的稳定生产首页为 38722/7641 B、活动页为 41778/6507 B（raw/gzip）；预算提交 `67a127a` 以该已部署版本统一重测十三条 HTML 基线，完整 smoke 为 27 routes、OAuth 302。
 
 搜索路径还要分别核对 `/search?q=cloudflare`、`/search?q=Wrangler` 与 `/search?q=B_i`：第一条必须出现可见命中 mark、来源和字段原因，第二条必须只有 1 条正文证据，第三条必须显示 0 条且不存在 mark。不要用 HTML 内 RSC 序列化的完整搜索文档冒充可见结果；生产 smoke 以真实 `<mark class="search-hit">`、来源标签和结果计数作为证据。
 

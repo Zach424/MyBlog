@@ -26,7 +26,8 @@ app/
   studio/                           Studio HTML、内容复核队列、配置、媒体清单/预检、slug 控件、公式预览与版本化 CMS 运行时路由
   posts/ projects/ series/ tags/   集合、详情页与嵌套 source.md Route Handler
   archive/                          文章、TIL 与项目的服务端年月时间档案
-  activity/                         首次发布与真实更新事件的服务端活动账本
+  activity/                         首次发布与真实更新事件的服务端活动账本及路由级 CSS Module
+  home-activity.module.css          首页最近三项活动的路由级轨道样式
   subscribe/                        现有订阅与开放接口的服务端可见路由表
   knowledge/ search/ about/         知识地图、搜索和关于页
   content.json/ content.schema.json/ feed.json/ rss.xml/ sitemap.xml/ robots.txt/ opensearch.xml/ 站点级发现端点
@@ -100,6 +101,10 @@ vercel.json                         Vercel Next.js 框架声明
 `lib/content/archive.ts` 只接收已验证的公开 `ContentRecord`，复制后按 `publishedAt` 倒序、`zh-CN` 标题与 `en` URL 依次决胜，再用插入顺序稳定生成年/月账本和每年计数；调用方数组不会被改写，空集合返回空档案。`app/archive/page.tsx` 直接消费这一纯投影，以 Server Component 输出原生 `ol`/`section`/`time`/链接，并把 Article、TIL 与 Project 放回一条时间轴；页面没有数据库、客户端请求、第二份内容索引或作者维护字段。
 
 `lib/content/activity.ts` 从同一公开 `ContentRecord` 为每条记录派生一次 `PUBLISHED`，仅在 `updatedAt > publishedAt` 时再派生一次 `UPDATED`；事件按日期倒序、模式、中文标题与英文 URL 稳定决胜，再按日组成不可变账本。`reviewedAt` 不进入事件，因为复核不等于事实变化。`app/activity/page.tsx` 是纯 Server Component，以实心/双环节点、原生 `<time>` 和链接输出当前事件；`/archive` 保留首次发布日期职责，只提供进入活动账本的链接。该边界不修改 frontmatter、搜索、知识图或机器发现接口，也不新增客户端请求、数据库和云配置。
+
+首页直接消费同一个 `createContentActivity([...posts, ...projects])` 结果，先按活动模型完成全局排序，再展平日期组并只取前三个事件。`app/page.tsx` 因而不复制 `updatedAt` 比较、事件模式或日期排序；SSR 输出以 `data-home-activity="latest-three"` 和逐事件语义标记形成可测试边界，并链接完整 `/activity`。摘要只负责“最近发生了什么”的回访入口，不替代首页 Building/Learned/Current focus，也不改变 archive、搜索、知识图或机器发现顺序。
+
+活动页的视觉规则已从接近 100 KB 上限的 `app/globals.css` 迁入 `app/activity/activity.module.css`，首页新增轨道位于 `app/home-activity.module.css`。全局 CSS 因而由 99,995 B 降至 95,383 B；跨页面 Token 与基础布局继续留在全局文件，活动专属节点、轨道、断点与文字遮罩由构建期生成的 CSS Module 类隔离。测试和生产 smoke 不依赖哈希类名，而使用稳定 `data-activity-*` 语义属性核对模式与数量。
 
 `lib/subscriptions.ts` 把既有读取能力投影为固定五通道目录：RSS、JSON Feed、OpenSearch、公开清单/Schema 和单篇 Markdown。静态协议事实与从公开记录稳定选择的最新 `source.md` 示例在纯函数中汇合；`app/subscribe/page.tsx` 只负责把它们服务端渲染成可见路由表。页面不代理端点、不复制正文、不发起客户端请求，也不把只读接口误写成发布 API；发布入口仍是 Studio/Obsidian → Git。
 
