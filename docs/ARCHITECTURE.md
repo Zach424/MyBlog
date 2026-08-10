@@ -108,6 +108,8 @@ vercel.json                         Vercel Next.js 框架声明
 
 `lib/subscriptions.ts` 把既有读取能力投影为固定五通道目录：RSS、JSON Feed、OpenSearch、公开清单/Schema 和单篇 Markdown。静态协议事实与从公开记录稳定选择的最新 `source.md` 示例在纯函数中汇合；`app/subscribe/page.tsx` 只负责把它们服务端渲染成可见路由表。页面不代理端点、不复制正文、不发起客户端请求，也不把只读接口误写成发布 API；发布入口仍是 Studio/Obsidian → Git。
 
+`lib/discovery.ts` 为 JSON Feed 与 RSS 共用同一公开记录排序。RSS 继续用 `pubDate` 表达首次发布时间、用稳定内容 URL 表达 `guid`，只在 `updatedAt > publishedAt` 时额外输出 Dublin Core Terms 的 `dcterms:modified` RFC 3339 UTC 时间；根元素声明 `http://purl.org/dc/terms/` 命名空间。该扩展不会把 Atom `entry` 的 `updated` 元素误放进 RSS item，也不会改变频道 `lastBuildDate`、条目顺序或 JSON Feed 的 `date_modified`。不理解扩展的阅读器仍可按普通 RSS 2.0 消费，理解 Dublin Core Terms 的解析器可读取修改时间。
+
 `lib/public-routes.ts` 是可索引公开路由的唯一派生边界。11 条静态页面声明 path、日期来源、change frequency 与 priority；文章、项目、专题和标签从同一公开内容/索引自动追加。最终清单检查跨集合 path 唯一性，并输出 routes、total 与最新公开内容日期。`createSitemapXml()` 只把 routes 序列化为 XML；首页 Evidence Rail 使用同一个 total，`LATEST` 使用与 Sitemap 根 URL `lastmod` 相同的日期。Feed、Studio、OAuth、错误页和其他 noindex 端点有意不属于该集合。整个边界只在服务端运行，不读取 Git、不发起 API 请求，也不持有第二份计数。
 
 `lib/homepage-evidence.ts` 是公开内容事实到首页 Evidence Rail 的专用 view-model。它只接收精选项目的标题、status、stack、日期与最新文章的标题、type、tags、日期，再映射 Building、Learned 和 Current focus；stack/tag 以“前 N 项 + 剩余数量”控制密度，标题保持原文，空项目/空文章输出明确等待状态。首页组件不再解释状态或维护运行摘要；该纯函数不读取文件、不发起请求，也不扩展内容 schema。
@@ -281,7 +283,7 @@ Obsidian 草稿中的 Wiki 图片嵌入、指向 `public/uploads` 的 Markdown �
 
 一般页面的 COOP 为 `same-origin`；Studio 与 OAuth 为 `same-origin-allow-popups`，以允许 GitHub OAuth 弹窗完成握手。Studio CSP 不允许第三方脚本源，只额外允许 GitHub API、GitHub 授权页和头像来源；`unsafe-eval` 例外被限制在 Studio 路由，因为固定版本 Decap 编辑器/解析器需要运行时求值。
 
-`scripts/discovery-budget.mjs` 冻结稳定生产 origin、测量日期、来源提交和七个结构化发现端点的完整 UTF-8/raw 与 Node zlib gzip 基线。每个端点的 raw 上限由 `baseline + max(50%, 4096 B)` 向上取整到 1 KiB，gzip 上限由 `baseline + max(50%, 1024 B)` 向上取整到 512 B；高度可压缩但异常膨胀的正文和 raw 尚小但传输熵异常的正文都能独立失败。真实 Next 应用和生产冒烟复用同一测量器，并要求清单、Schema、JSON Feed、RSS、Sitemap、robots、OpenSearch 恰好各出现一次；Iteration 0111 的稳定生产基线固定到 `5ab34a7`，不会自动跟随当前输出。
+`scripts/discovery-budget.mjs` 冻结稳定生产 origin、测量日期、来源提交和七个结构化发现端点的完整 UTF-8/raw 与 Node zlib gzip 基线。每个端点的 raw 上限由 `baseline + max(50%, 4096 B)` 向上取整到 1 KiB，gzip 上限由 `baseline + max(50%, 1024 B)` 向上取整到 512 B；高度可压缩但异常膨胀的正文和 raw 尚小但传输熵异常的正文都能独立失败。真实 Next 应用和生产冒烟复用同一测量器，并要求清单、Schema、JSON Feed、RSS、Sitemap、robots、OpenSearch 恰好各出现一次；Iteration 0121 的稳定生产基线固定到 `97eabce`，不会自动跟随当前输出。
 
 ## 7. 部署与回滚
 
@@ -297,6 +299,7 @@ Quality、生产冒烟与回滚工作流均使用 Node 24 runtime 的 checkout/s
 - 稳定 URL 来自文件名/slug，不随日期和平台变化。
 - 必要的 URL 迁移必须登记为有日期和原因的单跳永久重定向；来源不能遮蔽现有路由或文件，目标必须在同一构建中公开。
 - 草稿、未来内容不能进入页面、搜索、公开内容清单、JSON Feed、RSS、Markdown 源文或 Sitemap。
+- RSS item 的 `pubDate`、`guid` 与排序必须继续表达首发身份；修改时间只能以带正式命名空间的 `dcterms:modified` 补充，并且仅在更新日晚于首发日时存在。
 - 公开站内链接必须指向同一构建中的公开文章或项目；详情页 outgoing/backlinks 与 `/knowledge` 的节点、边和孤立状态只能从同一正文链接集合派生。
 - 公开内容必须声明语境和复核日期；Current record 超过 180 天未复核不能进入新部署。
 - Current record 的报告状态与构建硬门必须复用同一日龄计算；Historical、草稿和未来内容不进入维护队列。

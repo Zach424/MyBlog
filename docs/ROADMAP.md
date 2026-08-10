@@ -8,11 +8,11 @@
 | 4. 作者自助写作 | done | `/studio` OAuth + editorial workflow PR、Obsidian Vault/模板/附件/真实 `--push` |
 | 5. Vercel 原生迁移 | production live | 原生 Next.js、无 Cloudflare 依赖、27 路由生产冒烟通过 |
 | 6. 所有者生产上线 | done | Git 自动 Production、稳定域名自动冒烟、双端发布、回滚与恢复均已验收 |
-| 7. 持续内容与作者体验 | in progress | Iteration 0120 已让首页复用活动账本展示最近三次真实变化 |
+| 7. 持续内容与作者体验 | in progress | Iteration 0121 已让 RSS 在保留首发身份的同时公开逐条修改时间 |
 
 ## 当前唯一主线
 
-进入持续内容与作者体验阶段。Iteration 0120 已在首页上线纯服务端 `CHANGE SET / 03 LATEST`：直接复用 `/activity` 的同一确定性事件模型，当前显示 MyBlog、维护博客文章和项目章程文章的三个 UPDATED 事件，并链接完整活动账本；Building/Learned/Current focus、archive、搜索、知识图和机器接口均未改变。功能提交 `c54535e` 与预算提交 `67a127a` 已通过 524 项单元测试、52 页构建、30 项应用测试、390px/1280px 真实浏览器验收与稳定生产 smoke；线上为 27 routes、OAuth 302，十三条 HTML 和七个发现端点预算全部通过。活动专属 CSS 已迁入路由级 Module，全局 CSS 降至 95,383 B。下一主线是让 RSS 阅读器也能可靠感知内容更新：先核对官方 RSS/Atom 扩展语义与常见兼容边界，再决定是否为严格更晚的更新输出逐项修改时间，同时保持现有 guid、pubDate、排序与 JSON Feed `date_modified` 不变。首次真实 Obsidian 人机验收保留为所有者可执行事项，需要品牌域名时再绑定自定义域名。
+进入持续内容与作者体验阶段。Iteration 0121 已为 RSS 增加标准命名空间下的逐 item `dcterms:modified`：只对 `updatedAt > publishedAt` 的内容输出 RFC 3339 UTC 时间，原 `guid`、`pubDate`、首发排序、频道 `lastBuildDate` 与 JSON Feed `date_modified` 均保持不变；RSS item 没有误用 Atom `updated`。功能提交 `97eabce` 与预算提交 `52d6a18` 已通过 524 项单元测试、52 页构建、30 项应用测试和稳定生产 smoke；线上为 27 routes、OAuth 302，标准 XML 解析得到 4 个 item、4 个修改时间、0 个 Atom updated。七个发现端点已用该部署统一重测，RSS 为 3536/1298 B（raw/gzip）。下一主线是评估并实现 Feed 级可信 HTTP `Last-Modified`/`If-Modified-Since`：从同一最新公开日期派生，保持现有 ETag 优先级和边缘缓存语义，不为 robots 或无日期端点伪造时间。首次真实 Obsidian 人机验收保留为所有者可执行事项，需要品牌域名时再绑定自定义域名。
 
 ## 已知风险
 
@@ -38,11 +38,11 @@
 - 文章与项目已有完整 A4 打印版式，但 PDF 仍由读者通过浏览器打印生成，仓库不把二进制 PDF 当作发布源，也不提供服务端 PDF 缓存；后续版式变化仍需重新做真实 PDF 全页复核；
 - 单篇 Markdown 源文是公开投影而非作者文件的无损 round-trip：字段顺序、注释和写作字段有意不保留，项目 `type: project` 只属于公开 schema；raw HTML 属性不参与 URL 改写。源文 ETag/条件 GET、version 1 批量清单与独立 Draft 2020-12 Schema 已闭环；Schema 不表达跨字段相等、跨条目排序/唯一或真实日历语义，严格生产解析器仍是这些不变量的权威；
 - Git/Obsidian sealed receipt、version 1 handoff、生产清单四态、单篇有界收敛、runtime/disk 版本、bundle 完整性与 Git provenance 已覆盖正常和恢复交付；网络、协议、版本、摘要或来源错误不能冒充内容差异或触发二次 Git 动作。首次真实 Obsidian 人机验收继续等待所有者操作，不用自动化假证据替代；
-- 当前结构化生产 raw/gzip 基线为：清单 3009/921 B、Schema 3278/755 B、JSON Feed 20697/9876 B、RSS 3238/1241 B、Sitemap 4882/524 B、robots 155/127 B、OpenSearch 700/462 B；逐端点推导上限和覆盖门已闭环。新增 `/subscribe` 只使 Sitemap 发生可解释增长；基线更新必须伴随产品价值复核、真实生产重测、来源提交和归档，不能自动跟随输出自我放行；
+- 当前结构化生产 raw/gzip 基线为：清单 3009/921 B、Schema 3278/755 B、JSON Feed 20697/9876 B、RSS 3536/1298 B、Sitemap 5059/532 B、robots 155/127 B、OpenSearch 700/462 B；逐端点推导上限和覆盖门已闭环。0121 的 RSS 修改时间属于有价值的协议增长，因此用同一已部署功能提交统一重测全部七个端点；后续基线仍必须伴随产品价值复核、真实生产重测、来源提交和归档，不能自动跟随输出自我放行；
 - `/subscribe` 只说明并直达现有公开读取协议，不提供邮件订阅、推送通知、写入 API 或账号系统。若未来需要邮件列表，必须先明确供应商、隐私、退订、发送身份与成本，不能把当前只读目录当成已具备投递能力；
 - 根级 404 现在有四条恢复路径并显式 noindex，但本地 Next 与 Vercel 对自动 noindex 的最终数量不同；质量门只要求语义存在，版本升级继续以稳定生产 HTML 为准。404 继承根首页 canonical，本轮没有为非索引错误页启用实验性 global-not-found；
 - `/activity` 已补上 archive 有意不承载的后续维护事件；它按每条记录最多两个事件线性增长，当前 8 个事件远低于预算。首页摘要已经复用同一模型并严格限制三项，没有第二份排序。内容增长前不增加客户端筛选或分页；先由第十三路 HTML 预算提供真实压力；
-- JSON Feed 已为有 `updatedAt` 的内容输出 `date_modified`，RSS 频道级 `lastBuildDate` 也使用最新内容日期，但 RSS item 仍只声明首发 `pubDate`。是否加入 Atom 扩展修改时间需要先验证规范允许性、阅读器兼容性和 ETag/预算影响；不能把 `pubDate` 改写为更新日，也不能生成第二个活动 Feed 来绕开语义问题；
+- JSON Feed 的 `date_modified` 与 RSS 的 `dcterms:modified` 已共同表达逐条修改时间，RSS 仍保留首发 `pubDate`。Dublin Core Terms 是标准 XML 扩展，具体阅读器可能忽略它，因此站点只承诺元数据正确、可解析且与 JSON Feed 对齐，不承诺所有阅读器一定在界面中展示或按它重新提醒；
 - JSON Feed、RSS、Sitemap、robots 已有最终正文 ETag 与条件读取，但有意不为 robots 伪造 Last-Modified；Vercel 对部分压缩 200 响应使用弱标签、对 304 省略 Content-Type，生产门按 HTTP 等价语义验收；
 - OpenSearch 1.1 已提供标准描述和 HTML 自动发现，但不同浏览器对内置搜索引擎安装的支持并不一致；端点只承诺开放协议和同源查询模板，不把浏览器 UI 行为当成本站可控能力，也不公开内部搜索索引；
 - 搜索首屏仍把 4 条完整纯文本搜索文档和每条可选更新日序列化给客户端；当前生产 `/search?q=cloudflare` 为 41251/14704 B raw/gzip，远低于 163840/18432 B 上限。内容规模显著增长时必须先由 HTML 预算报警，再评估分片索引或按需加载，不能为了提前优化牺牲首屏结果与无网络本地筛选；

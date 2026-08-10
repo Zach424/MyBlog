@@ -122,7 +122,7 @@ npm run production:smoke -- https://example.vercel.app --expect-oauth
 - 文章、项目、专题与标签详情必须从同一 `{ name, href }` 数组服务端输出可见面包屑与 `BreadcrumbList`；末级可见项使用真实标题及 `aria-current="page"`，窄屏上级路径保持可读、当前长标题自然换行且根页面不横向溢出；
 - 文章/项目详情必须服务端输出无 JavaScript 可见的 canonical 与 Markdown 源文链接，并声明 `text/markdown` alternate；分享与复制控件只能渐进增强，不能成为唯一访问路径；
 - 根 HTML 必须服务端声明 `/content.json` 的 `application/json` alternate；清单 version 1 的顶层和 item 字段顺序、公开 allowlist、同 Feed/RSS 顺序、同 origin URL 与逐项源文 ETag 必须稳定，内容/origin 变化要更新清单与对应标签；清单自身必须支持 SHA-256 ETag、Last-Modified、空 304、分层缓存和 `noindex`，并以 `describedby` 指向 `/content.schema.json`；Schema 必须反向 `describes` 清单、使用当前 origin 的 `$id`、以 Ajv 2020 接受真实清单并拒绝代表性结构漂移，同时支持自身 SHA-256 ETag、空 304、分层缓存和 `noindex`；
-- JSON Feed、RSS、Sitemap 与 robots 的强 ETag 必须等于最终响应正文 SHA-256；`If-None-Match` 的精确/弱值、列表与 `*` 命中必须返回保留原 ETag/MIME/缓存策略的空 304，错值与畸形列表返回完整 200；前三者保留一小时 fresh/一天 SWR，robots 保留一天 public fresh；
+- JSON Feed、RSS、Sitemap 与 robots 的强 ETag 必须等于最终响应正文 SHA-256；`If-None-Match` 的精确/弱值、列表与 `*` 命中必须返回保留原 ETag/MIME/缓存策略的空 304，错值与畸形列表返回完整 200；RSS 必须声明准确的 Dublin Core Terms 命名空间，逐项保持 `guid`、首发排序与 `pubDate`，仅对严格更晚的更新输出一个与 JSON Feed `date_modified` 相同的 `dcterms:modified`，并拒绝 item 级 `atom:updated`；前三者保留一小时 fresh/一天 SWR，robots 保留一天 public fresh；
 - 公开 Markdown 源文必须验证字段 allowlist、正文结构、站内链接/媒体绝对化、外链/代码稳定、MIME、安全文件名、HTML canonical `Link`、`noindex` 和公开缓存；源站强 ETag 必须等于最终 UTF-8 字节的 SHA-256，内容/origin 变化必须换值，Last-Modified 使用最新公开日期的 UTC 零点；`If-None-Match` 精确/弱值、列表与 `*` 命中必须返回空 304，错值和畸形列表必须返回完整 200；本地源站测试锁定完整 304 头，生产冒烟允许 Vercel 对 Brotli ETag 增加 `W/` 并省略 304 representation metadata，但必须保持相同 SHA-256 opaque tag、Cache-Control 和零正文，任何仍存在的 Last-Modified/canonical/noindex 不得漂移；草稿、未来内容与未知 slug 必须返回不缓存的 404；
 - 所有可见内部导航目标返回成功；
 - 有站内关系的文章/项目必须服务端渲染语义独立的 outgoing/backlinks 分组；两侧都为空时不渲染空账本；
@@ -157,7 +157,7 @@ Iteration 0119 以内容活动功能提交 `5fb508c` 的稳定生产响应在 20
 
 Iteration 0120 以首页最近活动功能提交 `c54535e` 的稳定生产响应再次统一重测十三条基线：`/` 38722/7641、`/posts` 23165/5100、代表文章 57125/13189、代表项目 113705/25391、`/archive` 25184/5542、`/activity` 41778/6507、`/subscribe` 33680/6483、专题 22707/5112、标签 22560/5110、搜索 41251/14701、知识地图 40497/8009、关于页 21811/5104、固定 404 25370/4451 B（raw/gzip）。预算提交 `67a127a` 只更新实测值、日期/来源断言与派生上限；首页 gzip 上限仍为 10240 B，活动页仍为 9216 B，其余上限按同一公式推导。活动专属规则迁入 CSS Module 后，全局 CSS 从 99,995 B 降至 95,383 B，保留 4,612 B 硬门余量；路由级 CSS 不通过扩大全局阈值获得豁免。
 
-`scripts/discovery-budget.mjs` 独立保存七个结构化端点的 stable-origin raw/gzip 基线和逐端点推导上限。它同时约束 raw 与 gzip：可压缩的异常正文不能只靠 gzip 通过，高熵增长也不能只靠 raw 通过。本地应用测试与生产冒烟必须各自恰好覆盖清单、Schema、JSON Feed、RSS、Sitemap、robots、OpenSearch 一次，并输出 `[discovery-budget]` 报告；Iteration 0111 以稳定生产提交 `5ab34a7` 重新确认来源，依次为 3009/921、3278/755、20697/9876、3238/1241、4882/524、155/127、700/462 B（raw/gzip）。
+`scripts/discovery-budget.mjs` 独立保存七个结构化端点的 stable-origin raw/gzip 基线和逐端点推导上限。它同时约束 raw 与 gzip：可压缩的异常正文不能只靠 gzip 通过，高熵增长也不能只靠 raw 通过。本地应用测试与生产冒烟必须各自恰好覆盖清单、Schema、JSON Feed、RSS、Sitemap、robots、OpenSearch 一次，并输出 `[discovery-budget]` 报告；Iteration 0121 以 RSS 修改时间功能提交 `97eabce` 的稳定生产响应统一重测，依次为 3009/921、3278/755、20697/9876、3536/1298、5059/532、155/127、700/462 B（raw/gzip）。预算提交 `52d6a18` 只更新来源与实测值；七个推导上限依次仍为 7168/2048、8192/2048、31744/14848、8192/2560、9216/2048、5120/1536、5120/1536 B（raw/gzip）。
 
 基线不是自动追随当前页面的自我放行值。只有在确认增长属于有价值的产品变化、真实生产重新测量且完整门通过后，才能同时更新数值、日期和来源提交；不得只为失败路由调高单个阈值。预算用于捕获意外回归，不代替真实网络与 Web Vitals；未来若接入观测服务，仍应以真实用户传输和渲染数据补充。
 
