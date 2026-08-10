@@ -26,9 +26,9 @@ import {
 } from "@/lib/content";
 import { extractTableOfContents } from "@/lib/content/markdown";
 import { getContentCover } from "@/lib/content/media";
+import { createBlogPostingStructuredData } from "@/lib/content/structured-data";
 import { getPublicMarkdownPath } from "@/lib/public-markdown";
-import { absoluteSiteUrl, resolveSiteUrl, SITE_LANGUAGE } from "@/lib/site";
-import { createContentStructuredIdentity } from "@/lib/website";
+import { absoluteSiteUrl, resolveSiteUrl } from "@/lib/site";
 
 type PostPageProps = {
   params: Promise<{ slug: string }>;
@@ -105,25 +105,12 @@ export default async function PostPage({ params }: PostPageProps) {
   return (
     <main className="content-page page-shell" id="main-content">
       <StructuredData
-        data={{
-          "@context": "https://schema.org",
-          "@type": "BlogPosting",
-          ...createContentStructuredIdentity(siteUrl, new URL(canonicalUrl)),
-          headline: post.title,
-          description: post.description,
-          datePublished: post.publishedAt,
-          dateModified: post.reviewedAt,
-          inLanguage: SITE_LANGUAGE,
-          keywords: post.tags,
-          mainEntityOfPage: canonicalUrl,
-          url: canonicalUrl,
-          image: cover ? absoluteSiteUrl(siteUrl, cover.src) : undefined,
-          author: {
-            "@type": "Person",
-            name: "Zach424",
-            url: "https://github.com/Zach424",
-          },
-        }}
+        data={createBlogPostingStructuredData({
+          canonicalUrl: new URL(canonicalUrl),
+          imageUrl: cover ? new URL(cover.src, siteUrl) : undefined,
+          post,
+          siteUrl,
+        })}
       />
       <BreadcrumbTrail
         items={[

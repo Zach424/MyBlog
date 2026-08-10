@@ -23,9 +23,9 @@ import {
 } from "@/lib/content";
 import { extractTableOfContents } from "@/lib/content/markdown";
 import { getContentCover } from "@/lib/content/media";
+import { createSoftwareSourceCodeStructuredData } from "@/lib/content/structured-data";
 import { getPublicMarkdownPath } from "@/lib/public-markdown";
-import { absoluteSiteUrl, resolveSiteUrl, SITE_LANGUAGE } from "@/lib/site";
-import { createContentStructuredIdentity } from "@/lib/website";
+import { absoluteSiteUrl, resolveSiteUrl } from "@/lib/site";
 
 type ProjectPageProps = {
   params: Promise<{ slug: string }>;
@@ -95,26 +95,12 @@ export default async function ProjectPage({ params }: ProjectPageProps) {
   return (
     <main className="content-page page-shell" id="main-content">
       <StructuredData
-        data={{
-          "@context": "https://schema.org",
-          "@type": "SoftwareSourceCode",
-          ...createContentStructuredIdentity(siteUrl, new URL(projectUrl)),
-          name: project.title,
-          description: project.description,
-          dateCreated: project.publishedAt,
-          dateModified: project.reviewedAt,
-          inLanguage: SITE_LANGUAGE,
-          keywords: project.tags,
-          url: projectUrl,
-          image: cover ? absoluteSiteUrl(siteUrl, cover.src) : undefined,
-          codeRepository: project.repository,
-          programmingLanguage: project.stack,
-          author: {
-            "@type": "Person",
-            name: "Zach424",
-            url: "https://github.com/Zach424",
-          },
-        }}
+        data={createSoftwareSourceCodeStructuredData({
+          canonicalUrl: new URL(projectUrl),
+          imageUrl: cover ? new URL(cover.src, siteUrl) : undefined,
+          project,
+          siteUrl,
+        })}
       />
       <BreadcrumbTrail
         items={[
