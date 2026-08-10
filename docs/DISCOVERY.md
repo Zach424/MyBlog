@@ -1,6 +1,6 @@
 # 搜索与发布发现
 
-- 状态：RSS/Sitemap/robots implemented in iteration 0006；JSON Feed 1.1 implemented in iteration 0088；公开内容清单 implemented in iteration 0091；清单 JSON Schema implemented in iteration 0099；既有结构化端点条件读取 completed in iteration 0101；OpenSearch 1.1 discovery completed in iteration 0102；可解释搜索命中证据 completed in iteration 0103；可解释继续阅读 completed in iteration 0104；详情页结构化面包屑 completed in iteration 0105；首页站点身份 completed in iteration 0106；文章/项目内容身份图 completed in iteration 0107；完整内容结构化数据纯生成边界 completed in iteration 0108；文章阅读统计结构化数据 completed in iteration 0109
+- 状态：RSS/Sitemap/robots implemented in iteration 0006；JSON Feed 1.1 implemented in iteration 0088；公开内容清单 implemented in iteration 0091；清单 JSON Schema implemented in iteration 0099；既有结构化端点条件读取 completed in iteration 0101；OpenSearch 1.1 discovery completed in iteration 0102；可解释搜索命中证据 completed in iteration 0103；可解释继续阅读 completed in iteration 0104；详情页结构化面包屑 completed in iteration 0105；首页站点身份 completed in iteration 0106；文章/项目内容身份图 completed in iteration 0107；完整内容结构化数据纯生成边界 completed in iteration 0108；文章阅读统计结构化数据 completed in iteration 0109；统一时间档案 completed in iteration 0110
 - 目标：让公开内容可搜索、可订阅、可被搜索引擎发现，同时保持 Git 内容源和无数据库架构。
 
 ## 站内搜索
@@ -18,6 +18,12 @@
 文章与项目详情在服务端从同一公开内容集合、专题、标签及经过目标/fragment 校验的正文关系派生最多 3 条建议。排序权重为双向引用 120、当前记录引用 80、引用当前记录 70、同专题 60、每个共同标签 15；同分按发布日期、中文标题和规范 URL 稳定决胜，自身与没有任何信号的记录排除。
 
 页面不公开难以解释的总分，而是逐条显示实际命中的关系、专题和共同标签理由。推荐映射在内容索引加载时缓存，详情页以 Server Component 输出，既不把全库索引再发给浏览器，也不增加数据库、分析服务、客户端请求或新的 frontmatter 字段。原始 Reference ledger 与推荐承担不同职责：前者完整列出可审计图边，后者综合已有事实给出有限的下一跳。
+
+## 统一时间档案
+
+`/archive` 从 `getAllContent()` 的同一公开 Article、TIL 与 Project 集合生成，不维护第二份目录。记录先按发布日期倒序排列，同日使用 `zh-CN` 标题和规范 URL 稳定决胜，再按年份与月份组成原生有序账本；每项显示真实 `<time>`、内容类型、标题和摘要，空集合具有明确恢复说明。
+
+页面是纯 Server Component，主导航、Sitemap、内部链接门、真实 Next SSR、生产冒烟与十路 HTML 预算共同覆盖它。它不增加数据库、客户端取数、统计服务、分页状态或 frontmatter 字段；内容发布后，年月分组、计数和最新顺序随同一 Markdown/Git 事实源自动更新。
 
 ## 详情页结构化面包屑
 
@@ -106,9 +112,9 @@ Schema 让 Obsidian 插件、脚本与其他客户端无需导入本站 TypeScri
 
 ## 结构化发现传输预算
 
-`/content.json`、`/content.schema.json`、`/feed.json`、`/rss.xml`、`/sitemap.xml`、`/robots.txt` 与 `/opensearch.xml` 共用独立的确定性传输预算。Iteration 0102 以稳定生产提交 `e5bb2a8` 在 2026-08-10 的完整响应为基线；按固定顺序记录 raw UTF-8 与 Node zlib gzip 字节。raw 上限为 `baseline + max(50%, 4096 B)` 后按 1 KiB 取整，gzip 上限为 `baseline + max(50%, 1024 B)` 后按 512 B 取整。
+`/content.json`、`/content.schema.json`、`/feed.json`、`/rss.xml`、`/sitemap.xml`、`/robots.txt` 与 `/opensearch.xml` 共用独立的确定性传输预算。Iteration 0110 以稳定生产功能提交 `49e92a61` 在 2026-08-10 的完整响应重新确认基线来源；按固定顺序记录 raw UTF-8 与 Node zlib gzip 字节。raw 上限为 `baseline + max(50%, 4096 B)` 后按 1 KiB 取整，gzip 上限为 `baseline + max(50%, 1024 B)` 后按 512 B 取整。
 
-预算检查不依赖 CDN 是否实际协商 gzip/Brotli；它用同一响应正文生成可复现的传输代理。本地真实 Next 测试使用较短的固定测试 origin，生产冒烟使用实际传入 origin，因此两者共享上限但各自报告真实字节。七个端点必须恰好覆盖一次，漏测、重复、意外端点、raw 超限或 gzip 超限都会失败。稳定生产基线依次为 3009/921、3278/755、20697/9876、3238/1241、4527/504、155/127、700/462 B（raw/gzip）。基线只能在确认增长属于有价值的内容/协议变化、重新测量真实生产并记录来源提交后更新；不能为了让门变绿自动读取当前输出重置自己。
+预算检查不依赖 CDN 是否实际协商 gzip/Brotli；它用同一响应正文生成可复现的传输代理。本地真实 Next 测试使用较短的固定测试 origin，生产冒烟使用实际传入 origin，因此两者共享上限但各自报告真实字节。七个端点必须恰好覆盖一次，漏测、重复、意外端点、raw 超限或 gzip 超限都会失败。稳定生产基线依次为 3009/921、3278/755、20697/9876、3238/1241、4703/512、155/127、700/462 B（raw/gzip）；Sitemap 因新增 `/archive` 从 4527/504 B 增长到 4703/512 B。基线只能在确认增长属于有价值的内容/协议变化、重新测量真实生产并记录来源提交后更新；不能为了让门变绿自动读取当前输出重置自己。
 
 ## 单篇 Markdown 源文
 
@@ -127,12 +133,12 @@ Schema 让 Obsidian 插件、脚本与其他客户端无需导入本站 TypeScri
 ## Sitemap
 
 - URL：`/sitemap.xml`
-- 包含：首页、文章、项目、专题、标签、搜索、关于、全部详情与派生索引页
+- 包含：首页、文章、项目、时间档案、专题、标签、搜索、关于、全部详情与派生索引页
 - `lastmod`：内容使用 `updatedAt` 或 `publishedAt`；集合使用其最新公开内容日期
 - 缓存：1 小时 fresh，24 小时 stale-while-revalidate
 - 验证器：最终 XML 字节的 SHA-256 ETag；条件命中返回空 304
 
-当前公开内容生成 24 个 URL。Sitemap 不包含草稿、未来日期、查询参数或 JSON Feed/RSS/robots 端点本身。
+当前公开内容生成 25 个 URL。Sitemap 不包含草稿、未来日期、查询参数或 JSON Feed/RSS/robots 端点本身。
 
 ## Robots
 

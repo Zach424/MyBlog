@@ -6,13 +6,13 @@
 | 2. 视觉与阅读路径 | done | Commit Trace、响应式/深色、文章/项目/专题/标签/搜索 |
 | 3. 发布发现与质量 | done | SEO、OG、JSON-LD、JSON Feed 1.1、RSS、Sitemap、robots、全链路测试 |
 | 4. 作者自助写作 | done | `/studio` OAuth + editorial workflow PR、Obsidian Vault/模板/附件/真实 `--push` |
-| 5. Vercel 原生迁移 | production live | 原生 Next.js、无 Cloudflare 依赖、24 路由生产冒烟通过 |
+| 5. Vercel 原生迁移 | production live | 原生 Next.js、无 Cloudflare 依赖、25 路由生产冒烟通过 |
 | 6. 所有者生产上线 | done | Git 自动 Production、稳定域名自动冒烟、双端发布、回滚与恢复均已验收 |
-| 7. 持续内容与作者体验 | in progress | Iteration 0109 发布文章正文整数统计与标准阅读 Duration，并重建生产基线 |
+| 7. 持续内容与作者体验 | in progress | Iteration 0110 发布统一时间档案，并把生产预算扩展到十条 HTML 路由 |
 
 ## 当前唯一主线
 
-进入持续内容与作者体验阶段。Iteration 0109 已让 `BlogPosting` 直接复用现有 `wordCount` 与 `readingMinutes`，输出整数统计和 ISO 8601 `timeRequired`；代表文章 899/`PT4M`、项目字段隔离、SSR、浏览器和稳定生产均已闭环，并以 `1f0b6ce5` 重建九路来源基线。下一主线是新增服务端 `/archive` 时间档案，把文章、TIL 与项目从同一公开集合按年/月确定性混排，并接入导航、Sitemap、真实路由、320px/打印与生产预算；不新增数据库、客户端请求、云配置或作者字段。首次真实 Obsidian 人机验收继续保留为所有者可执行事项，需要品牌域名时再绑定自定义域名。
+进入持续内容与作者体验阶段。Iteration 0110 已发布服务端 `/archive`：文章、TIL 与项目从同一公开集合按年/月确定性混排，主导航、Sitemap、真实 SSR、320px、深浅色、打印和生产预算均已闭环；功能提交 `49e92a61` 与基线提交 `744a693` 分别通过 Quality Gate #208/#209 和 Vercel 生产验证 #200/#201。下一主线是新增服务端 `/subscribe` 订阅与开放接口说明页，把现有 RSS、JSON Feed、OpenSearch、公开内容清单/Schema 和单篇 Markdown 的用途、入口与更新语义集中为一个读者可见目录，并从页脚、Sitemap、真实路由与生产预算接入；复用现有端点，不增加数据库、客户端请求、云配置、统计或作者字段。首次真实 Obsidian 人机验收继续保留为所有者可执行事项，需要品牌域名时再绑定自定义域名。
 
 ## 已知风险
 
@@ -38,10 +38,11 @@
 - 文章与项目已有完整 A4 打印版式，但 PDF 仍由读者通过浏览器打印生成，仓库不把二进制 PDF 当作发布源，也不提供服务端 PDF 缓存；后续版式变化仍需重新做真实 PDF 全页复核；
 - 单篇 Markdown 源文是公开投影而非作者文件的无损 round-trip：字段顺序、注释和写作字段有意不保留，项目 `type: project` 只属于公开 schema；raw HTML 属性不参与 URL 改写。源文 ETag/条件 GET、version 1 批量清单与独立 Draft 2020-12 Schema 已闭环；Schema 不表达跨字段相等、跨条目排序/唯一或真实日历语义，严格生产解析器仍是这些不变量的权威；
 - Git/Obsidian sealed receipt、version 1 handoff、生产清单四态、单篇有界收敛、runtime/disk 版本、bundle 完整性与 Git provenance 已覆盖正常和恢复交付；网络、协议、版本、摘要或来源错误不能冒充内容差异或触发二次 Git 动作。首次真实 Obsidian 人机验收继续等待所有者操作，不用自动化假证据替代；
-- 当前结构化生产 raw/gzip 基线为：清单 3009/921 B、Schema 3278/755 B、JSON Feed 20697/9876 B、RSS 3238/1241 B、Sitemap 4527/504 B、robots 155/127 B、OpenSearch 700/462 B；逐端点推导上限和覆盖门已闭环。基线更新必须伴随产品价值复核、真实生产重测、来源提交和归档，不能自动跟随输出自我放行；
+- 当前结构化生产 raw/gzip 基线为：清单 3009/921 B、Schema 3278/755 B、JSON Feed 20697/9876 B、RSS 3238/1241 B、Sitemap 4703/512 B、robots 155/127 B、OpenSearch 700/462 B；逐端点推导上限和覆盖门已闭环。新增 `/archive` 只使 Sitemap 发生可解释增长；基线更新必须伴随产品价值复核、真实生产重测、来源提交和归档，不能自动跟随输出自我放行；
 - JSON Feed、RSS、Sitemap、robots 已有最终正文 ETag 与条件读取，但有意不为 robots 伪造 Last-Modified；Vercel 对部分压缩 200 响应使用弱标签、对 304 省略 Content-Type，生产门按 HTTP 等价语义验收；
 - OpenSearch 1.1 已提供标准描述和 HTML 自动发现，但不同浏览器对内置搜索引擎安装的支持并不一致；端点只承诺开放协议和同源查询模板，不把浏览器 UI 行为当成本站可控能力，也不公开内部搜索索引；
-- 搜索首屏仍把 4 条完整纯文本搜索文档序列化给客户端；当前生产 `/search?q=cloudflare` 为 36194/13826 B raw/gzip，远低于 163840/17408 B 上限。内容规模显著增长时必须先由 HTML 预算报警，再评估分片索引或按需加载，不能为了提前优化牺牲首屏结果与无网络本地筛选；
+- 搜索首屏仍把 4 条完整纯文本搜索文档序列化给客户端；当前生产 `/search?q=cloudflare` 为 36292/13846 B raw/gzip，远低于 163840/17408 B 上限。内容规模显著增长时必须先由 HTML 预算报警，再评估分片索引或按需加载，不能为了提前优化牺牲首屏结果与无网络本地筛选；
+- `/archive` 当前只有一个年份和月份，但契约已经覆盖跨年、跨月、同日决胜、空集合和输入不变。不要为了当前四条内容提前增加客户端筛选、分页或年份导航；先让内容增长和十路 HTML 预算提供真实压力，再决定增强方式；
 - 继续阅读的排序是当前 4 条公开内容规模下的启发式契约；标签越泛化、内容量越大，分数越可能由共同标签主导。先通过可见理由与真实阅读观察积累证据，再考虑标签稀有度或多样性约束，不能引入点击追踪或黑盒模型替代当前可审计信号；
 - 自定义域名、公开邮箱、统计和评论尚未选择，但不阻塞生产上线。
 
