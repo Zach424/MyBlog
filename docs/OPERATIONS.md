@@ -140,6 +140,8 @@ Iteration 0112 起，关键 HTML 覆盖由十一条增为十二条，新增固�
 
 Iteration 0113 起，首页运行事实与 Sitemap 使用 `lib/public-routes.ts` 的同一清单。发布后除完整 smoke 外，应直接核对首页公开 URL 数量、Sitemap `<loc>` 数量和根 `lastmod`；新增可索引静态页面必须登记 `STATIC_PUBLIC_ROUTE_FACTS`，文章、项目、专题和标签由公开索引自动加入。协议、Studio、OAuth、404 与其他 noindex 端点不得为了“总数更大”而进入该清单。功能提交 `28449b9` 的稳定生产 smoke 为 26 routes、OAuth 302；首页 32048/6866 B、Sitemap 4882/524 B（raw/gzip），均继续使用既有预算，无需重建基线。
 
+Iteration 0114 起，首页 Building 必须等于当前精选项目标题，并显示内容 status 的中文映射与 stack 摘要；Learned 必须等于最新公开文章标题，并显示 type、`publishedAt` 与 tag 摘要；Current focus 必须由同一项目/文章和公开最新日期组成。发布后检查旧的“持续内容发布与维护”“权限变更也要做未登录验收”“公开运行 / 内容发布 / 维护反馈”均不存在。功能提交 `047ef40` 的稳定生产首页为 32163/6814 B（raw/gzip），26 routes、OAuth 302 和全部预算继续通过。
+
 搜索路径还要分别核对 `/search?q=cloudflare`、`/search?q=Wrangler` 与 `/search?q=B_i`：第一条必须出现可见命中 mark、来源和字段原因，第二条必须只有 1 条正文证据，第三条必须显示 0 条且不存在 mark。不要用 HTML 内 RSC 序列化的完整搜索文档冒充可见结果；生产 smoke 以真实 `<mark class="search-hit">`、来源标签和结果计数作为证据。
 
 继续阅读路径要核对代表文章恰有 2 个、代表项目恰有 3 个真实 `<a class="content-recommendation">`，并包含“当前记录引用”“引用当前记录”“同专题”或“共同标签”等实际理由。不要用 RSC 数据中的标题或推荐对象冒充可点击结果；链接数量、`Continue trace` 标题和理由必须都来自服务端可见 HTML。推荐变化属于关键 HTML 增长，部署后先观察文章/项目 raw-gzip 余量，再用同一提交的稳定生产响应更新有来源基线。
