@@ -144,6 +144,8 @@ Iteration 0114 起，首页 Building 必须等于当前精选项目标题，并�
 
 Iteration 0115 起，`/about` 必须从公开 getter 与 `createPublicRouteInventory()` 生成集合计数、公开 URL 和最近更新，从精选项目生成完整标题、中文状态与全部 stack。发布后应核对 `4 RECORDS / 26 ROUTES / UPDATED 2026-08-06`、3/1/1/11 集合计数、五项技术栈和旧手写“TypeScript、React、Next.js 与 Vercel”句子不存在；方法原则和 GitHub-only 联系边界必须保留。功能提交 `ca21c5c`、归档提交 `857ff05` 的稳定生产 `/about` 为 21811/5103 B（raw/gzip），26 routes、OAuth 302、十二条 HTML 与七个发现端点全部 PASS，继续使用既有预算。
 
+Iteration 0116 起，首页精选项目卡、`/projects` 集合行和项目详情 eyebrow 必须使用同一 `中文 label · UPPERCASE CODE` status meta；About 和 Current focus 的自然句只使用中文 label。发布后核对三页都包含 `持续维护 · MAINTAINED`，旧 `Maintained` 与 `Project / maintained` 不再可见；Markdown/source、清单、Schema、Studio 和内容 frontmatter 必须继续输出原始 `maintained` enum。功能提交 `c42cd18` 的稳定生产首页为 32195/6822 B、项目详情为 112835/25276 B（raw/gzip），26 routes、OAuth 302 和全部预算继续通过。
+
 搜索路径还要分别核对 `/search?q=cloudflare`、`/search?q=Wrangler` 与 `/search?q=B_i`：第一条必须出现可见命中 mark、来源和字段原因，第二条必须只有 1 条正文证据，第三条必须显示 0 条且不存在 mark。不要用 HTML 内 RSC 序列化的完整搜索文档冒充可见结果；生产 smoke 以真实 `<mark class="search-hit">`、来源标签和结果计数作为证据。
 
 继续阅读路径要核对代表文章恰有 2 个、代表项目恰有 3 个真实 `<a class="content-recommendation">`，并包含“当前记录引用”“引用当前记录”“同专题”或“共同标签”等实际理由。不要用 RSC 数据中的标题或推荐对象冒充可点击结果；链接数量、`Continue trace` 标题和理由必须都来自服务端可见 HTML。推荐变化属于关键 HTML 增长，部署后先观察文章/项目 raw-gzip 余量，再用同一提交的稳定生产响应更新有来源基线。
