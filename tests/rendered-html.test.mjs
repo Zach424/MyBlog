@@ -1084,11 +1084,12 @@ test("server-renders a shareable search query against posts and projects", async
 });
 
 test("publishes the structured discovery suite from one public origin", async (context) => {
-  const [manifestResponse, schemaResponse, jsonFeedResponse, rssResponse, sitemapResponse, robotsResponse, openSearchResponse] = await Promise.all([
+  const [manifestResponse, schemaResponse, jsonFeedResponse, rssResponse, tagRssResponse, sitemapResponse, robotsResponse, openSearchResponse] = await Promise.all([
     render("/content.json", { accept: "application/json" }),
     render("/content.schema.json", { accept: "application/schema+json" }),
     render("/feed.json"),
     render("/rss.xml"),
+    render("/tags/typescript/rss.xml"),
     render("/sitemap.xml"),
     render("/robots.txt"),
     render("/opensearch.xml"),
@@ -1339,6 +1340,9 @@ test("publishes the structured discovery suite from one public origin", async (c
     );
   }
 
+  assert.equal(tagRssResponse.status, 200);
+  const tagRss = await tagRssResponse.text();
+
   assert.equal(sitemapResponse.status, 200);
   assert.match(sitemapResponse.headers.get("content-type") ?? "", /^application\/xml/i);
   assert.equal(
@@ -1430,6 +1434,10 @@ test("publishes the structured discovery suite from one public origin", async (c
     }),
     measureDiscoveryBudget({ pathname: "/feed.json", body: jsonFeedSource }),
     measureDiscoveryBudget({ pathname: "/rss.xml", body: rss }),
+    measureDiscoveryBudget({
+      pathname: "/tags/typescript/rss.xml",
+      body: tagRss,
+    }),
     measureDiscoveryBudget({ pathname: "/sitemap.xml", body: sitemap }),
     measureDiscoveryBudget({ pathname: "/robots.txt", body: robots }),
     measureDiscoveryBudget({ pathname: "/opensearch.xml", body: openSearch }),
