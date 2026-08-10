@@ -28,6 +28,7 @@ app/
   knowledge/ search/ about/         知识地图、搜索和关于页
   content.json/ content.schema.json/ feed.json/ rss.xml/ sitemap.xml/ robots.txt/ opensearch.xml/ 站点级发现端点
 components/                         站点框架、内容视图、Markdown、搜索
+  BreadcrumbTrail.tsx               四类详情页可见路径与 BreadcrumbList 的共享服务端边界
   ContentViews.tsx                  详情页事实、目录、引用账本与打印来源
   ContentCover.tsx                  文章/项目共享的响应式封面与 Artifact Rail
   KnowledgeMap.tsx                  服务端 SVG 信号场、关系账本与孤立记录
@@ -39,6 +40,7 @@ content/
 .obsidian/plugins/myblog-publisher/ Obsidian 创建、改名、检查、发布、复核与交付恢复入口
 public/uploads/<slug>/              按内容隔离的公开图片附件
 lib/
+  breadcrumbs.ts                    同源绝对 URL、稳定 position 与路径不变量生成器
   content/                          内容契约、维护报告、文件读取、派生索引与引用关系
     recommendations.ts             从专题、标签和已验证关系派生解释性继续阅读排序
     author-doctor.ts                本机作者环境 legacy v1、bundle v2 与 Git provenance v3 报告
@@ -112,6 +114,8 @@ vercel.json                         Vercel Next.js 框架声明
 `lib/content/external-links.ts` 用与正文渲染一致的 GFM AST 读取公开文章/项目正文，并从同一 `ContentRecord` 读取文章 canonical、项目 repository/demo。每个 occurrence 标明 `sourceField`；正文另保留相对行和可见标签，字段显示 `frontmatter.<field>`。URL 规范化后统一聚合，因此正文与结构化字段指向同一地址时只形成一个 link entry 和一次健康检查；图片、代码、站内链接、锚点、邮件链接和 `demo: null` 不参与。正文中的 HTTP、协议相对、无效 HTTPS 与含凭据 URL 进入本地 issue 且凭据不会写入报告；结构化字段继续由 schema 先保证 HTTPS。`scripts/report-external-links.mjs` 默认只输出确定性文本/JSON 库存并进入本地 `release:check`。只有显式 `--check` 才发送 HEAD：每跳限制 HTTPS/443/无凭据，拒绝本地命名空间和任一私网/回环/链路本地/保留 DNS 结果，再把连接固定到已验证公网地址以收窄 DNS rebinding；并发 1–8、超时 500–30000ms、重试 0–2、重定向 0–10。响应头到达后立即关闭，不下载或保存正文。404/410、其他确定 4xx、安全或重定向错误才计入 broken；403/429/HEAD 不支持、5xx、超时和网络错误保留为暂不可确认。实时检查不进入 Actions 或默认构建硬门。
 
 `lib/content/knowledge-graph.ts` 接收同一公开文章/项目集合与已经校验的引用关系，确定性派生节点、有向边、每个节点的 outgoing/backlinks、唯一邻居数和孤立状态。`app/knowledge/page.tsx` 在服务端读取该结果；`KnowledgeMap.tsx` 同时输出可聚焦的 SVG 链接信号场、原生 HTML 有序关系账本和孤立记录列表。桌面端按文章/项目双列绘制，互相引用分轨显示；`≤ 42rem` 隐藏需要宽画布的 SVG，保留完整关系账本和说明，因此辅助技术、搜索引擎、无 JavaScript 与 320px 设备都不依赖 Canvas、客户端布局或另一份索引。新增/修改正文站内链接会在下一次构建自动更新详情页与知识地图。
+
+`lib/breadcrumbs.ts` 接收页面实际使用的 `{ name, href }` 路径，要求至少两级、非空名称、根相对且无查询/fragment 的唯一同源 URL，再按数组顺序生成 1 起始的 Schema.org `BreadcrumbList`。`BreadcrumbTrail.tsx` 用同一数组同时输出原生可见导航和经过 `<` 转义的 JSON-LD；末级在视觉与辅助技术中是 `aria-current="page"`，在机器数据中仍携带当前页绝对 URL。文章、项目、专题、标签都只接入这一服务端边界；未知记录在 `notFound()` 前不构造路径，因此 404 不输出误导性结构化数据。
 
 `lib/content/media.ts` 是封面与正文图共享的服务端尺寸层。文件系统根静态收窄到 `public/uploads`，避免 Turbopack 把整个仓库追踪进 Serverless 产物；同一仓库路径的检查通过 React cache 复用。封面描述器附带 `coverAlt`，交给共享 `ContentCover` 和 OG/Twitter/JSON-LD；没有封面的记录不渲染 figure。`MarkdownContent` 则先从正文 AST 收集并去重 URL，只为本地 `/uploads/...` 建立描述器，再把真实宽高、作者 alt 和对应 48rem 阅读栏的 `sizes` 交给 `next/image`。两条详情路由必须传入内容 `sourcePath`，因此页面渲染与构建媒体契约使用同一安全路径边界。
 

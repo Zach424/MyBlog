@@ -8,11 +8,11 @@
 | 4. 作者自助写作 | done | `/studio` OAuth + editorial workflow PR、Obsidian Vault/模板/附件/真实 `--push` |
 | 5. Vercel 原生迁移 | production live | 原生 Next.js、无 Cloudflare 依赖、24 路由生产冒烟通过 |
 | 6. 所有者生产上线 | done | Git 自动 Production、稳定域名自动冒烟、双端发布、回滚与恢复均已验收 |
-| 7. 持续内容与作者体验 | in progress | Iteration 0104 发布服务端可解释继续阅读、稳定排序、响应式轨迹与真实生产推荐门 |
+| 7. 持续内容与作者体验 | in progress | Iteration 0105 发布四类详情页同源可见路径与 `BreadcrumbList`、404 关闭和真实生产结构门 |
 
 ## 当前唯一主线
 
-进入持续内容与作者体验阶段。Iteration 0104 已让文章/项目详情从现有公开内容、专题、标签与已验证引用关系中确定性派生最多 3 条继续阅读，并直接展示推荐理由；排序、空集合、服务端边界、`≤55rem` 单列、320px、打印隔离、真实生产链接数量与 HTML 预算均已闭环。下一主线是为文章、项目、专题和标签详情补齐与可见面包屑一致的 `BreadcrumbList` JSON-LD，共享绝对同源 URL 与稳定 position 生成器，避免页面导航与机器发现表达漂移；首次真实 Obsidian 人机验收继续保留为所有者可执行事项，需要品牌域名时再绑定自定义域名。
+进入持续内容与作者体验阶段。Iteration 0105 已让文章、项目、专题和标签详情从同一数组服务端输出“首页 → 集合 → 当前标题”的可见导航与 `BreadcrumbList`，并锁定同源绝对 URL、连续 position、未知 404 零结构数据、320px 可读性和真实生产 exact-path 证据。下一主线是为首页补齐唯一 `WebSite` JSON-LD，复用现有站点标题、描述和可信 origin 表达稳定站点身份；首次真实 Obsidian 人机验收继续保留为所有者可执行事项，需要品牌域名时再绑定自定义域名。
 
 ## 已知风险
 

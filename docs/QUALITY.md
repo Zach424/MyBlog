@@ -6,7 +6,7 @@
 npm run check
 ```
 
-顺序为 ESLint → 488 项内容/维护/inbox/暂存媒体/关系/推荐/标题锚点与永久链接/脚注/数学公式/打印版式/知识图/外链库存与检查/搜索/OpenSearch/公开清单/发现端点验证器与预算/公开 Markdown/OAuth/Studio/Obsidian/媒体/重定向/代码复制/交付单元测试 → Next 路由类型生成与 TypeScript → 原生 Next.js 生产构建（49 个页面，并包含动态 Route Handler）→ 20 项真实生产 HTTP 与质量审计。任何一步失败都阻止合并和生产部署。
+顺序为 ESLint → 492 项内容/维护/inbox/暂存媒体/关系/推荐/面包屑/标题锚点与永久链接/脚注/数学公式/打印版式/知识图/外链库存与检查/搜索/OpenSearch/公开清单/发现端点验证器与预算/公开 Markdown/OAuth/Studio/Obsidian/媒体/重定向/代码复制/交付单元测试 → Next 路由类型生成与 TypeScript → 原生 Next.js 生产构建（49 个页面，并包含动态 Route Handler）→ 21 项真实生产 HTTP 与质量审计。任何一步失败都阻止合并和生产部署。
 
 发布候选额外执行：
 
@@ -72,6 +72,8 @@ npm run production:smoke -- https://example.vercel.app --expect-oauth
 
 继续阅读质量必须锁定 120/80/70/60/15 的引用、反向引用、专题与标签权重，拒绝自身和零信号记录，最多返回 3 条，并证明同分结果不受输入顺序影响。文章与项目详情只能在服务端输出推荐，不得增加客户端组件或全库数据请求；真实页面分别验证 2/3 条链接和实际可见理由，不能用 RSC 序列化字符串冒充链接。`≤55rem` 必须单列、320px 不得横向溢出，打印必须隐藏推荐区而保留正文与关系账本。
 
+详情页面包屑质量必须覆盖文章、项目、专题和标签四类真实路由：每页恰有一个服务端 `BreadcrumbList`，至少两级，`position` 从 1 连续递增，`name` 与可见路径逐级相同，`item` 是当前 origin 下的绝对同源 URL。四类未知 slug 的 404 必须全部不含 `BreadcrumbList`；验证只读取真实 HTML 中的可见 `<nav>` 与 `application/ld+json` script，不能用 RSC 序列化载荷冒充页面语义。
+
 ## 永久重定向质量门
 
 构建从 `content/redirects.yml` 读取严格 YAML 与 Zod schema，未知字段、重复键、弱原因、未来加入日期都会失败。测试还覆盖路径编码/大小写/尾斜杠、当前路由或静态文件遮蔽、受保护命名空间、缺失/草稿/未来目标、重复、自跳转、链与环路。真实 Next 进程验证 308 和查询参数透传，生产冒烟验证同源单跳目标，防止只在纯函数层面正确而部署行为漂移。
@@ -92,6 +94,7 @@ npm run production:smoke -- https://example.vercel.app --expect-oauth
 
 - 每页一个 `<main>` 和 `<h1>`，`lang=zh-CN`；
 - 页面具有 description、canonical、跳转主内容链接和唯一 id；
+- 文章、项目、专题与标签详情必须从同一 `{ name, href }` 数组服务端输出可见面包屑与 `BreadcrumbList`；末级可见项使用真实标题及 `aria-current="page"`，窄屏上级路径保持可读、当前长标题自然换行且根页面不横向溢出；
 - 文章/项目详情必须服务端输出无 JavaScript 可见的 canonical 与 Markdown 源文链接，并声明 `text/markdown` alternate；分享与复制控件只能渐进增强，不能成为唯一访问路径；
 - 根 HTML 必须服务端声明 `/content.json` 的 `application/json` alternate；清单 version 1 的顶层和 item 字段顺序、公开 allowlist、同 Feed/RSS 顺序、同 origin URL 与逐项源文 ETag 必须稳定，内容/origin 变化要更新清单与对应标签；清单自身必须支持 SHA-256 ETag、Last-Modified、空 304、分层缓存和 `noindex`，并以 `describedby` 指向 `/content.schema.json`；Schema 必须反向 `describes` 清单、使用当前 origin 的 `$id`、以 Ajv 2020 接受真实清单并拒绝代表性结构漂移，同时支持自身 SHA-256 ETag、空 304、分层缓存和 `noindex`；
 - JSON Feed、RSS、Sitemap 与 robots 的强 ETag 必须等于最终响应正文 SHA-256；`If-None-Match` 的精确/弱值、列表与 `*` 命中必须返回保留原 ETag/MIME/缓存策略的空 304，错值与畸形列表返回完整 200；前三者保留一小时 fresh/一天 SWR，robots 保留一天 public fresh；
@@ -124,7 +127,7 @@ npm run production:smoke -- https://example.vercel.app --expect-oauth
 
 `scripts/html-budget.mjs` 保存稳定生产 origin、基线日期、来源提交及九条路由的 raw/Node zlib gzip 基线。本地生产测试用该稳定 origin 作为 forwarded host，对完整响应执行 `Buffer.byteLength` 与 `gzipSync`；部署后的 `production:smoke` 再对实际输入域名执行同一模块，二者都输出实测、阈值、基线和余量。raw 160 KiB 只防止异常解压/文档膨胀；性能回归由按生产基线推导的 gzip 门判断，因此高度重复但可压缩的 100KB 以上页面不会被旧统一门误伤，高熵增长仍会失败。
 
-Iteration 0104 以稳定生产提交 `dccb467` 在 2026-08-10 重新冻结九路基线：`/` 26417/5786、`/posts` 17862/4251、代表文章 50021/11966、代表项目 106324/24174、专题 16233/3873、标签 16103/3841、搜索 36194/13826、知识地图 35908/7243、关于页 14912/3852 B（raw/gzip）。推荐上线后代表文章/项目的 gzip 上限为 15360/29696 B，稳定生产仍保有 +3394/+5522 B；来源提交、日期和完整路径清单由脚本与测试共同锁定。
+Iteration 0105 以稳定生产提交 `ccd494e` 在 2026-08-10 重新冻结九路基线：`/` 26417/5784、`/posts` 17862/4248、代表文章 51483/12179、代表项目 107727/24406、专题 17511/4160、标签 17332/4133、搜索 36194/13823、知识地图 35908/7241、关于页 14912/3848 B（raw/gzip）。面包屑上线后九路 gzip 上限依次为 8192、7168、15360、29696、7168、7168、17408、10240、6144 B，稳定生产余量依次为 +2408、+2920、+3181、+5290、+3008、+3035、+3585、+2999、+2296 B；来源提交、日期和完整路径清单由脚本与测试共同锁定。
 
 `scripts/discovery-budget.mjs` 独立保存七个结构化端点的 stable-origin raw/gzip 基线和逐端点推导上限。它同时约束 raw 与 gzip：可压缩的异常正文不能只靠 gzip 通过，高熵增长也不能只靠 raw 通过。本地应用测试与生产冒烟必须各自恰好覆盖清单、Schema、JSON Feed、RSS、Sitemap、robots、OpenSearch 一次，并输出 `[discovery-budget]` 报告；Iteration 0102 以稳定生产提交 `e5bb2a8` 冻结基线，依次为 3009/921、3278/755、20697/9876、3238/1241、4527/504、155/127、700/462 B（raw/gzip）。
 

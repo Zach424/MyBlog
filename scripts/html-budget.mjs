@@ -6,7 +6,7 @@ export const HTML_BUDGET_ORIGIN = new URL(
 
 export const HTML_BUDGET_BASELINE_PROVENANCE = Object.freeze({
   measuredAt: "2026-08-10",
-  sourceRevision: "dccb467967c1ed2a3d3dc08ad8d2d1b7028ac854",
+  sourceRevision: "ccd494e3b54c2010fa2dfe44c69f46e0d4b237a1",
 });
 
 export const HTML_BUDGET_POLICY = Object.freeze({
@@ -17,15 +17,15 @@ export const HTML_BUDGET_POLICY = Object.freeze({
 });
 
 const measuredRouteBaselines = {
-  "/": { rawBytes: 26_417, gzipBytes: 5_786 },
-  "/posts": { rawBytes: 17_862, gzipBytes: 4_251 },
-  "/posts/building-a-maintainable-blog": { rawBytes: 50_021, gzipBytes: 11_966 },
-  "/projects/myblog": { rawBytes: 106_324, gzipBytes: 24_174 },
-  "/series/build-my-blog": { rawBytes: 16_233, gzipBytes: 3_873 },
-  "/tags/typescript": { rawBytes: 16_103, gzipBytes: 3_841 },
-  "/search?q=cloudflare": { rawBytes: 36_194, gzipBytes: 13_826 },
-  "/knowledge": { rawBytes: 35_908, gzipBytes: 7_243 },
-  "/about": { rawBytes: 14_912, gzipBytes: 3_852 },
+  "/": { rawBytes: 26_417, gzipBytes: 5_784 },
+  "/posts": { rawBytes: 17_862, gzipBytes: 4_248 },
+  "/posts/building-a-maintainable-blog": { rawBytes: 51_483, gzipBytes: 12_179 },
+  "/projects/myblog": { rawBytes: 107_727, gzipBytes: 24_406 },
+  "/series/build-my-blog": { rawBytes: 17_511, gzipBytes: 4_160 },
+  "/tags/typescript": { rawBytes: 17_332, gzipBytes: 4_133 },
+  "/search?q=cloudflare": { rawBytes: 36_194, gzipBytes: 13_823 },
+  "/knowledge": { rawBytes: 35_908, gzipBytes: 7_241 },
+  "/about": { rawBytes: 14_912, gzipBytes: 3_848 },
 };
 
 function assertPositiveInteger(value, label) {

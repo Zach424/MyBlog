@@ -1,6 +1,6 @@
 # 搜索与发布发现
 
-- 状态：RSS/Sitemap/robots implemented in iteration 0006；JSON Feed 1.1 implemented in iteration 0088；公开内容清单 implemented in iteration 0091；清单 JSON Schema implemented in iteration 0099；既有结构化端点条件读取 completed in iteration 0101；OpenSearch 1.1 discovery completed in iteration 0102；可解释搜索命中证据 completed in iteration 0103；可解释继续阅读 completed in iteration 0104
+- 状态：RSS/Sitemap/robots implemented in iteration 0006；JSON Feed 1.1 implemented in iteration 0088；公开内容清单 implemented in iteration 0091；清单 JSON Schema implemented in iteration 0099；既有结构化端点条件读取 completed in iteration 0101；OpenSearch 1.1 discovery completed in iteration 0102；可解释搜索命中证据 completed in iteration 0103；可解释继续阅读 completed in iteration 0104；详情页结构化面包屑 completed in iteration 0105
 - 目标：让公开内容可搜索、可订阅、可被搜索引擎发现，同时保持 Git 内容源和无数据库架构。
 
 ## 站内搜索
@@ -18,6 +18,12 @@
 文章与项目详情在服务端从同一公开内容集合、专题、标签及经过目标/fragment 校验的正文关系派生最多 3 条建议。排序权重为双向引用 120、当前记录引用 80、引用当前记录 70、同专题 60、每个共同标签 15；同分按发布日期、中文标题和规范 URL 稳定决胜，自身与没有任何信号的记录排除。
 
 页面不公开难以解释的总分，而是逐条显示实际命中的关系、专题和共同标签理由。推荐映射在内容索引加载时缓存，详情页以 Server Component 输出，既不把全库索引再发给浏览器，也不增加数据库、分析服务、客户端请求或新的 frontmatter 字段。原始 Reference ledger 与推荐承担不同职责：前者完整列出可审计图边，后者综合已有事实给出有限的下一跳。
+
+## 详情页结构化面包屑
+
+文章、项目、专题和标签详情统一输出“首页 → 对应集合 → 当前真实标题”。同一 `{ name, href }` 数组既渲染可见 `<nav aria-label="面包屑">`，也生成 Schema.org `BreadcrumbList`；每个 `ListItem` 都有从 1 开始的稳定 `position`、可见同名 `name` 与当前请求 origin 下的绝对 `item` URL。
+
+生成器拒绝少于两级、空名称、外部或协议相对地址、查询、fragment 和重复 URL。页面先完成公开记录查找，未知 slug 直接进入 `notFound()`，所以 404 不会携带一份看似有效的机器路径。实现使用原生服务端 `<script type="application/ld+json">` 并复用既有 `<` 转义边界，不增加客户端代码、数据库、分析服务或内容字段。
 
 ## OpenSearch 1.1
 

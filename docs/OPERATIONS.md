@@ -136,6 +136,8 @@ npm run production:smoke -- https://your-production.example --expect-oauth
 
 继续阅读路径要核对代表文章恰有 2 个、代表项目恰有 3 个真实 `<a class="content-recommendation">`，并包含“当前记录引用”“引用当前记录”“同专题”或“共同标签”等实际理由。不要用 RSC 数据中的标题或推荐对象冒充可点击结果；链接数量、`Continue trace` 标题和理由必须都来自服务端可见 HTML。推荐变化属于关键 HTML 增长，部署后先观察文章/项目 raw-gzip 余量，再用同一提交的稳定生产响应更新有来源基线。
 
+结构化面包屑要核对文章、项目、专题、标签四条代表详情：每页可见路径与唯一 `BreadcrumbList` 的名称、顺序和 URL 必须逐级完全一致，`position` 从 1 连续递增，`item` 必须使用本次冒烟传入的真实 origin。四类随机未知 slug 必须返回 404 且不包含 `BreadcrumbList`。只解析真实 `<nav aria-label="面包屑">` 和 `application/ld+json` script，不得把 RSC 序列化载荷里的字符串当成可见或机器语义。自动门证明页面契约，不保证搜索引擎一定展示富媒体结果；重要结构变化上线前可再用 Google Rich Results Test 或 Schema Markup Validator 抽查。
+
 同一命令还会为清单、Schema、JSON Feed、RSS、Sitemap、robots 与 OpenSearch 输出 `[discovery-budget]` 七行 raw/gzip 证据。任一路由缺失、重复、超出自己的冻结上限都会阻止冒烟；不要通过删除检查或自动采用当前输出解决失败。若增长是一次有意的内容/协议变化，先核对实际正文与公开集合，再在稳定生产重新测量七端点，同时更新基线数值、日期、来源提交、测试和迭代归档。域名变化会改变绝对 URL 和正文大小，必须以新稳定 origin 重新建立有来源基线。
 
 ## 故障等级
