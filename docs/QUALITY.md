@@ -76,6 +76,8 @@ npm run production:smoke -- https://example.vercel.app --expect-oauth
 
 首页站点身份质量必须证明域名根恰有一个服务端 `WebSite`，精确复用站点标题、描述、`zh-CN` 与当前 origin 的规范根 URL，并以 `<root>#website` 作为稳定 `@id`。集合、文章、项目、专题、标签、搜索、知识地图和关于页都必须为零；协议只允许 HTTP(S)、禁止凭据，且没有事实来源时不得生成 `alternateName`、`potentialAction` 或 `SearchAction`。测试只解析真实 HTML 的 JSON-LD script；站点名称不支持 Rich Results Test，语法抽查使用 Schema Markup Validator。
 
+内容身份质量必须证明代表文章与项目各有且只有一个对应类型文档，`@id` 为精确 canonical 加 `#content`，`url`、文章 `mainEntityOfPage`、`inLanguage` 与既有字段不漂移，`isPartOf` 必须严格等于 `{ "@id": "<root>#website" }`。生成器还要拒绝跨 origin、首页路径、查询/fragment 与凭据，并保证输入 URL 不变；文章/项目未知 slug 的 404 不得泄漏任一内容类型。相同断言同时存在于纯函数测试、真实 Next SSR 测试、浏览器 DOM 检查与生产烟测。
+
 ## 永久重定向质量门
 
 构建从 `content/redirects.yml` 读取严格 YAML 与 Zod schema，未知字段、重复键、弱原因、未来加入日期都会失败。测试还覆盖路径编码/大小写/尾斜杠、当前路由或静态文件遮蔽、受保护命名空间、缺失/草稿/未来目标、重复、自跳转、链与环路。真实 Next 进程验证 308 和查询参数透传，生产冒烟验证同源单跳目标，防止只在纯函数层面正确而部署行为漂移。
@@ -130,7 +132,7 @@ npm run production:smoke -- https://example.vercel.app --expect-oauth
 
 `scripts/html-budget.mjs` 保存稳定生产 origin、基线日期、来源提交及九条路由的 raw/Node zlib gzip 基线。本地生产测试用该稳定 origin 作为 forwarded host，对完整响应执行 `Buffer.byteLength` 与 `gzipSync`；部署后的 `production:smoke` 再对实际输入域名执行同一模块，二者都输出实测、阈值、基线和余量。raw 160 KiB 只防止异常解压/文档膨胀；性能回归由按生产基线推导的 gzip 门判断，因此高度重复但可压缩的 100KB 以上页面不会被旧统一门误伤，高熵增长仍会失败。
 
-Iteration 0106 以稳定生产提交 `62e8943` 在 2026-08-10 重新冻结九路基线：`/` 27309/5994、`/posts` 17862/4249、代表文章 51483/12175、代表项目 107727/24404、专题 17511/4162、标签 17332/4134、搜索 36194/13826、知识地图 35908/7240、关于页 14912/3848 B（raw/gzip）。首页站点身份上线后九路 gzip 上限仍依次为 8192、7168、15360、29696、7168、7168、17408、10240、6144 B，稳定生产余量依次为 +2198、+2919、+3185、+5292、+3006、+3034、+3582、+3000、+2296 B；来源提交、日期和完整路径清单由脚本与测试共同锁定。
+Iteration 0107 以稳定生产提交 `668d26fb` 在 2026-08-10 重新冻结九路基线：`/` 27309/5993、`/posts` 17862/4250、代表文章 51784/12216、代表项目 108029/24464、专题 17511/4163、标签 17332/4134、搜索 36194/13825、知识地图 35908/7242、关于页 14912/3851 B（raw/gzip）。内容身份上线后九路 gzip 上限仍依次为 8192、7168、15360、29696、7168、7168、17408、10240、6144 B，稳定生产余量依次为 +2199、+2918、+3144、+5232、+3005、+3034、+3583、+2998、+2293 B；来源提交、日期和完整路径清单由脚本与测试共同锁定。
 
 `scripts/discovery-budget.mjs` 独立保存七个结构化端点的 stable-origin raw/gzip 基线和逐端点推导上限。它同时约束 raw 与 gzip：可压缩的异常正文不能只靠 gzip 通过，高熵增长也不能只靠 raw 通过。本地应用测试与生产冒烟必须各自恰好覆盖清单、Schema、JSON Feed、RSS、Sitemap、robots、OpenSearch 一次，并输出 `[discovery-budget]` 报告；Iteration 0102 以稳定生产提交 `e5bb2a8` 冻结基线，依次为 3009/921、3278/755、20697/9876、3238/1241、4527/504、155/127、700/462 B（raw/gzip）。
 

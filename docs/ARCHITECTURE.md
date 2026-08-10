@@ -41,7 +41,7 @@ content/
 public/uploads/<slug>/              按内容隔离的公开图片附件
 lib/
   breadcrumbs.ts                    同源绝对 URL、稳定 position 与路径不变量生成器
-  website.ts                        首页唯一站点身份与规范根 URL 生成器
+  website.ts                        首页站点身份与同源内容节点身份生成器
   content/                          内容契约、维护报告、文件读取、派生索引与引用关系
     recommendations.ts             从专题、标签和已验证关系派生解释性继续阅读排序
     author-doctor.ts                本机作者环境 legacy v1、bundle v2 与 Git provenance v3 报告
@@ -118,7 +118,7 @@ vercel.json                         Vercel Next.js 框架声明
 
 `lib/breadcrumbs.ts` 接收页面实际使用的 `{ name, href }` 路径，要求至少两级、非空名称、根相对且无查询/fragment 的唯一同源 URL，再按数组顺序生成 1 起始的 Schema.org `BreadcrumbList`。`BreadcrumbTrail.tsx` 用同一数组同时输出原生可见导航和经过 `<` 转义的 JSON-LD；末级在视觉与辅助技术中是 `aria-current="page"`，在机器数据中仍携带当前页绝对 URL。文章、项目、专题、标签都只接入这一服务端边界；未知记录在 `notFound()` 前不构造路径，因此 404 不输出误导性结构化数据。
 
-`lib/website.ts` 从 `SITE_TITLE`、`SITE_DESCRIPTION`、`SITE_LANGUAGE` 与可信请求 origin 生成唯一 Schema.org `WebSite`：`url` 永远规范到域名根，`@id` 固定为根地址的 `#website`，协议只允许 HTTP(S) 且拒绝凭据。`app/page.tsx` 是唯一接入点并复用原生 `StructuredData` 服务端边界；根布局、集合页和详情页都不输出该节点，避免把每个页面误报成独立站点。当前没有经过确认的站点别名或远程搜索动作，因此不虚构 `alternateName`、`potentialAction` 或 `SearchAction`。`SITE_LANGUAGE` 同时驱动根 `<html lang>` 与 `inLanguage`，页面语言和机器身份不会形成两份常量。
+`lib/website.ts` 从 `SITE_TITLE`、`SITE_DESCRIPTION`、`SITE_LANGUAGE` 与可信请求 origin 生成唯一 Schema.org `WebSite`：`url` 永远规范到域名根，`@id` 固定为根地址的 `#website`，协议只允许 HTTP(S) 且拒绝凭据。`createWebsiteId()` 是站点节点 ID 的唯一派生边界；`createContentStructuredIdentity()` 只接受同 origin、无凭据、无查询/fragment 且非首页的绝对内容 URL，返回 `<canonical>#content` 和最小 `isPartOf: { "@id": "<root>#website" }` 引用。文章 `BlogPosting` 与项目 `SoftwareSourceCode` 在各自 Server Component 中复用该身份；主页仍是唯一输出完整 `WebSite` 文档的页面，内部页不会复制站点字段。当前没有经过确认的站点别名、远程搜索动作或完整人物档案，因此不虚构 `alternateName`、`potentialAction`、`SearchAction` 或 `ProfilePage`。`SITE_LANGUAGE` 同时驱动根 `<html lang>`、主页站点文档与两类内容文档，页面语言和机器身份不会形成多份常量。
 
 `lib/content/media.ts` 是封面与正文图共享的服务端尺寸层。文件系统根静态收窄到 `public/uploads`，避免 Turbopack 把整个仓库追踪进 Serverless 产物；同一仓库路径的检查通过 React cache 复用。封面描述器附带 `coverAlt`，交给共享 `ContentCover` 和 OG/Twitter/JSON-LD；没有封面的记录不渲染 figure。`MarkdownContent` 则先从正文 AST 收集并去重 URL，只为本地 `/uploads/...` 建立描述器，再把真实宽高、作者 alt 和对应 48rem 阅读栏的 `sizes` 交给 `next/image`。两条详情路由必须传入内容 `sourcePath`，因此页面渲染与构建媒体契约使用同一安全路径边界。
 
