@@ -14,7 +14,7 @@ MyBlog 是 Zach424 的个人技术知识库与公开工程日志。它把学习�
 | 公开阅读 | done | 首页、文章、项目、专题、标签、统一时间档案、首发/更新内容活动、首页最近三次变化摘要、订阅与开放接口目录、搜索、关于、品牌化 404 恢复路口、响应式、深色模式与详情页封面；共享列表、搜索和知识图谱统一区分首发/更新日，搜索结果提供 Unicode 安全命中证据，文章/项目详情提供最多 3 条带可见理由的继续阅读 |
 | 读者分享 | done | 文章/项目服务端规范链接、Web Share、URL/Markdown 引用 Clipboard、全 ASCII 标点转义、取消静默、共享 single-flight、`aria-live` 回执、无 JavaScript 恢复路径与 print 隔离 |
 | Markdown | done | GFM、代码高亮、语言标签、渐进增强的一键复制、与实际渲染一致的 H1–H6 heading id、H2/H3 目录与原生永久链接、Obsidian 兼容脚注/尾注与行内/块级数学公式、A4 打印/PDF 版式、阅读时间、相邻文章与响应式正文图片 |
-| 内容发现 | done | SEO、内容级 OG/Twitter 封面、首页唯一 `WebSite`、文章/项目纯生成器维护的稳定身份与站点引用、文章 `wordCount`/`timeRequired`、四类详情可见路径与 `BreadcrumbList` JSON-LD、统一年月时间档案、可见订阅目录、首页/Sitemap 共享公开路由事实、OpenSearch 1.1、version 1 公开内容清单及 Draft 2020-12 JSON Schema、JSON Feed 1.1、保留首发 `pubDate` 且以 `dcterms:modified` 表达更新的 RSS、文章/项目可移植 Markdown 源文、Sitemap、robots、NFKC/AND 本地全文搜索；七个结构化端点与源文均有 SHA-256 ETag/条件读取 |
+| 内容发现 | done | SEO、内容级 OG/Twitter 封面、首页唯一 `WebSite`、文章/项目纯生成器维护的稳定身份与站点引用、文章 `wordCount`/`timeRequired`、四类详情可见路径与 `BreadcrumbList` JSON-LD、统一年月时间档案、可见订阅目录、首页/Sitemap 共享公开路由事实、OpenSearch 1.1、version 1 公开内容清单及 Draft 2020-12 JSON Schema、JSON Feed 1.1、保留首发 `pubDate` 且以 `dcterms:modified` 表达更新的 RSS、Feed 级 Last-Modified/日期条件验证、文章/项目可移植 Markdown 源文、Sitemap、robots、NFKC/AND 本地全文搜索；七个结构化端点与源文均有 SHA-256 ETag/条件读取 |
 | 网页写作 | done | `/studio`、GitHub OAuth、Decap workflow、PR、按 slug 归档媒体、稳定 slug 锁定、双层 SHA-256 冲突预检、快速重选 latest-wins、生产规则公式预览与全字段只读发布清单 |
 | Obsidian 写作 | done | Vault、三类受信模板、桌面插件 1.41.0、文件名唯一草稿身份、原子新建/改名/旧身份清理、source-scoped 作者意图与来源行导航、发布/复核 single-flight、三方版本联锁、bundle SHA-256 完整性、四路径 Git HEAD/index/worktree provenance、sealed Git 交付恢复、维护台账、全库生产同步、手动单篇收敛与正常/恢复交付自动接力 |
 | Inbox 发布就绪 | done | version 6/read-only 全草稿 ready/scheduled/blocked、每个可读来源的原始字节 SHA-256、Article/TIL/Project、精确站内目标/源码行/重复次数、媒体 COVER/BODY 用途/出现次数/源码行/最终替代文本及来源、空文本与文件名回退阻塞、真实媒体候选、目标/共享附件诊断、CLI 全库或 `--source` 聚焦 JSON 与 Obsidian 当前草稿原生摘要 |
@@ -51,7 +51,7 @@ MyBlog 是 Zach424 的个人技术知识库与公开工程日志。它把学习�
 - 首页最近活动：`app/page.tsx` 直接展平同一 `createContentActivity()` 结果并取前三项，以纯 Server Component 输出 `CHANGE SET / 03 LATEST`、模式、日期、类型、标题和完整账本链接；摘要没有第二份更新判断或排序，活动页与首页专属样式进入独立 CSS Module，全局 CSS 降至 95,383 B；
 - 运行时：Next.js 16.3.0、React 19.2.6、TypeScript 5、Node.js 22+；
 - 内容：仓库内 Markdown、YAML、Zod，GitHub 是唯一事实源；
-- 发现：`/content.json` 从公开 getter 稳定生成 4 条机器清单，逐项提供同 origin HTML/Markdown URL 与最终源文 SHA-256；`/content.schema.json` 使用 Draft 2020-12 固定 version 1 结构，并以 describedby/describes Link 与清单双向关联。RSS 只在 `updatedAt > publishedAt` 时输出 `dcterms:modified`，同时保留原 `guid`、`pubDate`、首发排序与频道更新时间，并拒绝 item 级 `atom:updated`；清单、Schema、JSON Feed、RSS、Sitemap、robots、OpenSearch 都以最终正文生成 SHA-256 ETag 并支持空 304；清单另有 Last-Modified，Feed/RSS/Sitemap/OpenSearch 保留一小时 fresh/一天 SWR，robots 保留一天 fresh；
+- 发现：`/content.json` 从公开 getter 稳定生成 4 条机器清单，逐项提供同 origin HTML/Markdown URL 与最终源文 SHA-256；`/content.schema.json` 使用 Draft 2020-12 固定 version 1 结构，并以 describedby/describes Link 与清单双向关联。RSS 只在 `updatedAt > publishedAt` 时输出 `dcterms:modified`，同时保留原 `guid`、`pubDate`、首发排序与频道更新时间，并拒绝 item 级 `atom:updated`；清单、Schema、JSON Feed、RSS、Sitemap、robots、OpenSearch 都以最终正文生成 SHA-256 ETag 并支持空 304。`lib/feed-http.ts` 把格式修订时间与上海日界线下的最新内容日期合成为 Feed Last-Modified，JSON Feed/RSS 支持三种标准 HTTP-date、`If-Modified-Since` 与 `If-None-Match` 强制优先；清单另有尚未参与日期条件判断的 Last-Modified，Feed/RSS/Sitemap/OpenSearch 保留一小时 fresh/一天 SWR，robots 保留一天 fresh；
 - 结构化身份：`SITE_TITLE`、`SITE_DESCRIPTION`、`SITE_LANGUAGE` 与可信请求 origin 生成仅首页存在的唯一 `WebSite`，根 URL 与 `#website` 身份稳定；文章 `BlogPosting` 和项目 `SoftwareSourceCode` 使用同 origin canonical 加 `#content` 的稳定身份，并以最小 `isPartOf` 引用站点节点；两个类型收窄纯生成器集中完整文档、作者、数组/URL 复制与可选字段省略，详情页不再内联映射；文章另复用内容契约的整数 `wordCount` 和正整数 `readingMinutes` 输出 `wordCount`/`PT<n>M`，项目不扩散 Article 字段；四类详情面包屑继续由可见路径单一来源生成。全部使用原生服务端 JSON-LD script，不增加客户端代码、数据库、虚构别名、SearchAction 或未经确认的人物档案；
 - 搜索：服务端 Markdown AST 生成纯文本索引，客户端使用 NFKC、`zh-CN` 小写和多词 AND 排名；规范化命中通过 grapheme 边界映射回作者原文，只以 React 文本节点和原生 `<mark>` 渲染。摘要/正文选择覆盖查询词更多的证据，字段原因与来源标签、浅深色 AA 对比和显式 `:focus-visible` 共同提供可解释反馈；
 - 推荐：服务端纯函数从公开记录和 outgoing/backlink 索引派生，按双向引用 120、当前引用 80、反向引用 70、同专题 60、每个共同标签 15 排序；最多 3 条、同分稳定决胜、逐条显示实际理由，无客户端请求、数据库或新增内容字段；
@@ -68,15 +68,15 @@ MyBlog 是 Zach424 的个人技术知识库与公开工程日志。它把学习�
 
 - 仓库：<https://github.com/Zach424/MyBlog>，生产分支 `main`；
 - 生产站：<https://blog-iota-five-59.vercel.app>；
-- 本轮功能提交：`97eabce`（RSS 逐条 Dublin Core 修改时间）与 `52d6a18`（七端点生产基线重测），已推送 `main` 并由 Vercel 部署；
-- 自动交付：稳定生产 RSS 是可解析 XML，共 4 个 item、4 个 `dcterms:modified`、0 个 item 级 `atom:updated`；原 `guid`、`pubDate`、顺序、频道 `lastBuildDate` 和 JSON Feed 修改时间保持一致；完整 smoke 为 27 routes、OAuth 302，十三条 HTML 与七个结构化发现端点全部 PASS；
-- 最新完成迭代：0121 RSS 修改时间语义；
+- 本轮功能提交：`237fd8d`（Feed HTTP 日期验证），已推送 `main` 并由 Vercel 部署；
+- 自动交付：稳定生产 JSON Feed/RSS 分别返回精确 Last-Modified `Thu, 06 Aug 2026 10:09:53 GMT` 与 `Mon, 10 Aug 2026 21:26:25 GMT`；匹配日期返回 304，旧/无效日期返回 200，任何 `If-None-Match` 都优先于日期条件。完整 smoke 为 27 routes、OAuth 302，十三条 HTML 与七个结构化发现端点全部 PASS，正文、ETag 与传输预算未变化；
+- 最新完成迭代：0122 Feed HTTP 日期验证；
 - Obsidian 状态：仓库根目录就是 Vault，`docs/STATUS.md`、`docs/iterations/*.md` 与 `docs/knowledge/*.md` 是同一份本地文件，可直接阅读和维护；
 - 手动外部接入：自定义域名、统计、评论、公开邮箱均暂缓，不阻塞当前开发。
 
 ## 本轮新增能力
 
-RSS item 现在拥有独立且可验证的修改时间。`createRssXml()` 为根元素声明 Dublin Core Terms 命名空间，只在 `updatedAt > publishedAt` 时输出 `<dcterms:modified>YYYY-MM-DDT00:00:00Z</dcterms:modified>`；`pubDate` 继续表达首发时间，GUID、顺序、频道 `lastBuildDate` 与 JSON Feed `date_modified` 均未改写。选择 Dublin Core 而不是把 Atom `updated` 直接放进 RSS item，是因为 RSS 2.0 允许带命名空间的模块扩展，而 RFC 4287 的 `updated` 属于 Atom feed/entry 内容模型。失败优先单元测试覆盖缺失更新、同日更新、严格更晚更新、输入不变与顺序；应用测试逐 item 对齐 JSON Feed；生产 smoke 同时验证命名空间、XML 结构、时间、ETag、304、缓存和预算。完整验证为 524/524 单元测试、52 个构建页面、30/30 应用测试；稳定生产 smoke 为 27 routes、OAuth 302。线上 RSS 为 3536/1298 B（raw/gzip），七端点基线已绑定功能提交 `97eabce` 并统一重测。该能力不增加 UI、客户端 JavaScript、依赖、账号、数据库或云配置。本轮中文状态、迭代归档和知识笔记都位于同一 Obsidian Vault。
+JSON Feed 与 RSS 现在拥有可验证的 HTTP 修改时间。`lib/feed-http.ts` 分别固定正文契约最近一次改变的表示修订时间，并与全部公开记录的最新真实日期取最大值；只有序列化正文改变才更新修订常量，构建或部署时间不会冒充修改事实。内容日期按 `T00:00:00+08:00` 转换，避免上海当天在 UTC 中生成未来响应头。`createSha256ConditionalResponse()` 新增可选 Last-Modified 路径，严格接受 IMF-fixdate、RFC 850 和 asctime 三种 HTTP-date，拒绝重复、不可解析、不可能日历、星期不匹配、非规范响应值和未来响应值；任何 `If-None-Match` 的存在都屏蔽 `If-Modified-Since`，匹配 ETag 仍先返回 304。失败优先测试和生产 smoke 覆盖日期相等、旧日期、坏日期与条件优先级。完整验证为 530/530 单元测试、52 个构建页面、30/30 应用测试；稳定生产 smoke 为 27 routes、OAuth 302。线上 JSON Feed/RSS 正文仍为 20697/9876 与 3536/1298 B（raw/gzip），正文和 ETag 未变，因此没有伪造预算重测或基线提交。该能力不增加 UI、客户端 JavaScript、依赖、账号、数据库或云配置。本轮中文状态、迭代归档和知识笔记都位于同一 Obsidian Vault。
 
 ## 风险与下一步
 
@@ -92,8 +92,8 @@ RSS item 现在拥有独立且可验证的修改时间。`createRssXml()` 为根
 10. `decap-cms` 的开发依赖树仍有上游无修复的高危审计项；它不进入公开服务端生产依赖，但其浏览器编辑器包仅对已授权作者开放，后续应单独评估升级或替代方案。
 11. checkout/setup-node v6 的六处移动 tag 风险已关闭：执行 ref 全部固定到从官方仓库核对的完整 SHA，测试与发布前检查共享唯一事实源。不可变 pin 不会自动接收上游修复，自动更新机器人继续暂缓；后续必须主动核对官方 refs，不能把 `# v6` 注释当作执行引用。
 12. 替代主机 raw 100KB 假绿已由双层预算关闭。Node gzip 是确定性传输模拟，不包含 Vercel CDN Brotli、响应头、TLS 或真实用户 Web Vitals；稳定域名变化时必须同步更新 origin 与带来源的生产基线，基线增长也必须经过产品价值复核，不能为单路由临时抬线。
-13. JSON Feed 当前为 4 条、20697/9876 B raw/gzip，RSS 为 3536/1298 B，全文 `content_text` 会随公开内容线性增长并丢失 Markdown 格式结构；七端点预算已把当前规模、推导上限和本地/生产覆盖闭环，OpenSearch 当前为 700/462 B。基线不会自动追随当前输出；只有有价值的内容/协议变化、真实生产重测和归档齐全时才能更新。达到阈值后再评估最近 N 条、分页或派生缓存，不能先抬线。Vercel 会消费 SWR、可为压缩表示弱化 ETag 并精简 304 representation metadata，生产验证必须比较 opaque SHA-256、等价缓存和零正文，而不是只比较源站字符串。
-14. 单篇 Markdown 源文有意不是仓库作者文件的无损 round-trip，raw HTML 属性也不在 URL 改写契约内；确定性 ETag、Last-Modified、条件 GET、version 1 批量清单与独立 Draft 2020-12 Schema 已闭环。Schema 能拒绝未知字段、坏 token、origin 路由形状和 kind/type 错配，但不单独证明跨字段相等、跨条目唯一/排序或真实日历日期；生产清单解析器继续负责这些关系语义。Vercel 可对压缩表示弱化 ETag 并精简边缘 304 元数据，生产门以相同 opaque digest 和安全缓存验证等价语义。
+13. JSON Feed 当前为 4 条、20697/9876 B raw/gzip，RSS 为 3536/1298 B，全文 `content_text` 会随公开内容线性增长并丢失 Markdown 格式结构；七端点预算已把当前规模、推导上限和本地/生产覆盖闭环，OpenSearch 当前为 700/462 B。0122 只改变响应头与条件求值，正文、ETag 和预算均不变；基线不会自动追随当前输出。达到阈值后再评估最近 N 条、分页或派生缓存，不能先抬线。Vercel 会消费 SWR、可为压缩表示弱化 ETag 并精简 304 representation metadata，生产验证必须比较 opaque SHA-256、等价缓存和零正文，而不是只比较源站字符串。
+14. 单篇 Markdown 源文有意不是仓库作者文件的无损 round-trip，raw HTML 属性也不在 URL 改写契约内；确定性 ETag、Last-Modified、条件 GET、version 1 批量清单与独立 Draft 2020-12 Schema 已闭环。清单与源文虽然已经公开 Last-Modified，但当前日期尚未参与条件请求决策；下一轮会复用已验证的可选日期路径，并继续让 `If-None-Match` 优先。Schema 能拒绝未知字段、坏 token、origin 路由形状和 kind/type 错配，但不单独证明跨字段相等、跨条目唯一/排序或真实日历日期；生产清单解析器继续负责这些关系语义。
 15. Git/Obsidian sealed receipt、version 1 handoff、生产收敛、三方版本、磁盘 bundle 摘要和四路径 Git provenance 已覆盖正常与恢复交付；v3 绑定冻结 localHead tree，工作区/index 漂移不能再把本地 `--write` 伪装成可信 release。剩余证据缺口不是自动化逻辑，而是首次真实 Obsidian 主题与本机代理环境下的人机验收。
 16. 搜索首屏仍向客户端序列化 4 条完整纯文本文档和每条可选更新日。当前生产 `/search?q=cloudflare` 为 41251/14704 B raw/gzip，体积在冻结预算内；内容规模增长时应先由 HTML raw/gzip 门报警，再评估索引分片或按需加载。当前实现依赖 Next.js/目标浏览器已支持的 `Intl.Segmenter`，且坚持以数据分段和 React 转义渲染，不能为兼容或高亮改回 raw HTML。
 17. 推荐排序在当前小型内容库里可解释且稳定，但内容与标签增长后，泛化共同标签可能逐步压过稀有关系。先保留可见理由和 HTML 预算证据，积累真实内容分布后再评估标签稀有度或多样性约束；不接入点击追踪或黑盒模型。
@@ -104,7 +104,7 @@ RSS item 现在拥有独立且可验证的修改时间。`createRssXml()` 为根
 22. `/archive` 当前只有一个年份和月份，但跨年、跨月、同日决胜、空集合和输入不变已经由夹具固定。内容增长前不提前增加客户端筛选、分页或年份锚点；若分组或 DOM 规模开始触及十三路预算，再依据真实数据选择增强方式。
 23. `/subscribe` 已把五类现有开放接口集中为可见目录，但它有意保持只读：不会收集邮箱、创建账户、保存订阅状态或代理第三方阅读器。未来若需要邮件订阅，必须由所有者单独选择供应商、隐私告知与数据保留策略，不能把当前目录误解为邮件服务。
 24. 404 恢复语境已经闭环，但本地 Next 自动 noindex 与 Vercel 最终 HTML 不一致；组件显式 meta 后本地有两个相同指令、生产一个。相同指令不改变语义，升级 Next/Vercel 时仍必须用最终生产 HTML 验证。错误页继承根首页 canonical，本轮没有为非索引页面启用实验性 global-not-found。
-25. `/activity` 已提供按事件查看“何时发布、何时真正更新”的统一活动流，archive 继续只保留首次发布日期。首页摘要已直接复用同一模型并限制三项，没有复制排序或日期规则；RSS 以 `dcterms:modified` 把同一严格更新语义提供给机器消费者，同时保留首发 `pubDate`。阅读器可以合法忽略未知扩展，因此本站保证标准化 XML、解析器可读和 JSON Feed 对齐，不保证所有客户端一定显示或通知该时间。
+25. `/activity` 已提供按事件查看“何时发布、何时真正更新”的统一活动流，archive 继续只保留首次发布日期。首页摘要已直接复用同一模型并限制三项，没有复制排序或日期规则；RSS 以 `dcterms:modified` 把同一严格更新语义提供给机器消费者，同时保留首发 `pubDate`。JSON Feed/RSS 的 HTTP Last-Modified 另行表达整个表示何时发生变化，并同时考虑内容日期与格式修订；它不能只取逐条内容最大值。阅读器可以合法忽略未知扩展，因此本站保证标准化 XML、解析器可读和 JSON Feed 对齐，不保证所有客户端一定显示或通知该时间。
 26. 本机浏览器使用系统代理时，Git for Windows 与 Node `fetch` 不一定自动继承代理配置，可能出现网页可达而 Git/生产 smoke 直连超时。0115 通过单次命令注入系统代理完成 push 和 smoke，没有写入仓库或全局 Git 配置；以后仍先区分站点失败与本地网络分流，不能把传输失败误判为部署失败。
 
-下一轮唯一主任务：评估并实现 Feed 级可信 HTTP `Last-Modified` 与 `If-Modified-Since`。先审计现有条件响应助手、Next.js Route Handler 与 RFC HTTP 条件请求优先级，再从同一公开记录的最新真实日期派生响应头；`If-None-Match` 必须继续优先，只有不存在 ETag 条件时才考虑日期条件。范围先限于 RSS 与 JSON Feed，不为 robots、Schema 或没有日期事实的端点伪造时间，并同步本地/生产 200、304、缓存、预算和中文归档。不新增数据库、账户、追踪、第三方服务或云配置。
+下一轮唯一主任务：把已经公开的 Last-Modified 真正接入 `/content.json` 与文章/项目 `source.md` 的 `If-Modified-Since` 条件读取。复用 Iteration 0122 已验证的严格 HTTP-date 解析和 ETag 优先路径，保持清单 version 1、源文投影、生产同步轮询、正文、ETag 与缓存不变；用失败优先单元、真实 Next 与稳定生产 smoke 验证日期相等 304、旧/坏日期 200 和 `If-None-Match` 优先。Schema、Sitemap、OpenSearch、robots 等没有既有 Last-Modified 事实的端点不扩散日期，不新增数据库、账户、追踪、第三方服务或云配置。

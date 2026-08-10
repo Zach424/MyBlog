@@ -110,6 +110,10 @@ vercel.json                         Vercel Next.js 框架声明
 
 `lib/discovery.ts` 为 JSON Feed 与 RSS 共用同一公开记录排序。RSS 继续用 `pubDate` 表达首次发布时间、用稳定内容 URL 表达 `guid`，只在 `updatedAt > publishedAt` 时额外输出 Dublin Core Terms 的 `dcterms:modified` RFC 3339 UTC 时间；根元素声明 `http://purl.org/dc/terms/` 命名空间。该扩展不会把 Atom `entry` 的 `updated` 元素误放进 RSS item，也不会改变频道 `lastBuildDate`、条目顺序或 JSON Feed 的 `date_modified`。不理解扩展的阅读器仍可按普通 RSS 2.0 消费，理解 Dublin Core Terms 的解析器可读取修改时间。
 
+`lib/feed-http.ts` 为两个 Feed 分别保存可审计的表示格式修订时间：JSON Feed 绑定引入提交 `a55e68b`，RSS 绑定最近改变 XML 正文的提交 `97eabce`。HTTP `Last-Modified` 取“格式修订时间”与所有公开记录最新 `updatedAt ?? publishedAt` 的最大值；纯日期按作者时区 `Asia/Shanghai` 的日界线换算到 UTC，避免本地当天在 UTC 前八小时形成未来响应头。空内容 Feed 仍由格式修订时间得到真实验证器，调用方数组不变。正文格式以后发生变化时必须同步推进对应修订时间；只改响应处理、测试或文档不应伪造正文修改。
+
+`lib/http-validators.ts` 的可选日期条件层严格遵循 HTTP 先决条件顺序：只生成规范 IMF-fixdate 且拒绝未来 `Last-Modified`；接收端兼容 IMF-fixdate、RFC 850 与 asctime 三种 HTTP-date，拒绝日历错误、星期不符、重复成员和非 HTTP 日期。任何 `If-None-Match` 字段一旦存在就完全遮蔽 `If-Modified-Since`，即使 ETag 值陈旧或畸形；只有没有 ETag 条件的 GET/HEAD 才在表示修改时间早于或等于请求日期时返回带 ETag、日期和缓存元数据的空 304。Iteration 0122 只让 RSS 与 JSON Feed 传入该可选时间，其他调用方行为不变。
+
 `lib/public-routes.ts` 是可索引公开路由的唯一派生边界。11 条静态页面声明 path、日期来源、change frequency 与 priority；文章、项目、专题和标签从同一公开内容/索引自动追加。最终清单检查跨集合 path 唯一性，并输出 routes、total 与最新公开内容日期。`createSitemapXml()` 只把 routes 序列化为 XML；首页 Evidence Rail 使用同一个 total，`LATEST` 使用与 Sitemap 根 URL `lastmod` 相同的日期。Feed、Studio、OAuth、错误页和其他 noindex 端点有意不属于该集合。整个边界只在服务端运行，不读取 Git、不发起 API 请求，也不持有第二份计数。
 
 `lib/homepage-evidence.ts` 是公开内容事实到首页 Evidence Rail 的专用 view-model。它只接收精选项目的标题、status、stack、日期与最新文章的标题、type、tags、日期，再映射 Building、Learned 和 Current focus；stack/tag 以“前 N 项 + 剩余数量”控制密度，标题保持原文，空项目/空文章输出明确等待状态。首页组件不再解释状态或维护运行摘要；该纯函数不读取文件、不发起请求，也不扩展内容 schema。
@@ -279,7 +283,7 @@ Obsidian 草稿中的 Wiki 图片嵌入、指向 `public/uploads` 的 Markdown �
 
 ## 6. 安全与缓存
 
-`next.config.ts` 为所有响应声明 CSP、HSTS、`nosniff`、`DENY`、权限策略、来源策略和 COOP，并关闭 `X-Powered-By`。公开 HTML 使用浏览器复核、CDN 一小时缓存与一天 stale-while-revalidate；公开内容清单、清单 Schema 与 Markdown 源文使用浏览器零 fresh、CDN 一小时 fresh 与一天 stale-while-revalidate，并声明准确 MIME、安全内联文件名、源站强 ETag 和 `X-Robots-Tag: noindex`，有内容日期事实的清单/源文还声明 Last-Modified。JSON Feed、RSS、Sitemap 与 OpenSearch 描述保留一小时 fresh/一天 SWR，robots 保留一天 fresh；五者也以最终响应正文计算 SHA-256 ETag，并通过同一条件响应助手返回空 304，不引入无法统一证明的 Last-Modified。OpenSearch 额外声明准确 XML MIME、安全内联文件名与 `noindex`。客户端可用强或边缘弱化后的 `If-None-Match` 复核缓存，匹配时只接收 304 缓存元数据；不存在的源文必须 `no-store` 且不生成公开验证器。Studio HTML、配置、预览 CSS、OAuth 和未知 Studio 路径也必须包含 `no-store`。版本化且带 SRI 的 CMS 运行时使用一年不可变缓存。
+`next.config.ts` 为所有响应声明 CSP、HSTS、`nosniff`、`DENY`、权限策略、来源策略和 COOP，并关闭 `X-Powered-By`。公开 HTML 使用浏览器复核、CDN 一小时缓存与一天 stale-while-revalidate；公开内容清单、清单 Schema 与 Markdown 源文使用浏览器零 fresh、CDN 一小时 fresh 与一天 stale-while-revalidate，并声明准确 MIME、安全内联文件名、源站强 ETag 和 `X-Robots-Tag: noindex`，有内容日期事实的清单/源文还声明 Last-Modified。JSON Feed、RSS、Sitemap 与 OpenSearch 描述保留一小时 fresh/一天 SWR，robots 保留一天 fresh；五者都以最终响应正文计算 SHA-256 ETag，并通过同一条件响应助手返回空 304。JSON Feed 与 RSS 另声明可审计的 Last-Modified 并支持 `If-Modified-Since`；Sitemap、OpenSearch 与 robots 继续不伪造无法完整证明的日期。OpenSearch 额外声明准确 XML MIME、安全内联文件名与 `noindex`。客户端优先用强或边缘弱化后的 `If-None-Match` 复核缓存，旧客户端可对两个 Feed 使用日期验证；不存在的源文必须 `no-store` 且不生成公开验证器。Studio HTML、配置、预览 CSS、OAuth 和未知 Studio 路径也必须包含 `no-store`。版本化且带 SRI 的 CMS 运行时使用一年不可变缓存。
 
 一般页面的 COOP 为 `same-origin`；Studio 与 OAuth 为 `same-origin-allow-popups`，以允许 GitHub OAuth 弹窗完成握手。Studio CSP 不允许第三方脚本源，只额外允许 GitHub API、GitHub 授权页和头像来源；`unsafe-eval` 例外被限制在 Studio 路由，因为固定版本 Decap 编辑器/解析器需要运行时求值。
 
@@ -300,6 +304,7 @@ Quality、生产冒烟与回滚工作流均使用 Node 24 runtime 的 checkout/s
 - 必要的 URL 迁移必须登记为有日期和原因的单跳永久重定向；来源不能遮蔽现有路由或文件，目标必须在同一构建中公开。
 - 草稿、未来内容不能进入页面、搜索、公开内容清单、JSON Feed、RSS、Markdown 源文或 Sitemap。
 - RSS item 的 `pubDate`、`guid` 与排序必须继续表达首发身份；修改时间只能以带正式命名空间的 `dcterms:modified` 补充，并且仅在更新日晚于首发日时存在。
+- HTTP 条件请求必须让 `If-None-Match` 优先于 `If-Modified-Since`；日期验证器不得晚于响应时间，也不得由无日期事实的端点伪造。
 - 公开站内链接必须指向同一构建中的公开文章或项目；详情页 outgoing/backlinks 与 `/knowledge` 的节点、边和孤立状态只能从同一正文链接集合派生。
 - 公开内容必须声明语境和复核日期；Current record 超过 180 天未复核不能进入新部署。
 - Current record 的报告状态与构建硬门必须复用同一日龄计算；Historical、草稿和未来内容不进入维护队列。
