@@ -68,15 +68,15 @@ MyBlog 是 Zach424 的个人技术知识库与公开工程日志。它把学习�
 
 - 仓库：<https://github.com/Zach424/MyBlog>，生产分支 `main`；
 - 生产站：<https://blog-iota-five-59.vercel.app>；
-- 本轮功能提交：`619a604`（受约束多图画廊），本地完整质量门已通过，等待与 0133 档案一同推送并确认 Vercel 稳定生产；
-- 自动交付：本地生产构建的 `/studio/math-preview` 已同时证明 `calloutCount: 1`、`formulaCount: 2`、`diagramCount: 1`、`galleryCount: 1`、`galleryImageCount: 2`、`videoCount: 1`、安全 SVG、有序画廊与原生静音播放器；生产 smoke 在推送后补记；本轮没有改变公开内容集合或结构化端点正文，因此不重置既有生产预算基线；
+- 本轮功能提交：`619a604`（受约束多图画廊），归档提交 `03e2b08`；均已推送 `main` 并进入 Vercel 稳定生产；
+- 自动交付：生产 `/studio/math-preview` 已同时证明 `calloutCount: 1`、`formulaCount: 2`、`diagramCount: 1`、`galleryCount: 1`、`galleryImageCount: 2`、`videoCount: 1`、安全 SVG、有序画廊与原生静音播放器；完整 smoke 为 27 routes、OAuth 302，十三条 HTML 与十一个结构化发现端点全部 PASS；本轮没有改变公开内容集合或结构化端点正文，因此不重置既有生产预算基线；
 - 最新完成迭代：0133 受约束多图画廊、Studio/Obsidian 作者入口与有序证据展示；
 - Obsidian 状态：仓库根目录就是 Vault，`docs/STATUS.md`、`docs/iterations/*.md` 与 `docs/knowledge/*.md` 是同一份本地文件，可直接阅读和维护；
 - 手动外部接入：自定义域名、统计、评论、公开邮箱均暂缓，不阻塞当前开发。
 
 ## 本轮新增能力
 
-作者现在可以在 Studio 或 Obsidian 使用 `[!gallery]` 加标准 Markdown 图片列表发布有序证据组。每组 2–6 张、每篇最多 3 组且合计最多 12 张；组标题、每帧 alt 与短标题必填，正式路径必须位于当前 slug。Studio 提供嵌套列表、增删和拖动排序，Obsidian 1.43.0 提供快捷插入并把根暂存图片原子归档；readiness v8 记录 `GALLERY` 用途。读者页使用无脚本 Evidence Rail：桌面双栏、320 px 单栏、完整图像 `contain`、编号/说明和打印布局，无灯箱、轮播、iframe 或第三方。完整本地证据为 565/565 单测、5/5 图表测试、68 个生成页面/资源、35/35 应用测试、生产依赖审计 0 漏洞、插件 3/3 SHA-256 与真实浏览器 0 error。
+作者现在可以在 Studio 或 Obsidian 使用 `[!gallery]` 加标准 Markdown 图片列表发布有序证据组。每组 2–6 张、每篇最多 3 组且合计最多 12 张；组标题、每帧 alt 与短标题必填，正式路径必须位于当前 slug。Studio 提供嵌套列表、增删和拖动排序，Obsidian 1.43.0 提供快捷插入并把根暂存图片原子归档；readiness v8 记录 `GALLERY` 用途。读者页使用无脚本 Evidence Rail：桌面双栏、320 px 单栏、完整图像 `contain`、编号/说明和打印布局，无灯箱、轮播、iframe 或第三方。完整证据为 565/565 单测、5/5 图表测试、68 个生成页面/资源、35/35 应用测试、生产依赖审计 0 漏洞、插件 3/3 SHA-256、真实浏览器 0 error，以及稳定生产 27 routes/OAuth 302 全部 PASS。
 
 ## 风险与下一步
 

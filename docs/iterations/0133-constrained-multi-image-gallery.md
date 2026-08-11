@@ -107,8 +107,9 @@ Studio 使用 Decap 自定义 editor component，把嵌套 list 作为作者表�
 - Playwright 桌面：两列各 415.5 px、2 张图片全部加载、`object-fit: contain`、无 overflow/script/iframe/dialog，控制台 0 error；
 - Playwright 320 px：单列 256 px、图片全部加载、无横向溢出，视觉截图复核通过；
 - 功能提交：`619a604`。
-
-生产部署与稳定域名 smoke 在功能与归档提交推送后补记；本节不会把尚未发生的边缘交付写成已完成证据。
+- 归档提交：`03e2b08`；功能与归档均已推送 `main`；
+- Vercel 稳定生产：新 `/studio/gallery-editor.mjs` 已 200，完整 smoke 为 27 routes、OAuth 302；十三条 HTML 与十一个结构化端点预算全部 PASS；
+- 线上合成 POST 返回画廊数量和有序 HAST，并继续证明 Callout、公式、Mermaid 与本地静音视频协议。本轮未增加真实公开画廊，因此没有伪称已验证真实画廊文章的 CDN 行为。
 
 ## 8. 经验与教训
 
