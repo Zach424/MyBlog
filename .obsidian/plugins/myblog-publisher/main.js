@@ -28,7 +28,7 @@ const AUTHOR_DOCTOR_PLUGIN_BUNDLE_VERSION = 1;
 const AUTHOR_DOCTOR_PLUGIN_PROVENANCE_VERSION = 1;
 const INBOX_READINESS_REPORT_VERSION = 8;
 const AUTHOR_DOCTOR_NODE_ENGINE = ">=22.13.0";
-const AUTHOR_DOCTOR_PLUGIN_VERSION = "1.43.0";
+const AUTHOR_DOCTOR_PLUGIN_VERSION = "1.44.0";
 const CURRENT_DRAFT_INTENT_RUN_SCOPE = Symbol("current-draft-intent");
 const PRODUCTION_CONTENT_CONVERGENCE_RUN_SCOPE = Symbol(
   "production-content-convergence",
@@ -112,6 +112,24 @@ function createGalleryTemplate(filePath) {
     "> [!gallery] 说明这一组图片共同证明什么",
     `> - ![描述第一张图片传达的状态或结果](${mediaRoot}/gallery-1.png "第一帧短标题")`,
     `> - ![描述第二张图片与第一张的差异或后续结果](${mediaRoot}/gallery-2.png "第二帧短标题")`,
+  ].join("\n");
+}
+
+function createTableTemplate(filePath) {
+  const normalized = String(filePath || "").replaceAll("\\", "/");
+  if (
+    !/^content\/(inbox|posts|projects)\/[a-z0-9]+(?:-[a-z0-9]+)*\.md$/u.test(
+      normalized,
+    )
+  ) {
+    throw new Error("技术表格模板只能插入 content/inbox、content/posts 或 content/projects 中的博客文档");
+  }
+  return [
+    "> [!table] 说明这组数据回答什么问题",
+    "> | 环境 | P50 | P95 |",
+    "> | --- | ---: | ---: |",
+    "> | 本地 | 18 ms | 44 ms |",
+    "> | 生产 | 42 ms | 118 ms |",
   ].join("\n");
 }
 const PLUGIN_PROVENANCE_PATHS = [
@@ -5912,6 +5930,20 @@ module.exports = class MyBlogPublisher extends Plugin {
           const template = createGalleryTemplate(view?.file?.path);
           editor.replaceSelection(template);
           new Notice("已插入两帧画廊模板；请替换图片、短标题和画面说明");
+        } catch (error) {
+          new Notice(error instanceof Error ? error.message : String(error));
+        }
+      },
+    });
+
+    this.addCommand({
+      id: "insert-table-template",
+      name: "插入技术数据表格模板",
+      editorCallback: (editor, view) => {
+        try {
+          const template = createTableTemplate(view?.file?.path);
+          editor.replaceSelection(template);
+          new Notice("已插入三列技术表格模板；请替换标题、表头和示例数据");
         } catch (error) {
           new Notice(error instanceof Error ? error.message : String(error));
         }

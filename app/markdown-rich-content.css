@@ -216,6 +216,137 @@
   overflow-wrap: anywhere;
 }
 
+.markdown-content .markdown-data-table {
+  margin-block: 2rem;
+  border-block: 0.0625rem solid var(--trace-dark);
+  background: color-mix(in srgb, var(--rule) 20%, var(--paper));
+}
+
+.markdown-content .markdown-data-table-header {
+  display: grid;
+  border-bottom: 0.0625rem solid var(--rule);
+}
+
+.markdown-content .markdown-data-table-rail {
+  display: flex;
+  min-height: 2.4rem;
+  align-items: center;
+  justify-content: space-between;
+  gap: 0.75rem;
+  padding: 0.55rem 0.75rem;
+  color: var(--muted);
+  font: 700 0.625rem/1.4 var(--mono);
+  letter-spacing: 0.075em;
+}
+
+.markdown-content .markdown-data-table-kind {
+  color: var(--ink);
+}
+
+.markdown-content .markdown-data-table-origin::before {
+  display: inline-block;
+  width: 0.5rem;
+  height: 0.5rem;
+  margin-right: 0.45rem;
+  border: 0.0625rem solid var(--signal);
+  background:
+    linear-gradient(90deg, transparent 43%, var(--signal) 43% 57%, transparent 57%),
+    linear-gradient(transparent 43%, var(--signal) 43% 57%, transparent 57%);
+  content: "";
+}
+
+.markdown-content .markdown-data-table-title {
+  padding: 0.85rem 0.9rem 0.25rem;
+  border-top: 0.0625rem solid var(--rule);
+  font-size: 1rem;
+  line-height: 1.5;
+  overflow-wrap: anywhere;
+}
+
+.markdown-content .markdown-data-table-key {
+  padding: 0 0.9rem 0.8rem;
+  color: var(--trace-dark);
+  font: 700 0.6rem/1.45 var(--mono);
+  letter-spacing: 0.055em;
+  overflow-wrap: anywhere;
+}
+
+.markdown-content .markdown-data-table-viewport {
+  max-width: 100%;
+  overflow-x: auto;
+  overscroll-behavior-inline: contain;
+}
+
+.markdown-content .markdown-data-table-viewport:focus-visible {
+  outline: 0.1875rem solid var(--signal);
+  outline-offset: 0.1875rem;
+}
+
+.markdown-content .markdown-data-table-grid {
+  width: max(100%, 36rem);
+  min-width: 100%;
+  border-collapse: separate;
+  border-spacing: 0;
+  font-size: 0.8125rem;
+  font-variant-numeric: tabular-nums;
+}
+
+.markdown-content .markdown-data-table-grid th,
+.markdown-content .markdown-data-table-grid td {
+  min-width: 7rem;
+  padding: 0.72rem 0.8rem;
+  border-right: 0.0625rem solid var(--rule);
+  border-bottom: 0.0625rem solid var(--rule);
+  background: var(--paper);
+  line-height: 1.55;
+  overflow-wrap: anywhere;
+  vertical-align: top;
+}
+
+.markdown-content .markdown-data-table-grid th {
+  color: var(--ink);
+  background: color-mix(in srgb, var(--trace) 32%, var(--paper));
+  font: 700 0.65rem/1.45 var(--mono);
+  letter-spacing: 0.055em;
+  text-transform: uppercase;
+}
+
+.markdown-content .markdown-data-table-grid tbody tr:nth-child(even) td {
+  background: color-mix(in srgb, var(--rule) 18%, var(--paper));
+}
+
+.markdown-content .markdown-data-table-grid th:first-child,
+.markdown-content .markdown-data-table-grid td:first-child {
+  position: sticky;
+  z-index: 1;
+  left: 0;
+  min-width: 9rem;
+  box-shadow: 0.0625rem 0 0 var(--trace-dark);
+  font-weight: 700;
+}
+
+.markdown-content .markdown-data-table-grid th:first-child {
+  z-index: 2;
+  background: color-mix(in srgb, var(--trace) 46%, var(--paper));
+}
+
+.markdown-content .markdown-data-table-grid tbody tr:nth-child(even) td:first-child {
+  background: color-mix(in srgb, var(--rule) 18%, var(--paper));
+}
+
+.markdown-content .markdown-data-table-grid tr:last-child td {
+  border-bottom: 0;
+}
+
+.markdown-content .markdown-data-table-grid th:last-child,
+.markdown-content .markdown-data-table-grid td:last-child {
+  border-right: 0;
+}
+
+.markdown-content .markdown-data-table-grid code {
+  white-space: nowrap;
+}
+
 .markdown-content .markdown-diagram {
   --diagram-bg: var(--paper);
   --diagram-fg: var(--ink);
@@ -431,6 +562,44 @@
 }
 
 @media print {
+  .markdown-content .markdown-data-table {
+    break-inside: auto;
+    border-color: var(--trace-dark);
+    background: var(--paper);
+  }
+
+  .markdown-content .markdown-data-table-header {
+    break-after: avoid-page;
+  }
+
+  .markdown-content .markdown-data-table-viewport {
+    overflow: visible;
+  }
+
+  .markdown-content .markdown-data-table-grid {
+    width: 100%;
+    min-width: 0;
+    table-layout: fixed;
+    font-size: 7.5pt;
+  }
+
+  .markdown-content .markdown-data-table-grid thead {
+    display: table-header-group;
+  }
+
+  .markdown-content .markdown-data-table-grid tr {
+    break-inside: avoid-page;
+  }
+
+  .markdown-content .markdown-data-table-grid th,
+  .markdown-content .markdown-data-table-grid td {
+    position: static;
+    min-width: 0;
+    padding: 1.8mm;
+    box-shadow: none;
+    overflow-wrap: anywhere;
+  }
+
   .markdown-content .markdown-gallery {
     break-inside: auto;
     border-color: var(--trace-dark);
@@ -529,6 +698,15 @@
 }
 
 @media (max-width: 32rem) {
+  .markdown-content .markdown-data-table-rail {
+    align-items: flex-start;
+    flex-direction: column;
+  }
+
+  .markdown-content .markdown-data-table-grid {
+    width: 36rem;
+  }
+
   .markdown-content .markdown-gallery-grid {
     grid-template-columns: 1fr;
   }

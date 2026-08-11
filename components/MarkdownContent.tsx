@@ -137,7 +137,15 @@ function createMarkdownComponents(
         </span>
       );
     },
-    table({ children }) {
+    table({ children, className, node, ...props }) {
+      void node;
+      if (className?.split(/\s+/u).includes("markdown-data-table-grid")) {
+        return (
+          <table {...props} className={className}>
+            {children}
+          </table>
+        );
+      }
       return (
         <div
           className="table-scroll"
@@ -145,7 +153,7 @@ function createMarkdownComponents(
           aria-label="可横向滚动的表格"
           tabIndex={0}
         >
-          <table>{children}</table>
+          <table {...props} className={className}>{children}</table>
         </div>
       );
     },

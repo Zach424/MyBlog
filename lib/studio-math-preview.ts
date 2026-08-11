@@ -22,6 +22,11 @@ import {
 } from "@/lib/markdown-gallery";
 import { getMarkdownMathIssue, type MarkdownMathIssue } from "@/lib/markdown-math";
 import {
+  extractMarkdownTables,
+  getMarkdownTableIssue,
+  type MarkdownTableIssue,
+} from "@/lib/markdown-table";
+import {
   extractMarkdownVideos,
   getMarkdownVideoIssue,
   type MarkdownVideoIssue,
@@ -38,6 +43,8 @@ export type StudioMathPreviewResult =
       galleryImageCount: number;
       html: string;
       ok: true;
+      tableCount: number;
+      tableDataCellCount: number;
       videoCount: number;
     }
   | {
@@ -45,6 +52,7 @@ export type StudioMathPreviewResult =
         | MarkdownDiagramIssue
         | MarkdownGalleryIssue
         | MarkdownMathIssue
+        | MarkdownTableIssue
         | MarkdownVideoIssue;
       ok: false;
     };
@@ -102,6 +110,8 @@ export function renderStudioMathPreview(
   if (diagramIssue) return { issue: diagramIssue, ok: false };
   const galleryIssue = getMarkdownGalleryIssue(markdown);
   if (galleryIssue) return { issue: galleryIssue, ok: false };
+  const tableIssue = getMarkdownTableIssue(markdown);
+  if (tableIssue) return { issue: tableIssue, ok: false };
   const videoIssue = getMarkdownVideoIssue(markdown);
   if (videoIssue) return { issue: videoIssue, ok: false };
 
@@ -111,6 +121,12 @@ export function renderStudioMathPreview(
   const galleryCount = galleries.length;
   const galleryImageCount = galleries.reduce(
     (total, gallery) => total + gallery.images.length,
+    0,
+  );
+  const tables = extractMarkdownTables(markdown);
+  const tableCount = tables.length;
+  const tableDataCellCount = tables.reduce(
+    (total, table) => total + table.headers.length * table.rowCount,
     0,
   );
   const videoCount = extractMarkdownVideos(markdown).length;
@@ -135,6 +151,8 @@ export function renderStudioMathPreview(
     galleryImageCount,
     html,
     ok: true,
+    tableCount,
+    tableDataCellCount,
     videoCount,
   };
 }

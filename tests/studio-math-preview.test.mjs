@@ -7,6 +7,7 @@ import {
   hasPotentialStudioGallery,
   hasPotentialStudioRichMarkdown,
   hasPotentialStudioMath,
+  hasPotentialStudioTable,
   hasPotentialStudioVideo,
   registerStudioMathPreview,
   requestStudioMathPreview,
@@ -73,6 +74,8 @@ test("requests only potential rich Markdown from the same-origin preview endpoin
   assert.equal(hasPotentialStudioRichMarkdown("> [!note] 证据"), true);
   assert.equal(hasPotentialStudioGallery("> [!gallery] 步骤证据"), true);
   assert.equal(hasPotentialStudioGallery("```md\n> [!gallery] 示例\n```"), false);
+  assert.equal(hasPotentialStudioTable("> [!table] 延迟"), true);
+  assert.equal(hasPotentialStudioTable("```md\n> [!table] 示例\n```"), false);
   assert.equal(hasPotentialStudioRichMarkdown("```md\n> [!note]\n```"), false);
   assert.equal(hasPotentialStudioDiagram("```mermaid\nflowchart LR\nA --> B\n```"), true);
   assert.equal(hasPotentialStudioDiagram("```md\n```mermaid\nA --> B\n```\n```"), false);
@@ -96,6 +99,8 @@ test("requests only potential rich Markdown from the same-origin preview endpoin
         galleryImageCount: 0,
         html: "<span>math</span>",
         ok: true,
+        tableCount: 0,
+        tableDataCellCount: 0,
         videoCount: 0,
       }),
         ok: true,
@@ -122,6 +127,8 @@ test("keeps plain Markdown on the native preview and exposes recoverable rich-co
         galleryImageCount: 3,
         html: "<div class=\"katex\">ok</div>",
         ok: true,
+        tableCount: 1,
+        tableDataCellCount: 6,
         videoCount: 1,
       }),
       ok: true,
@@ -163,11 +170,13 @@ test("keeps plain Markdown on the native preview and exposes recoverable rich-co
   assert.equal(context.state.diagramCount, 1);
   assert.equal(context.state.galleryCount, 1);
   assert.equal(context.state.galleryImageCount, 3);
+  assert.equal(context.state.tableCount, 1);
+  assert.equal(context.state.tableDataCellCount, 6);
   assert.equal(context.state.videoCount, 1);
   const readyTree = template.render.call(context);
   assert.match(
     textContent(readyTree),
-    /2 个公式、1 张图表、1 组画廊 \/ 3 张图片、1 段视频已按生产规则渲染/u,
+    /2 个公式、1 张图表、1 组画廊 \/ 3 张图片、1 个表格 \/ 6 个数据单元格、1 段视频已按生产规则渲染/u,
   );
 
   context.state = {
@@ -194,6 +203,10 @@ test("keeps plain Markdown on the native preview and exposes recoverable rich-co
   assert.equal(
     getStudioMathPreviewStatus({ issue: { kind: "gallery" }, status: "invalid" }).label,
     "GALLERY / NEEDS FIX",
+  );
+  assert.equal(
+    getStudioMathPreviewStatus({ issue: { kind: "table" }, status: "invalid" }).label,
+    "TABLE / NEEDS FIX",
   );
 });
 

@@ -38,6 +38,7 @@ export type InternalContentReferenceEvidence = InternalContentReference & {
 };
 
 export type MarkdownNode = {
+  align?: Array<"left" | "center" | "right" | null>;
   alt?: string;
   children?: MarkdownNode[];
   depth?: number;
