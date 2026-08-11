@@ -9,6 +9,7 @@ import { validateContentMediaReferences } from "../build/validate-media-referenc
 import {
   extractMarkdownImageReferences,
   resolveContentMediaPath,
+  resolveContentVideoPath,
 } from "../lib/content/media-references.ts";
 import { getMarkdownContentImages } from "../lib/content/media.ts";
 
@@ -127,11 +128,17 @@ test("accepts exact formal references and leaves root staging media unowned", as
     ]);
     assert.deepEqual(references, {
       archivedImages: 3,
+      archivedVideos: 0,
+      imageReferences: 3,
       referencedImages: 3,
+      referencedVideos: 0,
       references: 3,
       stagingImages: 2,
+      stagingVideos: 0,
+      videoReferences: 0,
     });
     assert.equal(media.images, 5);
+    assert.equal(media.videos, 0);
     assert.ok(media.totalBytes > 0);
   } finally {
     await rm(root, { recursive: true, force: true });
@@ -293,4 +300,26 @@ test("normalizes only safe upload URLs and permits valid HTTPS images", () => {
       reference,
     );
   }
+});
+
+test("keeps MP4 declarations out of image loading and resolves only local video paths", async () => {
+  const sourcePath = "content/posts/media-owner.md";
+  const markdown =
+    '![完整画面说明](/uploads/media-owner/demo.mp4 "操作演示")\n\n![图片](/uploads/building-a-maintainable-blog/content-delivery-pipeline.webp)';
+  assert.deepEqual(
+    extractMarkdownImageReferences(markdown).map(({ url }) => url),
+    ["/uploads/building-a-maintainable-blog/content-delivery-pipeline.webp"],
+  );
+  assert.equal(
+    resolveContentVideoPath("/uploads/media-owner/demo.mp4", sourcePath),
+    "public/uploads/media-owner/demo.mp4",
+  );
+  assert.throws(
+    () => resolveContentVideoPath("/uploads/media-owner/demo.webm", sourcePath),
+    /本地视频.*\.mp4/u,
+  );
+  const images = await getMarkdownContentImages(markdown, sourcePath);
+  assert.deepEqual(Object.keys(images), [
+    "/uploads/building-a-maintainable-blog/content-delivery-pipeline.webp",
+  ]);
 });

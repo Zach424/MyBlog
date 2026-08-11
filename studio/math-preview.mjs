@@ -50,6 +50,30 @@ export function hasPotentialStudioDiagram(markdown) {
   return false;
 }
 
+export function hasPotentialStudioVideo(markdown) {
+  let fenceCharacter = "";
+  let fenceLength = 0;
+
+  for (const sourceLine of textValue(markdown).split(/\r?\n/u)) {
+    const line = sourceLine.replace(/^[ \t]*(?:>[ \t]*)+/u, "");
+    const fence = /^[ \t]*(`{3,}|~{3,})/u.exec(line);
+    if (fenceCharacter) {
+      if (fence && fence[1][0] === fenceCharacter && fence[1].length >= fenceLength) {
+        fenceCharacter = "";
+        fenceLength = 0;
+      }
+      continue;
+    }
+    if (fence) {
+      fenceCharacter = fence[1][0];
+      fenceLength = fence[1].length;
+      continue;
+    }
+    if (/!\[[^\]]*\]\([^\r\n)]*\.mp4(?:[?#\s)]|$)/iu.test(line)) return true;
+  }
+  return false;
+}
+
 function hasPotentialStudioCallout(markdown) {
   let fenceCharacter = "";
   let fenceLength = 0;
@@ -81,7 +105,8 @@ export function hasPotentialStudioRichMarkdown(markdown) {
   return (
     hasPotentialStudioMath(markdown) ||
     hasPotentialStudioCallout(markdown) ||
-    hasPotentialStudioDiagram(markdown)
+    hasPotentialStudioDiagram(markdown) ||
+    hasPotentialStudioVideo(markdown)
   );
 }
 
@@ -128,8 +153,9 @@ export function getStudioMathPreviewStatus(state) {
       if (state.formulaCount > 0) evidence.push(`${state.formulaCount} 个公式`);
       if (state.calloutCount > 0) evidence.push(`${state.calloutCount} 个信息块`);
       if (state.diagramCount > 0) evidence.push(`${state.diagramCount} 张图表`);
+      if (state.videoCount > 0) evidence.push(`${state.videoCount} 段视频`);
       return {
-        detail: "这里与正式页面共享 remark、rehype、受限 KaTeX、Callout 与 Mermaid 服务端渲染配置。",
+        detail: "这里与正式页面共享 remark、rehype、受限 KaTeX、Callout、Mermaid 与本地视频渲染配置。",
         label: "RICH MARKDOWN / VERIFIED",
         title: `${evidence.join("、")}已按生产规则渲染`,
       };
@@ -137,10 +163,15 @@ export function getStudioMathPreviewStatus(state) {
     case "invalid": {
       const line = state.issue?.line ? `第 ${state.issue.line} 行：` : "";
       const isDiagram = state.issue?.kind === "diagram";
+      const isVideo = state.issue?.kind === "video";
       return {
         detail: `${line}${state.issue?.message || "请检查增强 Markdown 语法。"}`,
-        label: isDiagram ? "DIAGRAM / NEEDS FIX" : "FORMULA / NEEDS FIX",
-        title: isDiagram ? "图表尚不能发布" : "公式尚不能发布",
+        label: isVideo
+          ? "VIDEO / NEEDS FIX"
+          : isDiagram
+            ? "DIAGRAM / NEEDS FIX"
+            : "FORMULA / NEEDS FIX",
+        title: isVideo ? "视频尚不能发布" : isDiagram ? "图表尚不能发布" : "公式尚不能发布",
       };
     }
     case "unavailable":
@@ -184,6 +215,7 @@ export function createStudioMathPreviewTemplate({
         calloutCount: 0,
         diagramCount: 0,
         formulaCount: 0,
+        videoCount: 0,
         html: "",
         issue: undefined,
         status: "preparing",
@@ -230,6 +262,7 @@ export function createStudioMathPreviewTemplate({
           calloutCount: 0,
           diagramCount: 0,
           formulaCount: 0,
+          videoCount: 0,
           html: "",
           issue: undefined,
           status: "plain",
@@ -258,6 +291,7 @@ export function createStudioMathPreviewTemplate({
             calloutCount: result.calloutCount,
             diagramCount: result.diagramCount,
             formulaCount: result.formulaCount,
+            videoCount: result.videoCount,
             html: result.html,
             issue: undefined,
             status: "ready",
@@ -267,6 +301,7 @@ export function createStudioMathPreviewTemplate({
             calloutCount: 0,
             diagramCount: 0,
             formulaCount: 0,
+            videoCount: 0,
             html: "",
             issue: result.issue,
             status: "invalid",
@@ -279,6 +314,7 @@ export function createStudioMathPreviewTemplate({
           calloutCount: 0,
           diagramCount: 0,
           formulaCount: 0,
+          videoCount: 0,
           html: "",
           issue: undefined,
           status: "unavailable",

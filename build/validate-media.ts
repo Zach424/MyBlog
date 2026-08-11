@@ -5,8 +5,12 @@ import {
   isSupportedImageExtension,
   SUPPORTED_IMAGE_EXTENSIONS,
 } from "../lib/media-policy.ts";
+import {
+  inspectVideoFile,
+  isSupportedVideoExtension,
+} from "../lib/video-policy.ts";
 
-async function imagePaths(directory: string): Promise<string[]> {
+async function mediaPaths(directory: string): Promise<string[]> {
   const entries = await readdir(directory, { withFileTypes: true });
   const paths: string[] = [];
 
@@ -18,15 +22,18 @@ async function imagePaths(directory: string): Promise<string[]> {
       throw new Error(`[media] ${absolutePath}: public/uploads 不允许符号链接`);
     }
     if (entry.isDirectory()) {
-      paths.push(...(await imagePaths(absolutePath)));
+      paths.push(...(await mediaPaths(absolutePath)));
       continue;
     }
     if (!entry.isFile()) {
-      throw new Error(`[media] ${absolutePath}: public/uploads 只允许目录和普通图片文件`);
+      throw new Error(`[media] ${absolutePath}: public/uploads 只允许目录和普通媒体文件`);
     }
-    if (!isSupportedImageExtension(path.extname(entry.name))) {
+    if (
+      !isSupportedImageExtension(path.extname(entry.name)) &&
+      !isSupportedVideoExtension(path.extname(entry.name))
+    ) {
       throw new Error(
-        `[media] ${absolutePath}: public/uploads 只允许 ${SUPPORTED_IMAGE_EXTENSIONS.join(", ")} 图片`,
+        `[media] ${absolutePath}: public/uploads 只允许 ${SUPPORTED_IMAGE_EXTENSIONS.join(", ")} 图片和 .mp4 视频`,
       );
     }
     paths.push(absolutePath);
@@ -44,7 +51,7 @@ export async function listMediaRepositoryFiles(projectRoot: string) {
     throw error;
   }
 
-  return (await imagePaths(uploadsDirectory)).map((absolutePath) =>
+  return (await mediaPaths(uploadsDirectory)).map((absolutePath) =>
     path.relative(projectRoot, absolutePath).replaceAll("\\", "/"),
   );
 }
@@ -52,16 +59,17 @@ export async function listMediaRepositoryFiles(projectRoot: string) {
 export async function validateMediaRepository(projectRoot: string) {
   const paths = await listMediaRepositoryFiles(projectRoot);
   const inspections = await Promise.all(
-    paths.map((sourcePath) =>
-      inspectMediaFile(
-        path.join(projectRoot, ...sourcePath.split("/")),
-        sourcePath,
-      ),
-    ),
+    paths.map((sourcePath) => {
+      const absolutePath = path.join(projectRoot, ...sourcePath.split("/"));
+      return isSupportedVideoExtension(path.extname(sourcePath))
+        ? inspectVideoFile(absolutePath, sourcePath)
+        : inspectMediaFile(absolutePath, sourcePath);
+    }),
   );
 
   return {
-    images: inspections.length,
+    images: paths.filter((sourcePath) => isSupportedImageExtension(path.extname(sourcePath))).length,
     totalBytes: inspections.reduce((total, inspection) => total + inspection.bytes, 0),
+    videos: paths.filter((sourcePath) => isSupportedVideoExtension(path.extname(sourcePath))).length,
   };
 }

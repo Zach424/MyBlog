@@ -43,6 +43,7 @@ export type MarkdownNode = {
   depth?: number;
   identifier?: string;
   lang?: string;
+  title?: string;
   position?: {
     end?: {
       offset?: number;

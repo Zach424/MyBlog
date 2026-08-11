@@ -3,7 +3,11 @@ import { loadContentRepository } from "./validate-content.ts";
 import {
   extractMarkdownImageReferences,
   resolveContentMediaPath,
+  resolveContentVideoPath,
 } from "../lib/content/media-references.ts";
+import { extractMarkdownVideos } from "../lib/markdown-video.ts";
+import { isSupportedVideoExtension } from "../lib/video-policy.ts";
+import path from "node:path";
 import {
   ContentValidationError,
   type ContentRecord,
@@ -11,6 +15,7 @@ import {
 
 type RecordMediaReference = {
   alt?: string;
+  kind: "image" | "video";
   label: string;
   url: string;
 };
@@ -19,13 +24,20 @@ function recordMediaReferences(record: ContentRecord): RecordMediaReference[] {
   const bodyReferences = extractMarkdownImageReferences(record.body).map(
     (reference) => ({
       alt: reference.alt,
+      kind: "image" as const,
       label: reference.line ? `正文第 ${reference.line} 行` : "正文",
       url: reference.url,
     }),
   );
+  const videoReferences = extractMarkdownVideos(record.body).map((reference) => ({
+    alt: reference.description,
+    kind: "video" as const,
+    label: reference.line ? `正文第 ${reference.line} 行` : "正文",
+    url: reference.src,
+  }));
   return record.cover
-    ? [{ label: "cover", url: record.cover }, ...bodyReferences]
-    : bodyReferences;
+    ? [{ kind: "image" as const, label: "cover", url: record.cover }, ...bodyReferences, ...videoReferences]
+    : [...bodyReferences, ...videoReferences];
 }
 
 function assertArchivedOwnership(
@@ -57,23 +69,29 @@ export async function validateContentMediaReferences(projectRoot: string) {
   const mediaFileSet = new Set(mediaFiles);
   const ownersByPath = new Map<string, Set<string>>();
   let references = 0;
+  let imageReferences = 0;
+  let videoReferences = 0;
 
   for (const record of [...posts, ...projects]) {
     for (const reference of recordMediaReferences(record)) {
-      if (reference.alt !== undefined && !reference.alt.trim()) {
+      if (reference.kind === "image" && reference.alt !== undefined && !reference.alt.trim()) {
         throw new ContentValidationError(
           record.sourcePath,
           `${reference.label}图片替代文本不能为空；请在 Markdown 的 ![替代文本](图片地址) 中描述图片内容`,
         );
       }
-      const targetPath = resolveContentMediaPath(reference.url, record.sourcePath);
+      const targetPath = reference.kind === "video"
+        ? resolveContentVideoPath(reference.url, record.sourcePath)
+        : resolveContentMediaPath(reference.url, record.sourcePath);
       if (!targetPath) continue;
       references += 1;
+      if (reference.kind === "video") videoReferences += 1;
+      else imageReferences += 1;
       assertArchivedOwnership(record, targetPath, reference.label);
       if (!mediaFileSet.has(targetPath)) {
         throw new ContentValidationError(
           record.sourcePath,
-          `${reference.label}引用的本地图片不存在或大小写不一致：/${targetPath.slice("public/".length)}`,
+          `${reference.label}引用的本地${reference.kind === "video" ? "视频" : "图片"}不存在或大小写不一致：/${targetPath.slice("public/".length)}`,
         );
       }
       const owners = ownersByPath.get(targetPath) ?? new Set<string>();
@@ -94,9 +112,14 @@ export async function validateContentMediaReferences(projectRoot: string) {
   }
 
   return {
-    archivedImages: archivedFiles.length,
-    referencedImages: ownersByPath.size,
+    archivedImages: archivedFiles.filter((mediaPath) => !isSupportedVideoExtension(path.extname(mediaPath))).length,
+    archivedVideos: archivedFiles.filter((mediaPath) => isSupportedVideoExtension(path.extname(mediaPath))).length,
+    imageReferences,
+    referencedImages: [...ownersByPath.keys()].filter((mediaPath) => !isSupportedVideoExtension(path.extname(mediaPath))).length,
+    referencedVideos: [...ownersByPath.keys()].filter((mediaPath) => isSupportedVideoExtension(path.extname(mediaPath))).length,
     references,
-    stagingImages: mediaFiles.length - archivedFiles.length,
+    stagingImages: mediaFiles.filter((mediaPath) => mediaPath.slice("public/uploads/".length).split("/").length < 2 && !isSupportedVideoExtension(path.extname(mediaPath))).length,
+    stagingVideos: mediaFiles.filter((mediaPath) => mediaPath.slice("public/uploads/".length).split("/").length < 2 && isSupportedVideoExtension(path.extname(mediaPath))).length,
+    videoReferences,
   };
 }

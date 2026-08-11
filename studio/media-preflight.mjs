@@ -6,6 +6,14 @@ export const STUDIO_MEDIA_BUDGET = Object.freeze({
   maxAnimationPixels: 80_000_000,
 });
 
+export const STUDIO_VIDEO_BUDGET = Object.freeze({
+  maxBytes: 12 * 1024 * 1024,
+  maxDurationSeconds: 90,
+  maxHeight: 1080,
+  maxPixels: 1920 * 1080,
+  maxWidth: 1920,
+});
+
 export const STUDIO_SUPPORTED_IMAGE_EXTENSIONS = Object.freeze([
   ".avif",
   ".gif",
@@ -16,6 +24,7 @@ export const STUDIO_SUPPORTED_IMAGE_EXTENSIONS = Object.freeze([
 ]);
 
 export const STUDIO_IMAGE_ACCEPT = STUDIO_SUPPORTED_IMAGE_EXTENSIONS.join(",");
+export const STUDIO_SUPPORTED_VIDEO_EXTENSIONS = Object.freeze([".mp4"]);
 
 const FORMAT_BY_EXTENSION = Object.freeze({
   ".avif": "avif",
@@ -201,6 +210,41 @@ async function decodeImageInBrowser(file) {
   }
 }
 
+async function decodeVideoInBrowser(file) {
+  if (!globalThis.document?.createElement || !globalThis.URL?.createObjectURL) {
+    throw new Error("当前浏览器不支持本地视频元数据预检");
+  }
+  const video = globalThis.document.createElement("video");
+  const source = globalThis.URL.createObjectURL(file);
+  video.preload = "metadata";
+  return new Promise((resolve, reject) => {
+    const timeout = globalThis.setTimeout?.(() => {
+      cleanup();
+      reject(new Error("读取视频元数据超时"));
+    }, 10_000);
+    const cleanup = () => {
+      if (timeout !== undefined) globalThis.clearTimeout?.(timeout);
+      video.removeAttribute?.("src");
+      video.load?.();
+      globalThis.URL.revokeObjectURL(source);
+    };
+    video.onloadedmetadata = () => {
+      const result = {
+        durationSeconds: video.duration,
+        height: video.videoHeight,
+        width: video.videoWidth,
+      };
+      cleanup();
+      resolve(result);
+    };
+    video.onerror = () => {
+      cleanup();
+      reject(new Error("浏览器无法解码该 MP4"));
+    };
+    video.src = source;
+  });
+}
+
 async function digestBytesInBrowser(bytes) {
   if (!globalThis.crypto?.subtle) {
     throw new Error("当前浏览器不支持 SHA-256 媒体指纹");
@@ -240,29 +284,79 @@ function assertInspectionWithinBudget(inspection) {
   }
 }
 
+function inspectMp4Container(bytes, fileName) {
+  if (bytes.length < 16 || textAt(bytes, 4, 4) !== "ftyp") {
+    throw fileError(fileName, "MP4 容器签名无效，文件可能损坏或格式伪装");
+  }
+  const view = new DataView(bytes.buffer, bytes.byteOffset, bytes.byteLength);
+  const boxLength = view.getUint32(0);
+  if (boxLength < 16 || boxLength > bytes.length) {
+    throw fileError(fileName, "MP4 ftyp 元数据不完整");
+  }
+}
+
+function assertVideoInspectionWithinBudget(inspection) {
+  const { bytes, durationSeconds, fileName, height, width } = inspection;
+  if (bytes > STUDIO_VIDEO_BUDGET.maxBytes) {
+    throw fileError(
+      fileName,
+      `文件大小 ${formatMegabytes(bytes)} 超过 ${formatMegabytes(STUDIO_VIDEO_BUDGET.maxBytes)} 上限`,
+    );
+  }
+  if (!Number.isFinite(durationSeconds) || durationSeconds <= 0) {
+    throw fileError(fileName, "视频缺少可验证的时长信息");
+  }
+  if (durationSeconds > STUDIO_VIDEO_BUDGET.maxDurationSeconds) {
+    throw fileError(
+      fileName,
+      `视频时长 ${durationSeconds.toFixed(1)} 秒超过 ${STUDIO_VIDEO_BUDGET.maxDurationSeconds} 秒上限`,
+    );
+  }
+  if (
+    !Number.isInteger(width) ||
+    !Number.isInteger(height) ||
+    width < 1 ||
+    height < 1
+  ) {
+    throw fileError(fileName, "视频缺少可验证的整数宽高");
+  }
+  if (width > STUDIO_VIDEO_BUDGET.maxWidth || height > STUDIO_VIDEO_BUDGET.maxHeight) {
+    throw fileError(
+      fileName,
+      `视频尺寸 ${width}×${height} px 超过 ${STUDIO_VIDEO_BUDGET.maxWidth}×${STUDIO_VIDEO_BUDGET.maxHeight} px 上限`,
+    );
+  }
+  if (width * height > STUDIO_VIDEO_BUDGET.maxPixels) {
+    throw fileError(fileName, "视频单帧像素超过 1080p 上限");
+  }
+}
+
 export async function inspectStudioMediaFile(
   file,
   {
     decodeImage = decodeImageInBrowser,
+    decodeVideo = decodeVideoInBrowser,
     digestBytes = digestBytesInBrowser,
   } = {},
 ) {
   const fileName = file?.name || "未命名文件";
   const extension = extensionOf(fileName);
   const expectedFormat = FORMAT_BY_EXTENSION[extension];
-  if (!expectedFormat) {
+  const isVideo = STUDIO_SUPPORTED_VIDEO_EXTENSIONS.includes(extension);
+  if (!expectedFormat && !isVideo) {
     throw fileError(
       fileName,
-      `只允许 ${STUDIO_SUPPORTED_IMAGE_EXTENSIONS.join(", ")} 图片，当前扩展名为 ${extension || "无"}`,
+      `只允许 ${STUDIO_SUPPORTED_IMAGE_EXTENSIONS.join(", ")} 图片和 .mp4 视频，当前扩展名为 ${extension || "无"}`,
     );
   }
   if (!Number.isFinite(file?.size) || file.size < 1) {
     throw fileError(fileName, "文件为空或无法读取大小");
   }
-  if (file.size > STUDIO_MEDIA_BUDGET.maxBytes) {
+  const maxBytes = isVideo ? STUDIO_VIDEO_BUDGET.maxBytes : STUDIO_MEDIA_BUDGET.maxBytes;
+  if (file.size > maxBytes) {
     throw fileError(
       fileName,
-      `文件大小 ${formatMegabytes(file.size)} 超过 ${formatMegabytes(STUDIO_MEDIA_BUDGET.maxBytes)} 上限；请先压缩或转换为 AVIF/WebP`,
+      `文件大小 ${formatMegabytes(file.size)} 超过 ${formatMegabytes(maxBytes)} 上限${isVideo ? "" : "；请先压缩或转换为 AVIF/WebP"}`,
     );
   }
 
@@ -270,7 +364,29 @@ export async function inspectStudioMediaFile(
   try {
     bytes = new Uint8Array(await file.arrayBuffer());
   } catch (error) {
-    throw fileError(fileName, "无法读取图片字节", error);
+    throw fileError(fileName, `无法读取${isVideo ? "视频" : "图片"}字节`, error);
+  }
+  if (isVideo) {
+    inspectMp4Container(bytes, fileName);
+    let metadata;
+    try {
+      metadata = await decodeVideo(file);
+    } catch (error) {
+      throw fileError(fileName, "视频无法解码，文件可能损坏或并非浏览器兼容 MP4", error);
+    }
+    const inspection = {
+      bytes: file.size,
+      durationSeconds: Number(metadata?.durationSeconds),
+      extension,
+      fileName,
+      format: "mp4",
+      height: Number(metadata?.height),
+      pages: 1,
+      sha256: await digestBytes(bytes),
+      width: Number(metadata?.width),
+    };
+    assertVideoInspectionWithinBudget(inspection);
+    return inspection;
   }
   const encoded = inspectEncodedFormat(bytes, fileName);
   if (encoded.format !== expectedFormat) {
@@ -479,6 +595,9 @@ export function createStudioMediaConflictChecker({
 }
 
 export function formatStudioMediaInspection(inspection) {
+  if (inspection.format === "mp4") {
+    return `MP4 · ${inspection.width}×${inspection.height} px · ${inspection.durationSeconds.toFixed(1)} 秒 · ${formatMegabytes(inspection.bytes)}`;
+  }
   const frames = inspection.pages > 1 ? ` · ${inspection.pages} 帧` : "";
   return `${inspection.format.toUpperCase()} · ${inspection.width}×${inspection.height} px${frames} · ${formatMegabytes(inspection.bytes)}`;
 }
@@ -492,6 +611,13 @@ function isStudioImageInput(target) {
   );
 }
 
+function isStudioMediaInput(target) {
+  if (!target || target.tagName !== "INPUT" || target.type !== "file") return false;
+  if (isStudioImageInput(target)) return true;
+  const extension = extensionOf(target.files?.[0]?.name ?? "");
+  return STUDIO_SUPPORTED_VIDEO_EXTENSIONS.includes(extension);
+}
+
 export function createStudioMediaPreflightHandler({
   checkConflict = async () => ({ state: "unscoped" }),
   EventConstructor = globalThis.Event,
@@ -503,8 +629,11 @@ export function createStudioMediaPreflightHandler({
 
   return async function handleStudioMediaSelection(event) {
     const input = event.target;
-    if (!isStudioImageInput(input)) return false;
-    input.accept = STUDIO_IMAGE_ACCEPT;
+    if (!isStudioMediaInput(input)) return false;
+    const videoSelection = STUDIO_SUPPORTED_VIDEO_EXTENSIONS.includes(
+      extensionOf(input.files?.[0]?.name ?? ""),
+    );
+    if (!videoSelection) input.accept = STUDIO_IMAGE_ACCEPT;
     const file = input.files?.[0];
     if (file && approvedFiles.has(file)) {
       approvedFiles.delete(file);
@@ -519,27 +648,29 @@ export function createStudioMediaPreflightHandler({
 
     event.preventDefault?.();
     event.stopImmediatePropagation?.();
-    report({ detail: file.name, state: "checking", title: "正在检查图片" });
+    report({ detail: file.name, state: "checking", title: `正在检查${videoSelection ? "视频" : "图片"}` });
 
     try {
       const inspection = await inspect(file);
       if (!isCurrent()) return false;
       const conflict = await checkConflict(inspection, { isCurrent });
       if (!isCurrent() || conflict.state === "stale") return false;
-      const optimizationNote = ["jpeg", "png"].includes(inspection.format)
+      const optimizationNote = inspection.format === "mp4"
+        ? "浏览器已核对容器、尺寸与时长；保存后的构建门会继续验证 H.264、无音轨和 fast start。"
+        : ["jpeg", "png"].includes(inspection.format)
         ? "Studio 会保留原格式；需要自动转 WebP 时请使用 Obsidian 发布器。"
         : "文件会按当前格式进入 Git 草稿。";
       const conflictNote = conflict.targetPath
         ? `目标 ${conflict.targetPath}。`
         : "当前是全局媒体库，未绑定条目附件目录。";
       const title = {
-        new: "新增图片预检通过",
-        "replace-confirmed": "已确认替换现有图片",
-        "replace-session-confirmed": "已确认替换本次会话图片",
-        same: "图片与已发布文件相同",
-        "same-session": "图片与本次会话文件相同",
-        unscoped: "图片预检通过",
-      }[conflict.state] ?? "图片预检通过";
+        new: `新增${videoSelection ? "视频" : "图片"}预检通过`,
+        "replace-confirmed": `已确认替换现有${videoSelection ? "视频" : "图片"}`,
+        "replace-session-confirmed": `已确认替换本次会话${videoSelection ? "视频" : "图片"}`,
+        same: `${videoSelection ? "视频" : "图片"}与已发布文件相同`,
+        "same-session": `${videoSelection ? "视频" : "图片"}与本次会话文件相同`,
+        unscoped: `${videoSelection ? "视频" : "图片"}预检通过`,
+      }[conflict.state] ?? `${videoSelection ? "视频" : "图片"}预检通过`;
       report({
         detail: `${formatStudioMediaInspection(inspection)}。${conflictNote}${optimizationNote}`,
         state: "success",
@@ -559,7 +690,7 @@ export function createStudioMediaPreflightHandler({
       report({
         detail: `${error instanceof Error ? error.message : String(error)}。请修正后重新选择。`,
         state: "error",
-        title: "图片未进入草稿",
+        title: `${videoSelection ? "视频" : "图片"}未进入草稿`,
       });
       return false;
     }

@@ -181,6 +181,18 @@ test("recognizes only an exact atomic publication bundle", () => {
   });
   assert.equal(untrackedSource.relation.status, "pending-publication");
   assert.equal(untrackedSource.pendingPublication.sourceDeletionTracked, false);
+
+  const videoAttachment = analyze({
+    pendingCommit: publishCommit({
+      changes: publishCommit().changes.map((change) =>
+        change.path.endsWith("evidence.webp")
+          ? { ...change, path: "public/uploads/publish-proof/evidence.mp4" }
+          : change,
+      ),
+    }),
+  });
+  assert.equal(videoAttachment.relation.status, "pending-publication");
+  assert.equal(videoAttachment.pendingPublication.attachmentCount, 1);
 });
 
 test("keeps ambiguous local commits out of publication recovery", () => {

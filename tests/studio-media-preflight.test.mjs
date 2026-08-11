@@ -6,6 +6,7 @@ import sharp from "sharp";
 import {
   STUDIO_IMAGE_ACCEPT,
   STUDIO_MEDIA_BUDGET,
+  STUDIO_VIDEO_BUDGET,
   STUDIO_SUPPORTED_IMAGE_EXTENSIONS,
   createStudioMediaConflictChecker,
   createStudioMediaPreflightHandler,
@@ -18,6 +19,7 @@ import {
   MEDIA_BUDGET,
   SUPPORTED_IMAGE_EXTENSIONS,
 } from "../lib/media-policy.ts";
+import { VIDEO_BUDGET } from "../lib/video-policy.ts";
 
 async function decodeWithSharp(file) {
   const metadata = await sharp(Buffer.from(await file.arrayBuffer()), {
@@ -64,6 +66,29 @@ test("keeps the Studio browser budget aligned with the authoritative media polic
     [...SUPPORTED_IMAGE_EXTENSIONS],
   );
   assert.equal(STUDIO_IMAGE_ACCEPT, ".avif,.gif,.jpeg,.jpg,.png,.webp");
+  assert.deepEqual(STUDIO_VIDEO_BUDGET, VIDEO_BUDGET);
+});
+
+test("preflights an MP4 container with browser dimensions and duration", async () => {
+  const bytes = Buffer.alloc(24);
+  bytes.writeUInt32BE(24, 0);
+  bytes.write("ftyp", 4, "ascii");
+  bytes.write("isom", 8, "ascii");
+  const inspection = await inspectStudioMediaFile(
+    browserFile(bytes, "publish-flow.mp4", "video/mp4"),
+    {
+      decodeVideo: async () => ({
+        durationSeconds: 45,
+        height: 1080,
+        width: 1920,
+      }),
+    },
+  );
+
+  assert.equal(inspection.format, "mp4");
+  assert.equal(inspection.durationSeconds, 45);
+  assert.equal(inspection.width, 1920);
+  assert.match(formatStudioMediaInspection(inspection), /MP4.*45\.0 秒/u);
 });
 
 test("recognizes and decodes every supported still image format", async () => {

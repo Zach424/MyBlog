@@ -1,6 +1,7 @@
 import { copyFile, stat } from "node:fs/promises";
 import { extname } from "node:path";
 import sharp from "sharp";
+import { inspectVideoFile } from "./video-policy.ts";
 
 // Publishing stages and then atomically renames attachments. Disabling the
 // libvips operation cache prevents Windows from retaining an input file handle.
@@ -231,13 +232,39 @@ export async function prepareMediaForPublishing(
   sourcePath: string,
   targetPath: string,
 ): Promise<MediaPreparation> {
+  const sourceExtension = extname(absoluteSourcePath).toLowerCase();
+  const targetExtension = extname(targetPath).toLowerCase();
+  if (sourceExtension === ".mp4" || targetExtension === ".mp4") {
+    if (sourceExtension !== ".mp4" || targetExtension !== ".mp4") {
+      throw mediaError(targetPath, "MP4 视频发布前后必须保持 .mp4 扩展名");
+    }
+    const sourceVideo = await inspectVideoFile(absoluteSourcePath, sourcePath);
+    await copyFile(absoluteSourcePath, absoluteStagedPath);
+    const outputVideo = await inspectVideoFile(absoluteStagedPath, targetPath);
+    const asMediaInspection = (
+      video: Awaited<ReturnType<typeof inspectVideoFile>>,
+    ): MediaInspection => ({
+      bytes: video.bytes,
+      format: "mp4/h264",
+      height: video.height,
+      pages: 1,
+      sourcePath: video.sourcePath,
+      width: video.width,
+    });
+    return {
+      bytesSaved: 0,
+      optimized: false,
+      output: asMediaInspection(outputVideo),
+      source: asMediaInspection(sourceVideo),
+    };
+  }
+
   const source = await inspectMediaWithLimits(
     absoluteSourcePath,
     sourcePath,
     SOURCE_MEDIA_LIMITS,
     true,
   );
-  const targetExtension = extname(targetPath).toLowerCase();
   const optimizable =
     source.pages === 1 && ["jpeg", "png", "webp"].includes(source.format);
 

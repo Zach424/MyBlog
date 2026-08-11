@@ -6,6 +6,7 @@ import remarkGfm from "remark-gfm";
 import remarkMath from "remark-math";
 import { rehypeMarkdownCallouts } from "@/lib/markdown-callout";
 import { rehypeMarkdownDiagrams } from "@/lib/markdown-diagram";
+import { rehypeMarkdownVideos } from "@/lib/markdown-video";
 import {
   getMarkdownFootnoteBackLabel,
   MARKDOWN_FOOTNOTE_CLOBBER_PREFIX,
@@ -26,6 +27,7 @@ export const MARKDOWN_REHYPE_OPTIONS = {
 
 export const MARKDOWN_REHYPE_PLUGINS = [
   rehypeMarkdownCallouts,
+  rehypeMarkdownVideos,
   rehypeMarkdownDiagrams,
   rehypeSlug,
   [rehypeKatex, MARKDOWN_MATH_KATEX_OPTIONS],

@@ -2,6 +2,7 @@ import { parseDocument } from "yaml";
 import { z } from "zod";
 import { getMarkdownMathIssue } from "../markdown-math.ts";
 import { getMarkdownDiagramIssue } from "../markdown-diagram.ts";
+import { getMarkdownVideoIssue } from "../markdown-video.ts";
 
 const SLUG_PATTERN = /^[a-z0-9]+(?:-[a-z0-9]+)*$/;
 const ISO_DATE_PATTERN = /^\d{4}-\d{2}-\d{2}$/;
@@ -365,6 +366,15 @@ function parseFrontmatter<T>(
     );
   }
 
+  const videoIssue = getMarkdownVideoIssue(body);
+  if (videoIssue) {
+    const location = videoIssue.line ? `正文第 ${videoIssue.line} 行` : "正文";
+    throw new ContentValidationError(
+      sourcePath,
+      `${location}视频声明无法解析：${videoIssue.message}`,
+    );
+  }
+
   return { data: result.data, body };
 }
 
@@ -483,6 +493,14 @@ export function inspectContentDraft(
       issues.push({
         field: "body",
         message: `${location} Mermaid 图表无法解析：${diagramIssue.message}`,
+      });
+    }
+    const videoIssue = getMarkdownVideoIssue(body);
+    if (videoIssue) {
+      const location = videoIssue.line ? `第 ${videoIssue.line} 行` : "正文";
+      issues.push({
+        field: "body",
+        message: `${location}视频声明无法解析：${videoIssue.message}`,
       });
     }
   }

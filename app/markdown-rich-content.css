@@ -222,6 +222,93 @@
   border-top: 0.0625rem solid var(--rule);
 }
 
+.markdown-content .markdown-video {
+  margin: 2rem 0;
+  border-block: 0.0625rem solid var(--trace-dark);
+  background: color-mix(in srgb, var(--trace) 12%, var(--paper));
+}
+
+.markdown-content .markdown-video-rail {
+  display: flex;
+  min-height: 2.4rem;
+  align-items: center;
+  justify-content: space-between;
+  gap: 0.75rem;
+  padding: 0.55rem 0.75rem;
+  border-bottom: 0.0625rem solid var(--rule);
+  color: var(--muted);
+  font: 700 0.625rem/1.4 var(--mono);
+  letter-spacing: 0.075em;
+}
+
+.markdown-content .markdown-video-kind {
+  color: var(--ink);
+}
+
+.markdown-content .markdown-video-origin::before {
+  display: inline-block;
+  width: 0.42rem;
+  height: 0.42rem;
+  margin-right: 0.45rem;
+  border-radius: 50%;
+  background: var(--signal);
+  content: "";
+}
+
+.markdown-content .markdown-video-stage {
+  display: grid;
+  min-height: clamp(12rem, 48vw, 27rem);
+  place-items: center;
+  padding: clamp(0.75rem, 3vw, 1.5rem);
+  background:
+    linear-gradient(135deg, color-mix(in srgb, var(--ink) 96%, transparent), var(--ink));
+}
+
+.markdown-content .markdown-video-player {
+  display: block;
+  width: 100%;
+  max-height: min(70vh, 42rem);
+  aspect-ratio: 16 / 9;
+  background: #050708;
+  object-fit: contain;
+}
+
+.markdown-content .markdown-video-player:focus-visible,
+.markdown-content .markdown-video-caption a:focus-visible {
+  outline: 0.1875rem solid var(--signal);
+  outline-offset: 0.1875rem;
+}
+
+.markdown-content .markdown-video-caption {
+  display: grid;
+  grid-template-columns: minmax(0, 1fr) auto;
+  gap: 0.35rem 1rem;
+  padding: 0.85rem 0.9rem 0.95rem;
+}
+
+.markdown-content .markdown-video-caption > strong {
+  color: var(--ink);
+}
+
+.markdown-content .markdown-video-caption > span:not(.markdown-video-note) {
+  grid-column: 1 / -1;
+  color: var(--muted);
+  line-height: 1.65;
+}
+
+.markdown-content .markdown-video-note {
+  grid-column: 2;
+  grid-row: 1;
+  color: var(--signal);
+  font: 700 0.625rem/1.4 var(--mono);
+  letter-spacing: 0.055em;
+  white-space: nowrap;
+}
+
+.markdown-content .markdown-video-print {
+  display: none;
+}
+
 @media print {
   .markdown-content .markdown-callout {
     break-inside: auto;
@@ -264,5 +351,41 @@
 
   .markdown-content .markdown-diagram-source {
     display: none;
+  }
+
+  .markdown-content .markdown-video {
+    break-inside: avoid-page;
+    background: var(--paper);
+  }
+
+  .markdown-content .markdown-video-player,
+  .markdown-content .markdown-video-stage {
+    display: none;
+  }
+
+  .markdown-content .markdown-video-print {
+    display: block;
+    margin: 0;
+    padding: 0 3mm 3mm;
+    font-size: 8pt;
+    overflow-wrap: anywhere;
+  }
+}
+
+@media (max-width: 32rem) {
+  .markdown-content .markdown-video-rail,
+  .markdown-content .markdown-video-caption {
+    grid-template-columns: 1fr;
+  }
+
+  .markdown-content .markdown-video-rail {
+    align-items: flex-start;
+    flex-direction: column;
+  }
+
+  .markdown-content .markdown-video-note {
+    grid-column: 1;
+    grid-row: auto;
+    white-space: normal;
   }
 }

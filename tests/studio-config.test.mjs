@@ -14,6 +14,7 @@ import {
   TAG_REGISTRY,
 } from "../lib/content/contract.ts";
 import { MEDIA_BUDGET } from "../lib/media-policy.ts";
+import { VIDEO_BUDGET } from "../lib/video-policy.ts";
 
 test("maps the publishing studio to the single Git content source", () => {
   const config = createStudioConfig("https://blog.example.test/path");
@@ -68,6 +69,8 @@ test("keeps CMS tags and required content fields aligned with the contract", () 
     assert.match(slug.hint, /先填写.*再上传/);
     assert.match(slug.hint, /首次保存后控件会锁定/);
     const body = collection.fields.find((field) => field.name === "body");
+    assert.deepEqual(body.editor_components, ["image", "code-block", "myblog-video"]);
+    assert.equal(body.video_max_file_size, VIDEO_BUDGET.maxBytes);
     assert.match(body.hint, /新增、同内容复用和同名替换.*必须确认/u);
     assert.match(body.hint, /公式使用 \$\.\.\.\$ 或 \$\$\.\.\.\$\$.*原始 Markdown.*错误行/u);
   }

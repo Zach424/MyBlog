@@ -19,6 +19,7 @@ export const FRESHNESS_OPTIONS = [
 ];
 
 export const MEDIA_MAX_FILE_SIZE = 3 * 1024 * 1024;
+export const VIDEO_MAX_FILE_SIZE = 12 * 1024 * 1024;
 export const STUDIO_ENTRY_MEDIA_FOLDER = "/public/uploads/{{fields.slug}}";
 export const STUDIO_ENTRY_PUBLIC_FOLDER = "/uploads/{{fields.slug}}";
 
@@ -143,7 +144,7 @@ export function createStudioConfig(origin) {
             ],
           },
           { label: "转载 Canonical URL", name: "canonical", widget: "string", required: false, pattern: ["^https://", "必须是完整 HTTPS URL"] },
-          { label: "正文", name: "body", widget: "markdown", modes: ["raw", "rich_text"], required: true, hint: "先填写稳定 slug 再插图；系统会识别新增、同内容复用和同名替换，替换公开图片前必须确认。公式使用 $...$ 或 $$...$$；建议在原始 Markdown 模式精确编辑，预览会按生产规则检查并指出错误行。" },
+          { label: "正文", name: "body", widget: "markdown", modes: ["raw", "rich_text"], editor_components: ["image", "code-block", "myblog-video"], video_max_file_size: VIDEO_MAX_FILE_SIZE, required: true, hint: "先填写稳定 slug 再插图；系统会识别新增、同内容复用和同名替换，替换公开图片前必须确认。公式使用 $...$ 或 $$...$$；本地静音 MP4 使用工具栏的‘本地静音视频’组件；建议在原始 Markdown 模式精确编辑，预览会按生产规则检查并指出错误行。" },
         ],
       },
       {
@@ -169,7 +170,7 @@ export function createStudioConfig(origin) {
           ...sharedFields.slice(7),
           { label: "源码地址", name: "repository", widget: "string", required: false, pattern: ["^https://", "必须是完整 HTTPS URL"] },
           { label: "演示地址", name: "demo", widget: "string", required: false, pattern: ["^https://", "必须是完整 HTTPS URL"] },
-          { label: "正文", name: "body", widget: "markdown", modes: ["raw", "rich_text"], required: true, hint: "先填写稳定 slug 再插图；系统会识别新增、同内容复用和同名替换，替换公开图片前必须确认。公式使用 $...$ 或 $$...$$；建议在原始 Markdown 模式精确编辑，预览会按生产规则检查并指出错误行。" },
+          { label: "正文", name: "body", widget: "markdown", modes: ["raw", "rich_text"], editor_components: ["image", "code-block", "myblog-video"], video_max_file_size: VIDEO_MAX_FILE_SIZE, required: true, hint: "先填写稳定 slug 再插图；系统会识别新增、同内容复用和同名替换，替换公开图片前必须确认。公式使用 $...$ 或 $$...$$；本地静音 MP4 使用工具栏的‘本地静音视频’组件；建议在原始 Markdown 模式精确编辑，预览会按生产规则检查并指出错误行。" },
         ],
       },
     ],

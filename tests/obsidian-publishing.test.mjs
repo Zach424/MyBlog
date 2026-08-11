@@ -230,6 +230,38 @@ test("normalizes Obsidian attachment links into public blog URLs", () => {
   ]);
 });
 
+test("archives a titled MP4 declaration without treating it as an image", () => {
+  const withVideo = article.replace(
+    "正文图片 ![evidence](/uploads/obsidian-evidence.png)。",
+    '![画面依次展示新建草稿、预览、提交和上线；全程无音频。](/uploads/publish-flow.mp4 "从草稿到上线")',
+  );
+  const result = prepareObsidianNote(
+    "content/inbox/obsidian-publishing.md",
+    withVideo,
+  );
+
+  assert.match(
+    result.content,
+    /!\[画面依次展示新建草稿、预览、提交和上线；全程无音频。\]\(\/uploads\/obsidian-publishing\/publish-flow\.mp4 "从草稿到上线"\)/u,
+  );
+  assert.deepEqual(result.attachments, [
+    {
+      sourcePath: "public/uploads/publish-flow.mp4",
+      targetPath: "public/uploads/obsidian-publishing/publish-flow.mp4",
+      publicUrl: "/uploads/obsidian-publishing/publish-flow.mp4",
+      usages: [
+        {
+          altSources: ["authored"],
+          altTexts: ["画面依次展示新建草稿、预览、提交和上线；全程无音频。"],
+          occurrences: 1,
+          role: "video",
+          sourceLines: [16],
+        },
+      ],
+    },
+  ]);
+});
+
 test("archives and rewrites an Obsidian cover with the same media transaction", () => {
   const withCover = article.replace(
     "featured: false",
@@ -573,7 +605,7 @@ test("rejects unsafe locations, unstable slugs, and mismatched metadata", () => 
       "content/inbox/obsidian-publishing.md",
       article.replace("obsidian-evidence.png", "diagram.svg"),
     ),
-    /仅支持常见图片附件/,
+    /仅支持常见图片和 MP4 视频附件/,
   );
 });
 
@@ -752,14 +784,14 @@ test("ships one digest-bound desktop Obsidian plugin bundle without hidden shell
   ]);
   const bundle = JSON.parse(bundleSource);
   assert.equal(JSON.parse(manifest).isDesktopOnly, true);
-  assert.equal(JSON.parse(manifest).version, "1.41.0");
+  assert.equal(JSON.parse(manifest).version, "1.42.0");
   assert.equal(JSON.parse(manifest).minAppVersion, "1.5.7");
   assert.deepEqual(Object.keys(bundle), ["version", "algorithm", "plugin", "files"]);
   assert.equal(bundle.version, 1);
   assert.equal(bundle.algorithm, "sha256");
   assert.deepEqual(bundle.plugin, {
     id: "myblog-publisher",
-    version: "1.41.0",
+    version: "1.42.0",
   });
   assert.deepEqual(
     bundle.files,

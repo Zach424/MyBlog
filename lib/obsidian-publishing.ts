@@ -13,7 +13,8 @@ export type ObsidianContentKind = "post" | "project";
 
 const INBOX_PREFIX = "content/inbox/";
 const SLUG_PATTERN = /^[a-z0-9]+(?:-[a-z0-9]+)*$/u;
-const IMAGE_EXTENSION_PATTERN = /\.(avif|gif|jpe?g|png|webp)$/iu;
+const ATTACHMENT_EXTENSION_PATTERN = /\.(avif|gif|jpe?g|mp4|png|webp)$/iu;
+const VIDEO_EXTENSION_PATTERN = /\.mp4$/iu;
 
 export interface PreparedAttachment {
   sourcePath: string;
@@ -26,7 +27,7 @@ export interface PreparedAttachmentUsage {
   altSources: PreparedAttachmentAltSource[];
   altTexts: string[];
   occurrences: number;
-  role: "body" | "cover";
+  role: "body" | "cover" | "video";
   sourceLines: number[];
 }
 
@@ -91,7 +92,7 @@ function sourceAttachmentPath(value: string, allowBareName: boolean) {
   decoded = decoded.replace(/^(?:\.\.\/|\.\/)+/u, "").replace(/^\//u, "");
   if (allowBareName && !decoded.includes("/")) decoded = `public/uploads/${decoded}`;
   if (!decoded.startsWith("public/uploads/")) {
-    throw new Error(`本地图片附件必须位于 public/uploads：${decoded}`);
+    throw new Error(`本地媒体附件必须位于 public/uploads：${decoded}`);
   }
 
   const segments = decoded.split("/");
@@ -102,16 +103,16 @@ function sourceAttachmentPath(value: string, allowBareName: boolean) {
     throw new Error(`附件路径不安全：${decoded}`);
   }
 
-  if (!IMAGE_EXTENSION_PATTERN.test(segments.at(-1) ?? "")) {
-    throw new Error(`仅支持常见图片附件：${decoded}`);
+  if (!ATTACHMENT_EXTENSION_PATTERN.test(segments.at(-1) ?? "")) {
+    throw new Error(`仅支持常见图片和 MP4 视频附件：${decoded}`);
   }
   return decoded;
 }
 
 function stableAttachmentName(sourcePath: string) {
   const fileName = sourcePath.split("/").at(-1) ?? "";
-  const extensionMatch = IMAGE_EXTENSION_PATTERN.exec(fileName);
-  if (!extensionMatch) throw new Error(`附件缺少受支持的图片扩展名：${sourcePath}`);
+  const extensionMatch = ATTACHMENT_EXTENSION_PATTERN.exec(fileName);
+  if (!extensionMatch) throw new Error(`附件缺少受支持的媒体扩展名：${sourcePath}`);
 
   const extension = extensionMatch[1].toLocaleLowerCase("en-US");
   const originalBase = fileName.slice(0, -extensionMatch[0].length);
@@ -179,6 +180,13 @@ function normalizeAttachmentLinks(
       return undefined;
     }
     if (!sourcePath) return undefined;
+    const isVideo = VIDEO_EXTENSION_PATTERN.test(sourcePath);
+    if (role === "cover" && isVideo) {
+      const message = `封面必须是图片，不能使用 MP4：${sourcePath}`;
+      if (!onIssue) throw new Error(message);
+      onIssue(message);
+      return undefined;
+    }
 
     const targetPath = `public/uploads/${slug}/${stableAttachmentName(sourcePath)}`;
     const existingSource = targetSources.get(targetPath);
@@ -234,11 +242,13 @@ function normalizeAttachmentLinks(
   const content = transformMarkdownProse(
     withNormalizedCover,
     (segment, segmentOffset) => segment.replace(
-      /!\[([^\]]*)\]\(([^\s)]+)(?:\s+["'][^"']*["'])?\)|!\[\[([^|\]]+?)(?:\|([^\]]+))?\]\]/gu,
+      /!\[([^\]]*)\]\(([^\s)]+)(?:\s+(?:"([^"]*)"|'([^']*)'))?\)|!\[\[([^|\]]+?)(?:\|([^\]]+))?\]\]/gu,
       (
         match,
         markdownAlt: string | undefined,
         markdownReference: string | undefined,
+        markdownDoubleTitle: string | undefined,
+        markdownSingleTitle: string | undefined,
         wikiReference: string | undefined,
         wikiDisplay: string | undefined,
         matchOffset: number,
@@ -260,14 +270,15 @@ function normalizeAttachmentLinks(
         const attachment = register(
           reference,
           wikiReference !== undefined,
-          "body",
+          VIDEO_EXTENSION_PATTERN.test(reference) ? "video" : "body",
           normalizedSourceLine(segmentOffset + matchOffset),
           altText,
           altSource,
         );
         if (!attachment) return match;
         if (markdownReference !== undefined) {
-          return `![${altText}](${attachment.publicUrl})`;
+          const markdownTitle = markdownDoubleTitle ?? markdownSingleTitle;
+          return `![${altText}](${attachment.publicUrl}${markdownTitle === undefined ? "" : ` "${markdownTitle}"`})`;
         }
         return `![${altText}](${attachment.publicUrl})`;
       },

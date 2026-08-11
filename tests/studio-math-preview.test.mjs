@@ -6,6 +6,7 @@ import {
   hasPotentialStudioDiagram,
   hasPotentialStudioRichMarkdown,
   hasPotentialStudioMath,
+  hasPotentialStudioVideo,
   registerStudioMathPreview,
   requestStudioMathPreview,
   STUDIO_MATH_PREVIEW_DELAY_MS,
@@ -73,13 +74,19 @@ test("requests only potential rich Markdown from the same-origin preview endpoin
   assert.equal(hasPotentialStudioDiagram("```mermaid\nflowchart LR\nA --> B\n```"), true);
   assert.equal(hasPotentialStudioDiagram("```md\n```mermaid\nA --> B\n```\n```"), false);
   assert.equal(hasPotentialStudioRichMarkdown("~~~Mermaid\nsequenceDiagram\nA->>B: hi\n~~~"), true);
+  assert.equal(
+    hasPotentialStudioVideo('![完整画面说明](/uploads/demo/demo.mp4 "演示")'),
+    true,
+  );
+  assert.equal(hasPotentialStudioVideo('`![示例](/uploads/demo/demo.mp4 "代码")`'), true);
+  assert.equal(hasPotentialStudioVideo('```md\n![示例](/uploads/demo/demo.mp4 "代码")\n```'), false);
 
   const calls = [];
   const result = await requestStudioMathPreview("$E = mc^2$", {
     fetcher: async (url, options) => {
       calls.push({ options, url });
       return {
-        json: async () => ({ diagramCount: 0, formulaCount: 1, html: "<span>math</span>", ok: true }),
+      json: async () => ({ diagramCount: 0, formulaCount: 1, html: "<span>math</span>", ok: true, videoCount: 0 }),
         ok: true,
         status: 200,
       };
@@ -97,7 +104,7 @@ test("keeps plain Markdown on the native preview and exposes recoverable rich-co
     abortControllerFactory: () => ({ abort() {}, signal: undefined }),
     createClass: (specification) => specification,
     fetcher: async () => ({
-      json: async () => ({ diagramCount: 1, formulaCount: 2, html: "<div class=\"katex\">ok</div>", ok: true }),
+      json: async () => ({ diagramCount: 1, formulaCount: 2, html: "<div class=\"katex\">ok</div>", ok: true, videoCount: 1 }),
       ok: true,
       status: 200,
     }),
@@ -135,8 +142,9 @@ test("keeps plain Markdown on the native preview and exposes recoverable rich-co
   assert.equal(context.state.status, "ready");
   assert.equal(context.state.formulaCount, 2);
   assert.equal(context.state.diagramCount, 1);
+  assert.equal(context.state.videoCount, 1);
   const readyTree = template.render.call(context);
-  assert.match(textContent(readyTree), /2 个公式、1 张图表已按生产规则渲染/u);
+  assert.match(textContent(readyTree), /2 个公式、1 张图表、1 段视频已按生产规则渲染/u);
 
   context.state = {
     ...context.state,
@@ -154,6 +162,10 @@ test("keeps plain Markdown on the native preview and exposes recoverable rich-co
   assert.equal(
     getStudioMathPreviewStatus({ issue: { kind: "diagram" }, status: "invalid" }).label,
     "DIAGRAM / NEEDS FIX",
+  );
+  assert.equal(
+    getStudioMathPreviewStatus({ issue: { kind: "video" }, status: "invalid" }).label,
+    "VIDEO / NEEDS FIX",
   );
 });
 

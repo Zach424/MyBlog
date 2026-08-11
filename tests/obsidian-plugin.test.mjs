@@ -106,7 +106,7 @@ async function createPluginHarness({
   readActiveFilePathAt = 1,
   renameFailure,
   renamePostcondition = "exact",
-  runtimePluginVersion = "1.41.0",
+  runtimePluginVersion = "1.42.0",
   throwSpawnAt = [],
 } = {}) {
   const source = await readFile(pluginUrl, "utf8");
@@ -770,7 +770,7 @@ function inboxReadinessReport({
   reportDate = "2026-08-06",
   safety = {},
   sourceContent = filenameOwnedDraft(),
-  version = 6,
+  version = 7,
 } = {}) {
   const sourcePath = "content/inbox/current-draft.md";
   const resolvedEntry = {
@@ -1174,7 +1174,7 @@ function deliveryTriageReport({
 
 function authorDoctorReport({
   bundleStatus = "verified",
-  pluginVersion = "1.41.0",
+  pluginVersion = "1.42.0",
   provenanceStatus = "verified",
 } = {}) {
   const bundleFiles = ["main.js", "manifest.json", "styles.css"].map(
@@ -3263,7 +3263,7 @@ test("renders a versioned maintenance ledger and opens an exact Vault note", asy
     createPluginHarness(),
   ]);
   const manifest = JSON.parse(manifestSource);
-  assert.equal(manifest.version, "1.41.0");
+  assert.equal(manifest.version, "1.42.0");
   assert.equal(manifest.minAppVersion, "1.5.7");
   assert.equal(manifest.isDesktopOnly, true);
   assert.match(styles, /^\.myblog-draft-create \{/mu);
@@ -3957,7 +3957,7 @@ test("holds every Git writer on an explicit runtime and disk plugin version mism
       .join(" ");
     assert.equal(elementsByTag(modal, "button").length, 0);
     assert.match(text, /PLUGIN RELOAD REQUIRED/u);
-    assert.match(text, /RUNNING CODE.*1\.41\.0.*RUNTIME MANIFEST.*1\.40\.0.*DISK.*1\.41\.0/su);
+    assert.match(text, /RUNNING CODE.*1\.42\.0.*RUNTIME MANIFEST.*1\.40\.0.*DISK.*1\.42\.0/su);
     assert.match(text, /关闭再启用 MyBlog Publisher.*重启 Obsidian/su);
     assert.match(text, /发布当前草稿并同步 GitHub.*未启动/su);
   });
@@ -3987,10 +3987,10 @@ test("holds every Git writer on an explicit runtime and disk plugin version mism
 });
 
 test("keeps future disk patch and minor plugin versions structured for reload guidance", async (t) => {
-  for (const diskVersion of ["1.41.1", "1.42.0"]) {
+  for (const diskVersion of ["1.42.1", "1.43.0"]) {
     await t.test(diskVersion, async () => {
       const harness = await createPluginHarness({
-        runtimePluginVersion: "1.41.0",
+        runtimePluginVersion: "1.42.0",
       });
       findCommand(harness, "inspect-author-environment").checkCallback(false);
       harness.spawned[0].child.stdout.emit(
@@ -4014,9 +4014,9 @@ test("keeps future disk patch and minor plugin versions structured for reload gu
 
   await t.test("forged future version evidence", async () => {
     const harness = await createPluginHarness({
-      runtimePluginVersion: "1.41.0",
+      runtimePluginVersion: "1.42.0",
     });
-    const report = authorDoctorReport({ pluginVersion: "1.41.0" });
+    const report = authorDoctorReport({ pluginVersion: "1.42.0" });
     report.checks.at(-1).observed = "myblog-publisher@9.9.9 · desktop";
     findCommand(harness, "inspect-author-environment").checkCallback(false);
     harness.spawned[0].child.stdout.emit(
@@ -4074,7 +4074,7 @@ test("fails recovery closed when the disk plugin version identity is unavailable
     (check) => check.id === "publisher-plugin",
   );
   publisher.observed = "missing";
-  publisher.resolution = "重新安装或启用 MyBlog Publisher 1.41.0";
+  publisher.resolution = "重新安装或启用 MyBlog Publisher 1.42.0";
   publisher.status = "attention";
   const bundle = report.checks.find(
     (check) => check.id === "publisher-bundle",

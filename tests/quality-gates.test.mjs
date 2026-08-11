@@ -168,7 +168,7 @@ test("applies the production security and cache baseline", async () => {
 
 test("serves Studio, its maintenance queue, and media inventory through explicit Next.js routes", async () => {
   await assert.rejects(access(new URL("../public/studio", import.meta.url)));
-  const [studio, maintenancePage, maintenanceModule, maintenanceStyles, maintenanceResponse, config, manifest, preflight, stableSlugWidget, entryPreflightModule, mathPreviewModule, preview, katexStyles, runtime, unknown] = await Promise.all([
+  const [studio, maintenancePage, maintenanceModule, maintenanceStyles, maintenanceResponse, config, manifest, preflight, stableSlugWidget, entryPreflightModule, mathPreviewModule, videoEditorModule, preview, katexStyles, runtime, unknown] = await Promise.all([
     request("/studio"),
     request("/studio/maintenance"),
     request("/studio/maintenance.mjs"),
@@ -180,6 +180,7 @@ test("serves Studio, its maintenance queue, and media inventory through explicit
     request("/studio/stable-slug-widget.mjs"),
     request("/studio/entry-preflight.mjs"),
     request("/studio/math-preview.mjs"),
+    request("/studio/video-editor.mjs"),
     request("/studio/preview.css"),
     request("/studio/katex-0.16.47.css"),
     request("/studio/editor-runtime-3.14.1.js"),
@@ -236,6 +237,8 @@ test("serves Studio, its maintenance queue, and media inventory through explicit
   assert.equal(entryPreflightModule.headers.get("cache-control"), "no-store");
   assert.match(await mathPreviewModule.text(), /registerStudioMathPreview/);
   assert.equal(mathPreviewModule.headers.get("cache-control"), "no-store");
+  assert.match(await videoEditorModule.text(), /registerStudioVideoEditor/);
+  assert.equal(videoEditorModule.headers.get("cache-control"), "no-store");
   const previewCss = await preview.text();
   assert.match(previewCss, /--canvas:/);
   assert.match(previewCss, /\*::before,[\s\S]*?box-sizing: border-box/u);

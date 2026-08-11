@@ -182,6 +182,7 @@
       import { registerStudioMathPreview } from "/studio/math-preview.mjs";
       import { installStudioMediaPreflight } from "/studio/media-preflight.mjs";
       import { registerStableSlugWidget } from "/studio/stable-slug-widget.mjs";
+      import { registerStudioVideoEditor } from "/studio/video-editor.mjs";
 
       installStudioMediaPreflight();
 
@@ -193,6 +194,7 @@
         }
         try {
           registerStableSlugWidget();
+          registerStudioVideoEditor();
           registerStudioMathPreview();
         } catch (error) {
           document.querySelector(".loading-shell span").textContent =

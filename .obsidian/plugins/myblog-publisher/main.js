@@ -26,9 +26,9 @@ const CONTENT_DELIVERY_TRIAGE_REPORT_VERSION = 1;
 const AUTHOR_DOCTOR_REPORT_VERSION = 3;
 const AUTHOR_DOCTOR_PLUGIN_BUNDLE_VERSION = 1;
 const AUTHOR_DOCTOR_PLUGIN_PROVENANCE_VERSION = 1;
-const INBOX_READINESS_REPORT_VERSION = 6;
+const INBOX_READINESS_REPORT_VERSION = 7;
 const AUTHOR_DOCTOR_NODE_ENGINE = ">=22.13.0";
-const AUTHOR_DOCTOR_PLUGIN_VERSION = "1.41.0";
+const AUTHOR_DOCTOR_PLUGIN_VERSION = "1.42.0";
 const CURRENT_DRAFT_INTENT_RUN_SCOPE = Symbol("current-draft-intent");
 const PRODUCTION_CONTENT_CONVERGENCE_RUN_SCOPE = Symbol(
   "production-content-convergence",
@@ -247,6 +247,7 @@ function mediaFormatForPath(path) {
     gif: "gif",
     jpeg: "jpeg",
     jpg: "jpeg",
+    mp4: "mp4/h264",
     png: "png",
     webp: "webp",
   }[extension];
@@ -472,7 +473,7 @@ function parseInboxReadinessReport(output, expectedSourcePath) {
     }
     const attachmentSources = new Set();
     const attachmentTargets = new Set();
-    const mediaUsageRoleOrder = new Map([["cover", 0], ["body", 1]]);
+    const mediaUsageRoleOrder = new Map([["cover", 0], ["body", 1], ["video", 2]]);
     const emptyAltAttachmentSources = new Set();
     const filenameFallbackAttachmentSources = new Set();
     const unpreparedAttachmentSources = new Set();
@@ -486,7 +487,7 @@ function parseInboxReadinessReport(output, expectedSourcePath) {
         attachmentLabel,
       );
       if (!Array.isArray(attachment.usages) || attachment.usages.length === 0) {
-        valueError(`${attachmentLabel}.usages`, "必须包含至少一个 cover 或 body 来源");
+        valueError(`${attachmentLabel}.usages`, "必须包含至少一个 cover、body 或 video 来源");
       }
       let previousRoleOrder = -1;
       for (const [usageIndex, usage] of attachment.usages.entries()) {
@@ -499,10 +500,10 @@ function parseInboxReadinessReport(output, expectedSourcePath) {
         );
         const roleOrder = mediaUsageRoleOrder.get(usage.role);
         if (roleOrder === undefined) {
-          valueError(`${usageLabel}.role`, "必须是 cover 或 body");
+          valueError(`${usageLabel}.role`, "必须是 cover、body 或 video");
         }
         if (roleOrder <= previousRoleOrder) {
-          valueError(`${attachmentLabel}.usages`, "角色必须按 cover、body 排列且不能重复");
+          valueError(`${attachmentLabel}.usages`, "角色必须按 cover、body、video 排列且不能重复");
         }
         previousRoleOrder = roleOrder;
         assertInteger(usage.occurrences, `${usageLabel}.occurrences`, 1);
@@ -1968,14 +1969,14 @@ function parseContentReviewProof(output, expectedSourcePath) {
     proof.git.untrackedPaths.some(
       (path) =>
         !/^content\/inbox\/[a-z0-9]+(?:-[a-z0-9]+)*\.md$/u.test(path) &&
-        !/^public\/uploads\/[^/\u0000-\u001f\u007f]+\.(?:avif|gif|jpe?g|png|webp)$/iu.test(
+        !/^public\/uploads\/[^/\u0000-\u001f\u007f]+\.(?:avif|gif|jpe?g|mp4|png|webp)$/iu.test(
           path,
         ),
     )
   ) {
     valueError(
       "正式内容复核证据 git.untrackedPaths",
-      "只能包含稳定 inbox 草稿或未跟踪的根暂存图片",
+      "只能包含稳定 inbox 草稿或未跟踪的根暂存媒体",
     );
   }
   const untrackedSet = new Set(proof.git.untrackedPaths);
@@ -2398,7 +2399,7 @@ function parseContentPublishDeliveryReport(output) {
 
     const seenPaths = new Set();
     const attachmentPattern = new RegExp(
-      `^public/uploads/${pending.slug}/[a-z0-9]+(?:-[a-z0-9]+)*(?:-[a-f0-9]{8})?\\.(?:avif|gif|webp)$`,
+      `^public/uploads/${pending.slug}/[a-z0-9]+(?:-[a-z0-9]+)*(?:-[a-f0-9]{8})?\\.(?:avif|gif|mp4|webp)$`,
       "u",
     );
     for (const [index, change] of pending.changes.entries()) {

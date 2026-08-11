@@ -16,6 +16,11 @@ import {
   transformMarkdownUrl,
 } from "@/lib/markdown-pipeline";
 import { getMarkdownMathIssue, type MarkdownMathIssue } from "@/lib/markdown-math";
+import {
+  extractMarkdownVideos,
+  getMarkdownVideoIssue,
+  type MarkdownVideoIssue,
+} from "@/lib/markdown-video";
 
 export const STUDIO_MATH_PREVIEW_MAX_BYTES = 100_000;
 
@@ -26,9 +31,10 @@ export type StudioMathPreviewResult =
       formulaCount: number;
       html: string;
       ok: true;
+      videoCount: number;
     }
   | {
-      issue: MarkdownDiagramIssue | MarkdownMathIssue;
+      issue: MarkdownDiagramIssue | MarkdownMathIssue | MarkdownVideoIssue;
       ok: false;
     };
 
@@ -83,9 +89,12 @@ export function renderStudioMathPreview(
   if (issue) return { issue, ok: false };
   const diagramIssue = getMarkdownDiagramIssue(markdown);
   if (diagramIssue) return { issue: diagramIssue, ok: false };
+  const videoIssue = getMarkdownVideoIssue(markdown);
+  if (videoIssue) return { issue: videoIssue, ok: false };
 
   const formulaCount = extractMarkdownMathExpressions(markdown).length;
   const diagramCount = extractMarkdownDiagrams(markdown).length;
+  const videoCount = extractMarkdownVideos(markdown).length;
   const file = unified()
     .use(remarkParse)
     .use(MARKDOWN_REMARK_PLUGINS)
@@ -99,5 +108,5 @@ export function renderStudioMathPreview(
   const calloutCount = (rendered.match(/data-callout=/gu) ?? []).length;
   const html = `<div class="markdown-content" data-studio-renderer="production-pipeline">${rendered}</div>`;
 
-  return { calloutCount, diagramCount, formulaCount, html, ok: true };
+  return { calloutCount, diagramCount, formulaCount, html, ok: true, videoCount };
 }
