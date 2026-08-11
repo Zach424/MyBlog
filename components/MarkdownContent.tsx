@@ -21,6 +21,8 @@ import {
 
 const CONTENT_IMAGE_SIZES =
   "(max-width: 42rem) calc(100vw - 2rem), (max-width: 55rem) 90vw, 48rem";
+const GALLERY_IMAGE_SIZES =
+  "(max-width: 42rem) calc(100vw - 3.5rem), (max-width: 55rem) 44vw, 23rem";
 
 function createMarkdownComponents(
   localImages: Record<string, ContentImageDescriptor>,
@@ -65,17 +67,23 @@ function createMarkdownComponents(
         </MarkdownHeading>
       );
     },
-    img({ src, alt, title }) {
+    img({ src, alt, className, title }) {
       if (typeof src !== "string") return null;
       const localImage = localImages[src];
+      const galleryImage = className?.split(/\s+/u).includes("markdown-gallery-image");
+      const imageClassName = [
+        "markdown-image",
+        localImage ? "markdown-image-local" : "markdown-image-external",
+        ...(className?.split(/\s+/u).filter(Boolean) ?? []),
+      ].join(" ");
 
       if (localImage) {
         return (
           <Image
             alt={alt ?? ""}
-            className="markdown-image markdown-image-local"
+            className={imageClassName}
             height={localImage.height}
-            sizes={CONTENT_IMAGE_SIZES}
+            sizes={galleryImage ? GALLERY_IMAGE_SIZES : CONTENT_IMAGE_SIZES}
             src={localImage.src}
             title={title}
             width={localImage.width}
@@ -89,7 +97,7 @@ function createMarkdownComponents(
         // eslint-disable-next-line @next/next/no-img-element
         <img
           alt={alt ?? ""}
-          className="markdown-image markdown-image-external"
+          className={imageClassName}
           decoding="async"
           loading="lazy"
           referrerPolicy="no-referrer"

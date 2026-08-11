@@ -210,6 +210,22 @@ th, td { padding: 0.6rem; border: 1px solid var(--rule); text-align: left; }
 .markdown-content .markdown-video-note { grid-column: 2; grid-row: 1; color: var(--signal); font: 700 0.625rem/1.4 "Cascadia Code", Consolas, monospace; letter-spacing: 0.055em; white-space: nowrap; }
 .markdown-content .markdown-video-print { display: none; }
 
+.markdown-content .markdown-gallery { margin: 2rem 0; border-block: 1px solid var(--muted); background: color-mix(in srgb, var(--rule) 28%, var(--paper)); }
+.markdown-content .markdown-gallery-header { display: grid; border-bottom: 1px solid var(--rule); }
+.markdown-content .markdown-gallery-rail { display: flex; min-height: 2.4rem; align-items: center; justify-content: space-between; gap: 0.75rem; padding: 0.55rem 0.75rem; color: var(--muted); font: 700 0.625rem/1.4 "Cascadia Code", Consolas, monospace; letter-spacing: 0.075em; }
+.markdown-content .markdown-gallery-kind { color: var(--ink); }
+.markdown-content .markdown-gallery-origin::before { display: inline-block; width: 0.42rem; height: 0.42rem; margin-right: 0.45rem; border-radius: 50%; background: var(--signal); content: ""; }
+.markdown-content .markdown-gallery-title { padding: 0.85rem 0.9rem 0.9rem; border-top: 1px solid var(--rule); font-size: 1rem; line-height: 1.5; overflow-wrap: anywhere; }
+.markdown-content .markdown-gallery-grid { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 1px; margin: 0; padding: 0; background: var(--rule); list-style: none; }
+.markdown-content .markdown-gallery-item { min-width: 0; margin: 0; background: var(--paper); }
+.markdown-content .markdown-gallery-item > figure { display: grid; min-height: 100%; grid-template-rows: auto 1fr; margin: 0; }
+.markdown-content .markdown-gallery-stage { display: grid; aspect-ratio: 4 / 3; place-items: center; padding: clamp(0.45rem, 1.4vw, 0.8rem); background-color: #0b151c; background-image: linear-gradient(rgb(255 255 255 / 0.035) 1px, transparent 1px), linear-gradient(90deg, rgb(255 255 255 / 0.035) 1px, transparent 1px); background-size: 1.25rem 1.25rem; }
+.markdown-content .markdown-gallery-image { display: block; width: 100%; height: 100%; max-height: 100%; margin: 0; border: 0; background: transparent; object-fit: contain; }
+.markdown-content .markdown-gallery-item-caption { display: grid; grid-template-columns: auto minmax(0, 1fr); gap: 0.35rem 0.7rem; align-content: start; padding: 0.75rem 0.8rem 0.85rem; }
+.markdown-content .markdown-gallery-index { color: var(--signal); font: 700 0.625rem/1.5 "Cascadia Code", Consolas, monospace; letter-spacing: 0.055em; white-space: nowrap; }
+.markdown-content .markdown-gallery-item-caption > strong { min-width: 0; font-size: 0.82rem; line-height: 1.45; overflow-wrap: anywhere; }
+.markdown-content .markdown-gallery-description { grid-column: 1 / -1; color: var(--muted); font-size: 0.75rem; line-height: 1.6; overflow-wrap: anywhere; }
+
 .studio-preview-shell {
   min-width: 0;
 }
@@ -484,6 +500,9 @@ th, td { padding: 0.6rem; border: 1px solid var(--rule); text-align: left; }
     grid-template-columns: 1fr;
     gap: 0.15rem;
   }
+
+  .markdown-content .markdown-gallery-grid { grid-template-columns: 1fr; }
+  .markdown-content .markdown-gallery-rail { align-items: flex-start; flex-direction: column; }
 
   .markdown-content .markdown-video-rail { align-items: flex-start; flex-direction: column; }
   .markdown-content .markdown-video-caption { grid-template-columns: 1fr; }

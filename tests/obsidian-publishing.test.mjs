@@ -262,6 +262,51 @@ test("archives a titled MP4 declaration without treating it as an image", () => 
   ]);
 });
 
+test("archives gallery images atomically while preserving order, captions, and gallery evidence", () => {
+  const withGallery = article.replace(
+    "正文图片 ![evidence](/uploads/obsidian-evidence.png)。",
+    `> [!gallery] 发布前后的证据
+> - ![编辑器中已经填写标题和正文。](/uploads/editor.png "编辑草稿")
+> - ![生产页面已经显示发布结果。](/uploads/live.jpg "确认上线")`,
+  );
+  const result = prepareObsidianNote(
+    "content/inbox/obsidian-publishing.md",
+    withGallery,
+  );
+
+  assert.match(result.content, /> \[!gallery\] 发布前后的证据/u);
+  assert.match(
+    result.content,
+    /> - !\[编辑器中已经填写标题和正文。\]\(\/uploads\/obsidian-publishing\/editor\.webp "编辑草稿"\)/u,
+  );
+  assert.match(
+    result.content,
+    /> - !\[生产页面已经显示发布结果。\]\(\/uploads\/obsidian-publishing\/live\.webp "确认上线"\)/u,
+  );
+  assert.deepEqual(
+    result.attachments.map((attachment) => ({
+      role: attachment.usages[0].role,
+      sourcePath: attachment.sourcePath,
+      sourceLines: attachment.usages[0].sourceLines,
+      targetPath: attachment.targetPath,
+    })),
+    [
+      {
+        role: "gallery",
+        sourcePath: "public/uploads/editor.png",
+        sourceLines: [17],
+        targetPath: "public/uploads/obsidian-publishing/editor.webp",
+      },
+      {
+        role: "gallery",
+        sourcePath: "public/uploads/live.jpg",
+        sourceLines: [18],
+        targetPath: "public/uploads/obsidian-publishing/live.webp",
+      },
+    ],
+  );
+});
+
 test("archives and rewrites an Obsidian cover with the same media transaction", () => {
   const withCover = article.replace(
     "featured: false",
@@ -784,14 +829,14 @@ test("ships one digest-bound desktop Obsidian plugin bundle without hidden shell
   ]);
   const bundle = JSON.parse(bundleSource);
   assert.equal(JSON.parse(manifest).isDesktopOnly, true);
-  assert.equal(JSON.parse(manifest).version, "1.42.0");
+  assert.equal(JSON.parse(manifest).version, "1.43.0");
   assert.equal(JSON.parse(manifest).minAppVersion, "1.5.7");
   assert.deepEqual(Object.keys(bundle), ["version", "algorithm", "plugin", "files"]);
   assert.equal(bundle.version, 1);
   assert.equal(bundle.algorithm, "sha256");
   assert.deepEqual(bundle.plugin, {
     id: "myblog-publisher",
-    version: "1.42.0",
+    version: "1.43.0",
   });
   assert.deepEqual(
     bundle.files,

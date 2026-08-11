@@ -26,9 +26,9 @@ const CONTENT_DELIVERY_TRIAGE_REPORT_VERSION = 1;
 const AUTHOR_DOCTOR_REPORT_VERSION = 3;
 const AUTHOR_DOCTOR_PLUGIN_BUNDLE_VERSION = 1;
 const AUTHOR_DOCTOR_PLUGIN_PROVENANCE_VERSION = 1;
-const INBOX_READINESS_REPORT_VERSION = 7;
+const INBOX_READINESS_REPORT_VERSION = 8;
 const AUTHOR_DOCTOR_NODE_ENGINE = ">=22.13.0";
-const AUTHOR_DOCTOR_PLUGIN_VERSION = "1.42.0";
+const AUTHOR_DOCTOR_PLUGIN_VERSION = "1.43.0";
 const CURRENT_DRAFT_INTENT_RUN_SCOPE = Symbol("current-draft-intent");
 const PRODUCTION_CONTENT_CONVERGENCE_RUN_SCOPE = Symbol(
   "production-content-convergence",
@@ -98,6 +98,22 @@ const AUTHOR_DOCTOR_REQUIRED_PATHS = [
 const GIT_OBJECT_ID_PATTERN = /^(?:[a-f0-9]{40}|[a-f0-9]{64})$/u;
 const PLUGIN_VERSION_PATTERN = /^(\d+)\.(\d+)\.(\d+)$/u;
 const PLUGIN_BUNDLE_FILES = ["main.js", "manifest.json", "styles.css"];
+
+function createGalleryTemplate(filePath) {
+  const normalized = String(filePath || "").replaceAll("\\", "/");
+  const match = normalized.match(
+    /^content\/(inbox|posts|projects)\/([a-z0-9]+(?:-[a-z0-9]+)*)\.md$/u,
+  );
+  if (!match) {
+    throw new Error("画廊模板只能插入 content/inbox、content/posts 或 content/projects 中的博客文档");
+  }
+  const mediaRoot = match[1] === "inbox" ? "/uploads" : `/uploads/${match[2]}`;
+  return [
+    "> [!gallery] 说明这一组图片共同证明什么",
+    `> - ![描述第一张图片传达的状态或结果](${mediaRoot}/gallery-1.png "第一帧短标题")`,
+    `> - ![描述第二张图片与第一张的差异或后续结果](${mediaRoot}/gallery-2.png "第二帧短标题")`,
+  ].join("\n");
+}
 const PLUGIN_PROVENANCE_PATHS = [
   ".obsidian/plugins/myblog-publisher/bundle.json",
   ".obsidian/plugins/myblog-publisher/main.js",
@@ -473,7 +489,12 @@ function parseInboxReadinessReport(output, expectedSourcePath) {
     }
     const attachmentSources = new Set();
     const attachmentTargets = new Set();
-    const mediaUsageRoleOrder = new Map([["cover", 0], ["body", 1], ["video", 2]]);
+    const mediaUsageRoleOrder = new Map([
+      ["cover", 0],
+      ["body", 1],
+      ["gallery", 2],
+      ["video", 3],
+    ]);
     const emptyAltAttachmentSources = new Set();
     const filenameFallbackAttachmentSources = new Set();
     const unpreparedAttachmentSources = new Set();
@@ -487,7 +508,10 @@ function parseInboxReadinessReport(output, expectedSourcePath) {
         attachmentLabel,
       );
       if (!Array.isArray(attachment.usages) || attachment.usages.length === 0) {
-        valueError(`${attachmentLabel}.usages`, "必须包含至少一个 cover、body 或 video 来源");
+        valueError(
+          `${attachmentLabel}.usages`,
+          "必须包含至少一个 cover、body、gallery 或 video 来源",
+        );
       }
       let previousRoleOrder = -1;
       for (const [usageIndex, usage] of attachment.usages.entries()) {
@@ -500,10 +524,13 @@ function parseInboxReadinessReport(output, expectedSourcePath) {
         );
         const roleOrder = mediaUsageRoleOrder.get(usage.role);
         if (roleOrder === undefined) {
-          valueError(`${usageLabel}.role`, "必须是 cover、body 或 video");
+          valueError(`${usageLabel}.role`, "必须是 cover、body、gallery 或 video");
         }
         if (roleOrder <= previousRoleOrder) {
-          valueError(`${attachmentLabel}.usages`, "角色必须按 cover、body、video 排列且不能重复");
+          valueError(
+            `${attachmentLabel}.usages`,
+            "角色必须按 cover、body、gallery、video 排列且不能重复",
+          );
         }
         previousRoleOrder = roleOrder;
         assertInteger(usage.occurrences, `${usageLabel}.occurrences`, 1);
@@ -5875,6 +5902,20 @@ module.exports = class MyBlogPublisher extends Plugin {
       id: "create-blog-draft",
       name: "新建博客草稿",
       checkCallback: (checking) => this.openDraftCreationWizard(checking),
+    });
+
+    this.addCommand({
+      id: "insert-gallery-template",
+      name: "插入多图证据画廊模板",
+      editorCallback: (editor, view) => {
+        try {
+          const template = createGalleryTemplate(view?.file?.path);
+          editor.replaceSelection(template);
+          new Notice("已插入两帧画廊模板；请替换图片、短标题和画面说明");
+        } catch (error) {
+          new Notice(error instanceof Error ? error.message : String(error));
+        }
+      },
     });
 
     this.addCommand({

@@ -802,7 +802,7 @@ export async function runProductionSmoke(originInput, { expectOAuth = false } = 
   invariant(studioPolicy.includes("https://api.github.com"), "Studio CSP 缺少 GitHub API");
   invariant(studioPolicy.includes("frame-ancestors 'none'"), "Studio CSP 未禁止嵌入");
 
-  const [studioMaintenancePage, studioMaintenanceModule, studioMaintenanceStyles, studioMaintenanceResponse, studioConfig, studioManifest, studioPreflight, stableSlugWidget, entryPreflightModule, mathPreviewModule, videoEditorModule, studioPreview, katexStyles, studioRuntime, unknownStudioAsset] = await Promise.all([
+  const [studioMaintenancePage, studioMaintenanceModule, studioMaintenanceStyles, studioMaintenanceResponse, studioConfig, studioManifest, studioPreflight, stableSlugWidget, entryPreflightModule, mathPreviewModule, galleryEditorModule, videoEditorModule, studioPreview, katexStyles, studioRuntime, unknownStudioAsset] = await Promise.all([
     request(origin, "/studio/maintenance"),
     request(origin, "/studio/maintenance.mjs", { accept: "text/javascript" }),
     request(origin, "/studio/maintenance.css", { accept: "text/css" }),
@@ -813,6 +813,7 @@ export async function runProductionSmoke(originInput, { expectOAuth = false } = 
     request(origin, "/studio/stable-slug-widget.mjs", { accept: "text/javascript" }),
     request(origin, "/studio/entry-preflight.mjs", { accept: "text/javascript" }),
     request(origin, "/studio/math-preview.mjs", { accept: "text/javascript" }),
+    request(origin, "/studio/gallery-editor.mjs", { accept: "text/javascript" }),
     request(origin, "/studio/video-editor.mjs", { accept: "text/javascript" }),
     request(origin, "/studio/preview.css", { accept: "text/css" }),
     request(origin, "/studio/katex-0.16.47.css", { accept: "text/css" }),
@@ -930,6 +931,16 @@ export async function runProductionSmoke(originInput, { expectOAuth = false } = 
     "Studio 公式预览模块类型不正确",
   );
   invariant(
+    galleryEditorModule.response.status === 200 &&
+      galleryEditorModule.body.includes("registerStudioGalleryEditor") &&
+      galleryEditorModule.body.includes("myblog-gallery"),
+    "Studio 画廊编辑组件不可用",
+  );
+  invariant(
+    galleryEditorModule.response.headers.get("content-type")?.startsWith("text/javascript"),
+    "Studio 画廊编辑组件类型不正确",
+  );
+  invariant(
     videoEditorModule.response.status === 200 &&
       videoEditorModule.body.includes("registerStudioVideoEditor") &&
       videoEditorModule.body.includes("myblog-video"),
@@ -959,7 +970,7 @@ export async function runProductionSmoke(originInput, { expectOAuth = false } = 
       "public, max-age=31536000, immutable",
     "固定版本 Studio KaTeX 样式缓存不正确",
   );
-  for (const asset of [studioMaintenancePage, studioMaintenanceModule, studioMaintenanceStyles, studioMaintenanceResponse, studioConfig, studioManifest, studioPreflight, stableSlugWidget, entryPreflightModule, mathPreviewModule, videoEditorModule, studioPreview]) {
+  for (const asset of [studioMaintenancePage, studioMaintenanceModule, studioMaintenanceStyles, studioMaintenanceResponse, studioConfig, studioManifest, studioPreflight, stableSlugWidget, entryPreflightModule, mathPreviewModule, galleryEditorModule, videoEditorModule, studioPreview]) {
     invariant(asset.response.headers.get("cache-control") === "no-store", "Studio 子资源必须 no-store");
   }
   invariant(
@@ -987,7 +998,7 @@ export async function runProductionSmoke(originInput, { expectOAuth = false } = 
     accept: "application/json",
     body: JSON.stringify({
       markdown:
-        "> [!warning] 发布前检查\n> 行内 $E = mc^2$。\n\n$$\nB = \\sum_i B_i\n$$\n\n```mermaid\nflowchart LR\n  Draft --> Review\n  Review --> Publish\n```\n\n![发布流程演示](/uploads/author-proof/demo.mp4 \"本地静音视频\")",
+        "> [!warning] 发布前检查\n> 行内 $E = mc^2$。\n\n$$\nB = \\sum_i B_i\n$$\n\n```mermaid\nflowchart LR\n  Draft --> Review\n  Review --> Publish\n```\n\n> [!gallery] 发布流程证据\n> - ![编辑器中的画廊表单](/uploads/author-proof/gallery-one.webp \"编辑\")\n> - ![发布后的双栏画廊](/uploads/author-proof/gallery-two.webp \"上线\")\n\n![发布流程演示](/uploads/author-proof/demo.mp4 \"本地静音视频\")",
     }),
     headers: { "content-type": "application/json" },
     method: "POST",
@@ -1005,9 +1016,13 @@ export async function runProductionSmoke(originInput, { expectOAuth = false } = 
       mathPreviewPayload.formulaCount === 2 &&
       mathPreviewPayload.calloutCount === 1 &&
       mathPreviewPayload.diagramCount === 1 &&
+      mathPreviewPayload.galleryCount === 1 &&
+      mathPreviewPayload.galleryImageCount === 2 &&
       mathPreviewPayload.videoCount === 1 &&
       mathPreviewPayload.html.includes('data-callout="warning"') &&
       mathPreviewPayload.html.includes('data-diagram="flowchart"') &&
+      mathPreviewPayload.html.includes('data-gallery="ordered-images"') &&
+      mathPreviewPayload.html.includes('class="markdown-gallery-grid"') &&
       mathPreviewPayload.html.includes('data-video="silent-mp4"') &&
       /<video\b[^>]*\scontrols(?:\s|>)/u.test(mathPreviewPayload.html) &&
       mathPreviewPayload.html.includes('preload="none"') &&

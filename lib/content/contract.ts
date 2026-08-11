@@ -2,6 +2,7 @@ import { parseDocument } from "yaml";
 import { z } from "zod";
 import { getMarkdownMathIssue } from "../markdown-math.ts";
 import { getMarkdownDiagramIssue } from "../markdown-diagram.ts";
+import { getMarkdownGalleryIssue } from "../markdown-gallery.ts";
 import { getMarkdownVideoIssue } from "../markdown-video.ts";
 
 const SLUG_PATTERN = /^[a-z0-9]+(?:-[a-z0-9]+)*$/;
@@ -366,6 +367,15 @@ function parseFrontmatter<T>(
     );
   }
 
+  const galleryIssue = getMarkdownGalleryIssue(body);
+  if (galleryIssue) {
+    const location = galleryIssue.line ? `正文第 ${galleryIssue.line} 行` : "正文";
+    throw new ContentValidationError(
+      sourcePath,
+      `${location}画廊声明无法解析：${galleryIssue.message}`,
+    );
+  }
+
   const videoIssue = getMarkdownVideoIssue(body);
   if (videoIssue) {
     const location = videoIssue.line ? `正文第 ${videoIssue.line} 行` : "正文";
@@ -493,6 +503,14 @@ export function inspectContentDraft(
       issues.push({
         field: "body",
         message: `${location} Mermaid 图表无法解析：${diagramIssue.message}`,
+      });
+    }
+    const galleryIssue = getMarkdownGalleryIssue(body);
+    if (galleryIssue) {
+      const location = galleryIssue.line ? `第 ${galleryIssue.line} 行` : "正文";
+      issues.push({
+        field: "body",
+        message: `${location}画廊声明无法解析：${galleryIssue.message}`,
       });
     }
     const videoIssue = getMarkdownVideoIssue(body);

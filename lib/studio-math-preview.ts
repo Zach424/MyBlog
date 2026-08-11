@@ -15,6 +15,11 @@ import {
   MARKDOWN_REMARK_PLUGINS,
   transformMarkdownUrl,
 } from "@/lib/markdown-pipeline";
+import {
+  extractMarkdownGalleries,
+  getMarkdownGalleryIssue,
+  type MarkdownGalleryIssue,
+} from "@/lib/markdown-gallery";
 import { getMarkdownMathIssue, type MarkdownMathIssue } from "@/lib/markdown-math";
 import {
   extractMarkdownVideos,
@@ -29,12 +34,18 @@ export type StudioMathPreviewResult =
       calloutCount: number;
       diagramCount: number;
       formulaCount: number;
+      galleryCount: number;
+      galleryImageCount: number;
       html: string;
       ok: true;
       videoCount: number;
     }
   | {
-      issue: MarkdownDiagramIssue | MarkdownMathIssue | MarkdownVideoIssue;
+      issue:
+        | MarkdownDiagramIssue
+        | MarkdownGalleryIssue
+        | MarkdownMathIssue
+        | MarkdownVideoIssue;
       ok: false;
     };
 
@@ -89,11 +100,19 @@ export function renderStudioMathPreview(
   if (issue) return { issue, ok: false };
   const diagramIssue = getMarkdownDiagramIssue(markdown);
   if (diagramIssue) return { issue: diagramIssue, ok: false };
+  const galleryIssue = getMarkdownGalleryIssue(markdown);
+  if (galleryIssue) return { issue: galleryIssue, ok: false };
   const videoIssue = getMarkdownVideoIssue(markdown);
   if (videoIssue) return { issue: videoIssue, ok: false };
 
   const formulaCount = extractMarkdownMathExpressions(markdown).length;
   const diagramCount = extractMarkdownDiagrams(markdown).length;
+  const galleries = extractMarkdownGalleries(markdown);
+  const galleryCount = galleries.length;
+  const galleryImageCount = galleries.reduce(
+    (total, gallery) => total + gallery.images.length,
+    0,
+  );
   const videoCount = extractMarkdownVideos(markdown).length;
   const file = unified()
     .use(remarkParse)
@@ -108,5 +127,14 @@ export function renderStudioMathPreview(
   const calloutCount = (rendered.match(/data-callout=/gu) ?? []).length;
   const html = `<div class="markdown-content" data-studio-renderer="production-pipeline">${rendered}</div>`;
 
-  return { calloutCount, diagramCount, formulaCount, html, ok: true, videoCount };
+  return {
+    calloutCount,
+    diagramCount,
+    formulaCount,
+    galleryCount,
+    galleryImageCount,
+    html,
+    ok: true,
+    videoCount,
+  };
 }

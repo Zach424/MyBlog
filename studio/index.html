@@ -179,6 +179,7 @@
     ></script>
     <script type="module">
       import { createStudioConfig } from "/studio/config.mjs";
+      import { registerStudioGalleryEditor } from "/studio/gallery-editor.mjs";
       import { registerStudioMathPreview } from "/studio/math-preview.mjs";
       import { installStudioMediaPreflight } from "/studio/media-preflight.mjs";
       import { registerStableSlugWidget } from "/studio/stable-slug-widget.mjs";
@@ -194,6 +195,7 @@
         }
         try {
           registerStableSlugWidget();
+          registerStudioGalleryEditor();
           registerStudioVideoEditor();
           registerStudioMathPreview();
         } catch (error) {

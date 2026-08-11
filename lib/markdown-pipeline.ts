@@ -6,6 +6,7 @@ import remarkGfm from "remark-gfm";
 import remarkMath from "remark-math";
 import { rehypeMarkdownCallouts } from "@/lib/markdown-callout";
 import { rehypeMarkdownDiagrams } from "@/lib/markdown-diagram";
+import { rehypeMarkdownGalleries } from "@/lib/markdown-gallery";
 import { rehypeMarkdownVideos } from "@/lib/markdown-video";
 import {
   getMarkdownFootnoteBackLabel,
@@ -26,6 +27,7 @@ export const MARKDOWN_REHYPE_OPTIONS = {
 } satisfies NonNullable<ReactMarkdownOptions["remarkRehypeOptions"]>;
 
 export const MARKDOWN_REHYPE_PLUGINS = [
+  rehypeMarkdownGalleries,
   rehypeMarkdownCallouts,
   rehypeMarkdownVideos,
   rehypeMarkdownDiagrams,

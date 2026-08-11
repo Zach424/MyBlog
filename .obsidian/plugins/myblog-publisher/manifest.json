@@ -1,7 +1,7 @@
 {
   "id": "myblog-publisher",
   "name": "MyBlog Publisher",
-  "version": "1.42.0",
+  "version": "1.43.0",
   "minAppVersion": "1.5.7",
   "description": "Create filename-owned drafts, verify the local plugin bundle, and hand trusted Git deliveries to bounded production convergence.",
   "author": "Zach424",

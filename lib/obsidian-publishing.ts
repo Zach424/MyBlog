@@ -8,6 +8,7 @@ import {
   markdownHeadingAnchor,
   transformMarkdownProse,
 } from "./content/markdown.ts";
+import { extractMarkdownGalleries } from "./markdown-gallery.ts";
 
 export type ObsidianContentKind = "post" | "project";
 
@@ -27,7 +28,7 @@ export interface PreparedAttachmentUsage {
   altSources: PreparedAttachmentAltSource[];
   altTexts: string[];
   occurrences: number;
-  role: "body" | "cover" | "video";
+  role: "body" | "cover" | "gallery" | "video";
   sourceLines: number[];
 }
 
@@ -159,6 +160,11 @@ function normalizeAttachmentLinks(
 ) {
   const attachments = new Map<string, PreparedAttachment>();
   const targetSources = new Map<string, string>();
+  const galleryImageLines = new Set(
+    extractMarkdownGalleries(markdown, { allowStagingPaths: true }).flatMap(
+      (gallery) => gallery.images.flatMap((image) => image.line ?? []),
+    ),
+  );
 
   function register(
     reference: string,
@@ -267,11 +273,16 @@ function normalizeAttachmentLinks(
           markdownReference !== undefined || (requestedDisplay && !isDimensions)
             ? "authored"
             : "filename-fallback";
+        const sourceLine = normalizedSourceLine(segmentOffset + matchOffset);
         const attachment = register(
           reference,
           wikiReference !== undefined,
-          VIDEO_EXTENSION_PATTERN.test(reference) ? "video" : "body",
-          normalizedSourceLine(segmentOffset + matchOffset),
+          VIDEO_EXTENSION_PATTERN.test(reference)
+            ? "video"
+            : galleryImageLines.has(sourceLine)
+              ? "gallery"
+              : "body",
+          sourceLine,
           altText,
           altSource,
         );
@@ -498,6 +509,12 @@ export function prepareObsidianNote(
   const record = kind === "post"
     ? parsePostFile(targetPath, prepared)
     : parseProjectFile(targetPath, prepared);
+  const roleOrder: Record<PreparedAttachmentUsage["role"], number> = {
+    cover: 0,
+    body: 1,
+    gallery: 2,
+    video: 3,
+  };
   const attachments = normalizedAttachments.attachments.map((attachment) => ({
     ...attachment,
     usages: attachment.usages.map((usage) => {
@@ -514,7 +531,7 @@ export function prepareObsidianNote(
         throw new Error(`附件替代文本来源证据不完整：${attachment.sourcePath} [${usage.role}]`);
       }
       return { ...usage, altSources, altTexts };
-    }),
+    }).sort((left, right) => roleOrder[left.role] - roleOrder[right.role]),
   }));
 
   return {

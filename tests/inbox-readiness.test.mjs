@@ -132,7 +132,7 @@ test("reports ready and scheduled drafts with real media derivation", async () =
     const report = await inspectInboxReadiness(root, "2026-08-05", { stagingParent });
     const byPath = Object.fromEntries(report.entries.map((entry) => [entry.sourcePath, entry]));
 
-    assert.equal(report.version, 7);
+    assert.equal(report.version, 8);
     assert.equal(report.mode, "read-only");
     assert.deepEqual(report.safety, {
       authorFilesChanged: false,
@@ -261,7 +261,7 @@ test("blocks empty body alternative text while preserving exact source evidence"
 
     const report = await inspectInboxReadiness(root, "2026-08-05");
     const entry = report.entries[0];
-    assert.equal(report.version, 7);
+    assert.equal(report.version, 8);
     assert.equal(entry.sourceSha256, sha256(Buffer.from(draft)));
     assert.equal(entry.state, "blocked");
     assert.deepEqual(entry.attachments[0].usages, [
@@ -315,7 +315,7 @@ test("blocks filename fallback alternative text while preserving the final text"
 
     const report = await inspectInboxReadiness(root, "2026-08-05");
     const entry = report.entries[0];
-    assert.equal(report.version, 7);
+    assert.equal(report.version, 8);
     assert.equal(entry.sourceSha256, sha256(Buffer.from(draft)));
     assert.equal(entry.state, "blocked");
     assert.deepEqual(entry.attachments[0].usages, [
@@ -558,7 +558,7 @@ test("runs the real JSON CLI and leaves the repository byte-for-byte untouched",
     );
     assert.equal(result.status, 0, `${result.stdout}\n${result.stderr}`);
     const report = JSON.parse(result.stdout);
-    assert.equal(report.version, 7);
+    assert.equal(report.version, 8);
     assert.equal(report.mode, "read-only");
     assert.equal(report.counts.ready, 1);
     assert.equal(report.counts.drafts, 1);

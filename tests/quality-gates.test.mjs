@@ -168,7 +168,7 @@ test("applies the production security and cache baseline", async () => {
 
 test("serves Studio, its maintenance queue, and media inventory through explicit Next.js routes", async () => {
   await assert.rejects(access(new URL("../public/studio", import.meta.url)));
-  const [studio, maintenancePage, maintenanceModule, maintenanceStyles, maintenanceResponse, config, manifest, preflight, stableSlugWidget, entryPreflightModule, mathPreviewModule, videoEditorModule, preview, katexStyles, runtime, unknown] = await Promise.all([
+  const [studio, maintenancePage, maintenanceModule, maintenanceStyles, maintenanceResponse, config, manifest, preflight, stableSlugWidget, entryPreflightModule, mathPreviewModule, galleryEditorModule, videoEditorModule, preview, katexStyles, runtime, unknown] = await Promise.all([
     request("/studio"),
     request("/studio/maintenance"),
     request("/studio/maintenance.mjs"),
@@ -180,6 +180,7 @@ test("serves Studio, its maintenance queue, and media inventory through explicit
     request("/studio/stable-slug-widget.mjs"),
     request("/studio/entry-preflight.mjs"),
     request("/studio/math-preview.mjs"),
+    request("/studio/gallery-editor.mjs"),
     request("/studio/video-editor.mjs"),
     request("/studio/preview.css"),
     request("/studio/katex-0.16.47.css"),
@@ -237,6 +238,8 @@ test("serves Studio, its maintenance queue, and media inventory through explicit
   assert.equal(entryPreflightModule.headers.get("cache-control"), "no-store");
   assert.match(await mathPreviewModule.text(), /registerStudioMathPreview/);
   assert.equal(mathPreviewModule.headers.get("cache-control"), "no-store");
+  assert.match(await galleryEditorModule.text(), /registerStudioGalleryEditor/);
+  assert.equal(galleryEditorModule.headers.get("cache-control"), "no-store");
   assert.match(await videoEditorModule.text(), /registerStudioVideoEditor/);
   assert.equal(videoEditorModule.headers.get("cache-control"), "no-store");
   const previewCss = await preview.text();
@@ -328,7 +331,7 @@ test("preflights bounded Studio entries with the production content contract", a
 test("renders bounded Studio formula previews with the production Markdown pipeline", async () => {
   const valid = await postStudioMathPreview({
     markdown:
-      "> [!warning] 发布前检查\n> 行内 $E = mc^2$。\n\n$$\nB = \\sum_i B_i\n$$\n\n```mermaid\nflowchart LR\n  Draft[Draft] --> Review{Review}\n  Review --> Publish[Publish]\n```",
+      "> [!warning] 发布前检查\n> 行内 $E = mc^2$。\n\n$$\nB = \\sum_i B_i\n$$\n\n```mermaid\nflowchart LR\n  Draft[Draft] --> Review{Review}\n  Review --> Publish[Publish]\n```\n\n> [!gallery] 发布流程证据\n> - ![编辑器中的画廊表单](/uploads/author-proof/gallery-one.webp \"编辑\")\n> - ![发布后的双栏画廊](/uploads/author-proof/gallery-two.webp \"上线\")",
   });
   assert.equal(valid.status, 200);
   assert.equal(valid.headers.get("cache-control"), "no-store");
@@ -338,12 +341,16 @@ test("renders bounded Studio formula previews with the production Markdown pipel
   assert.equal(validPayload.formulaCount, 2);
   assert.equal(validPayload.calloutCount, 1);
   assert.equal(validPayload.diagramCount, 1);
+  assert.equal(validPayload.galleryCount, 1);
+  assert.equal(validPayload.galleryImageCount, 2);
   assert.match(validPayload.html, /data-studio-renderer="production-pipeline"/u);
   assert.match(validPayload.html, /<aside[^>]*data-callout="warning"/u);
   assert.doesNotMatch(validPayload.html, /\[!warning\]/iu);
   assert.match(validPayload.html, /class="katex"/u);
   assert.match(validPayload.html, /<math/u);
   assert.match(validPayload.html, /data-diagram="flowchart"/u);
+  assert.match(validPayload.html, /data-gallery="ordered-images"/u);
+  assert.match(validPayload.html, /class="markdown-gallery-grid"/u);
   assert.match(validPayload.html, /data-renderer="server-svg"/u);
   assert.match(validPayload.html, /<svg[^>]*role="img"/u);
   const diagramHtml = validPayload.html.match(

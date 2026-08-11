@@ -69,9 +69,15 @@ test("keeps CMS tags and required content fields aligned with the contract", () 
     assert.match(slug.hint, /先填写.*再上传/);
     assert.match(slug.hint, /首次保存后控件会锁定/);
     const body = collection.fields.find((field) => field.name === "body");
-    assert.deepEqual(body.editor_components, ["image", "code-block", "myblog-video"]);
+    assert.deepEqual(body.editor_components, [
+      "image",
+      "code-block",
+      "myblog-gallery",
+      "myblog-video",
+    ]);
     assert.equal(body.video_max_file_size, VIDEO_BUDGET.maxBytes);
     assert.match(body.hint, /新增、同内容复用和同名替换.*必须确认/u);
+    assert.match(body.hint, /多图证据画廊/u);
     assert.match(body.hint, /公式使用 \$\.\.\.\$ 或 \$\$\.\.\.\$\$.*原始 Markdown.*错误行/u);
   }
 });
@@ -86,9 +92,11 @@ test("pins the CMS asset and provides a useful loading failure", async () => {
   assert.match(html, /from "\/studio\/media-preflight\.mjs"/);
   assert.match(html, /from "\/studio\/stable-slug-widget\.mjs"/);
   assert.match(html, /from "\/studio\/math-preview\.mjs"/);
+  assert.match(html, /from "\/studio\/gallery-editor\.mjs"/);
   assert.match(html, /installStudioMediaPreflight\(\)/);
   assert.match(html, /registerStableSlugWidget\(\)/);
   assert.match(html, /registerStudioMathPreview\(\)/);
+  assert.match(html, /registerStudioGalleryEditor\(\)/);
   assert.match(html, /#studio-media-preflight/);
   assert.match(html, /data-state="error"/);
   assert.match(html, /data-stable-slug-state="locked"/);

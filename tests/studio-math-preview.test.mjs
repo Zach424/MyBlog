@@ -4,6 +4,7 @@ import {
   createStudioMathPreviewTemplate,
   getStudioMathPreviewStatus,
   hasPotentialStudioDiagram,
+  hasPotentialStudioGallery,
   hasPotentialStudioRichMarkdown,
   hasPotentialStudioMath,
   hasPotentialStudioVideo,
@@ -70,6 +71,8 @@ test("requests only potential rich Markdown from the same-origin preview endpoin
   assert.equal(hasPotentialStudioMath("金额 \\$5"), true);
   assert.equal(hasPotentialStudioRichMarkdown("普通 Markdown"), false);
   assert.equal(hasPotentialStudioRichMarkdown("> [!note] 证据"), true);
+  assert.equal(hasPotentialStudioGallery("> [!gallery] 步骤证据"), true);
+  assert.equal(hasPotentialStudioGallery("```md\n> [!gallery] 示例\n```"), false);
   assert.equal(hasPotentialStudioRichMarkdown("```md\n> [!note]\n```"), false);
   assert.equal(hasPotentialStudioDiagram("```mermaid\nflowchart LR\nA --> B\n```"), true);
   assert.equal(hasPotentialStudioDiagram("```md\n```mermaid\nA --> B\n```\n```"), false);
@@ -86,7 +89,15 @@ test("requests only potential rich Markdown from the same-origin preview endpoin
     fetcher: async (url, options) => {
       calls.push({ options, url });
       return {
-      json: async () => ({ diagramCount: 0, formulaCount: 1, html: "<span>math</span>", ok: true, videoCount: 0 }),
+      json: async () => ({
+        diagramCount: 0,
+        formulaCount: 1,
+        galleryCount: 0,
+        galleryImageCount: 0,
+        html: "<span>math</span>",
+        ok: true,
+        videoCount: 0,
+      }),
         ok: true,
         status: 200,
       };
@@ -104,7 +115,15 @@ test("keeps plain Markdown on the native preview and exposes recoverable rich-co
     abortControllerFactory: () => ({ abort() {}, signal: undefined }),
     createClass: (specification) => specification,
     fetcher: async () => ({
-      json: async () => ({ diagramCount: 1, formulaCount: 2, html: "<div class=\"katex\">ok</div>", ok: true, videoCount: 1 }),
+      json: async () => ({
+        diagramCount: 1,
+        formulaCount: 2,
+        galleryCount: 1,
+        galleryImageCount: 3,
+        html: "<div class=\"katex\">ok</div>",
+        ok: true,
+        videoCount: 1,
+      }),
       ok: true,
       status: 200,
     }),
@@ -142,9 +161,14 @@ test("keeps plain Markdown on the native preview and exposes recoverable rich-co
   assert.equal(context.state.status, "ready");
   assert.equal(context.state.formulaCount, 2);
   assert.equal(context.state.diagramCount, 1);
+  assert.equal(context.state.galleryCount, 1);
+  assert.equal(context.state.galleryImageCount, 3);
   assert.equal(context.state.videoCount, 1);
   const readyTree = template.render.call(context);
-  assert.match(textContent(readyTree), /2 个公式、1 张图表、1 段视频已按生产规则渲染/u);
+  assert.match(
+    textContent(readyTree),
+    /2 个公式、1 张图表、1 组画廊 \/ 3 张图片、1 段视频已按生产规则渲染/u,
+  );
 
   context.state = {
     ...context.state,
@@ -166,6 +190,10 @@ test("keeps plain Markdown on the native preview and exposes recoverable rich-co
   assert.equal(
     getStudioMathPreviewStatus({ issue: { kind: "video" }, status: "invalid" }).label,
     "VIDEO / NEEDS FIX",
+  );
+  assert.equal(
+    getStudioMathPreviewStatus({ issue: { kind: "gallery" }, status: "invalid" }).label,
+    "GALLERY / NEEDS FIX",
   );
 });
 
