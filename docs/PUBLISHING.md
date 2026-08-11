@@ -18,15 +18,15 @@
 
 ### 发布本地静音 MP4
 
-Studio 在正文工具栏选择“本地静音视频”，依次选择 MP4、填写短标题和详细画面说明。Obsidian 或 raw Markdown 使用：
+Studio 在正文工具栏选择“本地静音视频”，依次选择 MP4、填写短标题和详细画面说明；组件会写入当前 slug 的正式路径。Obsidian 草稿先把文件放进根暂存 `public/uploads`，并使用：
 
 ```markdown
-![依次打开发布面板、确认检查通过并点击发布，最后显示 Production ready。](/uploads/release-flow/demo.mp4 "完整发布流程")
+![依次打开发布面板、确认检查通过并点击发布，最后显示 Production ready。](/uploads/demo.mp4 "完整发布流程")
 ```
 
-约束：每篇最多 2 段；每段最多 12 MiB、90 秒、1920×1080；只允许 H.264/AVC、单一画面轨、无音轨/字幕轨/其他轨、普通非分片 MP4，并要求 fast start。路径必须位于当前内容 `/uploads/<slug>/`，不能使用外链、查询参数、根暂存文件或 iframe。标题和画面说明均必填。
+约束：每篇最多 2 段；每段最多 12 MiB、90 秒、1920×1080；只允许 H.264/AVC、单一画面轨、无音轨/字幕轨/其他轨、普通非分片 MP4，并要求 fast start。正式内容必须位于当前内容 `/uploads/<slug>/`，不能使用外链、查询参数或 iframe；根暂存路径只允许出现在 Obsidian inbox 草稿中，并必须由发布器转换。标题和画面说明均必填。
 
-Studio 会先检查扩展名、MP4 容器签名、体积、浏览器可解码时长/尺寸、SHA-256 和同路径冲突；保存后的构建门再用 MP4Box 验证编码、全部轨道、fragmented/progressive。浏览器通过不等于可以发布，以构建结果为准。Obsidian 会把 Markdown MP4 归档到同 slug 目录，保持文件字节不变并纳入既有回滚、提交和 push；Wiki `![[video.mp4]]` 因无法携带必填标题而会被正式契约拒绝，应改用上面的 Markdown 语法。封面仍只能是图片。
+Studio 会先检查扩展名、MP4 容器签名、体积、浏览器可解码时长/尺寸、SHA-256 和同路径冲突；保存后的构建门再用 MP4Box 验证编码、全部轨道、fragmented/progressive。浏览器通过不等于可以发布，以构建结果为准。Obsidian 会把根暂存的 Markdown MP4 归档到同 slug 目录，把正文改写为 `/uploads/<slug>/<file>.mp4`，保持文件字节不变并纳入既有回滚、提交和 push；Wiki `![[video.mp4]]` 因无法携带必填标题而会被正式契约拒绝，应改用上面的 Markdown 语法。封面仍只能是图片。
 
 需要把有声素材发布为 v1 时，先在本地导出静音 H.264 fast-start MP4。不要只把文件改名为 `.mp4`；真实编码和轨道会被构建门解析。带声音的内容要等字幕/文字稿契约完成后再开放，不能通过关闭检查绕过。
 

@@ -129,7 +129,7 @@ npm run release:check
 
 ### 本地静音 MP4 运维
 
-- 作者源必须是当前 slug 目录下的 `.mp4`，不要把根暂存、外链或第三方 iframe 带入正式正文；
+- 正式内容必须引用当前 slug 目录下的 `.mp4`；根暂存只允许作为 Obsidian inbox 草稿的发布输入，并必须由发布器归档。不要把根暂存、外链或第三方 iframe 带入正式正文；
 - Studio 的浏览器预检只用于快速反馈，`npm run build`/`npm run check` 的 MP4Box 解析是最终门；
 - 构建报音轨时重新导出无声文件；报 codec 时转为 H.264/AVC；报 fast start 时把 moov 元数据移到文件前部；报 fragmented 时导出普通单文件 MP4；
 - 上限为 12 MiB、90 秒、1920×1080，每篇最多两段。不要通过提高常量临时放行单个素材；先裁切、缩短、降分辨率或提高编码效率；
