@@ -37,6 +37,7 @@ test("creates one grouped OPML 2.0 subscription bundle in stable title order", (
   assert.match(xml, /<ownerId>https:\/\/github\.com\/Zach424<\/ownerId>/u);
   assert.match(xml, /<docs>https:\/\/opml\.org\/spec2\.opml<\/docs>/u);
   assert.doesNotMatch(xml, /<date(?:Created|Modified)>/u);
+  assert.doesNotMatch(xml, /updates\.atom/u);
   assert.ok(
     xml.indexOf('<outline text="全部更新">') <
       xml.indexOf('<outline text="按标签">') &&

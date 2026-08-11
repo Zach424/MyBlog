@@ -42,6 +42,7 @@ export async function generateMetadata(): Promise<Metadata> {
       types: {
         "application/json": "/content.json",
         "application/feed+json": "/feed.json",
+        "application/atom+xml": "/updates.atom",
         "application/rss+xml": "/rss.xml",
       },
     },

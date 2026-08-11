@@ -1,5 +1,6 @@
 export type SubscriptionChannelId =
   | "rss"
+  | "atom"
   | "opml"
   | "json-feed"
   | "opensearch"
@@ -42,6 +43,17 @@ const staticChannels: SubscriptionChannel[] = [
     freshness: ROUTE_FRESHNESS,
     pathLabel: "/rss.xml",
     links: [{ href: "/rss.xml", label: "打开 RSS" }],
+  },
+  {
+    id: "atom",
+    audience: "更新阅读器",
+    title: "订阅真实内容变更",
+    description:
+      "Atom 1.0 同时表达首次发布和实际更新时间，并按最新内容变化排序，适合追踪旧记录修订。",
+    format: "application/atom+xml",
+    freshness: ROUTE_FRESHNESS,
+    pathLabel: "/updates.atom",
+    links: [{ href: "/updates.atom", label: "订阅更新优先 Atom" }],
   },
   {
     id: "opml",

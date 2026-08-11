@@ -442,9 +442,10 @@ test("server-renders one read-only subscription switchboard with real endpoints"
     html,
     /<ol class="subscription-routes" aria-label="公开订阅与读取通道">/u,
   );
-  assert.equal((html.match(/class="subscription-route"/gu) ?? []).length, 6);
+  assert.equal((html.match(/class="subscription-route"/gu) ?? []).length, 7);
   for (const href of [
     "/rss.xml",
+    "/updates.atom",
     "/feeds.opml",
     "/feed.json",
     "/opensearch.xml",
@@ -457,6 +458,118 @@ test("server-renders one read-only subscription switchboard with real endpoints"
   assert.match(html, /这些接口只负责读取/u);
   assert.match(html, /公开、只读、不要求账号/u);
   assert.match(html, /<a href="\/subscribe">订阅<\/a>/u);
+});
+
+test("publishes one discoverable Atom 1.0 feed ordered by significant updates", async () => {
+  const [atomResponse, homeResponse, jsonFeedResponse, opmlResponse, sitemapResponse] =
+    await Promise.all([
+      render("/updates.atom", { accept: "application/atom+xml" }),
+      render("/"),
+      render("/feed.json", { accept: "application/feed+json" }),
+      render("/feeds.opml", { accept: "text/x-opml" }),
+      render("/sitemap.xml", { accept: "application/xml" }),
+    ]);
+
+  assert.equal(atomResponse.status, 200);
+  assert.equal(
+    atomResponse.headers.get("content-type"),
+    "application/atom+xml; charset=utf-8",
+  );
+  assert.equal(
+    atomResponse.headers.get("content-disposition"),
+    'inline; filename="updates.atom"',
+  );
+  assert.equal(
+    atomResponse.headers.get("cache-control"),
+    "public, max-age=3600, stale-while-revalidate=86400",
+  );
+  assert.equal(atomResponse.headers.get("x-robots-tag"), "noindex");
+  assert.equal(
+    atomResponse.headers.get("link"),
+    '<https://blog.example.test/updates.atom>; rel="self"; type="application/atom+xml", <https://blog.example.test/>; rel="alternate"; type="text/html"',
+  );
+  const lastModified = atomResponse.headers.get("last-modified");
+  assert.equal(lastModified, "Tue, 11 Aug 2026 00:13:39 GMT");
+
+  const atom = await atomResponse.text();
+  const etag = atomResponse.headers.get("etag");
+  assert.equal(
+    etag,
+    `"sha256-${createHash("sha256").update(atom, "utf8").digest("hex")}"`,
+  );
+  assert.match(
+    atom,
+    /^<\?xml version="1\.0" encoding="UTF-8"\?>\n<feed xmlns="http:\/\/www\.w3\.org\/2005\/Atom" xml:lang="zh-CN">/u,
+  );
+  assert.equal((atom.match(/<feed\b/gu) ?? []).length, 1);
+  assert.equal((atom.match(/<entry>/gu) ?? []).length, 4);
+  assert.equal((atom.match(/<author>/gu) ?? []).length, 1);
+  assert.match(atom, /<id>https:\/\/blog\.example\.test\/updates\.atom<\/id>/u);
+  assert.match(atom, /<updated>2026-08-11T00:13:39Z<\/updated>/u);
+
+  const entries = [...atom.matchAll(/<entry>([\s\S]*?)<\/entry>/gu)].map(
+    (match) => ({
+      categories: [...match[1].matchAll(/<category term="([^"]+)" \/>/gu)].map(
+        (category) => category[1],
+      ),
+      id: match[1].match(/<id>([^<]+)<\/id>/u)?.[1],
+      published: match[1].match(/<published>([^<]+)<\/published>/u)?.[1],
+      updated: match[1].match(/<updated>([^<]+)<\/updated>/u)?.[1],
+    }),
+  );
+  assert.deepEqual(
+    entries.map(({ id }) => id),
+    [
+      "https://blog.example.test/projects/myblog",
+      "https://blog.example.test/posts/building-a-maintainable-blog",
+      "https://blog.example.test/posts/cross-platform-npm-scripts",
+      "https://blog.example.test/posts/project-charter-before-homepage",
+    ],
+  );
+  const jsonFeed = JSON.parse(await jsonFeedResponse.text());
+  const jsonById = new Map(jsonFeed.items.map((item) => [item.id, item]));
+  for (const entry of entries) {
+    const jsonItem = jsonById.get(entry.id);
+    assert.ok(jsonItem, entry.id);
+    assert.deepEqual(entry.categories, jsonItem.tags);
+    assert.equal(entry.published.slice(0, 10), jsonItem.date_published.slice(0, 10));
+    assert.equal(
+      entry.updated.slice(0, 10),
+      (jsonItem.date_modified ?? jsonItem.date_published).slice(0, 10),
+    );
+  }
+
+  const home = visibleDocument(await homeResponse.text());
+  assert.match(
+    home,
+    /<link rel="alternate" type="application\/atom\+xml" href="https:\/\/blog\.example\.test\/updates\.atom"/u,
+  );
+  assert.doesNotMatch(await opmlResponse.text(), /updates\.atom/u);
+  assert.doesNotMatch(await sitemapResponse.text(), /updates\.atom/u);
+
+  const [etagMatch, dateMatch, staleTagWins] = await Promise.all([
+    render("/updates.atom", {
+      accept: "application/atom+xml",
+      headers: { "if-none-match": `W/${etag}` },
+    }),
+    render("/updates.atom", {
+      accept: "application/atom+xml",
+      headers: { "if-modified-since": lastModified },
+    }),
+    render("/updates.atom", {
+      accept: "application/atom+xml",
+      headers: {
+        "if-none-match": '"sha256-stale"',
+        "if-modified-since": lastModified,
+      },
+    }),
+  ]);
+  assert.equal(etagMatch.status, 304);
+  assert.equal(await etagMatch.text(), "");
+  assert.equal(dateMatch.status, 304);
+  assert.equal(await dateMatch.text(), "");
+  assert.equal(staleTagWins.status, 200);
+  assert.equal(await staleTagWins.text(), atom);
 });
 
 test("publishes one portable OPML 2.0 bundle for every public RSS projection", async () => {
@@ -1950,6 +2063,7 @@ test("keeps every public conditional HEAD response bodyless and GET-equivalent",
     ["/content.schema.json", "application/schema+json"],
     ["/feed.json", "application/feed+json"],
     ["/rss.xml", "application/rss+xml"],
+    ["/updates.atom", "application/atom+xml"],
     ["/tags/typescript/rss.xml", "application/rss+xml"],
     ["/series/build-my-blog/rss.xml", "application/rss+xml"],
     ["/feeds.opml", "text/x-opml"],

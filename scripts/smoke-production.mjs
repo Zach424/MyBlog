@@ -222,6 +222,27 @@ function extractRssItems(xml) {
   });
 }
 
+function extractAtomEntries(xml) {
+  return [...xml.matchAll(/<entry>([\s\S]*?)<\/entry>/gu)].map((match) => {
+    const entry = match[1];
+    return {
+      categories: [...entry.matchAll(/<category term="([^"]+)" \/>/gu)].map(
+        (categoryMatch) => decodeXmlText(categoryMatch[1]),
+      ),
+      content: decodeXmlText(
+        entry.match(/<content type="text">([\s\S]*?)<\/content>/u)?.[1] ?? "",
+      ),
+      id: entry.match(/<id>([^<]+)<\/id>/u)?.[1] ?? "",
+      published: entry.match(/<published>([^<]+)<\/published>/u)?.[1] ?? "",
+      summary: decodeXmlText(
+        entry.match(/<summary type="text">([\s\S]*?)<\/summary>/u)?.[1] ?? "",
+      ),
+      title: decodeXmlText(entry.match(/<title>([^<]+)<\/title>/u)?.[1] ?? ""),
+      updated: entry.match(/<updated>([^<]+)<\/updated>/u)?.[1] ?? "",
+    };
+  });
+}
+
 function rssItemsMatchJsonFeed(rssItems, feedItems) {
   return (
     rssItems.length === feedItems.length &&
@@ -464,8 +485,9 @@ export async function runProductionSmoke(originInput, { expectOAuth = false } = 
   );
   const subscribe = htmlPages.get("/subscribe")?.body ?? "";
   invariant(
-    (subscribe.match(/class="subscription-route"/gu) ?? []).length === 6 &&
+    (subscribe.match(/class="subscription-route"/gu) ?? []).length === 7 &&
       subscribe.includes('href="/rss.xml"') &&
+      subscribe.includes('href="/updates.atom"') &&
       subscribe.includes('href="/feeds.opml"') &&
       subscribe.includes('href="/feed.json"') &&
       subscribe.includes('href="/opensearch.xml"') &&
@@ -1024,7 +1046,7 @@ export async function runProductionSmoke(originInput, { expectOAuth = false } = 
     invariant([302, 503].includes(oauth.response.status), `OAuth 状态 ${oauth.response.status}`);
   }
 
-  const [contentManifest, contentSchema, jsonFeed, rss, tagRss, seriesRss, opml, robots, sitemap, openSearch] = await Promise.all([
+  const [contentManifest, contentSchema, jsonFeed, rss, tagRss, seriesRss, atom, opml, robots, sitemap, openSearch] = await Promise.all([
     request(origin, "/content.json", { accept: "application/json" }),
     request(origin, "/content.schema.json", { accept: "application/schema+json" }),
     request(origin, "/feed.json", { accept: "application/feed+json" }),
@@ -1035,6 +1057,7 @@ export async function runProductionSmoke(originInput, { expectOAuth = false } = 
     request(origin, "/series/build-my-blog/rss.xml", {
       accept: "application/rss+xml",
     }),
+    request(origin, "/updates.atom", { accept: "application/atom+xml" }),
     request(origin, "/feeds.opml", { accept: "text/x-opml" }),
     request(origin, "/robots.txt", { accept: "text/plain" }),
     request(origin, "/sitemap.xml", { accept: "application/xml" }),
@@ -1099,6 +1122,18 @@ export async function runProductionSmoke(originInput, { expectOAuth = false } = 
   const manifestIds = manifestItems.map((item) => item.id);
   const rssItems = extractRssItems(rss.body);
   const rssIds = rssItems.map((item) => item.guid);
+  const atomEntries = extractAtomEntries(atom.body);
+  const atomIds = atomEntries.map((entry) => entry.id);
+  const expectedAtomItems = jsonFeedItems.slice().sort(
+    (left, right) =>
+      (right.date_modified ?? right.date_published).localeCompare(
+        left.date_modified ?? left.date_published,
+      ) ||
+      right.date_published.localeCompare(left.date_published) ||
+      left.title.localeCompare(right.title, "zh-CN") ||
+      left.id.localeCompare(right.id, "en"),
+  );
+  const jsonFeedById = new Map(jsonFeedItems.map((item) => [item.id, item]));
   const tagRssItems = extractRssItems(tagRss.body);
   const tagRssIds = tagRssItems.map((item) => item.guid);
   const expectedTagItems = jsonFeedItems.filter(
@@ -1124,6 +1159,7 @@ export async function runProductionSmoke(originInput, { expectOAuth = false } = 
   const tagRssLastModified = tagRss.response.headers.get("last-modified");
   const seriesRssLastModified =
     seriesRss.response.headers.get("last-modified");
+  const atomLastModified = atom.response.headers.get("last-modified");
   const rssUpdateContractValid = rssItemsMatchJsonFeed(
     rssItems,
     jsonFeedItems,
@@ -1496,6 +1532,53 @@ export async function runProductionSmoke(originInput, { expectOAuth = false } = 
       seriesRssUpdateContractValid,
     "专题 RSS 条目、发现或条件响应异常",
   );
+  const homeHtml = htmlPages.get("/")?.body ?? "";
+  const atomEntriesMatchJsonFeed =
+    atomEntries.length === jsonFeedItems.length &&
+    atomEntries.every((entry) => {
+      const feedItem = jsonFeedById.get(entry.id);
+      return (
+        feedItem &&
+        entry.title === feedItem.title &&
+        entry.summary === feedItem.summary &&
+        entry.content === feedItem.content_text &&
+        entry.published.slice(0, 10) === feedItem.date_published.slice(0, 10) &&
+        entry.updated.slice(0, 10) ===
+          (feedItem.date_modified ?? feedItem.date_published).slice(0, 10) &&
+        JSON.stringify(entry.categories) === JSON.stringify(feedItem.tags)
+      );
+    });
+  invariant(
+    atom.response.status === 200 &&
+      atom.response.headers.get("content-type") ===
+        "application/atom+xml; charset=utf-8" &&
+      atom.response.headers.get("content-disposition") ===
+        'inline; filename="updates.atom"' &&
+      hasJsonFeedCachePolicy(atom.response.headers.get("cache-control")) &&
+      sameMarkdownSourceEtag(atom.response.headers.get("etag"), sha256Etag(atom.body)) &&
+      atomLastModified === "Tue, 11 Aug 2026 00:13:39 GMT" &&
+      atom.response.headers.get("x-robots-tag") === "noindex" &&
+      atom.response.headers.get("link") ===
+        `<${origin.origin}/updates.atom>; rel="self"; type="application/atom+xml", <${origin.origin}/>; rel="alternate"; type="text/html"` &&
+      atom.body.startsWith(
+        '<?xml version="1.0" encoding="UTF-8"?>\n<feed xmlns="http://www.w3.org/2005/Atom" xml:lang="zh-CN">',
+      ) &&
+      atom.body.includes(
+        "<title>Zach424 / Engineering Notes — 更新订阅</title>",
+      ) &&
+      atom.body.includes(`<id>${origin.origin}/updates.atom</id>`) &&
+      atom.body.includes("<updated>2026-08-11T00:13:39Z</updated>") &&
+      (atom.body.match(/<author>/gu) ?? []).length === 1 &&
+      (atom.body.match(/<entry>/gu) ?? []).length === jsonFeedItems.length &&
+      JSON.stringify(atomIds) ===
+        JSON.stringify(expectedAtomItems.map((item) => item.id)) &&
+      atomEntriesMatchJsonFeed &&
+      homeHtml.includes(
+        `<link rel="alternate" type="application/atom+xml" href="${origin.origin}/updates.atom"`,
+      ) &&
+      !opml.body.includes("/updates.atom"),
+    "Atom 1.0 更新订阅异常",
+  );
   invariant(
     robots.response.status === 200 &&
       robots.response.headers.get("content-type")?.startsWith("text/plain") &&
@@ -1539,6 +1622,10 @@ export async function runProductionSmoke(originInput, { expectOAuth = false } = 
   invariant(
     !sitemap.body.includes("/feeds.opml"),
     "OPML 不应进入 Sitemap",
+  );
+  invariant(
+    !sitemap.body.includes("/updates.atom"),
+    "Atom 不应进入 Sitemap",
   );
   const opmlSubscriptions = extractOpmlSubscriptions(opml.body);
   const rootOpmlSubscriptions = extractOpmlGroupSubscriptions(
@@ -1626,6 +1713,7 @@ export async function runProductionSmoke(originInput, { expectOAuth = false } = 
       ["/rss.xml", "application/rss+xml", rss],
       ["/tags/typescript/rss.xml", "application/rss+xml", tagRss],
       ["/series/build-my-blog/rss.xml", "application/rss+xml", seriesRss],
+      ["/updates.atom", "application/atom+xml", atom],
       ["/feeds.opml", "text/x-opml", opml],
       ["/sitemap.xml", "application/xml", sitemap],
       ["/robots.txt", "text/plain", robots],
@@ -1657,6 +1745,7 @@ export async function runProductionSmoke(originInput, { expectOAuth = false } = 
         seriesRss,
         hasJsonFeedCachePolicy,
       ],
+      ["/updates.atom", "application/atom+xml", atom, hasJsonFeedCachePolicy],
       ["/feeds.opml", "text/x-opml", opml, hasJsonFeedCachePolicy],
       ["/sitemap.xml", "application/xml", sitemap, hasJsonFeedCachePolicy],
       ["/robots.txt", "text/plain", robots, hasRobotsCachePolicy],
@@ -1688,7 +1777,7 @@ export async function runProductionSmoke(originInput, { expectOAuth = false } = 
       `${pathname} 条件请求契约异常`,
     );
   }
-  const [jsonDateMatch, rssDateMatch, tagRssDateMatch, seriesRssDateMatch, staleTagWins, staleDate, malformedDate] =
+  const [jsonDateMatch, rssDateMatch, tagRssDateMatch, seriesRssDateMatch, atomDateMatch, staleTagWins, staleDate, malformedDate] =
     await Promise.all([
       request(origin, "/feed.json", {
         accept: "application/feed+json",
@@ -1705,6 +1794,10 @@ export async function runProductionSmoke(originInput, { expectOAuth = false } = 
       request(origin, "/series/build-my-blog/rss.xml", {
         accept: "application/rss+xml",
         headers: { "if-modified-since": seriesRssLastModified },
+      }),
+      request(origin, "/updates.atom", {
+        accept: "application/atom+xml",
+        headers: { "if-modified-since": atomLastModified },
       }),
       request(origin, "/feed.json", {
         accept: "application/feed+json",
@@ -1751,6 +1844,13 @@ export async function runProductionSmoke(originInput, { expectOAuth = false } = 
       seriesRssDateMatch,
       seriesRss,
       seriesRssLastModified,
+      hasJsonFeedCachePolicy,
+    ],
+    [
+      "/updates.atom",
+      atomDateMatch,
+      atom,
+      atomLastModified,
       hasJsonFeedCachePolicy,
     ],
   ]) {
@@ -1806,6 +1906,7 @@ export async function runProductionSmoke(originInput, { expectOAuth = false } = 
       seriesRss,
       hasJsonFeedCachePolicy,
     ],
+    ["/updates.atom", "application/atom+xml", atom, hasJsonFeedCachePolicy],
     ["/feeds.opml", "text/x-opml", opml, hasJsonFeedCachePolicy],
     ["/sitemap.xml", "application/xml", sitemap, hasJsonFeedCachePolicy],
     ["/robots.txt", "text/plain", robots, hasRobotsCachePolicy],

@@ -7,7 +7,7 @@ import { createSubscriptionCatalog } from "@/lib/subscriptions";
 
 export const metadata: Metadata = {
   title: "订阅与开放接口",
-  description: "选择 RSS、OPML、JSON Feed、OpenSearch、内容清单或单篇 Markdown 读取 Zach424 的公开技术记录。",
+  description: "选择 RSS、Atom、OPML、JSON Feed、OpenSearch、内容清单或单篇 Markdown 读取 Zach424 的公开技术记录。",
   alternates: { canonical: "/subscribe" },
   openGraph: {
     title: "订阅与开放接口 — Zach424",

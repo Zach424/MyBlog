@@ -31,6 +31,12 @@ test("publishes every supported read-only channel in a stable routing order", ()
         pathLabel: "/rss.xml",
       },
       {
+        audience: "更新阅读器",
+        format: "application/atom+xml",
+        id: "atom",
+        pathLabel: "/updates.atom",
+      },
+      {
         audience: "阅读器迁移",
         format: "text/x-opml",
         id: "opml",
@@ -70,9 +76,12 @@ test("publishes every supported read-only channel in a stable routing order", ()
     ),
   );
   assert.deepEqual(catalog[1].links, [
+    { href: "/updates.atom", label: "订阅更新优先 Atom" },
+  ]);
+  assert.deepEqual(catalog[2].links, [
     { href: "/feeds.opml", label: "下载 OPML" },
   ]);
-  assert.deepEqual(catalog[4].links, [
+  assert.deepEqual(catalog[5].links, [
     { href: "/content.json", label: "打开内容清单" },
     { href: "/content.schema.json", label: "查看清单 Schema" },
   ]);
