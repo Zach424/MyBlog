@@ -29,7 +29,7 @@ Secret 只保存在 Vercel/GitHub 的加密设置中，不进入 `.env.example`�
 4. Obsidian 中可先运行“查看已发布内容复核台账”处理已有 Current 内容；打开正式笔记并人工更新事实与复核日期后，依次运行“检查当前正式内容复核”和“提交并同步当前正式内容复核”。发布新草稿时先运行“查看当前草稿发布意图”快速核对类型、目标、日期、附件与站内链接；需要全库对照时运行“查看全部草稿发布就绪状态”，处理 blocked 并确认 scheduled 日期，再运行 `npm run content:publish -- <note> --check-only`；
 5. 逐张确认实际格式、宽高、帧数和体积后，使用 Obsidian 的“发布当前草稿并同步 GitHub”或命令行 `--push`。`--push` 会把 `draft` 改为 `false` 后运行完整质量门、提交并推送；网页方式使用 editorial workflow。若新内容 push 失败，先运行“查看待同步新内容发布”，不要恢复草稿或再次发布；
 6. 让质量门通过，再把提交合并到 `main`；
-7. Obsidian 1.41.0 在所有 Git 写入口前先校验运行代码/runtime manifest/磁盘插件版本、main/manifest/styles 的三份 bundle 摘要，以及 bundle/main/manifest/styles 的 Git HEAD/index/worktree provenance；兼容后，正常 `--push` 或两条可信恢复交付成功会校验 receipt/handoff、释放可能存在的作者事务并完成 Vault reconcile，再自动启动单篇生产等待。等待失败不改变已经完成的 Git 交付；Studio 与普通 Git 仍需手动运行“等待当前正式内容上线”；
+7. Obsidian 1.42.0 在所有 Git 写入口前先校验运行代码/runtime manifest/磁盘插件版本、main/manifest/styles 的三份 bundle 摘要，以及 bundle/main/manifest/styles 的 Git HEAD/index/worktree provenance；兼容后，正常 `--push` 或两条可信恢复交付成功会校验 receipt/handoff、释放可能存在的作者事务并完成 Vault reconcile，再自动启动单篇生产等待。等待失败不改变已经完成的 Git 交付；Studio 与普通 Git 仍需手动运行“等待当前正式内容上线”；
 8. Vercel 自动创建生产部署，deployment status 工作流检查稳定公开生产域名；
 9. 打开首页、文章、`/subscribe`、代表标签/专题页、公开内容清单、清单 Schema、JSON Feed、根/标签/专题 RSS、Atom、OPML、Sitemap 和 OpenSearch，确认新内容与公开读取通道可见且绝对 URL 指向当前生产域名；首页 `Guest · <n> public URLs · Sitemap synced` 的数字必须等于 Sitemap `<loc>` 数量，首页 `LATEST` 必须等于 Sitemap 根 URL 的 `lastmod`，且不能再出现手写 `REV. <数字>`；清单中的 `markdown_etag` 应与对应源文响应一致，`/content.json` 与 `/content.schema.json` 应通过 describedby/describes Link 双向关联，十一个结构化端点应带最终正文 SHA-256 ETag 并支持空正文 304，首页应声明绝对 OpenSearch `rel="search"` 与 Atom alternate，标签/专题页应声明并显示自己的 RSS，Atom 应按真实变化排序，OPML 应包含当前全部公开 RSS 地址但排除 Atom，两个端点都不进入 Sitemap。
 
@@ -104,9 +104,9 @@ push 失败后先运行 `npm run content:review:status`，或在 Obsidian 运行
 
 这个摘要复用完整 inbox readiness 的类型、正式内容契约、共享源、媒体准备和站内链接判断，不在插件中解析 Markdown/YAML 或读取图片。链接 trace 来自同一次 AST 遍历和正式目标/标题验证循环；公开关系索引仍使用原投影。媒体用途/行号/正文 alt 在既有附件替换时直接聚合，coverAlt 来自已经通过 Zod 的正式 record；同一附件可以同时是 COVER 与 BODY，BODY 同行重复仍保留逐次行号和文本。空 alt 会生成同附件 blocker，插件要求空值与 blocker 双向对应。媒体 trace 继续消费现有 preparation，并交叉验证用途顺序、出现次数、行号/文本长度、路径、扩展名、格式、尺寸、帧数、字节差、保留稳定性与静态 WebP 不放大语义。聚焦模式仍轻量解析全部草稿并检查正式目标、附件存在/目标/Git 跟踪与共享所有权，但只为当前草稿执行真实媒体派生；全库命令不带 `--source`，继续为每篇草稿生成完整候选。JSON version/mode/safety、单 entry、计数、精确链接、路径、媒体包络、用途/alt 来源、状态日期或来源不一致时失败关闭；命令运行期间切换、改名或替换活动文件也拒绝打开。不要把它当成发布授权：`READY / PUBLIC ON PASS` 仍必须继续运行“检查当前草稿”；摘要不修改文件、不进入 author transaction lease、不 reconcile、不提交、不推送、不联网，也不会在失败时自动回退或重试。
 
-环境或仓库位置发生变化后，可运行 `npm run content:author:doctor`，或在 Obsidian 运行“检查本机发布环境”单独诊断。默认文本的 15 项增强检查覆盖 Node/npm/Git、仓库根、main/upstream 本地同步、身份是否配置、package/关键脚本/全部固定依赖、内容路径、Vault、插件 1.41.0、三文件 bundle 摘要及四个插件路径的 Git provenance。attention 返回退出码 1 并给出修复指令，但不会自动执行；姓名、邮箱和凭据不进入报告。该命令不要求整个工作区为空，因为合法草稿、附件和待复核内容可能存在；provenance 只要求四个插件路径与 HEAD/index 一致。
+环境或仓库位置发生变化后，可运行 `npm run content:author:doctor`，或在 Obsidian 运行“检查本机发布环境”单独诊断。默认文本的 15 项增强检查覆盖 Node/npm/Git、仓库根、main/upstream 本地同步、身份是否配置、package/关键脚本/全部固定依赖、内容路径、Vault、插件 1.42.0、三文件 bundle 摘要及四个插件路径的 Git provenance。attention 返回退出码 1 并给出修复指令，但不会自动执行；姓名、邮箱和凭据不进入报告。该命令不要求整个工作区为空，因为合法草稿、附件和待复核内容可能存在；provenance 只要求四个插件路径与 HEAD/index 一致。
 
-插件 1.41.0 在“检查当前草稿”“发布当前草稿并同步 GitHub”“检查当前正式内容复核”“提交并同步当前正式内容复核”启动时自动运行同一 provenance version 3 JSON doctor，并冻结调用时的来源路径。ready 不弹出 doctor，直接且仅启动一次原领域命令；attention 显示 `TRANSACTION INTERLOCK / HELD` 和完整 circuit，原命令不启动；无效 JSON 改读纯文本但仍失败关闭，doctor 致命退出同样停止。“查看当前草稿发布意图”及其 ALT/REF 本地导航是独立只读交互，不占用这条事务租约。
+插件 1.42.0 在“检查当前草稿”“发布当前草稿并同步 GitHub”“检查当前正式内容复核”“提交并同步当前正式内容复核”启动时自动运行同一 provenance version 3 JSON doctor，并冻结调用时的来源路径。ready 不弹出 doctor，直接且仅启动一次原领域命令；attention 显示 `TRANSACTION INTERLOCK / HELD` 和完整 circuit，原命令不启动；无效 JSON 改读纯文本但仍失败关闭，doctor 致命退出同样停止。“查看当前草稿发布意图”及其 ALT/REF 本地导航是独立只读交互，不占用这条事务租约。
 
 进入任一 Git 写命令前，插件会把运行代码、runtime manifest 与磁盘 doctor 观察到的插件版本做严格三方比较。三者不相等时显示 `PLUGIN RELOAD REQUIRED` 与精确版本，不提供按钮，不自动重载，也不启动领域命令；关闭再启用插件或重启 Obsidian 后重新运行原命令。未来 patch/minor 磁盘版本仍按结构化报告显示，不退化成不可行动的纯文本。两条“重新同步待交付…”恢复命令在原租约之外先做一次 version-only doctor：非版本 attention 不影响已经需要恢复的 Git 交付，但版本身份缺失、证据不可信或版本漂移一律禁止恢复写入。
 
@@ -126,6 +126,16 @@ npm run release:check
 该命令先输出内容维护队列、当前作者工作区的 inbox 发布就绪状态、根暂存媒体库存和离线外链库存，并覆盖内容契约、Studio 配置、Obsidian 发布器、TypeScript、原生 Next.js 构建、生产 HTTP、安全头、全站内部链接、体积预算和生产依赖审计。inbox blocked 与外链 issue 都不会阻断未涉及它们的既有生产版本，但发布对应草稿前必须处理；报告不会执行任何发布或网络健康检查动作。
 
 发布门还会结构化解析三份 GitHub workflow：它要求 checkout/setup-node 均为 v6，应用 Node 仍为 22，npm 缓存保持显式启用，并锁定 Quality 的 PR/main/每周/手动触发、production smoke 的 deployment-status/手动触发以及 rollback 的 manual-only 边界。若 GitHub 再提示 action runtime 弃用，先核对官方 action release 与 runner 要求，再升级 major；不要通过允许不安全 Node runtime 的环境变量压住 warning。
+
+### 本地静音 MP4 运维
+
+- 作者源必须是当前 slug 目录下的 `.mp4`，不要把根暂存、外链或第三方 iframe 带入正式正文；
+- Studio 的浏览器预检只用于快速反馈，`npm run build`/`npm run check` 的 MP4Box 解析是最终门；
+- 构建报音轨时重新导出无声文件；报 codec 时转为 H.264/AVC；报 fast start 时把 moov 元数据移到文件前部；报 fragmented 时导出普通单文件 MP4；
+- 上限为 12 MiB、90 秒、1920×1080，每篇最多两段。不要通过提高常量临时放行单个素材；先裁切、缩短、降分辨率或提高编码效率；
+- 生产出现真实视频后，应补充一次对该 URL 的 200/206、`Content-Type: video/mp4`、Range、缓存和实际移动网络播放验收，再决定是否把这些加入固定 smoke；
+- Git 历史或 Vercel 流量出现压力时，先统计真实使用量再评估对象存储/CDN；迁移存储层仍要保留路径身份、说明、字幕、隐私和回滚契约；
+- v1 不允许音轨。需要有声演示时暂不发布，不能通过改后缀、移除说明或跳过构建门绕过字幕/文字稿缺口。
 
 ## 发布后检查
 
@@ -204,6 +214,8 @@ Iteration 0129 起，同一 smoke 还要验证 `/subscribe` 可见七条只读�
 同一命令还会为清单、Schema、JSON Feed、根 RSS、代表标签 RSS、代表专题 RSS、Atom、OPML、Sitemap、robots 与 OpenSearch 输出 `[discovery-budget]` 十一行 raw/gzip 证据。任一路由缺失、重复、超出自己的冻结上限都会阻止冒烟；不要通过删除检查或自动采用当前输出解决失败。若增长是一次有意的内容/协议变化，先核对实际正文与公开集合，再在稳定生产重新测量十一端点，同时更新基线数值、日期、来源提交、测试和迭代归档。域名变化会改变绝对 URL 和正文大小，必须以新稳定 origin 重新建立有来源基线。
 
 Iteration 0131 起，同一生产 smoke 会向 `/studio/math-preview` POST 一份同时包含 warning Callout、两条 KaTeX 公式和 Mermaid flowchart 的合成正文。可信响应必须返回 `calloutCount: 1`、`formulaCount: 2`、`diagramCount: 1`，并包含 `data-diagram="flowchart"`、`data-renderer="server-svg"` 与 `<svg role="img">`；图表片段不能出现 `@import`、HTTP(S)、`foreignObject` 或脚本。该 POST 证明未来作者内容可使用共享生产管线，不要求为了展示能力改写现有公开文章。若 Studio 返回 422，先按 `issue.kind` 区分公式与图表，再按行号修正；若新部署尚未切换，旧响应缺少 `diagramCount` 会让 smoke 失败，不能降低断言。
+
+Iteration 0132 起，这份合成正文同时加入一个带标题/说明的本地 MP4 声明。可信响应还必须返回 `videoCount: 1`、`data-video="silent-mp4"`、原生 video controls 和 `preload="none"`，并明确没有 autoplay 或 iframe；`/studio/video-editor.mjs` 必须同源 200、`no-store` 且包含固定组件 id。视频标签属性顺序不是协议，测试使用属性顺序无关的匹配。该 POST 只证明生产渲染能力；第一段真实视频上线时仍需另验实际静态文件的 MIME、Range、缓存和播放。
 
 依赖升级时必须特别复核 `beautiful-mermaid` 的 exports 条件、生成标签/属性、marker id、ELK 输出规模与内嵌 style；`hast-util-from-html`/`sanitize` schema 也必须重新跑六类夹具、危险指令、双图 id、Studio、构建与真实浏览器。不要直接信任“自包含 SVG”，也不要把上游远程字体或 style-src 扩进 CSP。当前包固定 1.1.3，生产依赖审计为 0 漏洞。
 

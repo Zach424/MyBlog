@@ -136,6 +136,7 @@
 0129-atom-update-feed.md
 0130-obsidian-markdown-callouts.md
 0131-constrained-server-mermaid.md
+0132-constrained-local-silent-video.md
 ```
 
 ## 必填结构

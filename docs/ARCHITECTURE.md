@@ -11,10 +11,10 @@ MyBlog 是 Git-first 个人技术博客。公开阅读不依赖数据库；网�
 | 界面 | React 19、Next.js 16 App Router | 页面、元数据、Route Handlers 与服务端渲染 |
 | 内容 | Markdown、YAML、Zod | 文章/项目解析、字段校验、草稿过滤与派生索引 |
 | 维护 | Node CLI、GitHub Actions | Current record 日龄、根媒体库存、外链库存、分级队列、摘要与过期门 |
-| 阅读 | react-markdown、remark-gfm、remark-math、rehype、KaTeX | GFM、标题锚点、代码高亮、脚注、数学公式、Obsidian Callout 与目录 |
+| 阅读 | react-markdown、remark-gfm、remark-math、rehype、KaTeX、原生 video | GFM、标题锚点、代码高亮、脚注、数学公式、Obsidian Callout、受限 Mermaid、本地静音 MP4 与目录 |
 | 发现 | 本地搜索、OpenSearch 1.1、公开内容清单及 JSON Schema、JSON Feed 1.1、根/标签/专题 RSS、Atom 1.0 更新订阅、OPML 2.0、单篇 Markdown 源文、Sitemap、robots、JSON-LD | 检索、按首次发布或真实变更订阅、主题或学习路径订阅、一次导入全部 RSS、批量发现、机器校验、可移植源文、自动化消费与搜索引擎发现 |
 | 发布 | Decap CMS、Obsidian、GitHub | 两个作者入口，共用同一内容事实源 |
-| 媒体 | Sharp、Markdown AST、`next/image`、Git `public/uploads` | 原图安全解码、WebP 优化、共享固有尺寸、响应式封面/正文图、引用所有权与附件版本化 |
+| 媒体 | Sharp、MP4Box、Markdown AST、`next/image`、原生 `<video>`、Git `public/uploads` | 图片安全解码/WebP 优化、MP4 轨道/编码/fast-start 校验、响应式展示、引用所有权与附件版本化 |
 | 托管 | Vercel | Git 自动预览、`main` 生产部署、环境变量与回滚 |
 | 质量 | Node test、TypeScript、ESLint、生产 HTTP 测试 | 内容、HTML、安全、链接、体积与发布契约 |
 
@@ -42,7 +42,7 @@ content/
   inbox/                            以安全文件名作为唯一 slug 身份的 Obsidian 待发布区
   redirects.yml                     版本化永久重定向注册表
 .obsidian/plugins/myblog-publisher/ Obsidian 创建、改名、检查、发布、复核与交付恢复入口
-public/uploads/<slug>/              按内容隔离的公开图片附件
+public/uploads/<slug>/              按内容隔离的公开图片与受限 MP4 附件
 lib/
   about-profile.ts                  公开集合/路由/精选项目到 About 系统档案的纯投影
   content-presentation.ts           跨公开页面共享的项目状态与内容日期展示语义
@@ -352,3 +352,22 @@ Quality、生产冒烟与回滚工作流均使用 Node 24 runtime 的 checkout/s
 - Obsidian 新建草稿只能从三个固定 Vault 模板创建一个 `content/inbox/<slug>.md`；输入、模板结构和 inbox/posts/projects 同 slug 路径必须在写入前验证，最终创建必须排他且不得覆盖；文件创建成功后，自动打开失败不得回删新文件。
 - inbox 草稿的 slug 只能来自安全文件名；受信模板不得再声明顶层 `slug`。改名只允许 `draft: true` 且无旧式 slug 的精确 inbox Markdown，目标必须通过三个内容命名空间检查；只调用一次 FileManager，无法证明后置路径时不得自动重试或回滚。
 - 每轮结构、设计、技术、功能、方法、验证、经验和风险必须与代码一起归档。
+
+## 受约束视频边界（Iteration 0132）
+
+视频事实源仍是 Markdown，不是播放器配置或数据库记录：
+
+```text
+![画面说明](/uploads/<slug>/<file>.mp4 "短标题")
+  → `getMarkdownVideoIssue` 路径/文本/数量门
+  → Obsidian/Studio 归档到同 slug 目录
+  → `inspectVideoFile` 解析真实 ISO BMFF 元数据
+  → `rehypeMarkdownVideos` 生成语义 figure/video
+  → Vercel 静态文件与原生浏览器播放
+```
+
+`lib/markdown-video.ts` 只负责文本声明与 HAST；`lib/video-policy.ts` 使用固定 `mp4box@2.4.1` 负责真实文件。二者在正式内容解析与媒体仓库扫描处会合，因此合法 Markdown 但缺失、伪装或错误编码的文件仍会在 build 失败。每篇最多两段；单段最多 12 MiB、90 秒、1920×1080，只接受单一 `avc1|avc3` 视频轨、无音频或其他轨、非 fragmented 且 progressive/fast-start。
+
+Studio 自定义组件和浏览器预检是作者反馈层，不是安全边界。浏览器验证扩展名、ftyp、大小、可解码时长/尺寸、SHA-256 和路径冲突，并明确把 H.264、轨道集合与 fast-start 留给构建门。Obsidian 复用图片已有的 staging、原子 rename、回滚、质量门和 sealed publication envelope；MP4 只做经过前后校验的字节稳定复制，不进入 Sharp。
+
+读者端没有视频客户端岛。服务端输出原生 `controls/preload=none/playsinline`，禁止 autoplay、iframe 与外部播放器；标题和画面说明进入 figcaption、搜索与无障碍名称，打印隐藏控件并保留直接 URL。v1 禁止音轨；开放音频前必须先加入字幕/文字稿、语言与同步契约。

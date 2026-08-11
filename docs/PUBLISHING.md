@@ -16,6 +16,20 @@
 6. 预览并把状态推进到 Ready；
 7. 发布后确认 GitHub 提交/PR、Quality Gate、Vercel Production 和在线文章全部成功。
 
+### 发布本地静音 MP4
+
+Studio 在正文工具栏选择“本地静音视频”，依次选择 MP4、填写短标题和详细画面说明。Obsidian 或 raw Markdown 使用：
+
+```markdown
+![依次打开发布面板、确认检查通过并点击发布，最后显示 Production ready。](/uploads/release-flow/demo.mp4 "完整发布流程")
+```
+
+约束：每篇最多 2 段；每段最多 12 MiB、90 秒、1920×1080；只允许 H.264/AVC、单一画面轨、无音轨/字幕轨/其他轨、普通非分片 MP4，并要求 fast start。路径必须位于当前内容 `/uploads/<slug>/`，不能使用外链、查询参数、根暂存文件或 iframe。标题和画面说明均必填。
+
+Studio 会先检查扩展名、MP4 容器签名、体积、浏览器可解码时长/尺寸、SHA-256 和同路径冲突；保存后的构建门再用 MP4Box 验证编码、全部轨道、fragmented/progressive。浏览器通过不等于可以发布，以构建结果为准。Obsidian 会把 Markdown MP4 归档到同 slug 目录，保持文件字节不变并纳入既有回滚、提交和 push；Wiki `![[video.mp4]]` 因无法携带必填标题而会被正式契约拒绝，应改用上面的 Markdown 语法。封面仍只能是图片。
+
+需要把有声素材发布为 v1 时，先在本地导出静音 H.264 fast-start MP4。不要只把文件改名为 `.mp4`；真实编码和轨道会被构建门解析。带声音的内容要等字幕/文字稿契约完成后再开放，不能通过关闭检查绕过。
+
 不要在正文、字段或截图中保存 OAuth token。若后台显示未配置，检查 Vercel Production 的 `GITHUB_OAUTH_ID` 与 `GITHUB_OAUTH_SECRET`，不要把值复制到聊天。
 
 ### 在 Studio 查看内容复核队列
@@ -43,7 +57,7 @@
 9. 确认当前内容已经可以公开后，运行“发布当前草稿并同步 GitHub”；该命令会把 `draft` 改为 `false`，未来日期内容会保持计划状态；
 10. 阅读预检摘要，确认目标路径、附件源/产物格式、宽高、帧数、体积变化、站内链接、内容语境和 frontmatter；
 11. 发布器运行完整质量门、创建内容提交并 push `main`；Vercel Git 连接完成后会自动上线。若团队改用 PR 流程，则不要运行同步命令，改由普通 Git 客户端创建分支和 PR。
-12. MyBlog Publisher 1.41.0 会先确认运行代码、runtime manifest 和磁盘插件版本一致，验证三个插件文件的 bundle 摘要，并证明 bundle 与三个目标文件均由 Git HEAD 跟踪、index 相等且 worktree 未修改；推送成功后再校验 Git 交付证据、释放可能存在的写事务并完成 Vault reconcile，自动等待该篇正式内容上线。push 失败后使用两条“重新同步待交付…”恢复成功也会自动接力。只在使用网页或普通 Git 时，才手动打开正式笔记运行“等待当前正式内容上线”。需要核对全库时运行“检查生产内容同步状态”。
+12. MyBlog Publisher 1.42.0 会先确认运行代码、runtime manifest 和磁盘插件版本一致，验证三个插件文件的 bundle 摘要，并证明 bundle 与三个目标文件均由 Git HEAD 跟踪、index 相等且 worktree 未修改；推送成功后再校验 Git 交付证据、释放可能存在的写事务并完成 Vault reconcile，自动等待该篇正式内容上线。push 失败后使用两条“重新同步待交付…”恢复成功也会自动接力。只在使用网页或普通 Git 时，才手动打开正式笔记运行“等待当前正式内容上线”。需要核对全库时运行“检查生产内容同步状态”。
 
 ### 用受信模板新建一个 inbox 草稿
 
@@ -139,7 +153,7 @@ npm run content:production -- --fail-on-drift
 
 ### 自动接力或手动等待当前正式内容上线
 
-MyBlog Publisher 1.41.0 从正常发布/复核或两条“重新同步待交付…”恢复命令得到可信成功结果后，会自动继续等待生产上线。交付脚本只在 Git local/tracking 都证明同一个 commit 已送达后输出 version 1 handoff；它冻结最终正式来源、commit、原始 SHA-256、公开 id/标题/URL 与 Markdown ETag，并明确生产尚未检查、等待尚未开始。恢复命令先生成原 sealed receipt，再从其中的 commit blob 而不是可变工作区派生 handoff；插件要求两者 commit、交付类型和目标严格一致。插件必须先释放可能存在的作者事务，再等待 Vault reconcile 完成，随后才启动原只读等待器。因此三分钟网络等待不占用 Git 写锁；交付已经完成后出现 timeout、网络/协议错误、取消或插件卸载，也不会回滚、重新提交、重复 push 或自动重试。
+MyBlog Publisher 1.42.0 从正常发布/复核或两条“重新同步待交付…”恢复命令得到可信成功结果后，会自动继续等待生产上线。交付脚本只在 Git local/tracking 都证明同一个 commit 已送达后输出 version 1 handoff；它冻结最终正式来源、commit、原始 SHA-256、公开 id/标题/URL 与 Markdown ETag，并明确生产尚未检查、等待尚未开始。恢复命令先生成原 sealed receipt，再从其中的 commit blob 而不是可变工作区派生 handoff；插件要求两者 commit、交付类型和目标严格一致。插件必须先释放可能存在的作者事务，再等待 Vault reconcile 完成，随后才启动原只读等待器。因此三分钟网络等待不占用 Git 写锁；交付已经完成后出现 timeout、网络/协议错误、取消或插件卸载，也不会回滚、重新提交、重复 push 或自动重试。
 
 使用网页 Studio 或普通 Git 时，在 Obsidian 打开精确的 `content/posts/<slug>.md` 或 `content/projects/<slug>.md`，运行“等待当前正式内容上线”。手动入口会现场冻结相同目标。手动与自动入口都以默认三分钟总时限、五秒间隔和十秒单请求时限等待该 id 在稳定生产 `/content.json` 中变为 deployed。持续 Notice 显示当前尝试、待部署/生产缺失状态和剩余秒数；成功或合法超时打开只读回执。自动入口额外显示 `DELIVERY HANDOFF / PUBLICATION|REVIEW` 与精确 commit。
 
@@ -152,7 +166,7 @@ npm run content:production:wait -- --source content/projects/myblog.md
 npm run content:production:wait -- --source content/posts/example.md --format json
 ```
 
-可选参数包括 `--origin`、`--date`、`--timeout-ms`、`--interval-ms` 与 `--request-timeout-ms`。`--expected-source-sha256` 和 `--expected-local-etag-sha256` 是自动 handoff 使用的成对冻结参数，日常手动运行不需要填写；它们只接受无引号的 64 位小写十六进制值，适合 Windows 固定参数调用。退出码 `0` 表示 deployed，`2` 表示在合法时限内仍 pending/missing，`1` 表示输入、handoff、来源、生产或协议失败，`130` 表示取消。该命令依赖真实网络，不进入本地发布硬门或 Actions；仓库更新后 Obsidian 已经打开时，需要重启 Obsidian，或关闭再启用 MyBlog Publisher，才能加载 1.41.0。
+可选参数包括 `--origin`、`--date`、`--timeout-ms`、`--interval-ms` 与 `--request-timeout-ms`。`--expected-source-sha256` 和 `--expected-local-etag-sha256` 是自动 handoff 使用的成对冻结参数，日常手动运行不需要填写；它们只接受无引号的 64 位小写十六进制值，适合 Windows 固定参数调用。退出码 `0` 表示 deployed，`2` 表示在合法时限内仍 pending/missing，`1` 表示输入、handoff、来源、生产或协议失败，`130` 表示取消。该命令依赖真实网络，不进入本地发布硬门或 Actions；仓库更新后 Obsidian 已经打开时，需要重启 Obsidian，或关闭再启用 MyBlog Publisher，才能加载 1.42.0。
 
 ### 在 Obsidian 完成正式内容复核
 
@@ -282,7 +296,7 @@ npm run content:author:doctor
 npm run content:author:doctor -- --format json
 ```
 
-MyBlog Publisher 1.41.0 把 13 项基础检查、第 14 项插件 bundle 摘要与第 15 项 Git provenance 画成 `RUNTIME → GIT → WORKSPACE → VAULT → AUTHOR READY/HOLD` 的只读 preflight circuit。四个新事务——检查/发布当前草稿、检查/提交当前正式内容复核——都会自动先运行同一 JSON doctor：ready 无中间弹窗并进入原命令；attention 显示 `TRANSACTION INTERLOCK / HELD`、被冻结的操作/来源路径与修复证据，且不启动领域命令；不可信 JSON 降级纯文本后失败关闭。当前草稿作者意图摘要及其 ALT/REF 本地导航不属于写事务，继续绕过这条 lease。
+MyBlog Publisher 1.42.0 把 13 项基础检查、第 14 项插件 bundle 摘要与第 15 项 Git provenance 画成 `RUNTIME → GIT → WORKSPACE → VAULT → AUTHOR READY/HOLD` 的只读 preflight circuit。四个新事务——检查/发布当前草稿、检查/提交当前正式内容复核——都会自动先运行同一 JSON doctor：ready 无中间弹窗并进入原命令；attention 显示 `TRANSACTION INTERLOCK / HELD`、被冻结的操作/来源路径与修复证据，且不启动领域命令；不可信 JSON 降级纯文本后失败关闭。当前草稿作者意图摘要及其 ALT/REF 本地导航不属于写事务，继续绕过这条 lease。
 
 每个 Git 写入口还要完成三方版本握手：插件内嵌的运行代码版本、Obsidian 提供的 runtime manifest 版本、doctor 从仓库磁盘读取的 manifest 版本必须完全相等。磁盘已经出现更新的 patch/minor 版本时，旧运行时仍能严格解析证据，但只显示无按钮的 `PLUGIN RELOAD REQUIRED`，列出三份版本并要求关闭再启用插件或重启 Obsidian；不会自动重载，也不会启动发布、复核或恢复 Git 命令。两条 recovery deliver 仍不占用作者事务 lease，并且只把 doctor 用作版本预检：Git 身份、local ahead 等非版本 attention 不阻断恢复，但版本身份缺失、不可信或漂移都会失败关闭。
 

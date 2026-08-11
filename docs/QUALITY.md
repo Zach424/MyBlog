@@ -231,6 +231,16 @@ Studio 与 OAuth 必须：
 
 当前 Next.js 流式启动脚本和现有样式需要 `script-src/style-src 'unsafe-inline'`；Studio 的固定 Decap 运行时还需要隔离的 `script-src 'unsafe-eval'`。这些是已知残余风险，框架和编辑器支持稳定 nonce/无 eval 方案后继续收紧。
 
+## 本地静音 MP4 门（Iteration 0132）
+
+Markdown 门要求视频独占一个段落，使用 `/uploads/<slug>/<file>.mp4`，标题/画面说明非空且分别不超过 120/320 字符，每篇最多两段；外链、查询/fragment、根暂存、跨 slug、混排和不安全编码全部失败关闭。正文图片提取器必须忽略 MP4，视频提取器必须保留源码行。
+
+二进制门由 `mp4box@2.4.1` 解析真实文件：最多 12 MiB、90 秒、1920×1080/2,073,600 像素；恰好一条 `avc1|avc3` 画面轨、零音轨、零其他轨；`isFragmented !== true` 且 `isProgressive === true`。扩展名伪装、损坏容器、无 duration/timescale、额外轨道、错误编码或慢启动都会阻止 build。Studio 浏览器预检可以只证明 ftyp、可解码时长/尺寸、摘要和冲突，但文案必须说明剩余事实由构建验证。
+
+渲染门要求原生 `<video>` 具有 controls、preload none、playsinline，且没有 autoplay、iframe 或第三方 URL；figure 必须包含本地/静音身份、标题、说明、直接下载 fallback 与打印链接。真实浏览器至少检查 Studio 注册、桌面 DOM、320px 根宽/播放器宽度、无横向溢出和控制台错误。生产 smoke 使用合成 Markdown POST 验证能力，不修改历史文章；HTML 标签属性检查必须顺序无关。
+
+当前自动证据不包含真实公开 MP4 的 CDN Range/Content-Type/缓存，因为仓库还没有真实视频内容。第一段正式视频上线时必须补做该传输验收；在此之前不得把合成渲染证据写成真实媒体交付证据。
+
 ## 发布门槛
 
 只有以下证据同时成立才可切换生产入口：本地 `release:check` 通过、GitHub Quality Gate 通过、Vercel Production 成功、带 OAuth 的全路由冒烟通过、未登录真实浏览器通过、Studio 和 Obsidian 各完成一次真实发布。
