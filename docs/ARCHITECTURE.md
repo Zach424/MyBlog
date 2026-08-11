@@ -306,6 +306,12 @@ Quality、生产冒烟与回滚工作流均使用 Node 24 runtime 的 checkout/s
 
 紧急恢复使用 Vercel Instant Rollback。仓库内手动工作流调用固定版本 Vercel CLI，回滚后对稳定生产域名重跑同一冒烟；Git 历史随后通过 revert 或修复提交恢复一致性。
 
+## 受限 Mermaid 编译边界（Iteration 0131）
+
+`lib/markdown-diagram.ts` 把 `language-mermaid` fenced code 当作构建期输入，而不是可信 HTML。内容契约先解析 mdast，限制每篇 8 张、单张 8192 字节/160 行/500 字符单行，并拒绝初始化、交互、作者样式、HTML 和危险 URL 表达式；只允许 flowchart、state、sequence、class、ER 与 XY 六类。固定版本 `beautiful-mermaid` 在 Node 端同步生成 SVG，输出再经过视窗、单张/总字节和 1800 元素预算，随后由 `hast-util-from-html` 解析并用独立 `hast-util-sanitize` schema 只保留必要 SVG 标签/属性。上游 `<style>`、外链、链接、图片、脚本、`foreignObject` 与 root `xmlns` 全部移除，marker id 按文档顺序命名空间化。
+
+清理后的 SVG 作为 HAST 直接进入既有 React/Studio 管线，外层只生成语义 `<figure>`、可聚焦横向画布与原生 `<details>` 源码。颜色变量和字体由站点/Studio CSS 提供；没有 `dangerouslySetInnerHTML`、客户端 Mermaid、浏览器布局器或远程字体。内容解析与 Studio 条目预检在发布前调用相同的完整渲染验证；Studio 同源 no-store 端点随后用同一 rehype 插件生成作者预览。搜索继续读取 mdast code value，公开 Markdown 继续输出原始 fence，因此图表文字可发现、源码可移植而 SVG 只是派生表示。
+
 ## 8. 不变量
 
 - GitHub 仓库是内容、附件、版本和回滚的唯一事实源。
@@ -335,6 +341,7 @@ Quality、生产冒烟与回滚工作流均使用 Node 24 runtime 的 checkout/s
 - fenced code 的服务端 HTML 必须始终保留完整 pre/code；COPY 只在 hydration 后出现，复制源只能是当前 code textContent，inline code 不得获得控件。
 - Markdown H2/H3 永久链接必须直接使用 renderer 已拥有的 id；不得重新 slug、包裹标题 children、要求 JavaScript 或改变目录与内容关系抽取，触控点击区不得小于 44px，打印不得输出标记。
 - Obsidian 行内/块级公式必须在构建期通过受限 KaTeX 解析，并由服务端输出 HTML + MathML；公式源码不得制造链接/图片关系，长公式只能让自身滚动，不能增加 320px 页面根宽，打印不得裁切或依赖 JavaScript。
+- Mermaid fenced code 必须在构建期通过类型、指令、源码、行、视窗、SVG 字节/元素和全文总量门；生成 SVG 必须删除上游 style/外链并通过独立 HAST 白名单，marker id 不得跨图冲突，读者不得下载或执行 Mermaid 运行时。宽图只能让画布滚动，源码必须可展开，打印保留 SVG 且不重复源码。
 - Studio 公式预览必须复用生产 Markdown/KaTeX/安全 URL 规则；普通正文零请求，旧异步结果不得覆盖新正文，错误/网络失败不得删除 Markdown；端点只读、同源、限量、不缓存、不索引，长公式不得增加 320px Studio 根宽。
 - Studio 条目预检只能发送内容契约白名单字段并复用正式 schema/标签/时效/公式规则；快速输入只允许最新结果更新 Author Proof，网络失败不得删除或改写条目；READY 只能表示单条字段通过，不能替代仓库关系、媒体和完整构建门。
 - Markdown 图片 alt 不能为空；本地图使用共享固有尺寸与响应式候选，HTTPS 外图不能进入开放优化主机列表。

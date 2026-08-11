@@ -248,7 +248,26 @@ Studio 与 Obsidian 都直接写标准 blockquote 形式，不需要插入 HTML�
 
 Callout 可以嵌套，也可以包含普通 Markdown；嵌套时每层都要继续带 `>`。不要用 raw HTML、iframe、任意 class 或 CSS。自定义标题是纯文本，不要依赖标题中的强调或链接。需要展示 Callout 写法本身时放进 fenced code block。普通引用继续只写 `>`，不会变成信息块。
 
-Studio 预览状态现在以 `RICH MARKDOWN` 开头；`VERIFIED` 会分别报告公式与信息块数量。`NEEDS FIX` 目前仍只表示公式语法无法通过 KaTeX，Callout 标记不合法时会作为普通引用安全降级。`PREVIEW UNAVAILABLE` 不会删除正文，可以稍后重试；正式构建会再次用同一生产管线检查。
+Studio 预览状态现在以 `RICH MARKDOWN` 开头；`VERIFIED` 会分别报告公式、信息块与图表数量。`FORMULA / NEEDS FIX` 表示公式语法无法通过 KaTeX，`DIAGRAM / NEEDS FIX` 表示 Mermaid 类型、语法、安全策略或资源预算不通过；Callout 标记不合法时仍作为普通引用安全降级。`PREVIEW UNAVAILABLE` 不会删除正文，可以稍后重试；正式构建会再次用同一生产管线检查。
+
+## 在正文中使用 Mermaid 图表
+
+Studio 与 Obsidian 都直接写 `mermaid` fenced code，不需要导出图片、插入 HTML 或加载浏览器端 Mermaid：
+
+````markdown
+```mermaid
+flowchart LR
+  Draft[Obsidian 草稿] --> Review{发布检查}
+  Review -->|通过| Commit[Git 提交]
+  Commit --> Deploy[Vercel 部署]
+```
+````
+
+当前支持六类语法：`flowchart`/`graph`、`stateDiagram-v2`、`sequenceDiagram`、`classDiagram`、`erDiagram`、`xychart-beta`。发布时由 Node 服务端把源码编译为 SVG，移除上游内嵌样式与外链，再通过独立 HAST 白名单清理；读者不会下载 Mermaid 运行时。图表保留 `DIAGRAM / TYPE` 与 `SERVER SVG` 证据轨道，宽图只让画布横向滚动，下面的“MERMAID SOURCE / 查看源码”可展开原始源码；打印保留 SVG、隐藏重复源码。
+
+为保证构建和阅读安全，每篇最多 8 张图；单张源码最多 8192 字节、160 行、单行 500 字符，单张 SVG 最多 240000 字节/1800 个元素，全文 SVG 总量最多 800000 字节。不要使用 `%%{init}`、`click`、`style`、`classDef`、`linkStyle`、`:::`、raw HTML、`javascript:`/`data:` URL 或 CSS `url()`。需要自定义颜色时不要写进图表源码；深浅色和打印主题由博客统一控制。错误会显示 fenced code 所在正文行，修正后 Studio 会自动重新预览。
+
+图表节点文字仍会进入现有搜索纯文本，公开 `source.md` 保留原始 Mermaid fence，因此 Obsidian 与仓库之间可以继续 round-trip。当前没有支持 mindmap、gantt、pie、Git graph、C4、Sankey、自定义图标、点击跳转或任意主题扩展；这些能力必须分别证明解析、安全、无障碍、资源和打印边界后才能加入。
 
 ## 内容字段
 

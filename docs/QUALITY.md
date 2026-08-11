@@ -192,6 +192,14 @@ Iteration 0129 先以 Atom/订阅/OPML/部署定向测试让旧实现因缺少 `
 
 基线不是自动追随当前页面的自我放行值。只有在确认增长属于有价值的产品变化、真实生产重新测量且完整门通过后，才能同时更新数值、日期和来源提交；不得只为失败路由调高单个阈值。预算用于捕获意外回归，不代替真实网络与 Web Vitals；未来若接入观测服务，仍应以真实用户传输和渲染数据补充。
 
+## Mermaid 图表门（Iteration 0131）
+
+`npm run test:diagram` 独立执行五组失败优先测试：六类语法服务端渲染与清洗、fence/行号/普通代码兼容、双图 marker id 命名空间、安全指令与资源上限拒绝、页面/Studio/主题/焦点/源码/打印静态接线。`npm test` 先运行该门，再运行既有单元、类型、构建和应用测试。内容契约另证明危险 Mermaid 在 Production build 前失败，Studio 条目预检和 no-store 预览端点都返回可定位的 `diagram` issue；部署工具测试锁定生产 smoke 的计数与安全标记。
+
+当前硬上限：每篇 8 张；单张源码 8192 字节、160 行、500 字符单行；单张 SVG 240000 字节、1800 元素、视窗任一边不超过 12000 且面积不超过 36000000；全文 SVG 800000 字节。测试不得只检查字符串存在：真实浏览器还要检查宽图局部滚动、390px 根宽、源码原生折叠、画布键盘焦点、深浅色与 edge label。Iteration 0131 的浏览器测试正是通过截图发现上游 `--bg` 被清理后连线标签黑底，补齐 scoped 变量映射后复测通过。
+
+功能提交 `bbf1ec1` 的本地证据为图表 5/5、既有单元 541/541、ESLint、TypeScript、66 个生成页面、应用 35/35、全部 HTML/发现预算、`git diff --check` 与 `npm audit --omit=dev --audit-level=high` 0 漏洞。上游 `beautiful-mermaid` 只声明 ESM import 条件，Next 16 typegen 曾因包入口失败；固定版本包内 ESM 路径解决后，typegen 与 Vercel build 都必须继续作为升级门。
+
 ## 媒体预算
 
 | 媒体属性 | 预算 |

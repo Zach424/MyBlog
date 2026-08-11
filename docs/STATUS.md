@@ -68,15 +68,15 @@ MyBlog 是 Zach424 的个人技术知识库与公开工程日志。它把学习�
 
 - 仓库：<https://github.com/Zach424/MyBlog>，生产分支 `main`；
 - 生产站：<https://blog-iota-five-59.vercel.app>；
-- 本轮功能提交：`3c6dfbf`（Obsidian 兼容 Markdown Callout），已推送 `main` 并进入 Vercel 稳定生产；
-- 自动交付：生产 `/studio/math-preview` 已同时证明 `calloutCount: 1` 与公式渲染，完整 smoke 为 27 routes、OAuth 302，十三条 HTML 与十一个结构化发现端点全部 PASS；本轮没有改变公开内容集合或结构化端点正文，因此无需重置既有生产预算基线；
-- 最新完成迭代：0130 Obsidian Markdown Callout 与增强内容共享渲染边界；
+- 本轮功能提交：`bbf1ec1`（受限 Mermaid 服务端 SVG），已推送 `main` 并进入 Vercel 稳定生产；
+- 自动交付：生产 `/studio/math-preview` 已同时证明 `calloutCount: 1`、`formulaCount: 2`、`diagramCount: 1` 与安全 SVG，完整 smoke 为 27 routes、OAuth 302，十三条 HTML 与十一个结构化发现端点全部 PASS；本轮没有改变公开内容集合或结构化端点正文，因此无需重置既有生产预算基线；
+- 最新完成迭代：0131 受限 Mermaid 服务端编译、安全 SVG 与共享作者预览；
 - Obsidian 状态：仓库根目录就是 Vault，`docs/STATUS.md`、`docs/iterations/*.md` 与 `docs/knowledge/*.md` 是同一份本地文件，可直接阅读和维护；
 - 手动外部接入：自定义域名、统计、评论、公开邮箱均暂缓，不阻塞当前开发。
 
 ## 本轮新增能力
 
-作者现在可以直接使用 Obsidian Callout 语法：`> [!note]` 创建静态信息块，`+`/`-` 创建默认展开/收起的原生 `<details>`。实现支持官方 13 种类型和别名、自定义标题、嵌套、列表、强调与公式；未知的受限标识符安全降级为 note，普通 blockquote 与代码围栏中的示例保持原样。`lib/markdown-callout.ts` 在共享 HAST 管线中服务端转换，读者页与 Studio 使用同一插件；搜索纯文本保留可见标题与正文但移除作者标记，打印强制展开收起内容。视觉沿用 Evidence Rail，以类型轨道和五组可审计色调表达语义，并通过 1280px、390px 深色、嵌套与键盘折叠实测。完整验证为 540/540 单元测试、66 个生成页面、35/35 应用测试与 27 路由生产 smoke。无新依赖、客户端 JavaScript、任意 HTML、iframe、账号、数据库、追踪、第三方服务、Cloudflare 或云配置变化；本轮中文状态、迭代归档和知识笔记都位于同一 Obsidian Vault。
+作者现在可以在 Studio 或 Obsidian 直接写 `mermaid` fenced code。流程图、状态图、时序图、类图、ER 图与 XY 图在 Node 服务端由固定版本 `beautiful-mermaid` 生成 SVG；上游 style、远程字体、链接、图片、脚本和 `foreignObject` 被移除，剩余节点经过独立 HAST 白名单，marker id 按图命名空间化。类型、危险指令、每篇数量、源码/行、视窗、SVG 字节/元素和全文总量都在内容契约与 Studio 条目预检中失败关闭。读者页与 Studio 共享同一 rehype 插件；搜索保留节点文字，公开 Markdown 保留原始 fence；宽图局部滚动、原生源码折叠、深浅色、键盘和打印均已覆盖。完整本地验证为图表 5/5、既有单元 541/541、66 个生成页面、35/35 应用测试、生产依赖审计 0 漏洞与真实浏览器验收。新增三个固定生产依赖，但没有客户端 Mermaid、任意 HTML、iframe、账号、数据库、追踪、Cloudflare 或云配置变化；全局 CSS 通过迁出 Callout 富内容规则降至约 95.7 KB。
 
 ## 风险与下一步
 
@@ -115,4 +115,6 @@ MyBlog 是 Zach424 的个人技术知识库与公开工程日志。它把学习�
 
 30. Callout 已覆盖官方类型、别名、折叠、嵌套、搜索、Studio、深浅色与打印，但有意不支持图标包、任意 CSS class、块引用 ID 或复杂 Markdown 标题。标题目前是纯文本；若未来扩展标题内联语法，必须先证明 HAST 与无障碍名称不会分叉。
 
-下一轮唯一主任务：为文章增加受限、服务端渲染的 Mermaid 图表，并保持 Obsidian 围栏语法可移植。先定义允许的 diagram 类型、资源与文本上限、SVG 安全清理、失败降级、深浅色、窄屏、打印、搜索纯文本和 Studio 预览契约；不得执行任意脚本、开放 HTML/iframe、依赖第三方运行时或把大型客户端 Mermaid bundle 发送给读者。
+31. Mermaid 已覆盖六类服务端 SVG、输入/输出预算、独立清理、Studio、搜索、源码、深浅色、窄屏与打印，但有意拒绝其余图表家族、初始化、click、作者 style/HTML 和客户端运行时。`beautiful-mermaid` 1.1.3 的固定包内 ESM 路径与当前输出标签集合是版本耦合；升级时必须同时重审 exports、ELK 规模、HAST 白名单、CSS 变量、双图 id、Vercel build 和真实浏览器 edge label。
+
+下一轮唯一主任务：为视频内容建立受限发布决策与最小实现边界。先比较仓库本地文件、外部直链与第三方播放器在隐私、带宽、Git/Vercel 体积、字幕/文字替代、移动端、打印、Studio/Obsidian 和生产验证上的代价；只有证据支持时才实现原生 `<video>`。不得默认开放 iframe、追踪播放器、自动播放或不受限远程媒体。

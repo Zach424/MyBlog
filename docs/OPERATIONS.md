@@ -203,6 +203,10 @@ Iteration 0129 起，同一 smoke 还要验证 `/subscribe` 可见七条只读�
 
 同一命令还会为清单、Schema、JSON Feed、根 RSS、代表标签 RSS、代表专题 RSS、Atom、OPML、Sitemap、robots 与 OpenSearch 输出 `[discovery-budget]` 十一行 raw/gzip 证据。任一路由缺失、重复、超出自己的冻结上限都会阻止冒烟；不要通过删除检查或自动采用当前输出解决失败。若增长是一次有意的内容/协议变化，先核对实际正文与公开集合，再在稳定生产重新测量十一端点，同时更新基线数值、日期、来源提交、测试和迭代归档。域名变化会改变绝对 URL 和正文大小，必须以新稳定 origin 重新建立有来源基线。
 
+Iteration 0131 起，同一生产 smoke 会向 `/studio/math-preview` POST 一份同时包含 warning Callout、两条 KaTeX 公式和 Mermaid flowchart 的合成正文。可信响应必须返回 `calloutCount: 1`、`formulaCount: 2`、`diagramCount: 1`，并包含 `data-diagram="flowchart"`、`data-renderer="server-svg"` 与 `<svg role="img">`；图表片段不能出现 `@import`、HTTP(S)、`foreignObject` 或脚本。该 POST 证明未来作者内容可使用共享生产管线，不要求为了展示能力改写现有公开文章。若 Studio 返回 422，先按 `issue.kind` 区分公式与图表，再按行号修正；若新部署尚未切换，旧响应缺少 `diagramCount` 会让 smoke 失败，不能降低断言。
+
+依赖升级时必须特别复核 `beautiful-mermaid` 的 exports 条件、生成标签/属性、marker id、ELK 输出规模与内嵌 style；`hast-util-from-html`/`sanitize` schema 也必须重新跑六类夹具、危险指令、双图 id、Studio、构建与真实浏览器。不要直接信任“自包含 SVG”，也不要把上游远程字体或 style-src 扩进 CSP。当前包固定 1.1.3，生产依赖审计为 0 漏洞。
+
 ## 故障等级
 
 | 等级 | 示例 | 处理 |

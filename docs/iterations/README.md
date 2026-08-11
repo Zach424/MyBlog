@@ -135,6 +135,7 @@
 0128-opml-subscription-bundle.md
 0129-atom-update-feed.md
 0130-obsidian-markdown-callouts.md
+0131-constrained-server-mermaid.md
 ```
 
 ## 必填结构
