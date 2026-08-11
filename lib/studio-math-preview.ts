@@ -16,6 +16,7 @@ export const STUDIO_MATH_PREVIEW_MAX_BYTES = 100_000;
 
 export type StudioMathPreviewResult =
   | {
+      calloutCount: number;
       formulaCount: number;
       html: string;
       ok: true;
@@ -85,7 +86,9 @@ export function renderStudioMathPreview(
     .use(addStudioPreviewAccessibility)
     .use(rehypeStringify)
     .processSync(markdown);
-  const html = `<div class="markdown-content" data-studio-renderer="production-pipeline">${String(file)}</div>`;
+  const rendered = String(file);
+  const calloutCount = (rendered.match(/data-callout=/gu) ?? []).length;
+  const html = `<div class="markdown-content" data-studio-renderer="production-pipeline">${rendered}</div>`;
 
-  return { formulaCount, html, ok: true };
+  return { calloutCount, formulaCount, html, ok: true };
 }

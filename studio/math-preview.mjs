@@ -22,6 +22,37 @@ export function hasPotentialStudioMath(markdown) {
   return textValue(markdown).includes("$");
 }
 
+function hasPotentialStudioCallout(markdown) {
+  let fenceCharacter = "";
+  let fenceLength = 0;
+
+  for (const sourceLine of textValue(markdown).split(/\r?\n/u)) {
+    const line = sourceLine.replace(/^[ \t]*(?:>[ \t]*)+/u, "");
+    const fence = /^(`{3,}|~{3,})/u.exec(line);
+    if (fenceCharacter) {
+      if (fence && fence[1][0] === fenceCharacter && fence[1].length >= fenceLength) {
+        fenceCharacter = "";
+        fenceLength = 0;
+      }
+      continue;
+    }
+    if (fence) {
+      fenceCharacter = fence[1][0];
+      fenceLength = fence[1].length;
+      continue;
+    }
+    if (/^[ \t]*(?:>[ \t]*)+\[![a-z][a-z0-9-]{0,31}\][+-]?(?:[ \t]|$)/iu.test(sourceLine)) {
+      return true;
+    }
+  }
+
+  return false;
+}
+
+export function hasPotentialStudioRichMarkdown(markdown) {
+  return hasPotentialStudioMath(markdown) || hasPotentialStudioCallout(markdown);
+}
+
 export async function requestStudioMathPreview(
   markdown,
   { fetcher = globalThis.fetch, signal } = {},
@@ -50,22 +81,26 @@ export function getStudioMathPreviewStatus(state) {
   switch (state?.status) {
     case "plain":
       return {
-        detail: "正文没有数学公式，继续使用 Decap 原生 Markdown 预览。",
+        detail: "正文没有公式或 Callout，继续使用 Decap 原生 Markdown 预览。",
         label: "STANDARD / MARKDOWN",
         title: "普通 Markdown 预览",
       };
     case "loading":
       return {
         detail: "仅发送当前正文到同源预览端点，不会保存或发布。",
-        label: "FORMULA / CHECKING",
-        title: "正在按发布规则校验公式",
+        label: "RICH MARKDOWN / CHECKING",
+        title: "正在按发布规则渲染增强内容",
       };
-    case "ready":
+    case "ready": {
+      const evidence = [];
+      if (state.formulaCount > 0) evidence.push(`${state.formulaCount} 个公式`);
+      if (state.calloutCount > 0) evidence.push(`${state.calloutCount} 个信息块`);
       return {
-        detail: "这里与正式页面共享 remark、rehype 和受限 KaTeX 配置。",
-        label: "FORMULA / VERIFIED",
-        title: `${state.formulaCount} 个公式已按生产规则渲染`,
+        detail: "这里与正式页面共享 remark、rehype、受限 KaTeX 和 Callout 配置。",
+        label: "RICH MARKDOWN / VERIFIED",
+        title: `${evidence.join("、")}已按生产规则渲染`,
       };
+    }
     case "invalid": {
       const line = state.issue?.line ? `第 ${state.issue.line} 行：` : "";
       return {
@@ -77,8 +112,8 @@ export function getStudioMathPreviewStatus(state) {
     case "unavailable":
       return {
         detail: "Markdown 没有丢失；请稍后重试。保存后的构建门仍会再次校验。",
-        label: "FORMULA / PREVIEW UNAVAILABLE",
-        title: "公式预览服务暂不可用",
+        label: "RICH MARKDOWN / PREVIEW UNAVAILABLE",
+        title: "增强预览服务暂不可用",
       };
     default:
       return {
@@ -112,6 +147,7 @@ export function createStudioMathPreviewTemplate({
         entryIssues: [],
         entryNote: "",
         entryStatus: "preparing",
+        calloutCount: 0,
         formulaCount: 0,
         html: "",
         issue: undefined,
@@ -154,8 +190,9 @@ export function createStudioMathPreviewTemplate({
       this.previewGeneration = (this.previewGeneration || 0) + 1;
       const generation = this.previewGeneration;
 
-      if (!hasPotentialStudioMath(body)) {
+      if (!hasPotentialStudioRichMarkdown(body)) {
         this.setState({
+          calloutCount: 0,
           formulaCount: 0,
           html: "",
           issue: undefined,
@@ -182,6 +219,7 @@ export function createStudioMathPreviewTemplate({
         if (this.previewDisposed || generation !== this.previewGeneration) return;
         if (result.ok) {
           this.setState({
+            calloutCount: result.calloutCount,
             formulaCount: result.formulaCount,
             html: result.html,
             issue: undefined,
@@ -199,6 +237,7 @@ export function createStudioMathPreviewTemplate({
         if (error?.name === "AbortError") return;
         if (this.previewDisposed || generation !== this.previewGeneration) return;
         this.setState({
+          calloutCount: 0,
           formulaCount: 0,
           html: "",
           issue: undefined,

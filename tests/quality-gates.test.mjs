@@ -309,7 +309,8 @@ test("preflights bounded Studio entries with the production content contract", a
 
 test("renders bounded Studio formula previews with the production Markdown pipeline", async () => {
   const valid = await postStudioMathPreview({
-    markdown: "行内 $E = mc^2$。\n\n$$\nB = \\sum_i B_i\n$$",
+    markdown:
+      "> [!warning] 发布前检查\n> 行内 $E = mc^2$。\n\n$$\nB = \\sum_i B_i\n$$",
   });
   assert.equal(valid.status, 200);
   assert.equal(valid.headers.get("cache-control"), "no-store");
@@ -317,7 +318,10 @@ test("renders bounded Studio formula previews with the production Markdown pipel
   const validPayload = await valid.json();
   assert.equal(validPayload.ok, true);
   assert.equal(validPayload.formulaCount, 2);
+  assert.equal(validPayload.calloutCount, 1);
   assert.match(validPayload.html, /data-studio-renderer="production-pipeline"/u);
+  assert.match(validPayload.html, /<aside[^>]*data-callout="warning"/u);
+  assert.doesNotMatch(validPayload.html, /\[!warning\]/iu);
   assert.match(validPayload.html, /class="katex"/u);
   assert.match(validPayload.html, /<math/u);
   assert.doesNotMatch(validPayload.html, /<script/u);

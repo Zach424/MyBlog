@@ -10,6 +10,11 @@
   --trace: #b9d8de;
   --trace-dark: #486f78;
   --rule: #d7e4e7;
+  --callout-info: #0e5e6d;
+  --callout-success: #2f6d63;
+  --callout-question: #65508c;
+  --callout-warning: #a64224;
+  --callout-quote: #566d77;
   --display: "Bahnschrift Condensed", "Arial Narrow", "Microsoft YaHei UI",
     "PingFang SC", sans-serif;
   --body: "Microsoft YaHei UI", "PingFang SC", "Noto Sans CJK SC",
@@ -2232,6 +2237,103 @@ input:focus-visible {
   margin-bottom: 0;
 }
 
+.markdown-content .markdown-callout {
+  --callout-accent: var(--callout-info);
+  margin-block: 1.5rem;
+  border-block: 0.0625rem solid var(--rule);
+  border-left: 0.25rem solid var(--callout-accent);
+  background: color-mix(in srgb, var(--callout-accent) 5%, var(--paper));
+  color: var(--ink);
+}
+
+.markdown-content .markdown-callout[data-callout="tip"],
+.markdown-content .markdown-callout[data-callout="success"] {
+  --callout-accent: var(--callout-success);
+}
+
+.markdown-content .markdown-callout[data-callout="question"],
+.markdown-content .markdown-callout[data-callout="example"] {
+  --callout-accent: var(--callout-question);
+}
+
+.markdown-content .markdown-callout[data-callout="warning"],
+.markdown-content .markdown-callout[data-callout="failure"],
+.markdown-content .markdown-callout[data-callout="danger"],
+.markdown-content .markdown-callout[data-callout="bug"] {
+  --callout-accent: var(--callout-warning);
+}
+
+.markdown-content .markdown-callout[data-callout="quote"] {
+  --callout-accent: var(--callout-quote);
+}
+
+.markdown-content .markdown-callout-title {
+  display: grid;
+  grid-template-columns: auto minmax(0, 1fr);
+  gap: 0.7rem;
+  align-items: baseline;
+  margin: 0;
+  padding: 0.72rem 0.9rem 0.68rem;
+  color: var(--ink);
+  font-weight: 750;
+  line-height: 1.45;
+}
+
+.markdown-content details.markdown-callout > summary {
+  grid-template-columns: auto minmax(0, 1fr) auto;
+  cursor: pointer;
+  list-style: none;
+}
+
+.markdown-content details.markdown-callout > summary::-webkit-details-marker {
+  display: none;
+}
+
+.markdown-content details.markdown-callout > summary::after {
+  color: var(--callout-accent);
+  content: "+";
+  font: 700 0.85rem/1 var(--mono);
+}
+
+.markdown-content details.markdown-callout[open] > summary::after {
+  content: "−";
+}
+
+.markdown-content .markdown-callout-kind {
+  color: var(--callout-accent);
+  font: 700 0.66rem/1.4 var(--mono);
+  letter-spacing: 0.08em;
+  white-space: nowrap;
+}
+
+.markdown-content .markdown-callout-title-text {
+  min-width: 0;
+  overflow-wrap: anywhere;
+}
+
+.markdown-content .markdown-callout-body {
+  padding: 0.85rem 0.9rem 0.95rem;
+  border-top: 0.0625rem dashed
+    color-mix(in srgb, var(--callout-accent) 45%, var(--rule));
+}
+
+.markdown-content .markdown-callout-body > :first-child {
+  margin-top: 0;
+}
+
+.markdown-content .markdown-callout-body > :last-child {
+  margin-bottom: 0;
+}
+
+.markdown-content .markdown-callout-body .markdown-callout {
+  margin-block: 1rem;
+}
+
+.markdown-content details.markdown-callout > summary:focus-visible {
+  outline: 0.125rem solid var(--signal);
+  outline-offset: 0.1875rem;
+}
+
 .markdown-content .katex {
   color: var(--ink);
   font-size: 1.04em;
@@ -3657,6 +3759,11 @@ input:focus-visible {
     --trace: #315660;
     --trace-dark: #5f8f99;
     --rule: #294049;
+    --callout-info: #7fc6d0;
+    --callout-success: #72b4ab;
+    --callout-question: #b5a1dc;
+    --callout-warning: #ff8b69;
+    --callout-quote: #a8b9be;
   }
 
   .markdown-content a,
@@ -4814,6 +4921,29 @@ input:focus-visible {
 
   .markdown-content blockquote {
     border-left-width: 0.5mm;
+  }
+
+  .markdown-content .markdown-callout {
+    break-inside: auto;
+    border-left-width: 0.8mm;
+    background: var(--paper);
+  }
+
+  .markdown-content .markdown-callout-title {
+    padding: 2.5mm 3mm 2mm;
+    break-after: avoid-page;
+  }
+
+  .markdown-content .markdown-callout-body {
+    padding: 2.5mm 3mm 3mm;
+  }
+
+  .markdown-content details.markdown-callout:not([open]) > .markdown-callout-body {
+    display: block !important;
+  }
+
+  .markdown-content details.markdown-callout > summary::after {
+    display: none;
   }
 
   .markdown-content .katex-display {

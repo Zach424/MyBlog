@@ -975,7 +975,8 @@ export async function runProductionSmoke(originInput, { expectOAuth = false } = 
   const mathPreview = await request(origin, "/studio/math-preview", {
     accept: "application/json",
     body: JSON.stringify({
-      markdown: "行内 $E = mc^2$。\n\n$$\nB = \\sum_i B_i\n$$",
+      markdown:
+        "> [!warning] 发布前检查\n> 行内 $E = mc^2$。\n\n$$\nB = \\sum_i B_i\n$$",
     }),
     headers: { "content-type": "application/json" },
     method: "POST",
@@ -991,9 +992,12 @@ export async function runProductionSmoke(originInput, { expectOAuth = false } = 
       mathPreview.response.headers.get("cache-control") === "no-store" &&
       mathPreviewPayload.ok === true &&
       mathPreviewPayload.formulaCount === 2 &&
+      mathPreviewPayload.calloutCount === 1 &&
+      mathPreviewPayload.html.includes('data-callout="warning"') &&
+      !mathPreviewPayload.html.includes("[!warning]") &&
       mathPreviewPayload.html.includes('class="katex"') &&
       mathPreviewPayload.html.includes("<math"),
-    "Studio 公式生产管线预览不可用",
+    "Studio 增强 Markdown 生产管线预览不可用",
   );
 
   const entryPreflight = await request(origin, "/studio/entry-preflight", {

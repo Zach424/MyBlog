@@ -3,6 +3,7 @@ import test from "node:test";
 import {
   createStudioMathPreviewTemplate,
   getStudioMathPreviewStatus,
+  hasPotentialStudioRichMarkdown,
   hasPotentialStudioMath,
   registerStudioMathPreview,
   requestStudioMathPreview,
@@ -28,7 +29,7 @@ function textContent(node) {
   return (node.props?.children ?? []).map(textContent).join("");
 }
 
-test("registers one idempotent formula preview template for posts and projects", () => {
+test("registers one idempotent rich Markdown preview template for posts and projects", () => {
   const registrations = [];
   const CMS = {
     registerPreviewTemplate(collection, template) {
@@ -59,12 +60,15 @@ test("registers one idempotent formula preview template for posts and projects",
   assert.equal(registrations.length, 2);
 });
 
-test("requests only potential formula content from the same-origin preview endpoint", async () => {
+test("requests only potential rich Markdown from the same-origin preview endpoint", async () => {
   assert.equal(STUDIO_MATH_PREVIEW_ENDPOINT, "/studio/math-preview");
   assert.equal(STUDIO_MATH_PREVIEW_DELAY_MS, 240);
   assert.equal(hasPotentialStudioMath("普通 Markdown"), false);
   assert.equal(hasPotentialStudioMath("行内 $E = mc^2$"), true);
   assert.equal(hasPotentialStudioMath("金额 \\$5"), true);
+  assert.equal(hasPotentialStudioRichMarkdown("普通 Markdown"), false);
+  assert.equal(hasPotentialStudioRichMarkdown("> [!note] 证据"), true);
+  assert.equal(hasPotentialStudioRichMarkdown("```md\n> [!note]\n```"), false);
 
   const calls = [];
   const result = await requestStudioMathPreview("$E = mc^2$", {
@@ -83,7 +87,7 @@ test("requests only potential formula content from the same-origin preview endpo
   assert.deepEqual(JSON.parse(calls[0].options.body), { markdown: "$E = mc^2$" });
 });
 
-test("keeps plain Markdown on the native preview and exposes recoverable formula states", async () => {
+test("keeps plain Markdown on the native preview and exposes recoverable rich-content states", async () => {
   let scheduled;
   const template = createStudioMathPreviewTemplate({
     abortControllerFactory: () => ({ abort() {}, signal: undefined }),
@@ -138,7 +142,10 @@ test("keeps plain Markdown on the native preview and exposes recoverable formula
   const invalidTree = template.render.call(context);
   assert.equal(invalidTree.props["data-math-preview-state"], "invalid");
   assert.match(textContent(invalidTree), /公式尚不能发布.*第 7 行.*Expected/u);
-  assert.equal(getStudioMathPreviewStatus({ status: "unavailable" }).label, "FORMULA / PREVIEW UNAVAILABLE");
+  assert.equal(
+    getStudioMathPreviewStatus({ status: "unavailable" }).label,
+    "RICH MARKDOWN / PREVIEW UNAVAILABLE",
+  );
 });
 
 test("keeps only the latest entry preflight and recovers from network failure", async () => {

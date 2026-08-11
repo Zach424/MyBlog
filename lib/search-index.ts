@@ -4,6 +4,7 @@ import {
   type MarkdownNode,
 } from "./content/markdown.ts";
 import type { SearchDocument } from "./search.ts";
+import { normalizeMarkdownCalloutsForPlainText } from "./markdown-callout.ts";
 
 const BLOCK_TYPES = new Set([
   "blockquote",
@@ -44,7 +45,8 @@ function markdownNodeText(node: MarkdownNode): string {
 
 export function markdownToPlainText(markdown: string) {
   const source = markdown.replace(/^---[\s\S]*?---\s*/mu, "");
-  return markdownNodeText(parseMarkdown(source)).replace(/\s+/gu, " ").trim();
+  const tree = normalizeMarkdownCalloutsForPlainText(parseMarkdown(source));
+  return markdownNodeText(tree).replace(/\s+/gu, " ").trim();
 }
 
 function kindFor(record: ContentRecord): SearchDocument["kind"] {

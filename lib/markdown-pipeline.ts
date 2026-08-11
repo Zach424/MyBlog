@@ -4,6 +4,7 @@ import rehypeSlug from "rehype-slug";
 import type { Options as ReactMarkdownOptions } from "react-markdown";
 import remarkGfm from "remark-gfm";
 import remarkMath from "remark-math";
+import { rehypeMarkdownCallouts } from "@/lib/markdown-callout";
 import {
   getMarkdownFootnoteBackLabel,
   MARKDOWN_FOOTNOTE_CLOBBER_PREFIX,
@@ -23,6 +24,7 @@ export const MARKDOWN_REHYPE_OPTIONS = {
 } satisfies NonNullable<ReactMarkdownOptions["remarkRehypeOptions"]>;
 
 export const MARKDOWN_REHYPE_PLUGINS = [
+  rehypeMarkdownCallouts,
   rehypeSlug,
   [rehypeKatex, MARKDOWN_MATH_KATEX_OPTIONS],
   [rehypeHighlight, { detect: false, ignoreMissing: true }],
