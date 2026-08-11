@@ -229,6 +229,27 @@ Quality Gate 每次提交和每周维护都会把同一库存写入 Actions summ
 
 需要当前网络证据时显式运行 `npm run links:external -- --check`。检查器只发送 HEAD 并立即关闭响应，逐跳限制 HTTPS/443、公网 DNS、重定向、并发、超时与重试；它不会用 GET 下载正文，也不会自动替换链接。404/410 等确定问题可人工修正；403/429、目标不支持 HEAD、5xx、超时或网络错误只表示当前自动检查不足，应在普通浏览器和另一网络路径复核。只有作者明确增加 `--fail-on-broken` 才让确定 broken/本地 issue 返回非零，实时检查不进入 GitHub Actions。
 
+## 在正文中使用 Callout
+
+Studio 与 Obsidian 都直接写标准 blockquote 形式，不需要插入 HTML：
+
+```markdown
+> [!info] 为什么这样做
+> 这里写证据、列表、链接、脚注或公式。
+
+> [!warning]- 发布前检查
+> 这段内容默认收起。
+
+> [!tip]+ 可复用经验
+> 这段内容默认展开。
+```
+
+第一行格式为 `> [!类型][可选 + 或 -] [可选标题]`。无 `+/-` 时始终展开且不可折叠；`+` 默认展开、`-` 默认收起，读者仍可用鼠标或键盘切换。可用类型：`note`、`abstract`、`info`、`todo`、`tip`、`success`、`question`、`warning`、`failure`、`danger`、`bug`、`example`、`quote`。Obsidian 的 summary/tldr、hint/important、check/done、help/faq、caution/attention、fail/missing、error、cite 等官方别名也可使用。
+
+Callout 可以嵌套，也可以包含普通 Markdown；嵌套时每层都要继续带 `>`。不要用 raw HTML、iframe、任意 class 或 CSS。自定义标题是纯文本，不要依赖标题中的强调或链接。需要展示 Callout 写法本身时放进 fenced code block。普通引用继续只写 `>`，不会变成信息块。
+
+Studio 预览状态现在以 `RICH MARKDOWN` 开头；`VERIFIED` 会分别报告公式与信息块数量。`NEEDS FIX` 目前仍只表示公式语法无法通过 KaTeX，Callout 标记不合法时会作为普通引用安全降级。`PREVIEW UNAVAILABLE` 不会删除正文，可以稍后重试；正式构建会再次用同一生产管线检查。
+
 ## 内容字段
 
 所有内容共有：`title`、`description`、`publishedAt`、`freshness`、`reviewedAt`、`tags`、`draft`、`featured`、可选且成对出现的 `cover`/`coverAlt` 和正文。文章额外有 `type`、可选 `series`/`canonical`；项目额外有 `status`、`stack`、可选 `repository`/`demo`。详细契约见 [CONTENT_MODEL.md](./CONTENT_MODEL.md)。
@@ -273,7 +294,7 @@ MyBlog Publisher 1.41.0 把 13 项基础检查、第 14 项插件 bundle 摘要�
 
 ## 常见问题
 
-- Studio 显示 `FORMULA / NEEDS FIX`：按提示的正文行号检查 `$`/`$$` 是否成对、命令是否受 KaTeX 支持；若显示 `FORMULA / PREVIEW UNAVAILABLE`，先重试预览，也可以转到 Obsidian 继续编辑。两种情况都不会删除正文，正式构建仍会重新校验公式。
+- Studio 显示 `FORMULA / NEEDS FIX`：按提示的正文行号检查 `$`/`$$` 是否成对、命令是否受 KaTeX 支持；若显示 `RICH MARKDOWN / PREVIEW UNAVAILABLE`，先重试预览，也可以转到 Obsidian 继续编辑。两种情况都不会删除正文，正式构建仍会重新校验公式和 Callout。
 - Studio 显示 `ENTRY CONTRACT / NEEDS WORK`：按清单中的中文字段名逐项修正；路径、公开状态、内容语境和正文统计会自动刷新。显示 `READY` 后仍需保存并等待 Quality Gate，因为跨文章专题顺序、媒体引用和站内关系只能在仓库中完整验证。若显示 `PREVIEW UNAVAILABLE`，不要重复粘贴正文，稍后重试即可。
 - `/studio` 返回 503：生产 OAuth 环境变量未配置或未重新部署。
 - GitHub 登录回调失败：OAuth App 的 Homepage/Callback 与当前生产 origin 不一致。

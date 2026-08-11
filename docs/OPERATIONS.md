@@ -33,6 +33,25 @@ Secret 只保存在 Vercel/GitHub 的加密设置中，不进入 `.env.example`�
 8. Vercel 自动创建生产部署，deployment status 工作流检查稳定公开生产域名；
 9. 打开首页、文章、`/subscribe`、代表标签/专题页、公开内容清单、清单 Schema、JSON Feed、根/标签/专题 RSS、Atom、OPML、Sitemap 和 OpenSearch，确认新内容与公开读取通道可见且绝对 URL 指向当前生产域名；首页 `Guest · <n> public URLs · Sitemap synced` 的数字必须等于 Sitemap `<loc>` 数量，首页 `LATEST` 必须等于 Sitemap 根 URL 的 `lastmod`，且不能再出现手写 `REV. <数字>`；清单中的 `markdown_etag` 应与对应源文响应一致，`/content.json` 与 `/content.schema.json` 应通过 describedby/describes Link 双向关联，十一个结构化端点应带最终正文 SHA-256 ETag 并支持空正文 304，首页应声明绝对 OpenSearch `rel="search"` 与 Atom alternate，标签/专题页应声明并显示自己的 RSS，Atom 应按真实变化排序，OPML 应包含当前全部公开 RSS 地址但排除 Atom，两个端点都不进入 Sitemap。
 
+### 编写与检查 Callout
+
+在 Studio 或 Obsidian 正文中直接使用以下语法，不需要 HTML：
+
+```markdown
+> [!note] 实现依据
+> 这里写正文，可继续使用 **强调**、列表、链接和公式。
+
+> [!warning]- 发布前检查
+> `-` 表示默认收起。
+
+> [!tip]+ 可复用经验
+> `+` 表示默认展开。
+```
+
+类型和别名不区分大小写。支持 note、abstract、info、todo、tip、success、question、warning、failure、danger、bug、example、quote，以及 Obsidian 官方别名；未知但符合 `a-z` 开头、最长 32 位的英文/数字/连字符标识符会按 note 显示。标题为空时使用中文默认标题，自定义标题按纯文本处理。普通 `>` 引用和代码围栏中的 `[!note]` 示例不会转换。
+
+Studio 只在正文可能包含公式或 Callout 时调用同源增强预览，状态标签为 `RICH MARKDOWN`，并分别报告公式数和信息块数。预览不可用不会改写正文；保存后的完整构建门仍会重跑同一生产插件。上线后 `production:smoke` 会 POST 一个同时包含 warning 和公式的样本，要求 `calloutCount === 1`、标记被移除、KaTeX HTML/MathML 存在且响应 `no-store`。
+
 ## URL 迁移
 
 已公开 slug 原则上保持不变。确需迁移时，在同一 Git 提交中移动内容与归档附件、修正所有引用，并把旧路径登记到 `content/redirects.yml`，直接指向最终公开 HTML 页面。每条记录必须填写迁移日期和原因；不要使用查询、锚点、通配参数、链式跳转，也不要覆盖现有页面、静态文件、`/_next`、`/api`、`/studio` 或 `/uploads`。

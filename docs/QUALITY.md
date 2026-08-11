@@ -6,7 +6,7 @@
 npm run check
 ```
 
-顺序为 ESLint → 536 项内容/时间档案/内容活动/订阅目录/维护/inbox/暂存媒体/关系/推荐/站点身份/公开路由事实/首页内容证据/About 系统档案/项目状态与内容日期展示/面包屑/标题锚点与永久链接/脚注/数学公式/打印版式/知识图/外链库存与检查/搜索/OpenSearch/公开清单/根、标签与专题 RSS/Atom/OPML/发现端点验证器与预算/公开 Markdown/OAuth/Studio/Obsidian/媒体/重定向/代码复制/交付单元测试 → Next 路由类型生成与 TypeScript → 原生 Next.js 生产构建（66 个生成页面，并包含动态 Route Handler）→ 35 项真实生产 HTTP 与质量审计。任何一步失败都阻止合并和生产部署。
+顺序为 ESLint → 540 项内容/时间档案/内容活动/订阅目录/维护/inbox/暂存媒体/关系/推荐/站点身份/公开路由事实/首页内容证据/About 系统档案/项目状态与内容日期展示/面包屑/标题锚点与永久链接/脚注/数学公式/Callout/打印版式/知识图/外链库存与检查/搜索/OpenSearch/公开清单/根、标签与专题 RSS/Atom/OPML/发现端点验证器与预算/公开 Markdown/OAuth/Studio/Obsidian/媒体/重定向/代码复制/交付单元测试 → Next 路由类型生成与 TypeScript → 原生 Next.js 生产构建（66 个生成页面，并包含动态 Route Handler）→ 35 项真实生产 HTTP 与质量审计。任何一步失败都阻止合并和生产部署。
 
 公开路由事实质量门不把 `27` 复制成两个独立断言：纯函数夹具锁定静态/动态顺序、total、最新日期、输入不变和重复 path 失败关闭；真实 Next 测试并行请求首页与 Sitemap，从实际 `<loc>` 数量派生首页期望文字，并要求首页 `LATEST` 等于 Sitemap 根 URL 的 `lastmod`。测试同时拒绝遗留 `REV. <数字>`。这样内容增长会自动改变两端，任一消费者脱离共享事实才失败。
 
@@ -113,6 +113,18 @@ npm run production:smoke -- https://example.vercel.app --expect-oauth
 - 复核日期不早于发布/更新日期，公开内容不能使用未来复核日期；
 - Markdown 标题锚点、目录、GFM 和代码高亮保持一致；H1–H6 共用全局 GitHubSlugger 序号；
 - 公开站内页面链接必须存在；带 fragment 的行内、引用式、跨内容或自引用链接必须严格命中目标实际 heading id，无效百分号编码、拼写和重复标题序号会失败；
+
+## Markdown Callout 质量门
+
+- 解析器固定官方 13 种类型、全部官方别名、大小写、纯文本标题、`+` 展开、`-` 收起和最长 32 位自定义标识符；非法下划线、无空格标题、前缀文本与超长标识必须保持普通引用；
+- HAST 转换必须覆盖静态 `<aside role="note">`、原生 `<details><summary>`、默认 open、嵌套、列表、强调、title-only 与普通 blockquote 不变；作者 `[!type]` 标记不得泄漏到可见 HTML；
+- 搜索索引保留可见标题和正文、移除 Callout 标记，并让 fenced code 示例保持字面值；
+- Studio 增强预览必须只对潜在公式/Callout 触发，代码围栏中的标记不触发；成功结果分别给出 `formulaCount` 与 `calloutCount`，并复用生产 `MARKDOWN_REHYPE_PLUGINS`；
+- 读者页与 Studio 都必须包含五组类型色、标题/正文结构、原生 summary 焦点样式；打印必须强制显示默认收起正文；
+- 真实浏览器验收覆盖 1280×900 浅色、390×844 深色、收起到展开、嵌套、普通引用与公式，控制台必须 0 error；
+- 生产 smoke 必须 POST warning + math 样本，确认 `calloutCount === 1`、`data-callout="warning"`、标记消失以及 KaTeX HTML/MathML 同时存在。
+
+Iteration 0130 的失败优先证据是：新增测试初始 0/2（模块和 Studio rich Markdown export 不存在），旧真实应用门 8/9（生产预览没有 `calloutCount`）。实现后定向 22/22、完整单元 540/540、typecheck/lint/build、35/35 应用测试、视觉验收和 27 路由生产 smoke 全部通过。
 
 ## HTML 与可访问性
 

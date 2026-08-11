@@ -13,9 +13,9 @@ MyBlog 是 Zach424 的个人技术知识库与公开工程日志。它把学习�
 | 内容契约 | done | YAML + Zod 校验文章、TIL、项目、标签、专题、日期、URL、内容语境、复核日期与本地封面替代文本 |
 | 公开阅读 | done | 首页、文章、项目、专题、标签、统一时间档案、首发/更新内容活动、首页最近三次变化摘要、订阅与开放接口目录、搜索、关于、品牌化 404 恢复路口、响应式、深色模式与详情页封面；共享列表、搜索和知识图谱统一区分首发/更新日，搜索结果提供 Unicode 安全命中证据，文章/项目详情提供最多 3 条带可见理由的继续阅读 |
 | 读者分享 | done | 文章/项目服务端规范链接、Web Share、URL/Markdown 引用 Clipboard、全 ASCII 标点转义、取消静默、共享 single-flight、`aria-live` 回执、无 JavaScript 恢复路径与 print 隔离 |
-| Markdown | done | GFM、代码高亮、语言标签、渐进增强的一键复制、与实际渲染一致的 H1–H6 heading id、H2/H3 目录与原生永久链接、Obsidian 兼容脚注/尾注与行内/块级数学公式、A4 打印/PDF 版式、阅读时间、相邻文章与响应式正文图片 |
+| Markdown | done | GFM、代码高亮、语言标签、渐进增强的一键复制、与实际渲染一致的 H1–H6 heading id、H2/H3 目录与原生永久链接、Obsidian 兼容脚注/尾注、行内/块级数学公式与 Callout 信息块、A4 打印/PDF 版式、阅读时间、相邻文章与响应式正文图片 |
 | 内容发现 | done | SEO、内容级 OG/Twitter 封面、首页唯一 `WebSite`、文章/项目纯生成器维护的稳定身份与站点引用、文章 `wordCount`/`timeRequired`、四类详情可见路径与 `BreadcrumbList` JSON-LD、统一年月时间档案、可见订阅目录、标签/专题级 RSS 与页面自动发现、一次导入全部公开 RSS 的分组 OPML 2.0、按真实内容变化排序的 Atom 1.0、首页/Sitemap 共享公开路由事实、OpenSearch 1.1、version 1 公开内容清单及 Draft 2020-12 JSON Schema、JSON Feed 1.1、保留首发 `pubDate` 且以 `dcterms:modified` 表达更新的 RSS、Feed/清单/单篇 Markdown 的 Last-Modified 与日期条件验证、十三端点 HEAD 等价门禁、Sitemap、robots、NFKC/AND 本地全文搜索；十一个结构化端点与源文均有 SHA-256 ETag/条件读取 |
-| 网页写作 | done | `/studio`、GitHub OAuth、Decap workflow、PR、按 slug 归档媒体、稳定 slug 锁定、双层 SHA-256 冲突预检、快速重选 latest-wins、生产规则公式预览与全字段只读发布清单 |
+| 网页写作 | done | `/studio`、GitHub OAuth、Decap workflow、PR、按 slug 归档媒体、稳定 slug 锁定、双层 SHA-256 冲突预检、快速重选 latest-wins、共享生产管线的公式/Callout 增强 Markdown 预览与全字段只读发布清单 |
 | Obsidian 写作 | done | Vault、三类受信模板、桌面插件 1.41.0、文件名唯一草稿身份、原子新建/改名/旧身份清理、source-scoped 作者意图与来源行导航、发布/复核 single-flight、三方版本联锁、bundle SHA-256 完整性、四路径 Git HEAD/index/worktree provenance、sealed Git 交付恢复、维护台账、全库生产同步、手动单篇收敛与正常/恢复交付自动接力 |
 | Inbox 发布就绪 | done | version 6/read-only 全草稿 ready/scheduled/blocked、每个可读来源的原始字节 SHA-256、Article/TIL/Project、精确站内目标/源码行/重复次数、媒体 COVER/BODY 用途/出现次数/源码行/最终替代文本及来源、空文本与文件名回退阻塞、真实媒体候选、目标/共享附件诊断、CLI 全库或 `--source` 聚焦 JSON 与 Obsidian 当前草稿原生摘要 |
 | 附件发布 | done | Wiki/Markdown 图片转换、按内容隔离、稳定命名、越界保护、失败回滚 |
@@ -68,15 +68,15 @@ MyBlog 是 Zach424 的个人技术知识库与公开工程日志。它把学习�
 
 - 仓库：<https://github.com/Zach424/MyBlog>，生产分支 `main`；
 - 生产站：<https://blog-iota-five-59.vercel.app>；
-- 本轮功能提交：`7e5909f`（按真实内容变化排序的 Atom 1.0），生产基线提交：`fd359c1`，均已推送 `main`；
-- 自动交付：稳定生产 `/updates.atom` 返回 4 个公开 entry，`/subscribe` 可见七条只读通道，首页声明 Atom alternate；Atom 的 namespace、feed/entry 必填元素、顺序、日期、分类、MIME、文件名、Link、`noindex`、SHA-256 ETag、日期/摘要条件 GET/HEAD 与 Sitemap 排除全部通过，OPML 继续只含 13 个 RSS leaf。完整 smoke 为 27 routes、OAuth 302，十三条 HTML 与十一个结构化发现端点全部 PASS；Atom 为 21338/10063 B（raw/gzip）；
-- 最新完成迭代：0129 Atom 更新订阅与双时间顺序边界；
+- 本轮功能提交：`3c6dfbf`（Obsidian 兼容 Markdown Callout），已推送 `main` 并进入 Vercel 稳定生产；
+- 自动交付：生产 `/studio/math-preview` 已同时证明 `calloutCount: 1` 与公式渲染，完整 smoke 为 27 routes、OAuth 302，十三条 HTML 与十一个结构化发现端点全部 PASS；本轮没有改变公开内容集合或结构化端点正文，因此无需重置既有生产预算基线；
+- 最新完成迭代：0130 Obsidian Markdown Callout 与增强内容共享渲染边界；
 - Obsidian 状态：仓库根目录就是 Vault，`docs/STATUS.md`、`docs/iterations/*.md` 与 `docs/knowledge/*.md` 是同一份本地文件，可直接阅读和维护；
 - 手动外部接入：自定义域名、统计、评论、公开邮箱均暂缓，不阻塞当前开发。
 
 ## 本轮新增能力
 
-`/updates.atom` 现在提供更新优先的 Atom 1.0 全文订阅。`createAtomXml()` 复制公开集合后按 `updatedAt ?? publishedAt` 倒序，并以首次发布日期、`zh-CN` 标题和 URL 决胜；每个 entry 同时保留 `published` 与 `updated`，复用规范 URL 作为永久 id，description 作为 summary、Markdown 纯文本作为 content、tags 作为 category。Feed 自身声明唯一 title/id/updated、author、self/alternate、icon 与 Atom namespace；`createAtomResponse()` 增加一小时 fresh/一天 SWR、`updates.atom` 文件名、self/alternate Link、`noindex`、最终正文 SHA-256 ETag、可审计 Last-Modified 和 ETag 优先的日期条件读取。首页自动发现且 `/subscribe` 增至七条；OPML 明确排除 Atom，避免导入两个内容重叠的全站频道。完整验证为 536/536 单元测试、66 个生成页面、35/35 应用测试；稳定生产为 27 routes、OAuth 302。Atom 为 21338/10063 B，正文摘要为 `a9564d43d1b2fc04cf77812431837c3a1820d2ccdf37269f6bf9278da823671f`，raw/gzip 上限为 32768/15360 B，第十一个发现预算绑定功能提交 `7e5909f`。无客户端 JavaScript、依赖、账号、数据库、追踪、第三方服务或云配置变化；本轮中文状态、迭代归档和知识笔记都位于同一 Obsidian Vault。
+作者现在可以直接使用 Obsidian Callout 语法：`> [!note]` 创建静态信息块，`+`/`-` 创建默认展开/收起的原生 `<details>`。实现支持官方 13 种类型和别名、自定义标题、嵌套、列表、强调与公式；未知的受限标识符安全降级为 note，普通 blockquote 与代码围栏中的示例保持原样。`lib/markdown-callout.ts` 在共享 HAST 管线中服务端转换，读者页与 Studio 使用同一插件；搜索纯文本保留可见标题与正文但移除作者标记，打印强制展开收起内容。视觉沿用 Evidence Rail，以类型轨道和五组可审计色调表达语义，并通过 1280px、390px 深色、嵌套与键盘折叠实测。完整验证为 540/540 单元测试、66 个生成页面、35/35 应用测试与 27 路由生产 smoke。无新依赖、客户端 JavaScript、任意 HTML、iframe、账号、数据库、追踪、第三方服务、Cloudflare 或云配置变化；本轮中文状态、迭代归档和知识笔记都位于同一 Obsidian Vault。
 
 ## 风险与下一步
 
@@ -113,4 +113,6 @@ MyBlog 是 Zach424 的个人技术知识库与公开工程日志。它把学习�
 
 29. RSS 与 Atom 是同一内容集合的两种时间投影，不应互相替代：RSS 保留首次发布日期排序，Atom 提升真实更新；两者在 `/subscribe` 并列供读者主动选择，但 OPML 只导入 RSS，防止默认创建重叠的全站订阅。未来若增加 scoped Atom，必须先证明它解决新的读者任务，而不是机械复制全部 RSS 路由。
 
-下一轮唯一主任务：增加 Obsidian 兼容的 Markdown Callout（如 `> [!NOTE]`、`> [!WARNING]`）服务端渲染，让作者能在同一 Markdown 中插入类似飞书文档的信息块。应先定义受限类型、标题/正文语义、无障碍标签、普通 blockquote 降级、搜索/源文/打印行为与 Studio 预览一致性；不得开放任意 HTML、客户端脚本、第三方嵌入或新的云服务。
+30. Callout 已覆盖官方类型、别名、折叠、嵌套、搜索、Studio、深浅色与打印，但有意不支持图标包、任意 CSS class、块引用 ID 或复杂 Markdown 标题。标题目前是纯文本；若未来扩展标题内联语法，必须先证明 HAST 与无障碍名称不会分叉。
+
+下一轮唯一主任务：为文章增加受限、服务端渲染的 Mermaid 图表，并保持 Obsidian 围栏语法可移植。先定义允许的 diagram 类型、资源与文本上限、SVG 安全清理、失败降级、深浅色、窄屏、打印、搜索纯文本和 Studio 预览契约；不得执行任意脚本、开放 HTML/iframe、依赖第三方运行时或把大型客户端 Mermaid bundle 发送给读者。

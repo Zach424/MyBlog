@@ -11,7 +11,7 @@ MyBlog 是 Git-first 个人技术博客。公开阅读不依赖数据库；网�
 | 界面 | React 19、Next.js 16 App Router | 页面、元数据、Route Handlers 与服务端渲染 |
 | 内容 | Markdown、YAML、Zod | 文章/项目解析、字段校验、草稿过滤与派生索引 |
 | 维护 | Node CLI、GitHub Actions | Current record 日龄、根媒体库存、外链库存、分级队列、摘要与过期门 |
-| 阅读 | react-markdown、remark-gfm、remark-math、rehype、KaTeX | GFM、标题锚点、代码高亮、脚注、数学公式与目录 |
+| 阅读 | react-markdown、remark-gfm、remark-math、rehype、KaTeX | GFM、标题锚点、代码高亮、脚注、数学公式、Obsidian Callout 与目录 |
 | 发现 | 本地搜索、OpenSearch 1.1、公开内容清单及 JSON Schema、JSON Feed 1.1、根/标签/专题 RSS、Atom 1.0 更新订阅、OPML 2.0、单篇 Markdown 源文、Sitemap、robots、JSON-LD | 检索、按首次发布或真实变更订阅、主题或学习路径订阅、一次导入全部 RSS、批量发现、机器校验、可移植源文、自动化消费与搜索引擎发现 |
 | 发布 | Decap CMS、Obsidian、GitHub | 两个作者入口，共用同一内容事实源 |
 | 媒体 | Sharp、Markdown AST、`next/image`、Git `public/uploads` | 原图安全解码、WebP 优化、共享固有尺寸、响应式封面/正文图、引用所有权与附件版本化 |
@@ -23,7 +23,7 @@ MyBlog 是 Git-first 个人技术博客。公开阅读不依赖数据库；网�
 ```text
 app/
   api/cms/{auth,callback}/route.ts  GitHub OAuth 同源端点
-  studio/                           Studio HTML、内容复核队列、配置、媒体清单/预检、slug 控件、公式预览与版本化 CMS 运行时路由
+  studio/                           Studio HTML、内容复核队列、配置、媒体清单/预检、slug 控件、增强 Markdown 预览与版本化 CMS 运行时路由
   posts/ projects/ series/ tags/   集合、详情页与嵌套 source.md Route Handler
   archive/                          文章、TIL 与项目的服务端年月时间档案
   activity/                         首次发布与真实更新事件的服务端活动账本及路由级 CSS Module
@@ -67,9 +67,10 @@ lib/
     staging-media.ts                根暂存库存、inbox 引用、年龄证据与报告格式
   cms-oauth.ts                      签名 OAuth state 与 token 交换
   heading-permalink.ts              标题 fragment 与 Markdown 深度标记纯函数
+  markdown-callout.ts               Obsidian Callout 标记解析、HAST 转换与搜索纯文本降级
   markdown-math.ts                  KaTeX 安全选项与构建期公式解析门
   markdown-pipeline.ts              生产阅读与 Studio 共享的 remark/rehype/安全 URL 配置
-  studio-math-preview.ts            同源作者预览的公式校验、HTML 输出与无障碍语义
+  studio-math-preview.ts            同源作者预览的公式/Callout 计数、HTML 输出与无障碍语义
   studio-maintenance.ts             公开 Current 内容到最小维护队列快照的适配层
   search-index.ts                   服务端 Markdown AST 到搜索纯文本/含更新日文档索引
   search.ts                         客户端安全查询、排名、证据片段与 Unicode 原文分段
@@ -78,7 +79,7 @@ lib/
   obsidian-publishing.ts            Obsidian 校验、附件与目标路径转换
   redirects.ts                      重定向 schema、路径不变量与 Next 规则转换
   studio-assets.ts                  构建期 Studio 资源响应
-studio/                             Decap CMS、浏览器媒体预检、稳定 slug 与公式 preview template 源文件（不放入 public）
+studio/                             Decap CMS、浏览器媒体预检、稳定 slug 与增强 Markdown preview template 源文件（不放入 public）
 templates/obsidian/                 不重复写入 slug 的文章、TIL、项目受信模板
 scripts/                            作者环境自检、发布、统一交付分诊、发布/复核交付、inbox/内容/生产同步与收敛等待/暂存媒体/外链报告、HTML/发现端点预算、冒烟、迁移和生产测试器
 build/validate-media.ts             构建前递归扫描全部公开上传图片
@@ -179,6 +180,8 @@ H2/H3 由 `MarkdownHeading` 服务端组件接收 `rehype-slug` 已写入的真�
 `lib/search.ts` 对查询继续执行 Unicode NFKC、`zh-CN` 小写与多词 AND 语义，排名权重不变。结果摘要在摘要与正文之间选择覆盖查询词更多的一侧；正文窗口以首个规范化命中为中心。命中表示先在规范化文本上定位，再用 `Intl.Segmenter` 的 grapheme 边界和规范化前缀长度映射回作者原文，重叠范围合并后只返回 `{ text, matched }` 数据。`SearchExperience` 把这些数据渲染为 React 文本节点和原生 `<mark>`，不使用 raw HTML；同一客户端岛既参与初始服务端 HTML，也处理后续本地输入，因此首屏与水合后保持同一证据契约。字段原因、摘要/正文来源标签、AA 对比和显式输入焦点让颜色不是唯一信号。
 
 `lib/markdown-pipeline.ts` 进一步把生产阅读的 remark/rehype 插件、脚注选项、受限 KaTeX 和 URL protocol transform 集中成共享配置。`/studio/math-preview` 先调用同一构建期公式门，再用 pinned unified/remark/rehype/stringify 重放共享管线；raw HTML 保持关闭，`href`/`src` 再应用同一安全 URL 规则。端点只接受同源 JSON，限制声明与实际正文为 100,000 B，返回 `no-store`/`noindex` 的 200 或带行号 422；其他协议/类型/体积错误分别失败。它只生成作者预览，不保存 Git 或替代完整构建门。
+
+Iteration 0130 在这一共享管线最前端加入 `rehypeMarkdownCallouts()`。它只识别 blockquote 首段第一段文本中的受限 `[!identifier]` 标记，标识符长度不超过 32，官方类型和别名映射到 13 个规范类型，未知合法值降级为 note。静态块输出带 `role="note"` 的 `<aside>`；`+`/`-` 输出默认展开/收起的原生 `<details><summary>`。转换采用后序遍历，因此嵌套 Callout、列表、强调、公式和链接继续由既有 HAST 表达；没有标记的 blockquote 与 fenced code 保持原样。`search-index.ts` 在同一 mdast 上只移除作者标记并保留可见标题/正文，源 Markdown 仍完整可移植。Studio 通过历史兼容端点 `/studio/math-preview` 复用完全相同的 rehype 插件，并把结果概括为公式和 Callout 数量；没有第二套 HTML renderer，也没有客户端富内容解析器。
 
 内容目录通过 Next.js output tracing 显式包含在部署中，既支持 Vercel Serverless，也不会依赖开发机器路径。
 
