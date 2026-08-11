@@ -12,7 +12,7 @@ MyBlog 是 Git-first 个人技术博客。公开阅读不依赖数据库；网�
 | 内容 | Markdown、YAML、Zod | 文章/项目解析、字段校验、草稿过滤与派生索引 |
 | 维护 | Node CLI、GitHub Actions | Current record 日龄、根媒体库存、外链库存、分级队列、摘要与过期门 |
 | 阅读 | react-markdown、remark-gfm、remark-math、rehype、KaTeX | GFM、标题锚点、代码高亮、脚注、数学公式与目录 |
-| 发现 | 本地搜索、OpenSearch 1.1、公开内容清单及 JSON Schema、JSON Feed 1.1、根/标签/专题 RSS、单篇 Markdown 源文、Sitemap、robots、JSON-LD | 检索、全站、主题或学习路径订阅、批量发现、机器校验、可移植源文、自动化消费与搜索引擎发现 |
+| 发现 | 本地搜索、OpenSearch 1.1、公开内容清单及 JSON Schema、JSON Feed 1.1、根/标签/专题 RSS、OPML 2.0、单篇 Markdown 源文、Sitemap、robots、JSON-LD | 检索、全站、主题或学习路径订阅、一次导入全部频道、批量发现、机器校验、可移植源文、自动化消费与搜索引擎发现 |
 | 发布 | Decap CMS、Obsidian、GitHub | 两个作者入口，共用同一内容事实源 |
 | 媒体 | Sharp、Markdown AST、`next/image`、Git `public/uploads` | 原图安全解码、WebP 优化、共享固有尺寸、响应式封面/正文图、引用所有权与附件版本化 |
 | 托管 | Vercel | Git 自动预览、`main` 生产部署、环境变量与回滚 |
@@ -28,9 +28,9 @@ app/
   archive/                          文章、TIL 与项目的服务端年月时间档案
   activity/                         首次发布与真实更新事件的服务端活动账本及路由级 CSS Module
   home-activity.module.css          首页最近三项活动的路由级轨道样式
-  subscribe/                        现有订阅与开放接口的服务端可见路由表
+  subscribe/                        六类订阅与开放接口的服务端可见路由表
   knowledge/ search/ about/         知识地图、搜索和关于页
-  content.json/ content.schema.json/ feed.json/ rss.xml/ tags/[slug]/rss.xml/ series/[slug]/rss.xml/ sitemap.xml/ robots.txt/ opensearch.xml/ 发现端点
+  content.json/ content.schema.json/ feed.json/ rss.xml/ tags/[slug]/rss.xml/ series/[slug]/rss.xml/ feeds.opml/ sitemap.xml/ robots.txt/ opensearch.xml/ 发现端点
 components/                         站点框架、内容视图、Markdown、搜索
   BreadcrumbTrail.tsx               四类详情页可见路径与 BreadcrumbList 的共享服务端边界
   ContentViews.tsx                  详情页事实、目录、引用账本与打印来源
@@ -96,7 +96,7 @@ vercel.json                         Vercel Next.js 框架声明
 
 ## 4. 内容与构建
 
-`next.config.ts` 在开发和构建开始时冻结作者时区日期，并行执行内容、媒体文件、内容—媒体关系与永久重定向校验。内容校验器先验证全部 Markdown，再对已公开内容执行关系完整性与新鲜度检查；媒体校验器递归扫描 `public/uploads`，拒绝符号链接、非图片、损坏图片、扩展名伪装和预算超限；媒体关系校验器用标准 Markdown AST 读取正式 posts/projects 的 `cover`、行内图片与引用式图片，核对精确文件路径和 slug 所有权，再拒绝无人引用的已归档附件；重定向校验器交叉检查当前公开 HTML 路由、静态文件、运维命名空间与 `content/redirects.yml`。纯净 Git 检出尚无上传目录时等价于零张图片；目录一旦存在，所有文件和正式引用都必须通过校验。`lib/content/index.ts` 在构建/服务端从 `content/posts` 与 `content/projects` 读取文件，解析为统一记录，过滤草稿和未来内容，再派生专题、标签、时间档案、搜索、公开内容清单、JSON Feed、根 RSS、标签 RSS、专题 RSS 与单篇 Markdown 源文；专题 HTML 消费 `series.order` 升序的索引，专题 RSS 把同一集合交给共享时间倒序序列化器。Sitemap 再通过共享公开路由事实模块组合这些索引与静态页面，机器 Feed 不进入页面路由清单。
+`next.config.ts` 在开发和构建开始时冻结作者时区日期，并行执行内容、媒体文件、内容—媒体关系与永久重定向校验。内容校验器先验证全部 Markdown，再对已公开内容执行关系完整性与新鲜度检查；媒体校验器递归扫描 `public/uploads`，拒绝符号链接、非图片、损坏图片、扩展名伪装和预算超限；媒体关系校验器用标准 Markdown AST 读取正式 posts/projects 的 `cover`、行内图片与引用式图片，核对精确文件路径和 slug 所有权，再拒绝无人引用的已归档附件；重定向校验器交叉检查当前公开 HTML 路由、静态文件、运维命名空间与 `content/redirects.yml`。纯净 Git 检出尚无上传目录时等价于零张图片；目录一旦存在，所有文件和正式引用都必须通过校验。`lib/content/index.ts` 在构建/服务端从 `content/posts` 与 `content/projects` 读取文件，解析为统一记录，过滤草稿和未来内容，再派生专题、标签、时间档案、搜索、公开内容清单、JSON Feed、根 RSS、标签 RSS、专题 RSS、OPML 订阅索引与单篇 Markdown 源文；专题 HTML 消费 `series.order` 升序的索引，专题 RSS 把同一集合交给共享时间倒序序列化器。Sitemap 再通过共享公开路由事实模块组合这些索引与静态页面，机器 Feed 与 OPML 不进入页面路由清单。
 
 `lib/content/archive.ts` 只接收已验证的公开 `ContentRecord`，复制后按 `publishedAt` 倒序、`zh-CN` 标题与 `en` URL 依次决胜，再用插入顺序稳定生成年/月账本和每年计数；调用方数组不会被改写，空集合返回空档案。`app/archive/page.tsx` 直接消费这一纯投影，以 Server Component 输出原生 `ol`/`section`/`time`/链接，并把 Article、TIL 与 Project 放回一条时间轴；页面没有数据库、客户端请求、第二份内容索引或作者维护字段。
 
@@ -106,15 +106,17 @@ vercel.json                         Vercel Next.js 框架声明
 
 活动页的视觉规则已从接近 100 KB 上限的 `app/globals.css` 迁入 `app/activity/activity.module.css`，首页新增轨道位于 `app/home-activity.module.css`。全局 CSS 因而由 99,995 B 降至 95,383 B；跨页面 Token 与基础布局继续留在全局文件，活动专属节点、轨道、断点与文字遮罩由构建期生成的 CSS Module 类隔离。测试和生产 smoke 不依赖哈希类名，而使用稳定 `data-activity-*` 语义属性核对模式与数量。
 
-`lib/subscriptions.ts` 把既有读取能力投影为固定五通道目录：RSS、JSON Feed、OpenSearch、公开清单/Schema 和单篇 Markdown。静态协议事实与从公开记录稳定选择的最新 `source.md` 示例在纯函数中汇合；`app/subscribe/page.tsx` 只负责把它们服务端渲染成可见路由表。页面不代理端点、不复制正文、不发起客户端请求，也不把只读接口误写成发布 API；发布入口仍是 Studio/Obsidian → Git。
+`lib/subscriptions.ts` 把既有读取能力投影为固定六通道目录：RSS、OPML、JSON Feed、OpenSearch、公开清单/Schema 和单篇 Markdown。静态协议事实与从公开记录稳定选择的最新 `source.md` 示例在纯函数中汇合；`app/subscribe/page.tsx` 只负责把它们服务端渲染成可见路由表。页面不代理端点、不复制正文、不发起客户端请求，也不把只读接口误写成发布 API；发布入口仍是 Studio/Obsidian → Git。
 
 `lib/discovery.ts` 为 JSON Feed 与 RSS 共用同一公开记录排序。RSS 继续用 `pubDate` 表达首次发布时间、用稳定内容 URL 表达 `guid`，只在 `updatedAt > publishedAt` 时额外输出 Dublin Core Terms 的 `dcterms:modified` RFC 3339 UTC 时间；根元素声明 `http://purl.org/dc/terms/` 命名空间。每个 RSS item 的 `<category>` 只从同一 `record.tags` 依原顺序逐项 XML 转义生成，因此数量、顺序和值与对应 JSON Feed `tags` 一致；内容类型不再混入无 `domain` 分类，项目也不会虚构一套外部 taxonomy URI。`createRssXml()` 的可选 channel title/description/home/feed path 只改变频道身份，不复制 item 逻辑；`lib/rss.ts` 再集中 MIME、缓存、Feed Last-Modified 与 SHA-256 条件响应。根路由传入全部公开记录，`/tags/[slug]/rss.xml` 传入 `getTagBySlug(slug).items`，因此标签投影仍保持规范内容 GUID 和全站时间排序。标签页以可见链接与 alternate 发现 Feed，Feed 用 HTTP self/up Link 返回标签页；未知标签为 `no-store`、`noindex` 且无验证器的 404。该投影不进入 Sitemap。不理解扩展或不展示分类的阅读器仍可按普通 RSS 2.0 消费。
+
+`lib/opml.ts` 把站点 origin 与公开标签/专题描述投影为 OPML 2.0 文档。根组固定为“全部更新”，其后只在非空时输出“按标签”“按专题”；每组 leaf 都要求 `text`、`type="rss"` 与绝对 `xmlUrl`，并提供 `title`、`description`、`htmlUrl`、`language="zh-CN"`、`version="RSS"`。标签和专题在复制后分别按 `zh-CN` 标题、英文 slug 决胜，调用方索引不会被修改；所有属性统一转义 `& " ' < >`。`app/feeds.opml/route.ts` 只映射 `getTagIndex()` / `getSeriesIndex()`，响应层集中 MIME、下载文件名、self/up Link、`noindex`、一小时 fresh/一天 SWR、最终正文 SHA-256 ETag 与条件 304。OPML 可选日期及 HTTP Last-Modified 被省略，因为当前没有精确、完整且可审计的聚合表示修改时刻；正文摘要已经是可靠验证器。该端点只从 `/subscribe` 可见发现，不进入 Sitemap。
 
 `lib/feed-http.ts` 为两个 Feed 分别保存可审计的表示格式修订时间：JSON Feed 当前为 `2026-08-06T10:09:53Z`，RSS 在 Iteration 0125 标签语义对齐后为 `2026-08-10T22:25:11Z`。HTTP `Last-Modified` 取“格式修订时间”与所有公开记录最新 `updatedAt ?? publishedAt` 的最大值；纯日期按作者时区 `Asia/Shanghai` 的日界线换算到 UTC，避免本地当天在 UTC 前八小时形成未来响应头。空内容 Feed 仍由格式修订时间得到真实验证器，调用方数组不变。正文格式以后发生变化时必须同步推进对应修订时间；只改响应处理、测试或文档不应伪造正文修改。
 
 `lib/http-validators.ts` 的可选日期条件层严格遵循 HTTP 先决条件顺序：只生成规范 IMF-fixdate 且拒绝未来 `Last-Modified`；接收端兼容 IMF-fixdate、RFC 850 与 asctime 三种 HTTP-date，拒绝日历错误、星期不符、重复成员和非 HTTP 日期。任何 `If-None-Match` 字段一旦存在就完全遮蔽 `If-Modified-Since`，即使 ETag 值陈旧或畸形；只有没有 ETag 条件的 GET/HEAD 才在表示修改时间早于或等于请求日期时返回带 ETag、日期和缓存元数据的空 304。Iteration 0122 首先接入 RSS/JSON Feed，Iteration 0123 再让已有可靠日期事实的内容清单与单篇 Markdown 复用同一路径；无日期事实端点继续只用 ETag。
 
-Next.js 16.3 的 Route Handler 发送边界会对仅导出 GET 的公开端点处理 HEAD，并在最终发送阶段抑制响应体；业务生成器仍运行，因此 ETag、Last-Modified、MIME、缓存、Link 与 noindex 可以和 GET 保持同源。Iteration 0124 不显式复制九个 `HEAD()` 导出，而是用真实生产构建与 Vercel smoke 把框架行为固定为项目契约；Iteration 0127 再把代表专题 RSS 纳入第十一个目标：九个结构化端点和文章/项目 `source.md` 的普通 HEAD 为 200/零正文，ETag 与日期命中为 304/零正文，旧/坏日期或陈旧 ETag 优先路径为 200/零正文；未知源文、未知标签与未知专题 Feed 保持 `no-store` 404 且无公开验证器。Next 升级时必须重新验证这一框架边界。
+Next.js 16.3 的 Route Handler 发送边界会对仅导出 GET 的公开端点处理 HEAD，并在最终发送阶段抑制响应体；业务生成器仍运行，因此 ETag、Last-Modified、MIME、缓存、Link 与 noindex 可以和 GET 保持同源。Iteration 0124 不显式复制九个 `HEAD()` 导出，而是用真实生产构建与 Vercel smoke 把框架行为固定为项目契约；Iteration 0128 再把 OPML 纳入第十二个目标：十个结构化端点和文章/项目 `source.md` 的普通 HEAD 为 200/零正文，ETag 命中为 304/零正文；带可靠日期资源还验证日期命中、旧/坏日期与 ETag 优先路径。未知源文、未知标签与未知专题 Feed 保持 `no-store` 404 且无公开验证器。Next 升级时必须重新验证这一框架边界。
 
 `lib/public-routes.ts` 是可索引公开路由的唯一派生边界。11 条静态页面声明 path、日期来源、change frequency 与 priority；文章、项目、专题和标签从同一公开内容/索引自动追加。最终清单检查跨集合 path 唯一性，并输出 routes、total 与最新公开内容日期。`createSitemapXml()` 只把 routes 序列化为 XML；首页 Evidence Rail 使用同一个 total，`LATEST` 使用与 Sitemap 根 URL `lastmod` 相同的日期。Feed、Studio、OAuth、错误页和其他 noindex 端点有意不属于该集合。整个边界只在服务端运行，不读取 Git、不发起 API 请求，也不持有第二份计数。
 
@@ -285,15 +287,15 @@ Obsidian 草稿中的 Wiki 图片嵌入、指向 `public/uploads` 的 Markdown �
 
 ## 6. 安全与缓存
 
-`next.config.ts` 为所有响应声明 CSP、HSTS、`nosniff`、`DENY`、权限策略、来源策略和 COOP，并关闭 `X-Powered-By`。公开 HTML 使用浏览器复核、CDN 一小时缓存与一天 stale-while-revalidate；标签/专题 HTML 缓存只精确匹配 `/tags`、`/tags/:slug`、`/series` 与 `/series/:slug`，不能用 `:path*` 覆盖协议子路由。公开内容清单、清单 Schema 与 Markdown 源文使用浏览器零 fresh、CDN 一小时 fresh 与一天 stale-while-revalidate，并声明准确 MIME、安全内联文件名、源站强 ETag 和 `X-Robots-Tag: noindex`，有内容日期事实的清单/源文还声明 Last-Modified。JSON Feed、根/标签/专题 RSS、Sitemap 与 OpenSearch 描述保留一小时 fresh/一天 SWR，robots 保留一天 fresh；这些端点都以最终响应正文计算 SHA-256 ETag，并通过同一条件响应助手返回空 304。JSON Feed 与 RSS 另声明可审计的 Last-Modified；内容清单、单篇 Markdown 与 Feed 均支持 `If-Modified-Since`，并始终让 `If-None-Match` 优先。Sitemap、OpenSearch 与 robots 继续不伪造无法完整证明的日期。不存在的源文、标签 Feed 和专题 Feed 必须 `no-store` 且不生成公开验证器。Studio HTML、配置、预览 CSS、OAuth 和未知 Studio 路径也必须包含 `no-store`。版本化且带 SRI 的 CMS 运行时使用一年不可变缓存。
+`next.config.ts` 为所有响应声明 CSP、HSTS、`nosniff`、`DENY`、权限策略、来源策略和 COOP，并关闭 `X-Powered-By`。公开 HTML 使用浏览器复核、CDN 一小时缓存与一天 stale-while-revalidate；标签/专题 HTML 缓存只精确匹配 `/tags`、`/tags/:slug`、`/series` 与 `/series/:slug`，不能用 `:path*` 覆盖协议子路由。公开内容清单、清单 Schema 与 Markdown 源文使用浏览器零 fresh、CDN 一小时 fresh 与一天 stale-while-revalidate，并声明准确 MIME、安全内联文件名、源站强 ETag 和 `X-Robots-Tag: noindex`，有内容日期事实的清单/源文还声明 Last-Modified。JSON Feed、根/标签/专题 RSS、OPML、Sitemap 与 OpenSearch 描述保留一小时 fresh/一天 SWR，robots 保留一天 fresh；这些端点都以最终响应正文计算 SHA-256 ETag，并通过同一条件响应助手返回空 304。JSON Feed 与 RSS 另声明可审计的 Last-Modified；内容清单、单篇 Markdown 与 Feed 均支持 `If-Modified-Since`，并始终让 `If-None-Match` 优先。OPML、Sitemap、OpenSearch 与 robots 继续不伪造无法完整证明的日期。不存在的源文、标签 Feed 和专题 Feed 必须 `no-store` 且不生成公开验证器。Studio HTML、配置、预览 CSS、OAuth 和未知 Studio 路径也必须包含 `no-store`。版本化且带 SRI 的 CMS 运行时使用一年不可变缓存。
 
 一般页面的 COOP 为 `same-origin`；Studio 与 OAuth 为 `same-origin-allow-popups`，以允许 GitHub OAuth 弹窗完成握手。Studio CSP 不允许第三方脚本源，只额外允许 GitHub API、GitHub 授权页和头像来源；`unsafe-eval` 例外被限制在 Studio 路由，因为固定版本 Decap 编辑器/解析器需要运行时求值。
 
-`scripts/discovery-budget.mjs` 冻结稳定生产 origin、测量日期、来源提交和九个结构化发现端点的完整 UTF-8/raw 与 Node zlib gzip 基线。每个端点的 raw 上限由 `baseline + max(50%, 4096 B)` 向上取整到 1 KiB，gzip 上限由 `baseline + max(50%, 1024 B)` 向上取整到 512 B；高度可压缩但异常膨胀的正文和 raw 尚小但传输熵异常的正文都能独立失败。真实 Next 应用和生产冒烟复用同一测量器，并要求清单、Schema、JSON Feed、根 RSS、代表 TypeScript 标签 RSS、代表 `build-my-blog` 专题 RSS、Sitemap、robots、OpenSearch 恰好各出现一次；Iteration 0127 的稳定生产基线固定到功能提交 `cf3c631`，不会自动跟随当前输出。
+`scripts/discovery-budget.mjs` 冻结稳定生产 origin、测量日期、来源提交和十个结构化发现端点的完整 UTF-8/raw 与 Node zlib gzip 基线。每个端点的 raw 上限由 `baseline + max(50%, 4096 B)` 向上取整到 1 KiB，gzip 上限由 `baseline + max(50%, 1024 B)` 向上取整到 512 B；高度可压缩但异常膨胀的正文和 raw 尚小但传输熵异常的正文都能独立失败。真实 Next 应用和生产冒烟复用同一测量器，并要求清单、Schema、JSON Feed、根 RSS、代表 TypeScript 标签 RSS、代表 `build-my-blog` 专题 RSS、OPML、Sitemap、robots、OpenSearch 恰好各出现一次；Iteration 0128 的稳定生产基线固定到功能提交 `d0f2165`，OPML 为 5193/962 B、上限 10240/2048 B，不会自动跟随当前输出。
 
 ## 7. 部署与回滚
 
-Vercel GitHub Integration 负责每个分支的 Preview 和 `main` 的 Production，不再维护重复的部署 Action。GitHub `deployment_status` 成功事件触发生产冒烟，检查代表页面、时间档案、内容活动、订阅路由表、全 Sitemap、Studio/OAuth、Feed、公开内容清单及 Schema、OpenSearch、文章/项目 Markdown 源文、安全头和 404；清单、Schema、JSON Feed、根/标签/专题 RSS、Sitemap、robots、OpenSearch 的最终正文验证器及条件读取也在线复核，并逐项输出十三条 HTML 与九个结构化发现端点的 raw/gzip 基线、上限和余量。
+Vercel GitHub Integration 负责每个分支的 Preview 和 `main` 的 Production，不再维护重复的部署 Action。GitHub `deployment_status` 成功事件触发生产冒烟，检查代表页面、时间档案、内容活动、订阅路由表、全 Sitemap、Studio/OAuth、Feed、OPML、公开内容清单及 Schema、OpenSearch、文章/项目 Markdown 源文、安全头和 404；清单、Schema、JSON Feed、根/标签/专题 RSS、OPML、Sitemap、robots、OpenSearch 的最终正文验证器及条件读取也在线复核，并逐项输出十三条 HTML 与十个结构化发现端点的 raw/gzip 基线、上限和余量。
 
 Quality、生产冒烟与回滚工作流均使用 Node 24 runtime 的 checkout/setup-node v6，但实际执行仓库脚本时仍固定 Node.js 22。显式 `cache: npm` 避免 setup-node major 的自动缓存探测改变现有行为；GitHub-hosted runner 由平台维护，不引入自托管 runner 版本责任。升级 action 时必须先更新结构契约测试，再同时验证 push、定时触发结构、deployment status 与手动回滚权限。
 
@@ -309,6 +311,7 @@ Quality、生产冒烟与回滚工作流均使用 Node 24 runtime 的 checkout/s
 - RSS item 的 category 必须逐项来自同一内容记录的 tags，并与对应 JSON Feed tags 在数量、顺序和值上相等；内容类型不能混入无 domain 的主题分类。
 - 标签 RSS 必须只包含对应公开标签索引的记录，频道 home/self 指向标签页/Feed，内容 GUID 保持规范页面身份；标签页提供可见和 alternate 发现，未知标签 GET/HEAD 必须 `no-store` 且无验证器，Feed 不进入 Sitemap。
 - 专题 RSS 必须只包含对应公开专题记录；专题 HTML 保持 `series.order` 章节升序，Feed 保持首发时间倒序，频道 home/self 指向专题页/Feed，内容 GUID 保持规范页面身份；专题页提供可见和 alternate 发现，未知专题 GET/HEAD 必须 `no-store` 且无验证器，Feed 不进入 Sitemap。
+- OPML 必须只从公开根、标签和专题订阅索引生成，保持根/标签/专题分组与标题/slug 稳定顺序；所有 leaf 必须拥有绝对 `xmlUrl` 和对应 HTML 语境，不进入 Sitemap，不伪造日期或 Last-Modified，并以最终正文 SHA-256 ETag 支持 GET/HEAD 条件读取。
 - HTTP 条件请求必须让 `If-None-Match` 优先于 `If-Modified-Since`；日期验证器不得晚于响应时间，也不得由无日期事实的端点伪造。
 - 公开站内链接必须指向同一构建中的公开文章或项目；详情页 outgoing/backlinks 与 `/knowledge` 的节点、边和孤立状态只能从同一正文链接集合派生。
 - 公开内容必须声明语境和复核日期；Current record 超过 180 天未复核不能进入新部署。
