@@ -1445,13 +1445,14 @@ test("server-renders a shareable search query against posts and projects", async
 });
 
 test("publishes the structured discovery suite from one public origin", async (context) => {
-  const [manifestResponse, schemaResponse, jsonFeedResponse, rssResponse, tagRssResponse, seriesRssResponse, opmlResponse, sitemapResponse, robotsResponse, openSearchResponse] = await Promise.all([
+  const [manifestResponse, schemaResponse, jsonFeedResponse, rssResponse, tagRssResponse, seriesRssResponse, atomResponse, opmlResponse, sitemapResponse, robotsResponse, openSearchResponse] = await Promise.all([
     render("/content.json", { accept: "application/json" }),
     render("/content.schema.json", { accept: "application/schema+json" }),
     render("/feed.json"),
     render("/rss.xml"),
     render("/tags/typescript/rss.xml"),
     render("/series/build-my-blog/rss.xml"),
+    render("/updates.atom"),
     render("/feeds.opml"),
     render("/sitemap.xml"),
     render("/robots.txt"),
@@ -1707,6 +1708,8 @@ test("publishes the structured discovery suite from one public origin", async (c
   const tagRss = await tagRssResponse.text();
   assert.equal(seriesRssResponse.status, 200);
   const seriesRss = await seriesRssResponse.text();
+  assert.equal(atomResponse.status, 200);
+  const atom = await atomResponse.text();
   assert.equal(opmlResponse.status, 200);
   const opml = await opmlResponse.text();
 
@@ -1810,6 +1813,7 @@ test("publishes the structured discovery suite from one public origin", async (c
       pathname: "/series/build-my-blog/rss.xml",
       body: seriesRss,
     }),
+    measureDiscoveryBudget({ pathname: "/updates.atom", body: atom }),
     measureDiscoveryBudget({ pathname: "/feeds.opml", body: opml }),
     measureDiscoveryBudget({ pathname: "/sitemap.xml", body: sitemap }),
     measureDiscoveryBudget({ pathname: "/robots.txt", body: robots }),

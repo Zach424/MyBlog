@@ -1102,6 +1102,7 @@ export async function runProductionSmoke(originInput, { expectOAuth = false } = 
       pathname: "/series/build-my-blog/rss.xml",
       body: seriesRss.body,
     }),
+    measureDiscoveryBudget({ pathname: "/updates.atom", body: atom.body }),
     measureDiscoveryBudget({ pathname: "/feeds.opml", body: opml.body }),
     measureDiscoveryBudget({ pathname: "/sitemap.xml", body: sitemap.body }),
     measureDiscoveryBudget({ pathname: "/robots.txt", body: robots.body }),

@@ -6,7 +6,7 @@ export const DISCOVERY_BUDGET_ORIGIN = new URL(
 
 export const DISCOVERY_BUDGET_BASELINE_PROVENANCE = Object.freeze({
   measuredAt: "2026-08-11",
-  sourceRevision: "d0f216505d707877457bf948fe471e174a367600",
+  sourceRevision: "7e5909fcf98203f7b5dfc225b75278f51775490f",
 });
 
 export const DISCOVERY_BUDGET_POLICY = Object.freeze({
@@ -25,6 +25,7 @@ const measuredRouteBaselines = {
   "/rss.xml": { rawBytes: 3_400, gzipBytes: 1_284 },
   "/tags/typescript/rss.xml": { rawBytes: 2_059, gzipBytes: 923 },
   "/series/build-my-blog/rss.xml": { rawBytes: 2_065, gzipBytes: 983 },
+  "/updates.atom": { rawBytes: 21_338, gzipBytes: 10_063 },
   "/feeds.opml": { rawBytes: 5_193, gzipBytes: 962 },
   "/sitemap.xml": { rawBytes: 5_059, gzipBytes: 532 },
   "/robots.txt": { rawBytes: 155, gzipBytes: 127 },
