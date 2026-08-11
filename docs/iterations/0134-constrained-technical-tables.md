@@ -35,7 +35,7 @@
 - Obsidian 插件模板命令、作者环境版本和 bundle 摘要；
 - 完整单元、应用、浏览器和生产路由测试清单。
 
-功能提交为 `ff90626`。归档时工作区另有用户自己的 `README.md`、`docs/README.md` 修改，以及 `docs/API_REFERENCE_CURRENT.md`、`docs/DATABASE_AND_DATA_MODEL_CURRENT.md`、`docs/PRD_CURRENT_IMPLEMENTATION.md` 新文件；本轮没有覆盖、暂存或提交它们。
+功能提交为 `ff90626`，首份归档提交为 `3806c1d`，生产 smoke 扩展提交为 `ab3c9c0`。归档时工作区另有用户自己的 `README.md`、`docs/README.md` 修改，以及 `docs/API_REFERENCE_CURRENT.md`、`docs/DATABASE_AND_DATA_MODEL_CURRENT.md`、`docs/PRD_CURRENT_IMPLEMENTATION.md` 新文件；本轮没有覆盖、暂存或提交它们。
 
 ## 3. 设计内容
 
@@ -109,9 +109,12 @@ GFM 解析实验确认短行和超额行都会保留为不同数量的 `tableCel
 - Playwright 桌面：正文宽 768 px，首列计算样式 `sticky`、数字列 `right`、组件内 script/button 为 0，控制台 0 error；
 - Playwright 320 px：页面 `bodyScrollWidth 305 <= innerWidth 320`；表格 region `273 → 704 px`，滚动 220 px 后首列相对偏移仍为 0，焦点落在 `role=region`；
 - 桌面与移动截图：`output/playwright/iteration-0134-table-desktop.png`、`output/playwright/iteration-0134-table-mobile.png`；
-- 功能提交：`ff90626`。
-
-生产推送与稳定域名证据将在本轮归档提交推送后补入本节；当前不把本地合成表格冒充为真实公开文章。
+- 功能提交：`ff90626`；首份归档提交：`3806c1d`；生产 smoke 扩展：`ab3c9c0`；
+- 稳定生产 `/studio/table-editor.mjs`：200、`text/javascript`、`no-store`，包含 `registerStudioTableEditor` 与 `myblog-table`；
+- 稳定生产合成 POST：`tableCount: 1`、`tableDataCellCount: 4`，HTML 包含 `data-table="bounded-ledger"` 与 `markdown-data-table-grid`，并继续证明公式、Callout、Mermaid、画廊和本地静音视频；
+- 完整生产 smoke：27 routes、OAuth 302；十三条 HTML 与十一个结构化发现端点预算全部 PASS；
+- 本机 Node 前两次直连为 `fetch failed`，PowerShell 同时已证明线上 200；只为单次 smoke 从已启用的系统代理读取地址并注入 `HTTP_PROXY`/`HTTPS_PROXY`/`NODE_USE_ENV_PROXY=1` 后通过，没有写入仓库、全局 Git 或系统配置；
+- 当前公开内容没有真实技术表格，因此没有把合成 POST 和浏览器夹具冒充为真实文章的最终作者/CDN 证据。
 
 ## 8. 经验与教训
 

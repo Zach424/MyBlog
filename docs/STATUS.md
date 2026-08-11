@@ -68,15 +68,15 @@ MyBlog 是 Zach424 的个人技术知识库与公开工程日志。它把学习�
 
 - 仓库：<https://github.com/Zach424/MyBlog>，生产分支 `main`；
 - 生产站：<https://blog-iota-five-59.vercel.app>；
-- 本轮功能提交：`ff90626`（受约束技术表格）；归档提交与稳定生产证据将在推送后补记；
-- 自动交付：本地共享生产管线已同时证明 `tableCount`、`tableDataCellCount`、具名静态表格 HAST 和既有公式/Callout/Mermaid/视频/画廊能力；生产 smoke 等待本轮归档提交推送后执行。本轮没有改变公开内容集合或结构化端点正文，因此不重置既有生产预算基线；
+- 本轮功能提交：`ff90626`（受约束技术表格），归档提交 `3806c1d`，生产 smoke 扩展提交 `ab3c9c0`；功能与首份归档已推送 `main` 并进入 Vercel 稳定生产；
+- 自动交付：生产 `/studio/table-editor.mjs` 为 200 且包含 `registerStudioTableEditor`；`/studio/math-preview` 已同时证明 `tableCount: 1`、`tableDataCellCount: 4`、具名静态表格 HAST 和既有公式/Callout/Mermaid/视频/画廊能力；完整 smoke 为 27 routes、OAuth 302，十三条 HTML 与十一个结构化发现端点全部 PASS。本轮没有改变公开内容集合或结构化端点正文，因此不重置既有生产预算基线；
 - 最新完成迭代：0134 受约束技术表格、Studio/Obsidian 作者入口与 Data Ledger 阅读展示；
 - Obsidian 状态：仓库根目录就是 Vault，`docs/STATUS.md`、`docs/iterations/*.md` 与 `docs/knowledge/*.md` 是同一份本地文件，可直接阅读和维护；
 - 手动外部接入：自定义域名、统计、评论、公开邮箱均暂缓，不阻塞当前开发。
 
 ## 本轮新增能力
 
-作者现在可以在 Studio 或 Obsidian 使用 `[!table]` 加标准 GFM 表格发布有标题的技术数据。每表 2–6 列、1–20 条数据行、最多 120 个数据单元格；每篇最多 4 表、合计最多 240 个数据单元格。表头非空且唯一，每行列数必须完全一致，普通无标题表格失败关闭。Studio 提供可增删/重排的列定义、显式对齐和数据行，Obsidian 1.44.0 提供三列模板。读者页使用无脚本 Data Ledger：首列固定、数字对齐、320 px 局部滚动、键盘焦点与打印解冻。完整本地证据为 575/575 单测、5/5 图表测试、69 个生成页面/资源、35/35 应用测试、生产依赖审计 0 漏洞、插件 3/3 SHA-256、真实浏览器 0 error；稳定生产证据待本轮推送后补记。
+作者现在可以在 Studio 或 Obsidian 使用 `[!table]` 加标准 GFM 表格发布有标题的技术数据。每表 2–6 列、1–20 条数据行、最多 120 个数据单元格；每篇最多 4 表、合计最多 240 个数据单元格。表头非空且唯一，每行列数必须完全一致，普通无标题表格失败关闭。Studio 提供可增删/重排的列定义、显式对齐和数据行，Obsidian 1.44.0 提供三列模板。读者页使用无脚本 Data Ledger：首列固定、数字对齐、320 px 局部滚动、键盘焦点与打印解冻。完整证据为 575/575 单测、5/5 图表测试、69 个生成页面/资源、35/35 应用测试、生产依赖审计 0 漏洞、插件 3/3 SHA-256、真实浏览器 0 error，以及稳定生产 27 routes/OAuth 302 全部 PASS。
 
 ## 风险与下一步
 
