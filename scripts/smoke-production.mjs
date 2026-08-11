@@ -1009,7 +1009,7 @@ export async function runProductionSmoke(originInput, { expectOAuth = false } = 
       mathPreviewPayload.html.includes('data-callout="warning"') &&
       mathPreviewPayload.html.includes('data-diagram="flowchart"') &&
       mathPreviewPayload.html.includes('data-video="silent-mp4"') &&
-      mathPreviewPayload.html.includes("<video controls") &&
+      /<video\b[^>]*\scontrols(?:\s|>)/u.test(mathPreviewPayload.html) &&
       mathPreviewPayload.html.includes('preload="none"') &&
       !mathPreviewPayload.html.includes("autoplay") &&
       !mathPreviewPayload.html.includes("<iframe") &&
