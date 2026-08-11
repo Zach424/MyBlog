@@ -3,6 +3,7 @@ import test from "node:test";
 import {
   createStudioMathPreviewTemplate,
   getStudioMathPreviewStatus,
+  hasPotentialStudioDiagram,
   hasPotentialStudioRichMarkdown,
   hasPotentialStudioMath,
   registerStudioMathPreview,
@@ -69,13 +70,16 @@ test("requests only potential rich Markdown from the same-origin preview endpoin
   assert.equal(hasPotentialStudioRichMarkdown("普通 Markdown"), false);
   assert.equal(hasPotentialStudioRichMarkdown("> [!note] 证据"), true);
   assert.equal(hasPotentialStudioRichMarkdown("```md\n> [!note]\n```"), false);
+  assert.equal(hasPotentialStudioDiagram("```mermaid\nflowchart LR\nA --> B\n```"), true);
+  assert.equal(hasPotentialStudioDiagram("```md\n```mermaid\nA --> B\n```\n```"), false);
+  assert.equal(hasPotentialStudioRichMarkdown("~~~Mermaid\nsequenceDiagram\nA->>B: hi\n~~~"), true);
 
   const calls = [];
   const result = await requestStudioMathPreview("$E = mc^2$", {
     fetcher: async (url, options) => {
       calls.push({ options, url });
       return {
-        json: async () => ({ formulaCount: 1, html: "<span>math</span>", ok: true }),
+        json: async () => ({ diagramCount: 0, formulaCount: 1, html: "<span>math</span>", ok: true }),
         ok: true,
         status: 200,
       };
@@ -93,7 +97,7 @@ test("keeps plain Markdown on the native preview and exposes recoverable rich-co
     abortControllerFactory: () => ({ abort() {}, signal: undefined }),
     createClass: (specification) => specification,
     fetcher: async () => ({
-      json: async () => ({ formulaCount: 2, html: "<div class=\"katex\">ok</div>", ok: true }),
+      json: async () => ({ diagramCount: 1, formulaCount: 2, html: "<div class=\"katex\">ok</div>", ok: true }),
       ok: true,
       status: 200,
     }),
@@ -130,8 +134,9 @@ test("keeps plain Markdown on the native preview and exposes recoverable rich-co
   await template.loadMathPreview.call(context, "$x$\n\n$$y$$", context.previewGeneration);
   assert.equal(context.state.status, "ready");
   assert.equal(context.state.formulaCount, 2);
+  assert.equal(context.state.diagramCount, 1);
   const readyTree = template.render.call(context);
-  assert.match(textContent(readyTree), /2 个公式已按生产规则渲染/u);
+  assert.match(textContent(readyTree), /2 个公式、1 张图表已按生产规则渲染/u);
 
   context.state = {
     ...context.state,
@@ -145,6 +150,10 @@ test("keeps plain Markdown on the native preview and exposes recoverable rich-co
   assert.equal(
     getStudioMathPreviewStatus({ status: "unavailable" }).label,
     "RICH MARKDOWN / PREVIEW UNAVAILABLE",
+  );
+  assert.equal(
+    getStudioMathPreviewStatus({ issue: { kind: "diagram" }, status: "invalid" }).label,
+    "DIAGRAM / NEEDS FIX",
   );
 });
 

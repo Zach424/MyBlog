@@ -1,6 +1,7 @@
 import { parseDocument } from "yaml";
 import { z } from "zod";
 import { getMarkdownMathIssue } from "../markdown-math.ts";
+import { getMarkdownDiagramIssue } from "../markdown-diagram.ts";
 
 const SLUG_PATTERN = /^[a-z0-9]+(?:-[a-z0-9]+)*$/;
 const ISO_DATE_PATTERN = /^\d{4}-\d{2}-\d{2}$/;
@@ -355,6 +356,15 @@ function parseFrontmatter<T>(
     );
   }
 
+  const diagramIssue = getMarkdownDiagramIssue(body);
+  if (diagramIssue) {
+    const location = diagramIssue.line ? `正文第 ${diagramIssue.line} 行` : "正文";
+    throw new ContentValidationError(
+      sourcePath,
+      `${location} Mermaid 图表无法解析：${diagramIssue.message}`,
+    );
+  }
+
   return { data: result.data, body };
 }
 
@@ -465,6 +475,14 @@ export function inspectContentDraft(
       issues.push({
         field: "body",
         message: `${location}数学公式无法解析：${mathIssue.message}`,
+      });
+    }
+    const diagramIssue = getMarkdownDiagramIssue(body);
+    if (diagramIssue) {
+      const location = diagramIssue.line ? `第 ${diagramIssue.line} 行` : "正文";
+      issues.push({
+        field: "body",
+        message: `${location} Mermaid 图表无法解析：${diagramIssue.message}`,
       });
     }
   }

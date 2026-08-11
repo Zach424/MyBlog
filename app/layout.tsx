@@ -8,6 +8,7 @@ import {
   SITE_TITLE,
 } from "@/lib/site";
 import "./globals.css";
+import "./markdown-rich-content.css";
 
 async function getSiteUrl() {
   const requestHeaders = await headers();

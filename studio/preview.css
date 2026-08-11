@@ -71,6 +71,116 @@ img { max-width: 100%; height: auto; }
 table { width: 100%; border-collapse: collapse; }
 th, td { padding: 0.6rem; border: 1px solid var(--rule); text-align: left; }
 
+.markdown-content .markdown-diagram {
+  --diagram-bg: var(--paper);
+  --diagram-fg: var(--ink);
+  --diagram-line: var(--muted);
+  --diagram-accent: var(--signal);
+  --diagram-muted: var(--muted);
+  --diagram-surface: color-mix(in srgb, var(--rule) 38%, var(--paper));
+  --diagram-border: var(--muted);
+  --bg: var(--diagram-bg);
+  --fg: var(--diagram-fg);
+  --line: var(--diagram-line);
+  --accent: var(--diagram-accent);
+  --surface: var(--diagram-surface);
+  --border: var(--diagram-border);
+  --_text: var(--diagram-fg);
+  --_text-sec: var(--diagram-muted);
+  --_text-muted: var(--diagram-muted);
+  --_text-faint: color-mix(in srgb, var(--diagram-fg) 35%, var(--diagram-bg));
+  --_line: var(--diagram-line);
+  --_arrow: var(--diagram-accent);
+  --_node-fill: var(--diagram-surface);
+  --_node-stroke: var(--diagram-border);
+  --_group-fill: var(--diagram-bg);
+  --_group-hdr: color-mix(in srgb, var(--diagram-line) 9%, var(--diagram-bg));
+  --_inner-stroke: color-mix(in srgb, var(--diagram-line) 35%, var(--diagram-bg));
+  --_key-badge: color-mix(in srgb, var(--diagram-accent) 13%, var(--diagram-bg));
+  margin: 2rem 0;
+  border-block: 1px solid var(--muted);
+  background: var(--diagram-bg);
+}
+
+.markdown-content .markdown-diagram-rail {
+  display: flex;
+  min-height: 2.4rem;
+  align-items: center;
+  justify-content: space-between;
+  gap: 0.75rem;
+  padding: 0.55rem 0.75rem;
+  border-bottom: 1px solid var(--rule);
+  color: var(--muted);
+  font: 700 0.625rem/1.4 "Cascadia Code", Consolas, monospace;
+  letter-spacing: 0.075em;
+}
+
+.markdown-content .markdown-diagram-kind { color: var(--ink); }
+
+.markdown-content .markdown-diagram-renderer::before {
+  display: inline-block;
+  width: 0.42rem;
+  height: 0.42rem;
+  margin-right: 0.45rem;
+  border-radius: 50%;
+  background: var(--signal);
+  content: "";
+}
+
+.markdown-content .markdown-diagram-canvas {
+  max-width: 100%;
+  padding: clamp(1rem, 4vw, 2rem);
+  overflow-x: auto;
+  overflow-y: hidden;
+  outline: none;
+  background-image:
+    linear-gradient(to right, color-mix(in srgb, var(--rule) 45%, transparent) 1px, transparent 1px),
+    linear-gradient(to bottom, color-mix(in srgb, var(--rule) 45%, transparent) 1px, transparent 1px);
+  background-size: 2rem 2rem;
+  overscroll-behavior-inline: contain;
+  scrollbar-width: thin;
+}
+
+.markdown-content .markdown-diagram-canvas:focus-visible,
+.markdown-content .markdown-diagram-source > summary:focus-visible {
+  outline: 2px solid var(--signal);
+  outline-offset: -0.25rem;
+}
+
+.markdown-content .markdown-diagram-svg {
+  display: block;
+  min-width: min(100%, 30rem);
+  max-width: none;
+  height: auto;
+  margin-inline: auto;
+}
+
+.markdown-content .markdown-diagram-svg text {
+  font-family: "Microsoft YaHei UI", "PingFang SC", sans-serif !important;
+}
+
+.markdown-content .markdown-diagram-source { border-top: 1px solid var(--rule); }
+
+.markdown-content .markdown-diagram-source > summary {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 1rem;
+  padding: 0.65rem 0.75rem;
+  color: var(--muted);
+  cursor: pointer;
+  font: 700 0.625rem/1.4 "Cascadia Code", Consolas, monospace;
+  letter-spacing: 0.065em;
+  list-style: none;
+}
+
+.markdown-content .markdown-diagram-source > summary::-webkit-details-marker { display: none; }
+.markdown-content .markdown-diagram-source > summary > :last-child { color: var(--signal); }
+.markdown-content .markdown-diagram-source > pre {
+  margin: 0;
+  border-top: 1px solid var(--rule);
+}
+
 .studio-preview-shell {
   min-width: 0;
 }

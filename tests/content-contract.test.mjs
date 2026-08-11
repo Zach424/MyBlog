@@ -356,3 +356,16 @@ test("extracts stable H2 and H3 table-of-contents anchors", () => {
     },
   ]);
 });
+
+test("rejects unsafe Mermaid before content can enter a production build", () => {
+  const source = `${postSource()}\n\n\`\`\`mermaid
+flowchart LR
+  Draft --> Publish
+  click Draft https://example.com
+\`\`\``;
+
+  assert.throws(
+    () => parsePostFile("content/posts/unsafe-diagram.md", source),
+    /Mermaid 图表无法解析.*交互|链接/u,
+  );
+});

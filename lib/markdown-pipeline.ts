@@ -5,6 +5,7 @@ import type { Options as ReactMarkdownOptions } from "react-markdown";
 import remarkGfm from "remark-gfm";
 import remarkMath from "remark-math";
 import { rehypeMarkdownCallouts } from "@/lib/markdown-callout";
+import { rehypeMarkdownDiagrams } from "@/lib/markdown-diagram";
 import {
   getMarkdownFootnoteBackLabel,
   MARKDOWN_FOOTNOTE_CLOBBER_PREFIX,
@@ -25,6 +26,7 @@ export const MARKDOWN_REHYPE_OPTIONS = {
 
 export const MARKDOWN_REHYPE_PLUGINS = [
   rehypeMarkdownCallouts,
+  rehypeMarkdownDiagrams,
   rehypeSlug,
   [rehypeKatex, MARKDOWN_MATH_KATEX_OPTIONS],
   [rehypeHighlight, { detect: false, ignoreMissing: true }],

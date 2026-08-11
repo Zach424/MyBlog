@@ -174,7 +174,9 @@ test("connects Vercel verification, maintenance reporting, rollback, and Studio 
   assert.match(smoke, /\/studio\/math-preview\.mjs/);
   assert.match(smoke, /\/studio\/math-preview/);
   assert.match(smoke, /calloutCount === 1/);
+  assert.match(smoke, /diagramCount === 1/);
   assert.match(smoke, /data-callout=\"warning\"/);
+  assert.match(smoke, /data-diagram=\"flowchart\"/);
   assert.match(smoke, /增强 Markdown 生产管线预览不可用/u);
   assert.match(smoke, /\/studio\/katex-0\.16\.47\.css/);
   assert.match(smoke, /\/studio\/preview\.css/);

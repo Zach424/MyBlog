@@ -120,7 +120,7 @@ test("pins one server-rendered, Studio-shared, responsive and printable callout 
       readFile(new URL("../components/MarkdownContent.tsx", import.meta.url), "utf8"),
       readFile(new URL("../lib/markdown-pipeline.ts", import.meta.url), "utf8"),
       readFile(new URL("../studio/math-preview.mjs", import.meta.url), "utf8"),
-      readFile(new URL("../app/globals.css", import.meta.url), "utf8"),
+      readFile(new URL("../app/markdown-rich-content.css", import.meta.url), "utf8"),
       readFile(new URL("../studio/preview.css", import.meta.url), "utf8"),
     ]);
 

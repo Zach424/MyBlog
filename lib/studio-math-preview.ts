@@ -5,6 +5,11 @@ import remarkRehype from "remark-rehype";
 import { unified } from "unified";
 import { extractMarkdownMathExpressions } from "@/lib/content/markdown";
 import {
+  extractMarkdownDiagrams,
+  getMarkdownDiagramIssue,
+  type MarkdownDiagramIssue,
+} from "@/lib/markdown-diagram";
+import {
   MARKDOWN_REHYPE_OPTIONS,
   MARKDOWN_REHYPE_PLUGINS,
   MARKDOWN_REMARK_PLUGINS,
@@ -17,12 +22,13 @@ export const STUDIO_MATH_PREVIEW_MAX_BYTES = 100_000;
 export type StudioMathPreviewResult =
   | {
       calloutCount: number;
+      diagramCount: number;
       formulaCount: number;
       html: string;
       ok: true;
     }
   | {
-      issue: MarkdownMathIssue;
+      issue: MarkdownDiagramIssue | MarkdownMathIssue;
       ok: false;
     };
 
@@ -75,8 +81,11 @@ export function renderStudioMathPreview(
 ): StudioMathPreviewResult {
   const issue = getMarkdownMathIssue(markdown);
   if (issue) return { issue, ok: false };
+  const diagramIssue = getMarkdownDiagramIssue(markdown);
+  if (diagramIssue) return { issue: diagramIssue, ok: false };
 
   const formulaCount = extractMarkdownMathExpressions(markdown).length;
+  const diagramCount = extractMarkdownDiagrams(markdown).length;
   const file = unified()
     .use(remarkParse)
     .use(MARKDOWN_REMARK_PLUGINS)
@@ -90,5 +99,5 @@ export function renderStudioMathPreview(
   const calloutCount = (rendered.match(/data-callout=/gu) ?? []).length;
   const html = `<div class="markdown-content" data-studio-renderer="production-pipeline">${rendered}</div>`;
 
-  return { calloutCount, formulaCount, html, ok: true };
+  return { calloutCount, diagramCount, formulaCount, html, ok: true };
 }

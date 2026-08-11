@@ -1,0 +1,268 @@
+.markdown-content .markdown-callout {
+  --callout-accent: var(--callout-info);
+  margin-block: 1.5rem;
+  border-block: 0.0625rem solid var(--rule);
+  border-left: 0.25rem solid var(--callout-accent);
+  background: color-mix(in srgb, var(--callout-accent) 5%, var(--paper));
+  color: var(--ink);
+}
+
+.markdown-content .markdown-callout[data-callout="tip"],
+.markdown-content .markdown-callout[data-callout="success"] {
+  --callout-accent: var(--callout-success);
+}
+
+.markdown-content .markdown-callout[data-callout="question"],
+.markdown-content .markdown-callout[data-callout="example"] {
+  --callout-accent: var(--callout-question);
+}
+
+.markdown-content .markdown-callout[data-callout="warning"],
+.markdown-content .markdown-callout[data-callout="failure"],
+.markdown-content .markdown-callout[data-callout="danger"],
+.markdown-content .markdown-callout[data-callout="bug"] {
+  --callout-accent: var(--callout-warning);
+}
+
+.markdown-content .markdown-callout[data-callout="quote"] {
+  --callout-accent: var(--callout-quote);
+}
+
+.markdown-content .markdown-callout-title {
+  display: grid;
+  grid-template-columns: auto minmax(0, 1fr);
+  gap: 0.7rem;
+  align-items: baseline;
+  margin: 0;
+  padding: 0.72rem 0.9rem 0.68rem;
+  color: var(--ink);
+  font-weight: 750;
+  line-height: 1.45;
+}
+
+.markdown-content details.markdown-callout > summary {
+  grid-template-columns: auto minmax(0, 1fr) auto;
+  cursor: pointer;
+  list-style: none;
+}
+
+.markdown-content details.markdown-callout > summary::-webkit-details-marker {
+  display: none;
+}
+
+.markdown-content details.markdown-callout > summary::after {
+  color: var(--callout-accent);
+  content: "+";
+  font: 700 0.85rem/1 var(--mono);
+}
+
+.markdown-content details.markdown-callout[open] > summary::after {
+  content: "−";
+}
+
+.markdown-content .markdown-callout-kind {
+  color: var(--callout-accent);
+  font: 700 0.66rem/1.4 var(--mono);
+  letter-spacing: 0.08em;
+  white-space: nowrap;
+}
+
+.markdown-content .markdown-callout-title-text {
+  min-width: 0;
+  overflow-wrap: anywhere;
+}
+
+.markdown-content .markdown-callout-body {
+  padding: 0.85rem 0.9rem 0.95rem;
+  border-top: 0.0625rem dashed
+    color-mix(in srgb, var(--callout-accent) 45%, var(--rule));
+}
+
+.markdown-content .markdown-callout-body > :first-child {
+  margin-top: 0;
+}
+
+.markdown-content .markdown-callout-body > :last-child {
+  margin-bottom: 0;
+}
+
+.markdown-content .markdown-callout-body .markdown-callout {
+  margin-block: 1rem;
+}
+
+.markdown-content details.markdown-callout > summary:focus-visible {
+  outline: 0.125rem solid var(--signal);
+  outline-offset: 0.1875rem;
+}
+
+.markdown-content .markdown-diagram {
+  --diagram-bg: var(--paper);
+  --diagram-fg: var(--ink);
+  --diagram-line: var(--trace-dark);
+  --diagram-accent: var(--signal);
+  --diagram-muted: var(--muted);
+  --diagram-surface: color-mix(in srgb, var(--trace) 20%, var(--paper));
+  --diagram-border: var(--trace-dark);
+  --bg: var(--diagram-bg);
+  --fg: var(--diagram-fg);
+  --line: var(--diagram-line);
+  --accent: var(--diagram-accent);
+  --surface: var(--diagram-surface);
+  --border: var(--diagram-border);
+  --_text: var(--diagram-fg);
+  --_text-sec: var(--diagram-muted);
+  --_text-muted: var(--diagram-muted);
+  --_text-faint: color-mix(in srgb, var(--diagram-fg) 35%, var(--diagram-bg));
+  --_line: var(--diagram-line);
+  --_arrow: var(--diagram-accent);
+  --_node-fill: var(--diagram-surface);
+  --_node-stroke: var(--diagram-border);
+  --_group-fill: var(--diagram-bg);
+  --_group-hdr: color-mix(in srgb, var(--diagram-line) 9%, var(--diagram-bg));
+  --_inner-stroke: color-mix(in srgb, var(--diagram-line) 35%, var(--diagram-bg));
+  --_key-badge: color-mix(in srgb, var(--diagram-accent) 13%, var(--diagram-bg));
+  margin: 2rem 0;
+  border-block: 0.0625rem solid var(--trace-dark);
+  background: var(--diagram-bg);
+}
+
+.markdown-content .markdown-diagram-rail {
+  display: flex;
+  min-height: 2.4rem;
+  align-items: center;
+  justify-content: space-between;
+  gap: 0.75rem;
+  padding: 0.55rem 0.75rem;
+  border-bottom: 0.0625rem solid var(--rule);
+  color: var(--muted);
+  font: 700 0.625rem/1.4 var(--mono);
+  letter-spacing: 0.075em;
+}
+
+.markdown-content .markdown-diagram-kind {
+  color: var(--ink);
+}
+
+.markdown-content .markdown-diagram-renderer::before {
+  display: inline-block;
+  width: 0.42rem;
+  height: 0.42rem;
+  margin-right: 0.45rem;
+  border-radius: 50%;
+  background: var(--signal);
+  content: "";
+}
+
+.markdown-content .markdown-diagram-canvas {
+  max-width: 100%;
+  padding: clamp(1rem, 4vw, 2rem);
+  overflow-x: auto;
+  overflow-y: hidden;
+  outline: none;
+  background-image:
+    linear-gradient(to right, color-mix(in srgb, var(--rule) 45%, transparent) 0.0625rem, transparent 0.0625rem),
+    linear-gradient(to bottom, color-mix(in srgb, var(--rule) 45%, transparent) 0.0625rem, transparent 0.0625rem);
+  background-size: 2rem 2rem;
+  overscroll-behavior-inline: contain;
+  scrollbar-color: var(--trace-dark) transparent;
+  scrollbar-width: thin;
+}
+
+.markdown-content .markdown-diagram-canvas:focus-visible {
+  outline: 0.125rem solid var(--signal);
+  outline-offset: -0.25rem;
+}
+
+.markdown-content .markdown-diagram-svg {
+  display: block;
+  min-width: min(100%, 30rem);
+  max-width: none;
+  height: auto;
+  margin-inline: auto;
+}
+
+.markdown-content .markdown-diagram-svg text {
+  font-family: var(--body) !important;
+}
+
+.markdown-content .markdown-diagram-source {
+  border-top: 0.0625rem solid var(--rule);
+}
+
+.markdown-content .markdown-diagram-source > summary {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 1rem;
+  padding: 0.65rem 0.75rem;
+  color: var(--muted);
+  cursor: pointer;
+  font: 700 0.625rem/1.4 var(--mono);
+  letter-spacing: 0.065em;
+  list-style: none;
+}
+
+.markdown-content .markdown-diagram-source > summary::-webkit-details-marker {
+  display: none;
+}
+
+.markdown-content .markdown-diagram-source > summary:focus-visible {
+  outline: 0.125rem solid var(--signal);
+  outline-offset: -0.25rem;
+}
+
+.markdown-content .markdown-diagram-source > summary > :last-child {
+  color: var(--signal);
+}
+
+.markdown-content .markdown-diagram-source > .code-block,
+.markdown-content .markdown-diagram-source > pre {
+  margin: 0;
+  border: 0;
+  border-top: 0.0625rem solid var(--rule);
+}
+
+@media print {
+  .markdown-content .markdown-callout {
+    break-inside: auto;
+    border-left-width: 0.8mm;
+    background: var(--paper);
+  }
+
+  .markdown-content .markdown-callout-title {
+    padding: 2.5mm 3mm 2mm;
+    break-after: avoid-page;
+  }
+
+  .markdown-content .markdown-callout-body {
+    padding: 2.5mm 3mm 3mm;
+  }
+
+  .markdown-content details.markdown-callout:not([open]) > .markdown-callout-body {
+    display: block !important;
+  }
+
+  .markdown-content details.markdown-callout > summary::after {
+    display: none;
+  }
+
+  .markdown-content .markdown-diagram {
+    break-inside: avoid-page;
+    background: var(--paper);
+  }
+
+  .markdown-content .markdown-diagram-canvas {
+    padding: 5mm;
+    overflow: visible;
+    background-image: none;
+  }
+
+  .markdown-content .markdown-diagram-svg {
+    min-width: 0;
+    max-width: 100%;
+  }
+
+  .markdown-content .markdown-diagram-source {
+    display: none;
+  }
+}

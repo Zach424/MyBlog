@@ -22,6 +22,34 @@ export function hasPotentialStudioMath(markdown) {
   return textValue(markdown).includes("$");
 }
 
+export function hasPotentialStudioDiagram(markdown) {
+  let fenceCharacter = "";
+  let fenceLength = 0;
+
+  for (const sourceLine of textValue(markdown).split(/\r?\n/u)) {
+    const line = sourceLine.replace(/^[ \t]*(?:>[ \t]*)+/u, "");
+    const opening = /^[ \t]*(`{3,}|~{3,})(?:[ \t]*([^\s`~]+))?/u.exec(line);
+    if (fenceCharacter) {
+      const closing = /^[ \t]*(`{3,}|~{3,})[ \t]*$/u.exec(line);
+      if (
+        closing &&
+        closing[1][0] === fenceCharacter &&
+        closing[1].length >= fenceLength
+      ) {
+        fenceCharacter = "";
+        fenceLength = 0;
+      }
+      continue;
+    }
+    if (!opening) continue;
+    if (opening[2]?.toLowerCase() === "mermaid") return true;
+    fenceCharacter = opening[1][0];
+    fenceLength = opening[1].length;
+  }
+
+  return false;
+}
+
 function hasPotentialStudioCallout(markdown) {
   let fenceCharacter = "";
   let fenceLength = 0;
@@ -50,7 +78,11 @@ function hasPotentialStudioCallout(markdown) {
 }
 
 export function hasPotentialStudioRichMarkdown(markdown) {
-  return hasPotentialStudioMath(markdown) || hasPotentialStudioCallout(markdown);
+  return (
+    hasPotentialStudioMath(markdown) ||
+    hasPotentialStudioCallout(markdown) ||
+    hasPotentialStudioDiagram(markdown)
+  );
 }
 
 export async function requestStudioMathPreview(
@@ -95,18 +127,20 @@ export function getStudioMathPreviewStatus(state) {
       const evidence = [];
       if (state.formulaCount > 0) evidence.push(`${state.formulaCount} 个公式`);
       if (state.calloutCount > 0) evidence.push(`${state.calloutCount} 个信息块`);
+      if (state.diagramCount > 0) evidence.push(`${state.diagramCount} 张图表`);
       return {
-        detail: "这里与正式页面共享 remark、rehype、受限 KaTeX 和 Callout 配置。",
+        detail: "这里与正式页面共享 remark、rehype、受限 KaTeX、Callout 与 Mermaid 服务端渲染配置。",
         label: "RICH MARKDOWN / VERIFIED",
         title: `${evidence.join("、")}已按生产规则渲染`,
       };
     }
     case "invalid": {
       const line = state.issue?.line ? `第 ${state.issue.line} 行：` : "";
+      const isDiagram = state.issue?.kind === "diagram";
       return {
-        detail: `${line}${state.issue?.message || "请检查公式语法。"}`,
-        label: "FORMULA / NEEDS FIX",
-        title: "公式尚不能发布",
+        detail: `${line}${state.issue?.message || "请检查增强 Markdown 语法。"}`,
+        label: isDiagram ? "DIAGRAM / NEEDS FIX" : "FORMULA / NEEDS FIX",
+        title: isDiagram ? "图表尚不能发布" : "公式尚不能发布",
       };
     }
     case "unavailable":
@@ -148,6 +182,7 @@ export function createStudioMathPreviewTemplate({
         entryNote: "",
         entryStatus: "preparing",
         calloutCount: 0,
+        diagramCount: 0,
         formulaCount: 0,
         html: "",
         issue: undefined,
@@ -193,6 +228,7 @@ export function createStudioMathPreviewTemplate({
       if (!hasPotentialStudioRichMarkdown(body)) {
         this.setState({
           calloutCount: 0,
+          diagramCount: 0,
           formulaCount: 0,
           html: "",
           issue: undefined,
@@ -220,6 +256,7 @@ export function createStudioMathPreviewTemplate({
         if (result.ok) {
           this.setState({
             calloutCount: result.calloutCount,
+            diagramCount: result.diagramCount,
             formulaCount: result.formulaCount,
             html: result.html,
             issue: undefined,
@@ -227,6 +264,8 @@ export function createStudioMathPreviewTemplate({
           });
         } else {
           this.setState({
+            calloutCount: 0,
+            diagramCount: 0,
             formulaCount: 0,
             html: "",
             issue: result.issue,
@@ -238,6 +277,7 @@ export function createStudioMathPreviewTemplate({
         if (this.previewDisposed || generation !== this.previewGeneration) return;
         this.setState({
           calloutCount: 0,
+          diagramCount: 0,
           formulaCount: 0,
           html: "",
           issue: undefined,

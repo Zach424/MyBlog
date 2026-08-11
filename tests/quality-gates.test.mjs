@@ -289,6 +289,21 @@ test("preflights bounded Studio entries with the production content contract", a
   assert.ok(invalidPayload.issues.some((issue) => issue.field === "featured"));
   assert.ok(invalidPayload.issues.some((issue) => issue.field === "slug"));
 
+  const invalidDiagram = await postStudioEntryPreflight({
+    collection: "posts",
+    fields: {
+      ...validFields,
+      body: "```mermaid\nflowchart LR\n  A --> B\n  style A fill:#f00\n```",
+    },
+  });
+  assert.equal(invalidDiagram.status, 422);
+  const invalidDiagramPayload = await invalidDiagram.json();
+  assert.ok(
+    invalidDiagramPayload.issues.some(
+      (issue) => issue.field === "body" && /Mermaid/u.test(issue.message),
+    ),
+  );
+
   const wrongOrigin = await postStudioEntryPreflight(
     { collection: "posts", fields: validFields },
     { origin: "https://attacker.example" },
@@ -310,7 +325,7 @@ test("preflights bounded Studio entries with the production content contract", a
 test("renders bounded Studio formula previews with the production Markdown pipeline", async () => {
   const valid = await postStudioMathPreview({
     markdown:
-      "> [!warning] 发布前检查\n> 行内 $E = mc^2$。\n\n$$\nB = \\sum_i B_i\n$$",
+      "> [!warning] 发布前检查\n> 行内 $E = mc^2$。\n\n$$\nB = \\sum_i B_i\n$$\n\n```mermaid\nflowchart LR\n  Draft[Draft] --> Review{Review}\n  Review --> Publish[Publish]\n```",
   });
   assert.equal(valid.status, 200);
   assert.equal(valid.headers.get("cache-control"), "no-store");
@@ -319,11 +334,20 @@ test("renders bounded Studio formula previews with the production Markdown pipel
   assert.equal(validPayload.ok, true);
   assert.equal(validPayload.formulaCount, 2);
   assert.equal(validPayload.calloutCount, 1);
+  assert.equal(validPayload.diagramCount, 1);
   assert.match(validPayload.html, /data-studio-renderer="production-pipeline"/u);
   assert.match(validPayload.html, /<aside[^>]*data-callout="warning"/u);
   assert.doesNotMatch(validPayload.html, /\[!warning\]/iu);
   assert.match(validPayload.html, /class="katex"/u);
   assert.match(validPayload.html, /<math/u);
+  assert.match(validPayload.html, /data-diagram="flowchart"/u);
+  assert.match(validPayload.html, /data-renderer="server-svg"/u);
+  assert.match(validPayload.html, /<svg[^>]*role="img"/u);
+  const diagramHtml = validPayload.html.match(
+    /<figure class="markdown-diagram"[\s\S]*?<\/figure>/u,
+  )?.[0];
+  assert.ok(diagramHtml);
+  assert.doesNotMatch(diagramHtml, /@import|https?:|<foreignObject/iu);
   assert.doesNotMatch(validPayload.html, /<script/u);
 
   const unsafeLink = await postStudioMathPreview({
@@ -340,6 +364,15 @@ test("renders bounded Studio formula previews with the production Markdown pipel
   assert.equal(invalidPayload.ok, false);
   assert.equal(invalidPayload.issue.line, 3);
   assert.match(invalidPayload.issue.message, /Expected|end of input/u);
+
+  const invalidDiagram = await postStudioMathPreview({
+    markdown: "```mermaid\nflowchart LR\n  A --> B\n  click A https://example.com\n```",
+  });
+  assert.equal(invalidDiagram.status, 422);
+  const invalidDiagramPayload = await invalidDiagram.json();
+  assert.equal(invalidDiagramPayload.ok, false);
+  assert.equal(invalidDiagramPayload.issue.kind, "diagram");
+  assert.match(invalidDiagramPayload.issue.message, /交互|链接/u);
 
   const wrongOrigin = await postStudioMathPreview(
     { markdown: "$x$" },

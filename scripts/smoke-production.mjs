@@ -976,7 +976,7 @@ export async function runProductionSmoke(originInput, { expectOAuth = false } = 
     accept: "application/json",
     body: JSON.stringify({
       markdown:
-        "> [!warning] 发布前检查\n> 行内 $E = mc^2$。\n\n$$\nB = \\sum_i B_i\n$$",
+        "> [!warning] 发布前检查\n> 行内 $E = mc^2$。\n\n$$\nB = \\sum_i B_i\n$$\n\n```mermaid\nflowchart LR\n  Draft --> Review\n  Review --> Publish\n```",
     }),
     headers: { "content-type": "application/json" },
     method: "POST",
@@ -993,7 +993,12 @@ export async function runProductionSmoke(originInput, { expectOAuth = false } = 
       mathPreviewPayload.ok === true &&
       mathPreviewPayload.formulaCount === 2 &&
       mathPreviewPayload.calloutCount === 1 &&
+      mathPreviewPayload.diagramCount === 1 &&
       mathPreviewPayload.html.includes('data-callout="warning"') &&
+      mathPreviewPayload.html.includes('data-diagram="flowchart"') &&
+      mathPreviewPayload.html.includes('data-renderer="server-svg"') &&
+      !mathPreviewPayload.html.includes("@import") &&
+      !mathPreviewPayload.html.includes("<foreignObject") &&
       !mathPreviewPayload.html.includes("[!warning]") &&
       mathPreviewPayload.html.includes('class="katex"') &&
       mathPreviewPayload.html.includes("<math"),
