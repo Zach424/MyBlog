@@ -325,6 +325,22 @@ MyBlog Publisher 1.42.0 把 13 项基础检查、第 14 项插件 bundle 摘要�
 - 公开前把 `draft` 改为 `false`；
 - `npm run check` 或 GitHub Quality Gate 通过。
 
+## 在正文中发布多图画廊
+
+Studio 在正文工具栏选择“多图画廊”，填写组标题，然后添加 2–6 个图片项；每项都要选择本地图片、填写短标题和详细 alt，可拖动调整顺序。组件会保存为 Obsidian 兼容的可移植 Markdown：
+
+```markdown
+> [!gallery] 发布流程证据
+> - ![编辑器中的结构化画廊表单](/uploads/release-flow/editor.webp "编辑")
+> - ![生产文章中的双栏证据组](/uploads/release-flow/published.webp "上线")
+```
+
+Obsidian 中从命令面板运行“插入受约束多图画廊模板”。在 `content/inbox/<slug>.md` 草稿里，模板先生成 `/uploads/gallery-1.png` 一类根暂存路径：把对应图片放进 `public/uploads`，修改文件名、组标题、短标题和 alt，再执行既有“发布当前草稿并同步 GitHub”。发布器会把图片原子归档到 `public/uploads/<slug>/` 并改写正文。正式 `content/posts`/`content/projects` 文件的命令会直接生成当前 slug 路径。
+
+约束：每组 2–6 张、每篇最多 3 组、画廊图片合计最多 12 张；只允许本地支持图片，继续受 3 MiB、2560 px、真实格式、像素/动图和引用所有权门禁。组标题、alt 和短标题必填；不能重复图片、跨 slug、使用外链/查询参数、加入普通段落、折叠标记、MP4 或嵌套画廊。根暂存只允许 inbox 草稿，正式内容必须由发布器归档。
+
+读者端按顺序同时显示所有帧，桌面双栏、窄屏单栏并保留打印；没有灯箱和轮播。需要单张大图时继续使用普通 Markdown 图片，不要为了视觉包装创建只有一张图的画廊。
+
 ## 常见问题
 
 - Studio 显示 `FORMULA / NEEDS FIX`：按提示的正文行号检查 `$`/`$$` 是否成对、命令是否受 KaTeX 支持；若显示 `RICH MARKDOWN / PREVIEW UNAVAILABLE`，先重试预览，也可以转到 Obsidian 继续编辑。两种情况都不会删除正文，正式构建仍会重新校验公式和 Callout。

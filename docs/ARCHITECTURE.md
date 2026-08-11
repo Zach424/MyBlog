@@ -371,3 +371,24 @@ Quality、生产冒烟与回滚工作流均使用 Node 24 runtime 的 checkout/s
 Studio 自定义组件和浏览器预检是作者反馈层，不是安全边界。浏览器验证扩展名、ftyp、大小、可解码时长/尺寸、SHA-256 和路径冲突，并明确把 H.264、轨道集合与 fast-start 留给构建门。Obsidian 复用图片已有的 staging、原子 rename、回滚、质量门和 sealed publication envelope；MP4 只做经过前后校验的字节稳定复制，不进入 Sharp。
 
 读者端没有视频客户端岛。服务端输出原生 `controls/preload=none/playsinline`，禁止 autoplay、iframe 与外部播放器；标题和画面说明进入 figcaption、搜索与无障碍名称，打印隐藏控件并保留直接 URL。v1 禁止音轨；开放音频前必须先加入字幕/文字稿、语言与同步契约。
+
+## 受约束画廊边界（Iteration 0133）
+
+画廊事实源仍是 Markdown，而不是 CMS 私有 JSON 或读者端状态：
+
+```text
+> [!gallery] 组标题
+> - ![alt](/uploads/<slug>/a.webp "短标题")
+> - ![alt](/uploads/<slug>/b.webp "短标题")
+  → `extractMarkdownGalleries` 解析结构与来源行
+  → `getMarkdownGalleryIssue` 校验文本、数量、顺序和路径
+  → Studio/Obsidian 生成或归档同一语法
+  → `rehypeMarkdownGalleries` 生成有序语义 HAST
+  → `next/image`、搜索、窄屏与打印共享结果
+```
+
+`lib/markdown-gallery.ts` 是唯一画廊语义边界。它要求顶层、静态、纯图片列表；每组 2–6 张，每篇最多 3 组且合计最多 12 张；组标题、alt 与图片 title 均必填，组内路径不能重复。正式内容只接受当前 slug 的本地支持图片；Obsidian inbox 可以先引用根暂存，再由既有附件事务归档和改写。
+
+Studio 的 nested list 负责可发现编辑和重排，不承担最终权威；服务端内容契约仍会重新解析序列化 Markdown。Obsidian 1.43.0 只增加模板命令和 `GALLERY` 媒体用途，图片继续复用真实格式、3 MiB/2560 px、目标冲突、原子 rename、失败回滚和 sealed Git envelope。
+
+读者端没有画廊客户端岛。HAST 使用 `section/header/ol/li/figure/figcaption` 保留顺序；桌面双栏、`32rem` 以下单栏，4:3 深色舞台使用 `object-fit: contain`，打印保持所有帧。灯箱、轮播、iframe、手势和远程图库均不在边界内。

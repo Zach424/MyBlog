@@ -137,6 +137,17 @@ npm run release:check
 - Git 历史或 Vercel 流量出现压力时，先统计真实使用量再评估对象存储/CDN；迁移存储层仍要保留路径身份、说明、字幕、隐私和回滚契约；
 - v1 不允许音轨。需要有声演示时暂不发布，不能通过改后缀、移除说明或跳过构建门绕过字幕/文字稿缺口。
 
+### 多图画廊运维
+
+- 画廊必须保持 `[!gallery]` 加纯图片列表结构；不要在列表中混入段落、链接、MP4 或子列表；
+- 每组 2–6 张，每篇最多 3 组且合计最多 12 张；不要临时提高常量放行素材，先拆分文章、删去重复帧或改用单张正文图；
+- 正式图片必须位于当前 slug；inbox 根暂存由 Obsidian 发布器归档。路径、大小写、重复和跨 slug 错误都应修正文或附件，不应关闭构建门；
+- 组标题、短标题和 alt 分别描述共同结论、帧身份和不可见时的关键内容。不要用文件名、“截图一”或相互复制来填充；
+- Studio 可拖动重排；Obsidian 直接调整列表行。发布前确认顺序确实表达步骤或对比，不要依赖文件系统排序；
+- 画廊图片继续使用现有 3 MiB/2560 px 和真实格式门。构建报格式、像素或动画预算时回到原工具导出，不要只改扩展名；
+- 第一篇真实画廊上线时，补查最终图片候选、缓存、移动加载和打印/PDF，再决定是否增加固定传输 smoke；
+- 灯箱、轮播、手势、远程图库与 EXIF 当前不受支持。出现真实任务后先建立隐私、无障碍、脚本和失败降级契约。
+
 ## 发布后检查
 
 作者只需要判断本地正式内容是否已经到达稳定生产站时，运行：
@@ -216,6 +227,8 @@ Iteration 0129 起，同一 smoke 还要验证 `/subscribe` 可见七条只读�
 Iteration 0131 起，同一生产 smoke 会向 `/studio/math-preview` POST 一份同时包含 warning Callout、两条 KaTeX 公式和 Mermaid flowchart 的合成正文。可信响应必须返回 `calloutCount: 1`、`formulaCount: 2`、`diagramCount: 1`，并包含 `data-diagram="flowchart"`、`data-renderer="server-svg"` 与 `<svg role="img">`；图表片段不能出现 `@import`、HTTP(S)、`foreignObject` 或脚本。该 POST 证明未来作者内容可使用共享生产管线，不要求为了展示能力改写现有公开文章。若 Studio 返回 422，先按 `issue.kind` 区分公式与图表，再按行号修正；若新部署尚未切换，旧响应缺少 `diagramCount` 会让 smoke 失败，不能降低断言。
 
 Iteration 0132 起，这份合成正文同时加入一个带标题/说明的本地 MP4 声明。可信响应还必须返回 `videoCount: 1`、`data-video="silent-mp4"`、原生 video controls 和 `preload="none"`，并明确没有 autoplay 或 iframe；`/studio/video-editor.mjs` 必须同源 200、`no-store` 且包含固定组件 id。视频标签属性顺序不是协议，测试使用属性顺序无关的匹配。该 POST 只证明生产渲染能力；第一段真实视频上线时仍需另验实际静态文件的 MIME、Range、缓存和播放。
+
+Iteration 0133 起，合成正文还加入两帧画廊。可信响应必须返回 `galleryCount: 1`、`galleryImageCount: 2`、`data-gallery="ordered-images"` 和 `markdown-gallery-grid`；`/studio/gallery-editor.mjs` 必须同源 200、`no-store` 且包含 `registerStudioGalleryEditor`/`myblog-gallery`。该 POST 证明生产 AST 与组件交付，不会为不存在的合成图片发送公开请求；第一篇真实画廊仍需另验最终图片候选、缓存与所有者编辑体验。
 
 依赖升级时必须特别复核 `beautiful-mermaid` 的 exports 条件、生成标签/属性、marker id、ELK 输出规模与内嵌 style；`hast-util-from-html`/`sanitize` schema 也必须重新跑六类夹具、危险指令、双图 id、Studio、构建与真实浏览器。不要直接信任“自包含 SVG”，也不要把上游远程字体或 style-src 扩进 CSP。当前包固定 1.1.3，生产依赖审计为 0 漏洞。
 

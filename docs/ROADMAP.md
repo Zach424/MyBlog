@@ -8,11 +8,11 @@
 | 4. 作者自助写作 | done | `/studio` OAuth + editorial workflow PR、Obsidian Vault/模板/附件/真实 `--push` |
 | 5. Vercel 原生迁移 | production live | 原生 Next.js、无 Cloudflare 依赖、27 路由生产冒烟通过 |
 | 6. 所有者生产上线 | done | Git 自动 Production、稳定域名自动冒烟、双端发布、回滚与恢复均已验收 |
-| 7. 持续内容与作者体验 | in progress | Iteration 0132 已提供受约束本地静音 MP4，继续推进受限、可移植的富内容 Markdown |
+| 7. 持续内容与作者体验 | in progress | Iteration 0133 已提供受约束多图画廊，继续推进受限、可移植的富内容 Markdown |
 
 ## 当前唯一主线
 
-进入持续内容与作者体验阶段。Iteration 0132 已把受约束的本地静音 MP4 接入生产 Markdown：作者使用带标题与画面说明的可移植图片语法，Studio 自定义组件和浏览器预检、Obsidian 原子归档、MP4Box 构建门、引用所有权、原生播放器、移动/打印与 Vercel smoke 共用一份契约。每篇最多两段；每段最多 12 MiB、90 秒、1080p，只接受单 H.264 画面轨、无音轨/其他轨、非分片和 fast-start。功能提交 `baa7f4f`，烟测修复 `3b913be`；本地为 554/554 单测、67 个生成页面和 35/35 应用测试，稳定生产为 27 routes/OAuth 302 全部 PASS。下一主线只处理受限多图画廊：先冻结可移植语法、alt/caption、数量、窄屏、打印和预算，不默认加入灯箱、轮播或第三方脚本。首次真实 Obsidian 人机验收保留为所有者可执行事项，需要品牌域名时再绑定自定义域名。
+进入持续内容与作者体验阶段。Iteration 0133 已把受约束多图画廊接入生产 Markdown：作者使用 `[!gallery]` Callout 与标准图片列表，Studio 可增删/重排，Obsidian 插件可插入模板并原子归档附件；共享 AST 契约同时约束 2–6 张、每篇 3 组/12 张、组标题、alt、caption、当前 slug 路径、搜索、双栏/单栏、打印和无脚本展示。功能提交 `619a604`；本地为 565/565 单测、68 个生成页面/资源和 35/35 应用测试，真实浏览器桌面/320 px 均无溢出或控制台错误。下一主线只处理受约束技术表格：先保证 GFM 表头、宽表滚动、窄屏、打印与 Studio 预览，不默认加入客户端排序、虚拟滚动或表格库。首次真实 Obsidian 人机验收保留为所有者可执行事项，需要品牌域名时再绑定自定义域名。
 
 ## 已知风险
 
@@ -32,7 +32,7 @@
 - slug 迁移已有构建验证的精确单跳 redirect 注册表，但仍是需要作者审阅的 Git 操作；不支持通配参数或自动推断，迁移必须同步处理内容、附件和引用；
 - Obsidian 已有全 inbox readiness 总览，但该报告有意只代表本地单篇写入事务，不替代正式发布的完整仓库门禁，也不进入看不到未跟踪草稿的 Actions；
 - Current record 已有 Studio 实时只读队列、每周 60/30 天 Actions 提醒和过期门；队列数据只随新 Production 接收内容变更，且仍不发送外部消息；若未来需要邮件/聊天通知，必须由所有者选择渠道后再接入；
-- Obsidian 1.42.0 保留既有草稿身份、作者意图、四事务联锁、sealed Git 交付恢复和维护能力，并把 MP4 纳入同一附件事务；正常与恢复 publication/review 的可信 handoff 均自动接力生产等待。所有 Git writer 的三方版本、bundle 摘要与冻结 HEAD/index/worktree provenance 已覆盖未来 patch/minor、伪造/缺失 descriptor、局部/staged/unstaged 更新和恢复旁路；真实主题下 reload/bundle/provenance interlock、连续 receipt/production Modal、长 ETag、commit、尝试列表、持续 Notice 与本机代理继承仍需首次使用观察；
+- Obsidian 1.43.0 保留既有草稿身份、作者意图、四事务联锁、sealed Git 交付恢复和维护能力，并把画廊与 MP4 纳入同一附件事务；正常与恢复 publication/review 的可信 handoff 均自动接力生产等待。所有 Git writer 的三方版本、bundle 摘要与冻结 HEAD/index/worktree provenance 已覆盖未来 patch/minor、伪造/缺失 descriptor、局部/staged/unstaged 更新和恢复旁路；真实主题下 reload/bundle/provenance interlock、画廊插入、连续 receipt/production Modal、长 ETag、commit、尝试列表、持续 Notice 与本机代理继承仍需首次使用观察；
 - 内部链接支持内容页和严格标题锚点，行内/引用式/自引用共享实际渲染 slug 规则，详情页与公开知识地图共享 outgoing/backlinks；明确不支持 Obsidian 块引用，标题改名必须同步深链，当前双列 SVG 为小型内容库优化，内容规模增长后需要过滤/分组；
 - 正文普通 HTTPS 与结构化 repository/demo/canonical 已有统一确定性库存和受控实时报告；实时 DNS/网络结果有意不进 Actions，timeout/限流不能冒充内容错误；
 - 文章与项目已有完整 A4 打印版式，但 PDF 仍由读者通过浏览器打印生成，仓库不把二进制 PDF 当作发布源，也不提供服务端 PDF 缓存；后续版式变化仍需重新做真实 PDF 全页复核；
@@ -50,6 +50,7 @@
 - Atom/RSS 并列不是两份事实源，而是同一公开集合的两种时间投影。OPML 有意不包含 Atom，避免读者一次导入后收到重复的全站提醒；如果未来增加 scoped Atom，必须先有区别于现有标签/专题 RSS 的明确任务和去重策略；
 - Mermaid 已闭环六类受限服务端图表，但有意拒绝作者样式、点击链接、初始化指令、raw HTML 和其余图表家族；固定 `beautiful-mermaid` 1.1.3 的包入口只声明 ESM import，Next 16 构建期内容校验通过固定版本包内 ESM 路径加载，升级依赖时必须重新验证 exports、ELK 输出标签、SVG 白名单、元素/字节预算与 Vercel bundle；
 - 本地静音 MP4 已有内容、作者、构建与展示契约，但当前没有真实公开视频样本；现有生产证据覆盖模块与合成渲染，不覆盖真实文件的 Range/Content-Type/CDN 缓存。音频、字幕、poster、转码、多码率、长视频和外部托管继续排除；Git 历史与全站传输规模需随真实内容增长观察；
+- 多图画廊已有可移植语法、作者入口、图片事务、共享渲染与真实浏览器布局证据，但当前没有真实公开画廊文章；合成预览不能替代最终图片优化/CDN 缓存和所有者编辑体验。2–6 张、每篇 3 组/12 张是内容预算，不是全站媒体容量预算；灯箱、轮播、手势和远程图库继续排除；
 - 搜索首屏仍把 4 条完整纯文本搜索文档和每条可选更新日序列化给客户端；当前生产 `/search?q=cloudflare` 为 41251/14704 B raw/gzip，远低于 163840/18432 B 上限。内容规模显著增长时必须先由 HTML 预算报警，再评估分片索引或按需加载，不能为了提前优化牺牲首屏结果与无网络本地筛选；
 - `/archive` 当前只有一个年份和月份，但契约已经覆盖跨年、跨月、同日决胜、空集合和输入不变。不要为了当前四条内容提前增加客户端筛选、分页或年份导航；先让内容增长和十三路 HTML 预算提供真实压力，再决定增强方式；
 - 继续阅读的排序是当前 4 条公开内容规模下的启发式契约；标签越泛化、内容量越大，分数越可能由共同标签主导。先通过可见理由与真实阅读观察积累证据，再考虑标签稀有度或多样性约束，不能引入点击追踪或黑盒模型替代当前可审计信号；

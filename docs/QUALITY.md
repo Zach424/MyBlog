@@ -241,6 +241,16 @@ Markdown 门要求视频独占一个段落，使用 `/uploads/<slug>/<file>.mp4`
 
 当前自动证据不包含真实公开 MP4 的 CDN Range/Content-Type/缓存，因为仓库还没有真实视频内容。第一段正式视频上线时必须补做该传输验收；在此之前不得把合成渲染证据写成真实媒体交付证据。
 
+## 多图画廊门（Iteration 0133）
+
+Markdown 门要求精确 `[!gallery]` Callout、纯图片顶层列表和必填组标题；每组 2–6 张，每篇最多 3 组且合计最多 12 张。每张图片必须有非空 alt 和 title，路径不得重复。正式内容只允许当前 slug 的本地支持图片；外链、查询/fragment、根暂存、跨 slug、MP4、折叠标记、嵌套、混排和超长文本全部失败关闭。
+
+媒体门继续复用真实图片格式、3 MiB、2560 px、像素/动画预算、文件存在性、路径大小写、slug 所有权和孤儿附件检查。Obsidian inbox 可以把根暂存作为候选，但发布器必须记录 `GALLERY` 用途与来源行，把全部附件原子归档并在任何失败时恢复；readiness version 8 与插件 1.43.0 必须联锁。
+
+渲染门要求有序语义列表、逐帧 figure/figcaption、稳定编号、组标题/短标题/说明和本地身份；桌面两列、`32rem` 以下单列、图像 `object-fit: contain`，打印保留所有帧。读者端不得出现画廊脚本、dialog、iframe、轮播或第三方请求。搜索必须包含标题和说明，不得泄漏 `[!gallery]` 标记。
+
+真实浏览器至少检查两列/单列计算样式、自然图片尺寸、无根溢出、无脚本/iframe/dialog 和控制台 0 error。生产 smoke 使用合成 Markdown POST 验证模块、计数与 HAST，不把合成能力写成真实公开文章的 CDN 证据；第一篇真实画廊上线时补验最终图片优化与缓存。
+
 ## 发布门槛
 
 只有以下证据同时成立才可切换生产入口：本地 `release:check` 通过、GitHub Quality Gate 通过、Vercel Production 成功、带 OAuth 的全路由冒烟通过、未登录真实浏览器通过、Studio 和 Obsidian 各完成一次真实发布。
