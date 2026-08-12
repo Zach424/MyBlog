@@ -8,11 +8,11 @@
 | 4. 作者自助写作 | done | `/studio` OAuth + editorial workflow PR、Obsidian Vault/模板/附件/真实 `--push` |
 | 5. Vercel 原生迁移 | production live | 原生 Next.js、无 Cloudflare 依赖、27 路由生产冒烟通过 |
 | 6. 所有者生产上线 | done | Git 自动 Production、稳定域名自动冒烟、双端发布、回滚与恢复均已验收 |
-| 7. 持续内容与作者体验 | in progress | Iteration 0138 已提供受约束步骤流程，继续推进受限、可移植的富内容 Markdown |
+| 7. 持续内容与作者体验 | in progress | Iteration 0139 已提供受约束术语定义表，继续推进受限、可移植的富内容 Markdown |
 
 ## 当前唯一主线
 
-进入持续内容与作者体验阶段。Iteration 0138 已把受约束步骤流程接入同一生产 Markdown：作者使用 `[!steps]`、从 1 开始的有序列表和“名称/说明/可选验证”段落，Studio 可结构化增删排序，Obsidian 1.48.0 可插入模板；共享 AST 同时约束每组 2–10 步、每篇 3 组/24 步、字符预算、重复名称与行内节点，并把同一事实投影到搜索、Runbook Path 阅读、桌面/390 px 与打印。下一主线只处理受约束术语定义表：先冻结开放 Markdown、术语/定义/可选别名与上下文、单组/单篇预算、Studio/Obsidian、搜索和语义 `<dl>`，不加入远程词典抓取、自动翻译、知识数据库或客户端筛选。首次真实 Obsidian 音频、参考资料与步骤流程人机验收保留为所有者可执行事项，需要品牌域名时再绑定自定义域名。
+进入持续内容与作者体验阶段。Iteration 0139 已把受约束术语定义表接入同一生产 Markdown：作者使用 `[!glossary]`、无序列表和“术语/定义/可选别名/可选上下文”段落，Studio 可结构化增删排序，Obsidian 1.49.0 可插入模板；共享 AST 同时约束每组 2–12 条、每篇 3 组/24 条、字符预算、术语/别名共享唯一命名空间与行内节点，并把同一事实投影到搜索、语义 `<dl>` Definition Ledger、桌面/390 px 与打印。下一主线只处理受约束问答/FAQ 块：先冻结开放 Markdown、问题/答案预算、Studio/Obsidian、搜索和原生 `<details>/<summary>` 渐进交互，不加入投票、评论、远程问答库、客户端搜索或持久展开状态。首次真实 Obsidian 音频、参考资料、步骤流程与术语表人机验收保留为所有者可执行事项，需要品牌域名时再绑定自定义域名。
 
 ## 已知风险
 
