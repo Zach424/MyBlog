@@ -168,7 +168,7 @@ test("applies the production security and cache baseline", async () => {
 
 test("serves Studio, its maintenance queue, and media inventory through explicit Next.js routes", async () => {
   await assert.rejects(access(new URL("../public/studio", import.meta.url)));
-  const [studio, maintenancePage, maintenanceModule, maintenanceStyles, maintenanceResponse, config, manifest, preflight, stableSlugWidget, entryPreflightModule, mathPreviewModule, galleryEditorModule, glossaryEditorModule, faqEditorModule, fileTreeEditorModule, timelineEditorModule, decisionEditorModule, experimentEditorModule, codeChangeEditorModule, tableEditorModule, taskListEditorModule, referencesEditorModule, stepsEditorModule, videoEditorModule, preview, katexStyles, runtime, unknown] = await Promise.all([
+  const [studio, maintenancePage, maintenanceModule, maintenanceStyles, maintenanceResponse, config, manifest, preflight, stableSlugWidget, entryPreflightModule, mathPreviewModule, galleryEditorModule, glossaryEditorModule, faqEditorModule, fileTreeEditorModule, timelineEditorModule, decisionEditorModule, experimentEditorModule, codeChangeEditorModule, httpEditorModule, tableEditorModule, taskListEditorModule, referencesEditorModule, stepsEditorModule, videoEditorModule, preview, katexStyles, runtime, unknown] = await Promise.all([
     request("/studio"),
     request("/studio/maintenance"),
     request("/studio/maintenance.mjs"),
@@ -188,6 +188,7 @@ test("serves Studio, its maintenance queue, and media inventory through explicit
     request("/studio/decision-editor.mjs"),
     request("/studio/experiment-editor.mjs"),
     request("/studio/codechange-editor.mjs"),
+    request("/studio/http-editor.mjs"),
     request("/studio/table-editor.mjs"),
     request("/studio/task-list-editor.mjs"),
     request("/studio/references-editor.mjs"),
@@ -274,6 +275,9 @@ test("serves Studio, its maintenance queue, and media inventory through explicit
   assert.equal(codeChangeEditorModule.status, 200);
   assert.match(await codeChangeEditorModule.text(), /registerStudioCodeChangeEditor/u);
   assert.equal(codeChangeEditorModule.headers.get("cache-control"), "no-store");
+  assert.equal(httpEditorModule.status, 200);
+  assert.match(await httpEditorModule.text(), /registerStudioHttpEditor/u);
+  assert.equal(httpEditorModule.headers.get("cache-control"), "no-store");
   assert.match(await tableEditorModule.text(), /registerStudioTableEditor/);
   assert.equal(tableEditorModule.headers.get("cache-control"), "no-store");
   assert.equal(referencesEditorModule.status, 200);

@@ -896,3 +896,60 @@ th, td { padding: 0.6rem; border: 1px solid var(--rule); text-align: left; }
     background: #72b4ab;
   }
 }
+
+.markdown-content .markdown-http { margin-block: 2rem; border-block: 1px solid var(--ink); background: color-mix(in srgb, var(--rule) 14%, var(--paper)); }
+.markdown-content .markdown-http-header { display: grid; grid-template-columns: 2rem minmax(0, 1fr); border-bottom: 1px solid var(--ink); }
+.markdown-content .markdown-http-spine { display: grid; place-items: center; padding-block: 0.65rem; border-right: 1px solid var(--ink); background: repeating-linear-gradient(180deg, var(--ink) 0 0.58rem, color-mix(in srgb, var(--signal) 72%, var(--ink)) 0.58rem 0.72rem); color: var(--paper); font: 750 0.5rem/1 "Cascadia Code", Consolas, monospace; letter-spacing: 0.12em; writing-mode: vertical-rl; transform: rotate(180deg); }
+.markdown-content .markdown-http-heading { display: grid; min-width: 0; }
+.markdown-content .markdown-http-meta { display: flex; min-height: 2.35rem; align-items: center; gap: 0.65rem; padding: 0.48rem 0.75rem; border-bottom: 1px solid var(--rule); color: var(--muted); font: 700 0.625rem/1.4 "Cascadia Code", Consolas, monospace; letter-spacing: 0.075em; }
+.markdown-content .markdown-http-method, .markdown-content .markdown-http-status { padding: 0.12rem 0.42rem; border: 1px solid currentColor; color: var(--signal); }
+.markdown-content .markdown-http-status { color: var(--ink); }
+.markdown-content .markdown-http-date { margin-left: auto; font-style: normal; }
+.markdown-content .markdown-http-title { padding: 0.9rem 1rem 1rem; font-size: 1.15rem; line-height: 1.42; overflow-wrap: anywhere; }
+.markdown-content .markdown-http-context { display: grid; grid-template-columns: minmax(0, .9fr) minmax(0, 1.1fr); border-bottom: 1px solid var(--ink); background: var(--paper); }
+.markdown-content .markdown-http-purpose, .markdown-content .markdown-http-target { display: grid; min-width: 0; grid-template-columns: 7rem minmax(0, 1fr); }
+.markdown-content .markdown-http-purpose { border-right: 1px solid var(--ink); }
+.markdown-content .markdown-http-kicker, .markdown-content .markdown-http-purpose-copy, .markdown-content .markdown-http-target-value { min-width: 0; padding: 0.78rem 0.82rem; }
+.markdown-content .markdown-http-kicker { border-right: 1px solid var(--rule); color: var(--signal); font: 750 0.56rem/1.45 "Cascadia Code", Consolas, monospace; letter-spacing: 0.08em; }
+.markdown-content .markdown-http-purpose-copy { font-size: 0.8rem; font-weight: 650; line-height: 1.7; overflow-wrap: anywhere; }
+.markdown-content .markdown-http-target-value { border-radius: 0; background: color-mix(in srgb, var(--rule) 35%, var(--paper)); color: var(--ink); font: 650 0.68rem/1.65 "Cascadia Code", Consolas, monospace; overflow-wrap: anywhere; }
+.markdown-content .markdown-http-flow { display: grid; grid-template-columns: minmax(0, 1fr) 2.6rem minmax(0, 1fr); min-width: 0; padding: 1rem; }
+.markdown-content .markdown-http-phase { min-width: 0; border: 1px solid var(--ink); background: var(--paper); }
+.markdown-content .markdown-http-response { box-shadow: inset 0 3px 0 var(--signal); }
+.markdown-content .markdown-http-phase-header, .markdown-content .markdown-http-ledger-header { display: flex; min-height: 2.35rem; align-items: center; gap: 0.65rem; padding: 0.5rem 0.7rem; border-bottom: 1px solid var(--rule); font: 750 0.58rem/1.4 "Cascadia Code", Consolas, monospace; letter-spacing: 0.08em; }
+.markdown-content .markdown-http-phase-index { color: var(--signal); }
+.markdown-content .markdown-http-phase-note, .markdown-content .markdown-http-ledger-count, .markdown-content .markdown-http-body-language { margin-left: auto; color: var(--muted); }
+.markdown-content .markdown-http-transit { display: grid; place-items: center; align-self: center; width: 1.55rem; height: 1.55rem; margin: auto; border: 1px solid var(--ink); border-radius: 50%; color: var(--signal); background: var(--paper); font: 800 .8rem/1 "Cascadia Code", Consolas, monospace; }
+.markdown-content .markdown-http-headers { border-bottom: 1px solid var(--rule); }
+.markdown-content .markdown-http-header-list { display: grid; grid-template-columns: minmax(7.5rem, .7fr) minmax(0, 1.3fr); margin: 0; }
+.markdown-content .markdown-http-header-name, .markdown-content .markdown-http-header-value { min-width: 0; margin: 0; padding: 0.6rem 0.68rem; border-bottom: 1px solid var(--rule); font: 650 0.65rem/1.55 "Cascadia Code", Consolas, monospace; overflow-wrap: anywhere; }
+.markdown-content .markdown-http-header-name { border-right: 1px solid var(--rule); color: var(--muted); }
+.markdown-content .markdown-http-empty { margin: 0; padding: .75rem; color: var(--muted); font: 650 .62rem/1.55 "Cascadia Code", Consolas, monospace; }
+.markdown-content .markdown-http-pre { max-width: 100%; margin: 0; padding: .85rem .9rem .95rem; border: 0; border-radius: 0; background: #101820; overflow: auto; }
+.markdown-content .markdown-http-code { display: block; width: max-content; min-width: 100%; padding: 0; background: transparent; color: #edf4f5; font: 500 .7rem/1.7 "Cascadia Code", Consolas, monospace; white-space: pre; }
+.markdown-content .markdown-http-verifications { border-top: 1px solid var(--ink); background: var(--paper); }
+.markdown-content .markdown-http-verification-list { margin: 0; padding: 0; list-style: none; }
+.markdown-content .markdown-http-verification { display: grid; grid-template-columns: minmax(7rem, .75fr) minmax(4.5rem, .45fr) minmax(0, 1.5fr); margin: 0; }
+.markdown-content .markdown-http-verification:not(:last-child) { border-bottom: 1px solid var(--rule); }
+.markdown-content .markdown-http-verification-label, .markdown-content .markdown-http-verification-value, .markdown-content .markdown-http-verification-copy { min-width: 0; padding: .68rem .72rem; overflow-wrap: anywhere; }
+.markdown-content .markdown-http-verification-label, .markdown-content .markdown-http-verification-value { border-right: 1px solid var(--rule); }
+.markdown-content .markdown-http-verification-value { border-radius: 0; background: color-mix(in srgb, var(--signal) 7%, var(--paper)); color: var(--signal); font: 750 .68rem/1.55 "Cascadia Code", Consolas, monospace; }
+.markdown-content .markdown-http-verification-copy { color: var(--muted); font-size: .74rem; line-height: 1.65; }
+
+@media (max-width: 42rem) {
+  .markdown-content .markdown-http-header { grid-template-columns: 1.6rem minmax(0, 1fr); }
+  .markdown-content .markdown-http-meta { align-items: flex-start; flex-direction: column; }
+  .markdown-content .markdown-http-date { margin-left: 0; }
+  .markdown-content .markdown-http-context, .markdown-content .markdown-http-flow { grid-template-columns: minmax(0, 1fr); }
+  .markdown-content .markdown-http-purpose { border-right: 0; border-bottom: 1px solid var(--rule); }
+  .markdown-content .markdown-http-purpose, .markdown-content .markdown-http-target { grid-template-columns: 5.8rem minmax(0, 1fr); }
+  .markdown-content .markdown-http-flow { gap: .65rem; }
+}
+
+@media print {
+  .markdown-content .markdown-http { break-inside: auto; }
+  .markdown-content .markdown-http-header, .markdown-content .markdown-http-context, .markdown-content .markdown-http-phase, .markdown-content .markdown-http-verifications, .markdown-content .markdown-http-verification { break-inside: avoid-page; }
+  .markdown-content .markdown-http-flow { grid-template-columns: minmax(0, 1fr); gap: 3mm; }
+  .markdown-content .markdown-http-transit { display: none; }
+  .markdown-content .markdown-http-pre, .markdown-content .markdown-http-code { width: auto; white-space: pre-wrap; overflow: visible; overflow-wrap: anywhere; }
+}

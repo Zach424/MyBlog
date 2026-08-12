@@ -28,7 +28,7 @@ const AUTHOR_DOCTOR_PLUGIN_BUNDLE_VERSION = 1;
 const AUTHOR_DOCTOR_PLUGIN_PROVENANCE_VERSION = 1;
 const INBOX_READINESS_REPORT_VERSION = 8;
 const AUTHOR_DOCTOR_NODE_ENGINE = ">=22.13.0";
-const AUTHOR_DOCTOR_PLUGIN_VERSION = "1.55.0";
+const AUTHOR_DOCTOR_PLUGIN_VERSION = "1.56.0";
 const CURRENT_DRAFT_INTENT_RUN_SCOPE = Symbol("current-draft-intent");
 const PRODUCTION_CONTENT_CONVERGENCE_RUN_SCOPE = Symbol(
   "production-content-convergence",
@@ -403,6 +403,55 @@ function createCodeChangeTemplate(filePath) {
     "> **RISKS**",
     ">",
     "> - **示例漂移** — 编辑器与服务端必须继续共享同一份固定契约。",
+  ].join("\n");
+}
+
+function createHttpExchangeTemplate(filePath) {
+  const normalized = String(filePath || "").replaceAll("\\", "/");
+  if (
+    !/^content\/(inbox|posts|projects)\/[a-z0-9]+(?:-[a-z0-9]+)*\.md$/u.test(
+      normalized,
+    )
+  ) {
+    throw new Error("HTTP 交换模板只能插入 content/inbox、content/posts 或 content/projects 中的博客文档");
+  }
+  return [
+    "> [!http] 创建草稿文章",
+    "> **METHOD:** `POST` · **STATUS:** `201` · **DATE:** `2026-08-13`",
+    ">",
+    "> **PURPOSE**",
+    ">",
+    "> 记录草稿创建接口的脱敏请求与响应，方便复盘字段约定。",
+    ">",
+    "> **TARGET**",
+    ">",
+    "> `https://api.example.com/v1/posts?draft=true`",
+    ">",
+    "> **REQUEST HEADERS**",
+    ">",
+    "> - `Accept: application/json`",
+    "> - `Content-Type: application/json`",
+    ">",
+    "> **REQUEST BODY:** `json`",
+    ">",
+    "> ~~~json",
+    "> {\"title\":\"HTTP 交换台账\",\"status\":\"draft\"}",
+    "> ~~~",
+    ">",
+    "> **RESPONSE HEADERS**",
+    ">",
+    "> - `Content-Type: application/json`",
+    "> - `Location: https://api.example.com/v1/posts/42`",
+    ">",
+    "> **RESPONSE BODY:** `json`",
+    ">",
+    "> ~~~json",
+    "> {\"id\":\"42\",\"status\":\"draft\"}",
+    "> ~~~",
+    ">",
+    "> **VERIFICATION**",
+    ">",
+    "> - **Status and schema** `PASS` — 状态码和脱敏响应结构与预期一致。",
   ].join("\n");
 }
 
@@ -6391,6 +6440,20 @@ module.exports = class MyBlogPublisher extends Plugin {
           const template = createCodeChangeTemplate(view?.file?.path);
           editor.replaceSelection(template);
           new Notice("已插入完整 unified diff 代码变更证据；请替换标题、日期、目的、文件、diff、验证与风险");
+        } catch (error) {
+          new Notice(error instanceof Error ? error.message : String(error));
+        }
+      },
+    });
+
+    this.addCommand({
+      id: "insert-http-template",
+      name: "插入 HTTP 请求 / 响应证据模板",
+      editorCallback: (editor, view) => {
+        try {
+          const template = createHttpExchangeTemplate(view?.file?.path);
+          editor.replaceSelection(template);
+          new Notice("已插入静态脱敏 HTTP 交换证据；请替换标题、日期、目标、请求、响应与验证，不要填写凭据");
         } catch (error) {
           new Notice(error instanceof Error ? error.message : String(error));
         }

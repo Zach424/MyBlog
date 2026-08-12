@@ -68,6 +68,7 @@ lib/
   cms-oauth.ts                      签名 OAuth state 与 token 交换
   heading-permalink.ts              标题 fragment 与 Markdown 深度标记纯函数
   markdown-callout.ts               Obsidian Callout 标记解析、HAST 转换与搜索纯文本降级
+  markdown-http.ts                  静态脱敏 HTTP 交换的 mdast 契约、HAST 投影与搜索降噪
   markdown-math.ts                  KaTeX 安全选项与构建期公式解析门
   markdown-pipeline.ts              生产阅读与 Studio 共享的 remark/rehype/安全 URL 配置
   studio-math-preview.ts            同源作者预览的公式/Callout 计数、HTML 输出与无障碍语义
@@ -411,3 +412,23 @@ Studio 的 nested list 负责可发现编辑和重排，不承担最终权威；
 `lib/markdown-codechange.ts` 是唯一服务端语义边界。每篇最多 2 个记录、合计最多 6 个文件与 240 行代码；每条包含 1–4 个文件、1–6 个验证和 1–6 个风险。UNIFIED 要求文件台账与 `diff --git` 文件段逐项同序对应，并校验 ADDED/MODIFIED/DELETED/RENAMED 端点；BEFORE_AFTER 要求一组允许语言的前后代码围栏。两种模式都限制单块 160 行、16,000 字符、单行 240 字符，并拒绝路径遍历、保留路径、重复目标、未来日期和疑似 token/key。
 
 Studio 的 `myblog-codechange` 组件只改善条件输入、排序和本地即时反馈；序列化后仍由 `/studio/math-preview` 与内容契约重新解析。Obsidian 1.55.0 只增加一个模板插入命令，继续复用插件既有 bundle 完整性和 Git provenance 边界。公开 `MarkdownContent` 对 `.markdown-codechange-pre` 保留原生 `pre`，有意绕过通用复制按钮，因此阅读页没有 patch 应用、仓库编辑、折叠、评论或读者状态。
+
+## 受约束 HTTP 请求/响应证据边界（Iteration 0146）
+
+HTTP 交换事实源仍是 Markdown，不执行网络请求，也不把 Studio 表单或渲染 HTML 当作第二份数据：
+
+```text
+> [!http] 标题
+> **METHOD:** `POST` · **STATUS:** `201` · **DATE:** `YYYY-MM-DD`
+> PURPOSE / TARGET / REQUEST HEADERS / REQUEST BODY
+> RESPONSE HEADERS / RESPONSE BODY / VERIFICATION
+  → `extractMarkdownHttpExchanges` 解析固定 mdast 序列与来源行
+  → `getMarkdownHttpIssue` 校验 URL、头、正文、语义、预算、日期与疑似凭据
+  → Studio/Obsidian 只生成同一可移植语法
+  → `rehypeMarkdownHttpExchanges` 生成静态 Exchange Ledger
+  → 搜索、320 px、深浅色与打印消费同一结构
+```
+
+`lib/markdown-http.ts` 是唯一服务端语义边界。每篇最多 2 条交换；单条请求头最多 10 个、响应头最多 12 个，每篇合计最多 30 个；请求与响应正文各最多 80 行/8,000 字符/单行 240 字符，每篇合计最多 160 行。方法只允许 GET/HEAD/POST/PUT/PATCH/DELETE/OPTIONS，状态只允许 100–599；公开目标只允许 HTTPS，本机开发证据额外允许 localhost/127.0.0.1 HTTP。URL 凭据、片段、敏感查询参数，Authorization/Cookie/key/token/secret 类字段、令牌特征、私钥头与重复头名称全部失败关闭。
+
+非 NONE 正文必须声明与 json/text/html/xml/graphql/form 一致的 Content-Type；GET/HEAD/OPTIONS 不接受请求正文，HEAD 与 204/304 不接受响应正文。Studio 的 `myblog-http` 组件只改善输入和本地即时反馈，`/studio/math-preview` 与内容契约仍重新解析；Obsidian 1.56.0 只插入完整静态模板。公开 `MarkdownContent` 对 `.markdown-http-pre` 保留原生 pre，不生成请求按钮、cURL、客户端代码、变量、鉴权、Cookie、重放或读者状态。

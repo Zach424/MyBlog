@@ -4,6 +4,7 @@ import path from "node:path";
 type StudioAssetName =
   | "audio-editor.mjs"
   | "codechange-editor.mjs"
+  | "http-editor.mjs"
   | "decision-editor.mjs"
   | "experiment-editor.mjs"
   | "faq-editor.mjs"
@@ -30,6 +31,7 @@ type StudioAssetName =
 const contentTypes: Record<StudioAssetName, string> = {
   "audio-editor.mjs": "text/javascript; charset=utf-8",
   "codechange-editor.mjs": "text/javascript; charset=utf-8",
+  "http-editor.mjs": "text/javascript; charset=utf-8",
   "decision-editor.mjs": "text/javascript; charset=utf-8",
   "experiment-editor.mjs": "text/javascript; charset=utf-8",
   "faq-editor.mjs": "text/javascript; charset=utf-8",

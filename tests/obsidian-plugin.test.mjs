@@ -5,6 +5,7 @@ import test from "node:test";
 import vm from "node:vm";
 import { parse as parseYamlSource } from "yaml";
 import { getMarkdownCodeChangeIssue } from "../lib/markdown-codechange.ts";
+import { getMarkdownHttpIssue } from "../lib/markdown-http.ts";
 
 const pluginUrl = new URL(
   "../.obsidian/plugins/myblog-publisher/main.js",
@@ -107,7 +108,7 @@ async function createPluginHarness({
   readActiveFilePathAt = 1,
   renameFailure,
   renamePostcondition = "exact",
-  runtimePluginVersion = "1.55.0",
+  runtimePluginVersion = "1.56.0",
   throwSpawnAt = [],
 } = {}) {
   const source = await readFile(pluginUrl, "utf8");
@@ -1175,7 +1176,7 @@ function deliveryTriageReport({
 
 function authorDoctorReport({
   bundleStatus = "verified",
-  pluginVersion = "1.55.0",
+  pluginVersion = "1.56.0",
   provenanceStatus = "verified",
 } = {}) {
   const bundleFiles = ["main.js", "manifest.json", "styles.css"].map(
@@ -1790,6 +1791,34 @@ test("inserts portable code-change evidence without reading Git, executing a pat
   assert.equal(getMarkdownCodeChangeIssue(inserted), undefined);
   assert.equal(harness.spawned.length, 0);
   assert.match(harness.notices.at(-1)?.message ?? "", /已插入完整 unified diff 代码变更证据/u);
+
+  command.editorCallback(
+    { replaceSelection() { assert.fail("invalid note must not be edited"); } },
+    { file: { path: "notes/private.md" } },
+  );
+  assert.match(harness.notices.at(-1)?.message ?? "", /只能插入.*博客文档/u);
+});
+
+test("inserts portable redacted HTTP evidence without sending a request", async () => {
+  const harness = await createPluginHarness({
+    activeFilePath: "content/inbox/http-draft.md",
+    files: ["content/inbox/http-draft.md"],
+  });
+  const command = findCommand(harness, "insert-http-template");
+  let inserted = "";
+
+  command.editorCallback(
+    { replaceSelection(value) { inserted = value; } },
+    { file: { path: "content/inbox/http-draft.md" } },
+  );
+
+  assert.match(inserted, /^> \[!http\] 创建草稿文章$/mu);
+  assert.match(inserted, /^> \*\*METHOD:\*\* `POST` · \*\*STATUS:\*\* `201` · \*\*DATE:\*\* `2026-08-13`$/mu);
+  assert.match(inserted, /^> \*\*REQUEST BODY:\*\* `json`$/mu);
+  assert.match(inserted, /^> \*\*RESPONSE BODY:\*\* `json`$/mu);
+  assert.equal(getMarkdownHttpIssue(inserted), undefined);
+  assert.equal(harness.spawned.length, 0);
+  assert.match(harness.notices.at(-1)?.message ?? "", /静态脱敏 HTTP 交换证据/u);
 
   command.editorCallback(
     { replaceSelection() { assert.fail("invalid note must not be edited"); } },
@@ -3607,7 +3636,7 @@ test("renders a versioned maintenance ledger and opens an exact Vault note", asy
     createPluginHarness(),
   ]);
   const manifest = JSON.parse(manifestSource);
-  assert.equal(manifest.version, "1.55.0");
+  assert.equal(manifest.version, "1.56.0");
   assert.equal(manifest.minAppVersion, "1.5.7");
   assert.equal(manifest.isDesktopOnly, true);
   assert.match(styles, /^\.myblog-draft-create \{/mu);
@@ -4301,7 +4330,7 @@ test("holds every Git writer on an explicit runtime and disk plugin version mism
       .join(" ");
     assert.equal(elementsByTag(modal, "button").length, 0);
     assert.match(text, /PLUGIN RELOAD REQUIRED/u);
-    assert.match(text, /RUNNING CODE.*1\.55\.0.*RUNTIME MANIFEST.*1\.40\.0.*DISK.*1\.55\.0/su);
+    assert.match(text, /RUNNING CODE.*1\.56\.0.*RUNTIME MANIFEST.*1\.40\.0.*DISK.*1\.56\.0/su);
     assert.match(text, /关闭再启用 MyBlog Publisher.*重启 Obsidian/su);
     assert.match(text, /发布当前草稿并同步 GitHub.*未启动/su);
   });
@@ -4331,10 +4360,10 @@ test("holds every Git writer on an explicit runtime and disk plugin version mism
 });
 
 test("keeps future disk patch and minor plugin versions structured for reload guidance", async (t) => {
-  for (const diskVersion of ["1.55.1", "1.56.0"]) {
+  for (const diskVersion of ["1.56.1", "1.57.0"]) {
     await t.test(diskVersion, async () => {
       const harness = await createPluginHarness({
-        runtimePluginVersion: "1.55.0",
+        runtimePluginVersion: "1.56.0",
       });
       findCommand(harness, "inspect-author-environment").checkCallback(false);
       harness.spawned[0].child.stdout.emit(
@@ -4358,9 +4387,9 @@ test("keeps future disk patch and minor plugin versions structured for reload gu
 
   await t.test("forged future version evidence", async () => {
     const harness = await createPluginHarness({
-      runtimePluginVersion: "1.55.0",
+      runtimePluginVersion: "1.56.0",
     });
-    const report = authorDoctorReport({ pluginVersion: "1.55.0" });
+    const report = authorDoctorReport({ pluginVersion: "1.56.0" });
     report.checks.at(-1).observed = "myblog-publisher@9.9.9 · desktop";
     findCommand(harness, "inspect-author-environment").checkCallback(false);
     harness.spawned[0].child.stdout.emit(
@@ -4418,7 +4447,7 @@ test("fails recovery closed when the disk plugin version identity is unavailable
     (check) => check.id === "publisher-plugin",
   );
   publisher.observed = "missing";
-  publisher.resolution = "重新安装或启用 MyBlog Publisher 1.55.0";
+  publisher.resolution = "重新安装或启用 MyBlog Publisher 1.56.0";
   publisher.status = "attention";
   const bundle = report.checks.find(
     (check) => check.id === "publisher-bundle",

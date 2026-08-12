@@ -19,6 +19,11 @@ import {
   type MarkdownCodeChangeIssue,
 } from "@/lib/markdown-codechange";
 import {
+  extractMarkdownHttpExchanges,
+  getMarkdownHttpIssue,
+  type MarkdownHttpIssue,
+} from "@/lib/markdown-http";
+import {
   extractMarkdownAudioNotes,
   getMarkdownAudioIssue,
   type MarkdownAudioIssue,
@@ -104,6 +109,9 @@ export type StudioMathPreviewResult =
       codeChangeCount: number;
       codeChangeFileCount: number;
       codeChangeLineCount: number;
+      httpExchangeBodyLineCount: number;
+      httpExchangeCount: number;
+      httpExchangeHeaderCount: number;
       faqCount: number;
       faqQuestionCount: number;
       fileTreeCount: number;
@@ -135,6 +143,7 @@ export type StudioMathPreviewResult =
         | MarkdownDecisionIssue
         | MarkdownExperimentIssue
         | MarkdownCodeChangeIssue
+        | MarkdownHttpIssue
         | MarkdownFaqIssue
         | MarkdownFileTreeIssue
         | MarkdownTimelineIssue
@@ -223,6 +232,10 @@ export function renderStudioMathPreview(
     maximumDate: resolveContentBuildDate(),
   });
   if (codeChangeIssue) return { issue: codeChangeIssue, ok: false };
+  const httpIssue = getMarkdownHttpIssue(markdown, {
+    maximumDate: resolveContentBuildDate(),
+  });
+  if (httpIssue) return { issue: httpIssue, ok: false };
   const galleryIssue = getMarkdownGalleryIssue(markdown);
   if (galleryIssue) return { issue: galleryIssue, ok: false };
   const glossaryIssue = getMarkdownGlossaryIssue(markdown);
@@ -268,6 +281,17 @@ export function renderStudioMathPreview(
   const codeChangeLineCount = codeChanges.reduce((total, change) => {
     if (change.mode === "UNIFIED") return total + change.diff.split("\n").length;
     return total + change.before.split("\n").length + change.after.split("\n").length;
+  }, 0);
+  const httpExchanges = extractMarkdownHttpExchanges(markdown);
+  const httpExchangeCount = httpExchanges.length;
+  const httpExchangeHeaderCount = httpExchanges.reduce(
+    (total, exchange) => total + exchange.requestHeaders.length + exchange.responseHeaders.length,
+    0,
+  );
+  const httpExchangeBodyLineCount = httpExchanges.reduce((total, exchange) => {
+    const requestLines = exchange.requestBody.value ? exchange.requestBody.value.split("\n").length : 0;
+    const responseLines = exchange.responseBody.value ? exchange.responseBody.value.split("\n").length : 0;
+    return total + requestLines + responseLines;
   }, 0);
   const diagramCount = extractMarkdownDiagrams(markdown).length;
   const faqs = extractMarkdownFaqs(markdown);
@@ -353,6 +377,9 @@ export function renderStudioMathPreview(
     codeChangeCount,
     codeChangeFileCount,
     codeChangeLineCount,
+    httpExchangeBodyLineCount,
+    httpExchangeCount,
+    httpExchangeHeaderCount,
     diagramCount,
     decisionAlternativeCount,
     decisionConsequenceCount,

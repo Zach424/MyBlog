@@ -108,7 +108,11 @@ function createMarkdownComponents(
     },
     pre({ children, className: preClassName, node, ...props }) {
       void node;
-      if (preClassName?.split(/\s+/u).includes("markdown-codechange-pre")) {
+      if (
+        preClassName?.split(/\s+/u).some((className) =>
+          className === "markdown-codechange-pre" || className === "markdown-http-pre"
+        )
+      ) {
         return <pre {...props} className={preClassName}>{children}</pre>;
       }
       const codeElement = Children.toArray(children).find(isValidElement);

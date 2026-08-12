@@ -6,6 +6,7 @@ import { getMarkdownFileTreeIssue } from "../markdown-filetree.ts";
 import { getMarkdownDecisionIssue } from "../markdown-decision.ts";
 import { getMarkdownExperimentIssue } from "../markdown-experiment.ts";
 import { getMarkdownCodeChangeIssue } from "../markdown-codechange.ts";
+import { getMarkdownHttpIssue } from "../markdown-http.ts";
 import { getMarkdownTimelineIssue } from "../markdown-timeline.ts";
 import { getMarkdownGlossaryIssue } from "../markdown-glossary.ts";
 import { getMarkdownReferenceIssue } from "../markdown-references.ts";
@@ -478,6 +479,15 @@ function parseFrontmatter<T>(
     );
   }
 
+  const httpIssue = getMarkdownHttpIssue(body);
+  if (httpIssue) {
+    const location = httpIssue.line ? `正文第 ${httpIssue.line} 行` : "正文";
+    throw new ContentValidationError(
+      sourcePath,
+      `${location}HTTP 交换证据无法解析：${httpIssue.message}`,
+    );
+  }
+
   const referenceIssue = getMarkdownReferenceIssue(body);
   if (referenceIssue) {
     const location = referenceIssue.line ? `正文第 ${referenceIssue.line} 行` : "正文";
@@ -721,6 +731,16 @@ export function inspectContentDraft(
         message: `${location}代码变更证据无法解析：${codeChangeIssue.message}`,
       });
     }
+    const httpIssue = getMarkdownHttpIssue(body, {
+      maximumDate: buildDate,
+    });
+    if (httpIssue) {
+      const location = httpIssue.line ? `第 ${httpIssue.line} 行` : "正文";
+      issues.push({
+        field: "body",
+        message: `${location}HTTP 交换证据无法解析：${httpIssue.message}`,
+      });
+    }
     const referenceIssue = getMarkdownReferenceIssue(body);
     if (referenceIssue) {
       const location = referenceIssue.line ? `第 ${referenceIssue.line} 行` : "正文";
@@ -904,6 +924,23 @@ export function validateContentCodeChanges(
     throw new ContentValidationError(
       record.sourcePath,
       `${location}代码变更证据无法解析：${issue.message}`,
+    );
+  }
+}
+
+export function validateContentHttpExchanges(
+  records: ContentRecord[],
+  buildDate: string,
+) {
+  for (const record of records) {
+    const issue = getMarkdownHttpIssue(record.body, {
+      maximumDate: buildDate,
+    });
+    if (!issue) continue;
+    const location = issue.line ? `正文第 ${issue.line} 行` : "正文";
+    throw new ContentValidationError(
+      record.sourcePath,
+      `${location}HTTP 交换证据无法解析：${issue.message}`,
     );
   }
 }

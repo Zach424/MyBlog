@@ -8,11 +8,11 @@
 | 4. 作者自助写作 | done | `/studio` OAuth + editorial workflow PR、Obsidian Vault/模板/附件/真实 `--push` |
 | 5. Vercel 原生迁移 | production live | 原生 Next.js、无 Cloudflare 依赖、27 路由生产冒烟通过 |
 | 6. 所有者生产上线 | done | Git 自动 Production、稳定域名自动冒烟、双端发布、回滚与恢复均已验收 |
-| 7. 持续内容与作者体验 | in progress | Iteration 0145 已提供受约束代码变更证据，继续推进受限、可移植的富内容 Markdown |
+| 7. 持续内容与作者体验 | in progress | Iteration 0146 已提供受约束 HTTP 请求/响应证据，继续推进受限、可移植的富内容 Markdown |
 
 ## 当前唯一主线
 
-进入持续内容与作者体验阶段。Iteration 0145 已把受约束代码变更证据接入同一生产 Markdown：作者使用顶层 `[!codechange]` 保存 UNIFIED 或 BEFORE_AFTER 模式、真实日期、目的、带状态文件、代码、验证与风险；Studio 可按模式编辑条件字段与可排序台账，Obsidian 1.55.0 可插入模板。共享 AST 同时约束每篇最多 2 条记录、合计最多 6 个文件、每条 1–4 个文件、合计 240 行、路径安全、diff 对齐、语言集合、疑似凭据和未来日期失败关闭，并把同一事实投影到搜索、Review Docket、320 px 与打印。下一主线只处理受约束 HTTP 请求/响应证据块：冻结请求方法、脱敏 URL、安全头、可选请求体、响应状态/头/体、说明与验证，以及 Studio/Obsidian、搜索、窄屏和打印；不发起或重放网络请求，不保存 Cookie/Authorization/API key，不生成客户端或读取真实凭据。首次真实 Obsidian 富内容人机验收保留为所有者可执行事项，需要品牌域名时再绑定自定义域名。
+进入持续内容与作者体验阶段。Iteration 0146 已把受约束 HTTP 请求/响应证据接入同一生产 Markdown：作者使用顶层 `[!http]` 保存常用方法、100–599 状态、真实日期、说明、脱敏 URL、安全请求/响应头、可选文本正文与验证；Studio 提供结构化双阶段编辑器，Obsidian 1.56.0 可插入完整模板。共享 AST 同时约束每篇最多 2 条、头字段与正文总量、HTTPS/本机 URL、头字段大小写唯一、敏感名称/值、Content-Type 对齐、GET/HEAD/OPTIONS 与 HEAD/204/304 无正文语义、疑似凭据和未来日期失败关闭，并把同一事实投影到搜索、Exchange Ledger、320 px 与打印。下一主线只处理受约束终端命令运行证据：冻结已执行命令、环境、仓库相对工作目录、退出码、stdout/stderr、说明与验证，以及 Studio/Obsidian、搜索、窄屏和打印；不执行或重放命令，不保存环境变量/凭据，不模拟终端、不生成脚本或连接远程 shell。首次真实 Obsidian 富内容人机验收保留为所有者可执行事项，需要品牌域名时再绑定自定义域名。
 
 ## 已知风险
 
@@ -32,7 +32,7 @@
 - slug 迁移已有构建验证的精确单跳 redirect 注册表，但仍是需要作者审阅的 Git 操作；不支持通配参数或自动推断，迁移必须同步处理内容、附件和引用；
 - Obsidian 已有全 inbox readiness 总览，但该报告有意只代表本地单篇写入事务，不替代正式发布的完整仓库门禁，也不进入看不到未跟踪草稿的 Actions；
 - Current record 已有 Studio 实时只读队列、每周 60/30 天 Actions 提醒和过期门；队列数据只随新 Production 接收内容变更，且仍不发送外部消息；若未来需要邮件/聊天通知，必须由所有者选择渠道后再接入；
-- Obsidian 1.55.0 保留既有草稿身份、作者意图、四事务联锁、sealed Git 交付恢复和维护能力，并把代码变更模板纳入同一作者入口；正常与恢复 publication/review 的可信 handoff 均自动接力生产等待。所有 Git writer 的三方版本、bundle 摘要与冻结 HEAD/index/worktree provenance 已覆盖未来 patch/minor、伪造/缺失 descriptor、局部/staged/unstaged 更新和恢复旁路；真实主题下 reload/bundle/provenance interlock、代码变更插入、连续 receipt/production Modal、长 ETag、commit、尝试列表、持续 Notice 与本机代理继承仍需首次使用观察；
+- Obsidian 1.56.0 保留既有草稿身份、作者意图、四事务联锁、sealed Git 交付恢复和维护能力，并把代码变更与静态脱敏 HTTP 交换模板纳入同一作者入口；正常与恢复 publication/review 的可信 handoff 均自动接力生产等待。所有 Git writer 的三方版本、bundle 摘要与冻结 HEAD/index/worktree provenance 已覆盖未来 patch/minor、伪造/缺失 descriptor、局部/staged/unstaged 更新和恢复旁路；真实主题下 reload/bundle/provenance interlock、HTTP 模板插入、连续 receipt/production Modal、长 ETag、commit、尝试列表、持续 Notice 与本机代理继承仍需首次使用观察；
 - 内部链接支持内容页和严格标题锚点，行内/引用式/自引用共享实际渲染 slug 规则，详情页与公开知识地图共享 outgoing/backlinks；明确不支持 Obsidian 块引用，标题改名必须同步深链，当前双列 SVG 为小型内容库优化，内容规模增长后需要过滤/分组；
 - 正文普通 HTTPS 与结构化 repository/demo/canonical 已有统一确定性库存和受控实时报告；实时 DNS/网络结果有意不进 Actions，timeout/限流不能冒充内容错误；
 - 文章与项目已有完整 A4 打印版式，但 PDF 仍由读者通过浏览器打印生成，仓库不把二进制 PDF 当作发布源，也不提供服务端 PDF 缓存；后续版式变化仍需重新做真实 PDF 全页复核；

@@ -301,6 +301,12 @@ TYPE / 标题                         + 或 −
 
 UNIFIED 保留 patch 行本身，BEFORE_AFTER 以明确 BEFORE/AFTER 标题分隔两块代码。两者都不提供复制、应用、折叠、行级评论、批准按钮或假装在线的 Git 状态。桌面保持紧凑文件账本和横向可滚动代码；`42rem` 以下把元数据、文件和验证台账折为单列，页面根不横向溢出。打印使用浅色边界并保留全部路径、代码、验证与风险，不隐藏真实证据。
 
+## HTTP 交换台账（Iteration 0146）
+
+HTTP 请求/响应证据使用 Exchange Ledger / 交换台账，而不是仿造 Postman、浏览器开发者工具或在线 API 控制台。顶部 `REQUEST → RESPONSE` spine 与方法、状态、日期先建立一次已完成观察；PURPOSE 与 `TARGET / REDACTED` 明确为什么记录以及公开地址边界。中部用 `01 REQUEST`、方向节点和 `02 RESPONSE` 构成单向交换轨，每一阶段分别保存安全头字段台账和受限正文舞台；底部 VERIFICATION 只说明作者实际核对过什么。
+
+头字段按名称和值双列展示，NONE 保留为可见空态；正文使用原生等宽代码并只在自身区域横向滚动。组件不提供 Send、Replay、Copy as cURL、Generate client、Variables、Cookies、Auth、History 或响应计时，也不以按钮暗示浏览器会发起请求。`42rem` 以下两阶段沿纵向轨道排列，`32rem` 以下压缩头/验证列；打印移除方向节点、展开代码换行并保留每个阶段、URL 与验证。
+
 ## 明确排除
 
 - 终端窗口、代码编辑器边框和命令行角色扮演；

@@ -181,6 +181,7 @@
       import { createStudioConfig } from "/studio/config.mjs";
       import { registerStudioAudioEditor } from "/studio/audio-editor.mjs";
       import { registerStudioCodeChangeEditor } from "/studio/codechange-editor.mjs";
+      import { registerStudioHttpEditor } from "/studio/http-editor.mjs";
       import { registerStudioDecisionEditor } from "/studio/decision-editor.mjs";
       import { registerStudioExperimentEditor } from "/studio/experiment-editor.mjs";
       import { registerStudioFaqEditor } from "/studio/faq-editor.mjs";
@@ -210,6 +211,7 @@
           registerStudioDecisionEditor();
           registerStudioExperimentEditor();
           registerStudioCodeChangeEditor();
+          registerStudioHttpEditor();
           registerStudioFaqEditor();
           registerStudioFileTreeEditor();
           registerStudioTimelineEditor();

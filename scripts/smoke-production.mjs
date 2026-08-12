@@ -802,7 +802,7 @@ export async function runProductionSmoke(originInput, { expectOAuth = false } = 
   invariant(studioPolicy.includes("https://api.github.com"), "Studio CSP 缺少 GitHub API");
   invariant(studioPolicy.includes("frame-ancestors 'none'"), "Studio CSP 未禁止嵌入");
 
-  const [studioMaintenancePage, studioMaintenanceModule, studioMaintenanceStyles, studioMaintenanceResponse, studioConfig, studioManifest, studioPreflight, stableSlugWidget, entryPreflightModule, mathPreviewModule, galleryEditorModule, glossaryEditorModule, faqEditorModule, fileTreeEditorModule, timelineEditorModule, decisionEditorModule, experimentEditorModule, codeChangeEditorModule, tableEditorModule, taskListEditorModule, referencesEditorModule, stepsEditorModule, audioEditorModule, videoEditorModule, studioPreview, katexStyles, studioRuntime, unknownStudioAsset] = await Promise.all([
+  const [studioMaintenancePage, studioMaintenanceModule, studioMaintenanceStyles, studioMaintenanceResponse, studioConfig, studioManifest, studioPreflight, stableSlugWidget, entryPreflightModule, mathPreviewModule, galleryEditorModule, glossaryEditorModule, faqEditorModule, fileTreeEditorModule, timelineEditorModule, decisionEditorModule, experimentEditorModule, codeChangeEditorModule, httpEditorModule, tableEditorModule, taskListEditorModule, referencesEditorModule, stepsEditorModule, audioEditorModule, videoEditorModule, studioPreview, katexStyles, studioRuntime, unknownStudioAsset] = await Promise.all([
     request(origin, "/studio/maintenance"),
     request(origin, "/studio/maintenance.mjs", { accept: "text/javascript" }),
     request(origin, "/studio/maintenance.css", { accept: "text/css" }),
@@ -821,6 +821,7 @@ export async function runProductionSmoke(originInput, { expectOAuth = false } = 
     request(origin, "/studio/decision-editor.mjs", { accept: "text/javascript" }),
     request(origin, "/studio/experiment-editor.mjs", { accept: "text/javascript" }),
     request(origin, "/studio/codechange-editor.mjs", { accept: "text/javascript" }),
+    request(origin, "/studio/http-editor.mjs", { accept: "text/javascript" }),
     request(origin, "/studio/table-editor.mjs", { accept: "text/javascript" }),
     request(origin, "/studio/task-list-editor.mjs", { accept: "text/javascript" }),
     request(origin, "/studio/references-editor.mjs", { accept: "text/javascript" }),
@@ -1047,6 +1048,16 @@ export async function runProductionSmoke(originInput, { expectOAuth = false } = 
   invariant(
     codeChangeEditorModule.response.headers.get("content-type")?.startsWith("text/javascript"),
     "Studio 代码变更编辑组件类型不正确",
+  );
+  invariant(
+    httpEditorModule.response.status === 200 &&
+      httpEditorModule.body.includes("registerStudioHttpEditor") &&
+      httpEditorModule.body.includes("myblog-http"),
+    "Studio HTTP 交换编辑组件不可用",
+  );
+  invariant(
+    httpEditorModule.response.headers.get("content-type")?.startsWith("text/javascript"),
+    "Studio HTTP 交换编辑组件类型不正确",
   );
   invariant(
     fileTreeEditorModule.response.headers.get("content-type")?.startsWith("text/javascript"),

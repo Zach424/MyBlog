@@ -277,6 +277,53 @@ BEFORE_AFTER 模式把 CHANGE 中的 `diff` 围栏替换为同语言的 `**BEFOR
 
 不要粘贴私钥、token、Authorization、Cookie、数据库密码或 `.env` 值；疑似凭据会被构建门拒绝，但作者仍须在发布前人工脱敏。该块只记录已完成并复核的证据，不会读取 Git、执行 patch、编辑仓库或连接 PR/CI。
 
+### 发布 HTTP 请求 / 响应证据
+
+Studio 在正文工具栏选择“HTTP 请求 / 响应证据”，填写方法、状态、真实日期、目的、脱敏 URL、安全头字段、请求/响应正文类型与验证。Obsidian 可运行“插入 HTTP 请求 / 响应证据模板”。两种入口都只生成开放 Markdown，不会发送请求：
+
+````markdown
+> [!http] 创建草稿文章
+> **METHOD:** `POST` · **STATUS:** `201` · **DATE:** `2026-08-13`
+>
+> **PURPOSE**
+>
+> 记录草稿创建接口的脱敏请求与响应，方便复盘字段约定。
+>
+> **TARGET**
+>
+> `https://api.example.com/v1/posts?draft=true`
+>
+> **REQUEST HEADERS**
+>
+> - `Accept: application/json`
+> - `Content-Type: application/json`
+>
+> **REQUEST BODY:** `json`
+>
+> ~~~json
+> {"title":"HTTP 交换台账","status":"draft"}
+> ~~~
+>
+> **RESPONSE HEADERS**
+>
+> - `Content-Type: application/json`
+> - `Location: https://api.example.com/v1/posts/42`
+>
+> **RESPONSE BODY:** `json`
+>
+> ~~~json
+> {"id":"42","status":"draft"}
+> ~~~
+>
+> **VERIFICATION**
+>
+> - **Status and schema** `PASS` — 状态码和脱敏响应结构与预期一致。
+````
+
+没有头字段时写一行 `- \`NONE\``；没有正文时把类型写为 `NONE` 并删除后面的代码围栏。正文类型只允许 `json / text / html / xml / graphql / form`，且必须有匹配的 Content-Type。GET、HEAD、OPTIONS 不能保存请求正文；HEAD、204、304 不能保存响应正文。每篇最多 2 条，头字段合计最多 30 个，正文合计最多 160 行。
+
+只填写 HTTPS 或本机开发 URL；不要写 URL 用户名/密码、片段、token/key/session/signature 等敏感查询参数。Authorization、Cookie、Set-Cookie、API key、token、secret、password、signature 类头字段会被拒绝。发布器会检查常见私钥与令牌特征，但这不替代作者人工脱敏或专用 secret scanner。第一版不发送/重放请求，不导入 HAR、不生成 cURL/SDK、不保存变量、计时、重定向链、二进制/multipart 或远程服务状态。
+
 不要在正文、字段或截图中保存 OAuth token。若后台显示未配置，检查 Vercel Production 的 `GITHUB_OAUTH_ID` 与 `GITHUB_OAUTH_SECRET`，不要把值复制到聊天。
 
 ### 在 Studio 查看内容复核队列
@@ -304,7 +351,7 @@ BEFORE_AFTER 模式把 CHANGE 中的 `diff` 围栏替换为同语言的 `**BEFOR
 9. 确认当前内容已经可以公开后，运行“发布当前草稿并同步 GitHub”；该命令会把 `draft` 改为 `false`，未来日期内容会保持计划状态；
 10. 阅读预检摘要，确认目标路径、附件源/产物格式、宽高、帧数、体积变化、站内链接、内容语境和 frontmatter；
 11. 发布器运行完整质量门、创建内容提交并 push `main`；Vercel Git 连接完成后会自动上线。若团队改用 PR 流程，则不要运行同步命令，改由普通 Git 客户端创建分支和 PR。
-12. MyBlog Publisher 1.55.0 会先确认运行代码、runtime manifest 和磁盘插件版本一致，验证三个插件文件的 bundle 摘要，并证明 bundle 与三个目标文件均由 Git HEAD 跟踪、index 相等且 worktree 未修改；推送成功后再校验 Git 交付证据、释放可能存在的写事务并完成 Vault reconcile，自动等待该篇正式内容上线。push 失败后使用两条“重新同步待交付…”恢复成功也会自动接力。只在使用网页或普通 Git 时，才手动打开正式笔记运行“等待当前正式内容上线”。需要核对全库时运行“检查生产内容同步状态”。
+12. MyBlog Publisher 1.56.0 会先确认运行代码、runtime manifest 和磁盘插件版本一致，验证三个插件文件的 bundle 摘要，并证明 bundle 与三个目标文件均由 Git HEAD 跟踪、index 相等且 worktree 未修改；推送成功后再校验 Git 交付证据、释放可能存在的写事务并完成 Vault reconcile，自动等待该篇正式内容上线。push 失败后使用两条“重新同步待交付…”恢复成功也会自动接力。只在使用网页或普通 Git 时，才手动打开正式笔记运行“等待当前正式内容上线”。需要核对全库时运行“检查生产内容同步状态”。
 
 ### 用受信模板新建一个 inbox 草稿
 
