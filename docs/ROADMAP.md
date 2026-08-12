@@ -8,11 +8,11 @@
 | 4. 作者自助写作 | done | `/studio` OAuth + editorial workflow PR、Obsidian Vault/模板/附件/真实 `--push` |
 | 5. Vercel 原生迁移 | production live | 原生 Next.js、无 Cloudflare 依赖、27 路由生产冒烟通过 |
 | 6. 所有者生产上线 | done | Git 自动 Production、稳定域名自动冒烟、双端发布、回滚与恢复均已验收 |
-| 7. 持续内容与作者体验 | in progress | Iteration 0139 已提供受约束术语定义表，继续推进受限、可移植的富内容 Markdown |
+| 7. 持续内容与作者体验 | in progress | Iteration 0140 已提供受约束 FAQ 问答块，继续推进受限、可移植的富内容 Markdown |
 
 ## 当前唯一主线
 
-进入持续内容与作者体验阶段。Iteration 0139 已把受约束术语定义表接入同一生产 Markdown：作者使用 `[!glossary]`、无序列表和“术语/定义/可选别名/可选上下文”段落，Studio 可结构化增删排序，Obsidian 1.49.0 可插入模板；共享 AST 同时约束每组 2–12 条、每篇 3 组/24 条、字符预算、术语/别名共享唯一命名空间与行内节点，并把同一事实投影到搜索、语义 `<dl>` Definition Ledger、桌面/390 px 与打印。下一主线只处理受约束问答/FAQ 块：先冻结开放 Markdown、问题/答案预算、Studio/Obsidian、搜索和原生 `<details>/<summary>` 渐进交互，不加入投票、评论、远程问答库、客户端搜索或持久展开状态。首次真实 Obsidian 音频、参考资料、步骤流程与术语表人机验收保留为所有者可执行事项，需要品牌域名时再绑定自定义域名。
+进入持续内容与作者体验阶段。Iteration 0140 已把受约束 FAQ 接入同一生产 Markdown：作者使用顶层 `[!faq]`、无序列表和“仅粗体问题 + 1–3 个答案段落”，Studio 可结构化增删排序，Obsidian 1.50.0 可插入模板；共享 AST 同时约束每组 2–10 问、每篇 3 组/24 问、答案段数与字符预算、问题规范化唯一性和行内节点，并把同一事实投影到搜索、原生 `<details>/<summary>` Answer Cabinet、320 px 与打印。首题默认展开，其余独立开合，但不保存客户端状态；收起不影响搜索或打印。下一主线只处理受约束项目文件树/目录结构块：先冻结开放 Markdown、节点深度/数量、路径唯一性、Studio/Obsidian、搜索、窄屏和打印，不加入在线文件浏览、远程仓库读取、客户端折叠状态或文件编辑。首次真实 Obsidian 音频、参考资料、步骤流程、术语表与 FAQ 人机验收保留为所有者可执行事项，需要品牌域名时再绑定自定义域名。
 
 ## 已知风险
 
