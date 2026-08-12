@@ -12,6 +12,7 @@ type StudioAssetName =
   | "maintenance.css"
   | "math-preview.mjs"
   | "media-preflight.mjs"
+  | "references-editor.mjs"
   | "stable-slug-widget.mjs"
   | "table-editor.mjs"
   | "task-list-editor.mjs"
@@ -29,6 +30,7 @@ const contentTypes: Record<StudioAssetName, string> = {
   "maintenance.css": "text/css; charset=utf-8",
   "math-preview.mjs": "text/javascript; charset=utf-8",
   "media-preflight.mjs": "text/javascript; charset=utf-8",
+  "references-editor.mjs": "text/javascript; charset=utf-8",
   "stable-slug-widget.mjs": "text/javascript; charset=utf-8",
   "table-editor.mjs": "text/javascript; charset=utf-8",
   "task-list-editor.mjs": "text/javascript; charset=utf-8",

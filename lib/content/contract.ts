@@ -1,6 +1,7 @@
 import { parseDocument } from "yaml";
 import { z } from "zod";
 import { getMarkdownAudioIssue } from "../markdown-audio.ts";
+import { getMarkdownReferenceIssue } from "../markdown-references.ts";
 import { getMarkdownMathIssue } from "../markdown-math.ts";
 import { getMarkdownDiagramIssue } from "../markdown-diagram.ts";
 import { getMarkdownGalleryIssue } from "../markdown-gallery.ts";
@@ -415,6 +416,15 @@ function parseFrontmatter<T>(
     );
   }
 
+  const referenceIssue = getMarkdownReferenceIssue(body);
+  if (referenceIssue) {
+    const location = referenceIssue.line ? `正文第 ${referenceIssue.line} 行` : "正文";
+    throw new ContentValidationError(
+      sourcePath,
+      `${location}参考资料清单无法解析：${referenceIssue.message}`,
+    );
+  }
+
   return { data: result.data, body };
 }
 
@@ -573,6 +583,14 @@ export function inspectContentDraft(
       issues.push({
         field: "body",
         message: `${location}音频声明无法解析：${audioIssue.message}`,
+      });
+    }
+    const referenceIssue = getMarkdownReferenceIssue(body);
+    if (referenceIssue) {
+      const location = referenceIssue.line ? `第 ${referenceIssue.line} 行` : "正文";
+      issues.push({
+        field: "body",
+        message: `${location}参考资料清单无法解析：${referenceIssue.message}`,
       });
     }
   }

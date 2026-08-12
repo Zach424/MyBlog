@@ -7,6 +7,7 @@ import type { SearchDocument } from "./search.ts";
 import { normalizeMarkdownAudioNotesForPlainText } from "./markdown-audio.ts";
 import { normalizeMarkdownCalloutsForPlainText } from "./markdown-callout.ts";
 import { normalizeMarkdownGalleriesForPlainText } from "./markdown-gallery.ts";
+import { normalizeMarkdownReferenceListsForPlainText } from "./markdown-references.ts";
 import { normalizeMarkdownTablesForPlainText } from "./markdown-table.ts";
 import { normalizeMarkdownTaskListsForPlainText } from "./markdown-task-list.ts";
 
@@ -52,8 +53,10 @@ export function markdownToPlainText(markdown: string) {
   const tree = normalizeMarkdownCalloutsForPlainText(
     normalizeMarkdownGalleriesForPlainText(
       normalizeMarkdownTablesForPlainText(
-        normalizeMarkdownTaskListsForPlainText(
-          normalizeMarkdownAudioNotesForPlainText(parseMarkdown(source)),
+        normalizeMarkdownReferenceListsForPlainText(
+          normalizeMarkdownTaskListsForPlainText(
+            normalizeMarkdownAudioNotesForPlainText(parseMarkdown(source)),
+          ),
         ),
       ),
     ),

@@ -8,6 +8,7 @@ import {
   hasPotentialStudioGallery,
   hasPotentialStudioRichMarkdown,
   hasPotentialStudioMath,
+  hasPotentialStudioReferences,
   hasPotentialStudioTable,
   hasPotentialStudioVideo,
   registerStudioMathPreview,
@@ -79,6 +80,8 @@ test("requests only potential rich Markdown from the same-origin preview endpoin
   assert.equal(hasPotentialStudioGallery("```md\n> [!gallery] 示例\n```"), false);
   assert.equal(hasPotentialStudioTable("> [!table] 延迟"), true);
   assert.equal(hasPotentialStudioTable("```md\n> [!table] 示例\n```"), false);
+  assert.equal(hasPotentialStudioReferences("> [!references] 延伸阅读"), true);
+  assert.equal(hasPotentialStudioReferences("```md\n> [!references] 示例\n```"), false);
   assert.equal(hasPotentialStudioRichMarkdown("```md\n> [!note]\n```"), false);
   assert.equal(hasPotentialStudioDiagram("```mermaid\nflowchart LR\nA --> B\n```"), true);
   assert.equal(hasPotentialStudioDiagram("```md\n```mermaid\nA --> B\n```\n```"), false);
@@ -103,6 +106,8 @@ test("requests only potential rich Markdown from the same-origin preview endpoin
         galleryImageCount: 0,
         html: "<span>math</span>",
         ok: true,
+        referenceItemCount: 0,
+        referenceListCount: 0,
         tableCount: 0,
         tableDataCellCount: 0,
         taskCompleteCount: 0,
@@ -135,6 +140,8 @@ test("keeps plain Markdown on the native preview and exposes recoverable rich-co
         galleryImageCount: 3,
         html: "<div class=\"katex\">ok</div>",
         ok: true,
+        referenceItemCount: 2,
+        referenceListCount: 1,
         tableCount: 1,
         tableDataCellCount: 6,
         taskCompleteCount: 2,
@@ -187,11 +194,13 @@ test("keeps plain Markdown on the native preview and exposes recoverable rich-co
   assert.equal(context.state.taskListCount, 1);
   assert.equal(context.state.taskItemCount, 3);
   assert.equal(context.state.taskCompleteCount, 2);
+  assert.equal(context.state.referenceListCount, 1);
+  assert.equal(context.state.referenceItemCount, 2);
   assert.equal(context.state.videoCount, 1);
   const readyTree = template.render.call(context);
   assert.match(
     textContent(readyTree),
-    /1 段音频 \/ 含文字稿、2 个公式、1 张图表、1 组画廊 \/ 3 张图片、1 个表格 \/ 6 个数据单元格、1 个任务清单 \/ 2 项已完成 \/ 3 项总计、1 段视频已按生产规则渲染/u,
+    /1 段音频 \/ 含文字稿、2 个公式、1 张图表、1 组画廊 \/ 3 张图片、1 个表格 \/ 6 个数据单元格、1 个任务清单 \/ 2 项已完成 \/ 3 项总计、1 个参考资料清单 \/ 2 条来源、1 段视频已按生产规则渲染/u,
   );
 
   context.state = {
@@ -230,6 +239,10 @@ test("keeps plain Markdown on the native preview and exposes recoverable rich-co
   assert.equal(
     getStudioMathPreviewStatus({ issue: { kind: "task-list" }, status: "invalid" }).label,
     "TASKS / NEEDS FIX",
+  );
+  assert.equal(
+    getStudioMathPreviewStatus({ issue: { kind: "references" }, status: "invalid" }).label,
+    "REFERENCES / NEEDS FIX",
   );
 });
 

@@ -25,6 +25,11 @@ import {
   getMarkdownGalleryIssue,
   type MarkdownGalleryIssue,
 } from "@/lib/markdown-gallery";
+import {
+  extractMarkdownReferenceLists,
+  getMarkdownReferenceIssue,
+  type MarkdownReferenceIssue,
+} from "@/lib/markdown-references";
 import { getMarkdownMathIssue, type MarkdownMathIssue } from "@/lib/markdown-math";
 import {
   extractMarkdownTables,
@@ -54,6 +59,8 @@ export type StudioMathPreviewResult =
       galleryImageCount: number;
       html: string;
       ok: true;
+      referenceItemCount: number;
+      referenceListCount: number;
       tableCount: number;
       tableDataCellCount: number;
       taskCompleteCount: number;
@@ -66,6 +73,7 @@ export type StudioMathPreviewResult =
         | MarkdownDiagramIssue
         | MarkdownAudioIssue
         | MarkdownGalleryIssue
+        | MarkdownReferenceIssue
         | MarkdownMathIssue
         | MarkdownTableIssue
         | MarkdownTaskListIssue
@@ -128,6 +136,8 @@ export function renderStudioMathPreview(
   if (diagramIssue) return { issue: diagramIssue, ok: false };
   const galleryIssue = getMarkdownGalleryIssue(markdown);
   if (galleryIssue) return { issue: galleryIssue, ok: false };
+  const referenceIssue = getMarkdownReferenceIssue(markdown);
+  if (referenceIssue) return { issue: referenceIssue, ok: false };
   const tableIssue = getMarkdownTableIssue(markdown);
   if (tableIssue) return { issue: tableIssue, ok: false };
   const taskListIssue = getMarkdownTaskListIssue(markdown);
@@ -141,6 +151,12 @@ export function renderStudioMathPreview(
   const galleryCount = galleries.length;
   const galleryImageCount = galleries.reduce(
     (total, gallery) => total + gallery.images.length,
+    0,
+  );
+  const referenceLists = extractMarkdownReferenceLists(markdown);
+  const referenceListCount = referenceLists.length;
+  const referenceItemCount = referenceLists.reduce(
+    (total, list) => total + list.items.length,
     0,
   );
   const tables = extractMarkdownTables(markdown);
@@ -183,6 +199,8 @@ export function renderStudioMathPreview(
     galleryImageCount,
     html,
     ok: true,
+    referenceItemCount,
+    referenceListCount,
     tableCount,
     tableDataCellCount,
     taskCompleteCount,

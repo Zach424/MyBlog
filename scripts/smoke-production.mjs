@@ -802,7 +802,7 @@ export async function runProductionSmoke(originInput, { expectOAuth = false } = 
   invariant(studioPolicy.includes("https://api.github.com"), "Studio CSP 缺少 GitHub API");
   invariant(studioPolicy.includes("frame-ancestors 'none'"), "Studio CSP 未禁止嵌入");
 
-  const [studioMaintenancePage, studioMaintenanceModule, studioMaintenanceStyles, studioMaintenanceResponse, studioConfig, studioManifest, studioPreflight, stableSlugWidget, entryPreflightModule, mathPreviewModule, galleryEditorModule, tableEditorModule, taskListEditorModule, audioEditorModule, videoEditorModule, studioPreview, katexStyles, studioRuntime, unknownStudioAsset] = await Promise.all([
+  const [studioMaintenancePage, studioMaintenanceModule, studioMaintenanceStyles, studioMaintenanceResponse, studioConfig, studioManifest, studioPreflight, stableSlugWidget, entryPreflightModule, mathPreviewModule, galleryEditorModule, tableEditorModule, taskListEditorModule, referencesEditorModule, audioEditorModule, videoEditorModule, studioPreview, katexStyles, studioRuntime, unknownStudioAsset] = await Promise.all([
     request(origin, "/studio/maintenance"),
     request(origin, "/studio/maintenance.mjs", { accept: "text/javascript" }),
     request(origin, "/studio/maintenance.css", { accept: "text/css" }),
@@ -816,6 +816,7 @@ export async function runProductionSmoke(originInput, { expectOAuth = false } = 
     request(origin, "/studio/gallery-editor.mjs", { accept: "text/javascript" }),
     request(origin, "/studio/table-editor.mjs", { accept: "text/javascript" }),
     request(origin, "/studio/task-list-editor.mjs", { accept: "text/javascript" }),
+    request(origin, "/studio/references-editor.mjs", { accept: "text/javascript" }),
     request(origin, "/studio/audio-editor.mjs", { accept: "text/javascript" }),
     request(origin, "/studio/video-editor.mjs", { accept: "text/javascript" }),
     request(origin, "/studio/preview.css", { accept: "text/css" }),
@@ -828,6 +829,16 @@ export async function runProductionSmoke(originInput, { expectOAuth = false } = 
       audioEditorModule.body.includes("registerStudioAudioEditor") &&
       audioEditorModule.body.includes("myblog-audio"),
     "Studio 音频编辑组件不可用",
+  );
+  invariant(
+    referencesEditorModule.response.status === 200 &&
+      referencesEditorModule.body.includes("registerStudioReferencesEditor") &&
+      referencesEditorModule.body.includes("myblog-references"),
+    "Studio 参考资料编辑组件不可用",
+  );
+  invariant(
+    referencesEditorModule.response.headers.get("content-type")?.startsWith("text/javascript"),
+    "Studio 参考资料编辑组件类型不正确",
   );
   invariant(
     audioEditorModule.response.headers.get("content-type")?.startsWith("text/javascript"),
@@ -1031,7 +1042,7 @@ export async function runProductionSmoke(originInput, { expectOAuth = false } = 
     accept: "application/json",
     body: JSON.stringify({
       markdown:
-        "> [!warning] 发布前检查\n> 行内 $E = mc^2$。\n\n$$\nB = \\sum_i B_i\n$$\n\n```mermaid\nflowchart LR\n  Draft --> Review\n  Review --> Publish\n```\n\n> [!gallery] 发布流程证据\n> - ![编辑器中的画廊表单](/uploads/author-proof/gallery-one.webp \"编辑\")\n> - ![发布后的双栏画廊](/uploads/author-proof/gallery-two.webp \"上线\")\n\n> [!table] 发布延迟\n> | 环境 | P95 |\n> | --- | ---: |\n> | 本地 | 44 ms |\n> | 生产 | 118 ms |\n\n> [!tasks] 发布准备\n> - [x] 冻结内容契约\n> - [ ] 完成真实主题验收\n> - [x] 发布 `main`\n\n> [!audio] 发布复盘口述\n> [下载 MP3](/uploads/author-proof/release-retro.mp3 \"发布复盘口述\")\n> 总结发布检查、上线确认与复盘结论。\n>\n> **文字稿**\n> 先运行完整检查，再确认生产冒烟通过。\n\n![发布流程演示](/uploads/author-proof/demo.mp4 \"本地静音视频\")",
+        "> [!warning] 发布前检查\n> 行内 $E = mc^2$。\n\n$$\nB = \\sum_i B_i\n$$\n\n```mermaid\nflowchart LR\n  Draft --> Review\n  Review --> Publish\n```\n\n> [!gallery] 发布流程证据\n> - ![编辑器中的画廊表单](/uploads/author-proof/gallery-one.webp \"编辑\")\n> - ![发布后的双栏画廊](/uploads/author-proof/gallery-two.webp \"上线\")\n\n> [!table] 发布延迟\n> | 环境 | P95 |\n> | --- | ---: |\n> | 本地 | 44 ms |\n> | 生产 | 118 ms |\n\n> [!tasks] 发布准备\n> - [x] 冻结内容契约\n> - [ ] 完成真实主题验收\n> - [x] 发布 `main`\n\n> [!references] 延伸阅读\n> 1. [Next.js Route Handlers](https://nextjs.org/docs/app/getting-started/route-handlers) — 官方路由处理器说明。\n> 2. [MyBlog 项目复盘](/projects/myblog) — 本站实现与演进记录。\n\n> [!audio] 发布复盘口述\n> [下载 MP3](/uploads/author-proof/release-retro.mp3 \"发布复盘口述\")\n> 总结发布检查、上线确认与复盘结论。\n>\n> **文字稿**\n> 先运行完整检查，再确认生产冒烟通过。\n\n![发布流程演示](/uploads/author-proof/demo.mp4 \"本地静音视频\")",
     }),
     headers: { "content-type": "application/json" },
     method: "POST",
@@ -1056,6 +1067,8 @@ export async function runProductionSmoke(originInput, { expectOAuth = false } = 
       mathPreviewPayload.taskListCount === 1 &&
       mathPreviewPayload.taskItemCount === 3 &&
       mathPreviewPayload.taskCompleteCount === 2 &&
+      mathPreviewPayload.referenceListCount === 1 &&
+      mathPreviewPayload.referenceItemCount === 2 &&
       mathPreviewPayload.audioCount === 1 &&
       mathPreviewPayload.videoCount === 1 &&
       mathPreviewPayload.html.includes('data-callout="warning"') &&
@@ -1066,6 +1079,8 @@ export async function runProductionSmoke(originInput, { expectOAuth = false } = 
       mathPreviewPayload.html.includes('class="markdown-data-table-grid"') &&
       mathPreviewPayload.html.includes('data-task-list="readonly-ledger"') &&
       mathPreviewPayload.html.includes('<progress') &&
+      mathPreviewPayload.html.includes('data-references="curated-index"') &&
+      mathPreviewPayload.html.includes('SOURCE INDEX / 02 REFERENCES') &&
       (mathPreviewPayload.html.match(/type="checkbox"/gu) ?? []).length === 3 &&
       !/<button|contenteditable|onclick=/iu.test(mathPreviewPayload.html) &&
       mathPreviewPayload.html.includes('data-audio="local-mp3"') &&

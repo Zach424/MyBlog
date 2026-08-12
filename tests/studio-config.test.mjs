@@ -77,6 +77,7 @@ test("keeps CMS tags and required content fields aligned with the contract", () 
       "myblog-gallery",
       "myblog-table",
       "myblog-task-list",
+      "myblog-references",
       "myblog-audio",
       "myblog-video",
     ]);
@@ -105,6 +106,7 @@ test("pins the CMS asset and provides a useful loading failure", async () => {
   assert.match(html, /from "\/studio\/gallery-editor\.mjs"/);
   assert.match(html, /from "\/studio\/table-editor\.mjs"/);
   assert.match(html, /from "\/studio\/audio-editor\.mjs"/);
+  assert.match(html, /from "\/studio\/references-editor\.mjs"/);
   assert.match(html, /installStudioMediaPreflight\(\)/);
   assert.match(html, /registerStableSlugWidget\(\)/);
   assert.match(html, /registerStudioMathPreview\(\)/);

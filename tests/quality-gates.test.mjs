@@ -168,7 +168,7 @@ test("applies the production security and cache baseline", async () => {
 
 test("serves Studio, its maintenance queue, and media inventory through explicit Next.js routes", async () => {
   await assert.rejects(access(new URL("../public/studio", import.meta.url)));
-  const [studio, maintenancePage, maintenanceModule, maintenanceStyles, maintenanceResponse, config, manifest, preflight, stableSlugWidget, entryPreflightModule, mathPreviewModule, galleryEditorModule, tableEditorModule, taskListEditorModule, videoEditorModule, preview, katexStyles, runtime, unknown] = await Promise.all([
+  const [studio, maintenancePage, maintenanceModule, maintenanceStyles, maintenanceResponse, config, manifest, preflight, stableSlugWidget, entryPreflightModule, mathPreviewModule, galleryEditorModule, tableEditorModule, taskListEditorModule, referencesEditorModule, videoEditorModule, preview, katexStyles, runtime, unknown] = await Promise.all([
     request("/studio"),
     request("/studio/maintenance"),
     request("/studio/maintenance.mjs"),
@@ -183,6 +183,7 @@ test("serves Studio, its maintenance queue, and media inventory through explicit
     request("/studio/gallery-editor.mjs"),
     request("/studio/table-editor.mjs"),
     request("/studio/task-list-editor.mjs"),
+    request("/studio/references-editor.mjs"),
     request("/studio/video-editor.mjs"),
     request("/studio/preview.css"),
     request("/studio/katex-0.16.47.css"),
@@ -246,6 +247,9 @@ test("serves Studio, its maintenance queue, and media inventory through explicit
   assert.equal(galleryEditorModule.headers.get("cache-control"), "no-store");
   assert.match(await tableEditorModule.text(), /registerStudioTableEditor/);
   assert.equal(tableEditorModule.headers.get("cache-control"), "no-store");
+  assert.equal(referencesEditorModule.status, 200);
+  assert.match(await referencesEditorModule.text(), /registerStudioReferencesEditor/u);
+  assert.equal(referencesEditorModule.headers.get("cache-control"), "no-store");
   assert.match(await videoEditorModule.text(), /registerStudioVideoEditor/);
   assert.equal(videoEditorModule.headers.get("cache-control"), "no-store");
   const previewCss = await preview.text();
@@ -337,7 +341,7 @@ test("preflights bounded Studio entries with the production content contract", a
 test("renders bounded Studio formula previews with the production Markdown pipeline", async () => {
   const valid = await postStudioMathPreview({
     markdown:
-      "> [!warning] 发布前检查\n> 行内 $E = mc^2$。\n\n$$\nB = \\sum_i B_i\n$$\n\n```mermaid\nflowchart LR\n  Draft[Draft] --> Review{Review}\n  Review --> Publish[Publish]\n```\n\n> [!gallery] 发布流程证据\n> - ![编辑器中的画廊表单](/uploads/author-proof/gallery-one.webp \"编辑\")\n> - ![发布后的双栏画廊](/uploads/author-proof/gallery-two.webp \"上线\")\n\n> [!table] 发布延迟\n> | 环境 | P95 |\n> | --- | ---: |\n> | 本地 | 44 ms |\n> | 生产 | 118 ms |\n\n> [!tasks] 发布准备\n> - [x] 冻结内容契约\n> - [ ] 完成真实主题验收\n> - [x] 发布 `main`",
+      "> [!warning] 发布前检查\n> 行内 $E = mc^2$。\n\n$$\nB = \\sum_i B_i\n$$\n\n```mermaid\nflowchart LR\n  Draft[Draft] --> Review{Review}\n  Review --> Publish[Publish]\n```\n\n> [!gallery] 发布流程证据\n> - ![编辑器中的画廊表单](/uploads/author-proof/gallery-one.webp \"编辑\")\n> - ![发布后的双栏画廊](/uploads/author-proof/gallery-two.webp \"上线\")\n\n> [!table] 发布延迟\n> | 环境 | P95 |\n> | --- | ---: |\n> | 本地 | 44 ms |\n> | 生产 | 118 ms |\n\n> [!tasks] 发布准备\n> - [x] 冻结内容契约\n> - [ ] 完成真实主题验收\n> - [x] 发布 `main`\n\n> [!references] 延伸阅读\n> 1. [Next.js Route Handlers](https://nextjs.org/docs/app/getting-started/route-handlers) — 官方路由处理器说明。\n> 2. [MyBlog 项目复盘](/projects/myblog) — 本站实现与演进记录。",
   });
   assert.equal(valid.status, 200);
   assert.equal(valid.headers.get("cache-control"), "no-store");
@@ -354,6 +358,8 @@ test("renders bounded Studio formula previews with the production Markdown pipel
   assert.equal(validPayload.taskListCount, 1);
   assert.equal(validPayload.taskItemCount, 3);
   assert.equal(validPayload.taskCompleteCount, 2);
+  assert.equal(validPayload.referenceListCount, 1);
+  assert.equal(validPayload.referenceItemCount, 2);
   assert.match(validPayload.html, /data-studio-renderer="production-pipeline"/u);
   assert.match(validPayload.html, /<aside[^>]*data-callout="warning"/u);
   assert.doesNotMatch(validPayload.html, /\[!warning\]/iu);
@@ -366,6 +372,8 @@ test("renders bounded Studio formula previews with the production Markdown pipel
   assert.match(validPayload.html, /class="markdown-data-table-grid"/u);
   assert.match(validPayload.html, /data-task-list="readonly-ledger"/u);
   assert.match(validPayload.html, /<progress[^>]*max="3"[^>]*value="2"/u);
+  assert.match(validPayload.html, /data-references="curated-index"/u);
+  assert.match(validPayload.html, /SOURCE INDEX \/ 02 REFERENCES/u);
   assert.equal((validPayload.html.match(/type="checkbox"/gu) ?? []).length, 3);
   assert.doesNotMatch(validPayload.html, /<button|contenteditable|onclick=/iu);
   assert.match(validPayload.html, /data-renderer="server-svg"/u);

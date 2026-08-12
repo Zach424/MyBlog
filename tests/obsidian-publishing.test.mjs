@@ -869,14 +869,14 @@ test("ships one digest-bound desktop Obsidian plugin bundle without hidden shell
   ]);
   const bundle = JSON.parse(bundleSource);
   assert.equal(JSON.parse(manifest).isDesktopOnly, true);
-  assert.equal(JSON.parse(manifest).version, "1.46.0");
+  assert.equal(JSON.parse(manifest).version, "1.47.0");
   assert.equal(JSON.parse(manifest).minAppVersion, "1.5.7");
   assert.deepEqual(Object.keys(bundle), ["version", "algorithm", "plugin", "files"]);
   assert.equal(bundle.version, 1);
   assert.equal(bundle.algorithm, "sha256");
   assert.deepEqual(bundle.plugin, {
     id: "myblog-publisher",
-    version: "1.46.0",
+    version: "1.47.0",
   });
   assert.deepEqual(
     bundle.files,
