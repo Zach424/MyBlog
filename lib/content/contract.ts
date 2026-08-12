@@ -3,6 +3,7 @@ import { z } from "zod";
 import { getMarkdownAudioIssue } from "../markdown-audio.ts";
 import { getMarkdownFaqIssue } from "../markdown-faq.ts";
 import { getMarkdownFileTreeIssue } from "../markdown-filetree.ts";
+import { getMarkdownDecisionIssue } from "../markdown-decision.ts";
 import { getMarkdownTimelineIssue } from "../markdown-timeline.ts";
 import { getMarkdownGlossaryIssue } from "../markdown-glossary.ts";
 import { getMarkdownReferenceIssue } from "../markdown-references.ts";
@@ -448,6 +449,15 @@ function parseFrontmatter<T>(
     );
   }
 
+  const decisionIssue = getMarkdownDecisionIssue(body);
+  if (decisionIssue) {
+    const location = decisionIssue.line ? `正文第 ${decisionIssue.line} 行` : "正文";
+    throw new ContentValidationError(
+      sourcePath,
+      `${location}技术决策记录无法解析：${decisionIssue.message}`,
+    );
+  }
+
   const referenceIssue = getMarkdownReferenceIssue(body);
   if (referenceIssue) {
     const location = referenceIssue.line ? `正文第 ${referenceIssue.line} 行` : "正文";
@@ -661,6 +671,16 @@ export function inspectContentDraft(
         message: `${location}项目时间线无法解析：${timelineIssue.message}`,
       });
     }
+    const decisionIssue = getMarkdownDecisionIssue(body, {
+      maximumDate: buildDate,
+    });
+    if (decisionIssue) {
+      const location = decisionIssue.line ? `第 ${decisionIssue.line} 行` : "正文";
+      issues.push({
+        field: "body",
+        message: `${location}技术决策记录无法解析：${decisionIssue.message}`,
+      });
+    }
     const referenceIssue = getMarkdownReferenceIssue(body);
     if (referenceIssue) {
       const location = referenceIssue.line ? `第 ${referenceIssue.line} 行` : "正文";
@@ -793,6 +813,23 @@ export function validateContentTimelines(
     throw new ContentValidationError(
       record.sourcePath,
       `${location}项目时间线无法解析：${issue.message}`,
+    );
+  }
+}
+
+export function validateContentDecisions(
+  records: ContentRecord[],
+  buildDate: string,
+) {
+  for (const record of records) {
+    const issue = getMarkdownDecisionIssue(record.body, {
+      maximumDate: buildDate,
+    });
+    if (!issue) continue;
+    const location = issue.line ? `正文第 ${issue.line} 行` : "正文";
+    throw new ContentValidationError(
+      record.sourcePath,
+      `${location}技术决策记录无法解析：${issue.message}`,
     );
   }
 }

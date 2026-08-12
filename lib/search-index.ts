@@ -6,6 +6,7 @@ import {
 import type { SearchDocument } from "./search.ts";
 import { normalizeMarkdownAudioNotesForPlainText } from "./markdown-audio.ts";
 import { normalizeMarkdownCalloutsForPlainText } from "./markdown-callout.ts";
+import { normalizeMarkdownDecisionsForPlainText } from "./markdown-decision.ts";
 import { normalizeMarkdownFaqsForPlainText } from "./markdown-faq.ts";
 import { normalizeMarkdownFileTreesForPlainText } from "./markdown-filetree.ts";
 import { normalizeMarkdownTimelinesForPlainText } from "./markdown-timeline.ts";
@@ -55,27 +56,19 @@ function markdownNodeText(node: MarkdownNode): string {
 
 export function markdownToPlainText(markdown: string) {
   const source = markdown.replace(/^---[\s\S]*?---\s*/mu, "");
-  const tree = normalizeMarkdownCalloutsForPlainText(
-    normalizeMarkdownTimelinesForPlainText(
-      normalizeMarkdownFileTreesForPlainText(
-        normalizeMarkdownFaqsForPlainText(
-          normalizeMarkdownGalleriesForPlainText(
-            normalizeMarkdownGlossariesForPlainText(
-              normalizeMarkdownTablesForPlainText(
-                normalizeMarkdownStepsForPlainText(
-                  normalizeMarkdownReferenceListsForPlainText(
-                    normalizeMarkdownTaskListsForPlainText(
-                      normalizeMarkdownAudioNotesForPlainText(parseMarkdown(source)),
-                    ),
-                  ),
-                ),
-              ),
-            ),
-          ),
-        ),
-      ),
-    ),
-  );
+  let tree = parseMarkdown(source);
+  tree = normalizeMarkdownAudioNotesForPlainText(tree);
+  tree = normalizeMarkdownTaskListsForPlainText(tree);
+  tree = normalizeMarkdownReferenceListsForPlainText(tree);
+  tree = normalizeMarkdownStepsForPlainText(tree);
+  tree = normalizeMarkdownTablesForPlainText(tree);
+  tree = normalizeMarkdownGlossariesForPlainText(tree);
+  tree = normalizeMarkdownGalleriesForPlainText(tree);
+  tree = normalizeMarkdownFaqsForPlainText(tree);
+  tree = normalizeMarkdownFileTreesForPlainText(tree);
+  tree = normalizeMarkdownTimelinesForPlainText(tree);
+  tree = normalizeMarkdownDecisionsForPlainText(tree);
+  tree = normalizeMarkdownCalloutsForPlainText(tree);
   return markdownNodeText(tree).replace(/\s+/gu, " ").trim();
 }
 

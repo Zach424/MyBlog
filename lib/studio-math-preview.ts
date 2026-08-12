@@ -4,6 +4,11 @@ import remarkParse from "remark-parse";
 import remarkRehype from "remark-rehype";
 import { unified } from "unified";
 import {
+  extractMarkdownDecisions,
+  getMarkdownDecisionIssue,
+  type MarkdownDecisionIssue,
+} from "@/lib/markdown-decision";
+import {
   extractMarkdownAudioNotes,
   getMarkdownAudioIssue,
   type MarkdownAudioIssue,
@@ -80,6 +85,9 @@ export type StudioMathPreviewResult =
       calloutCount: number;
       audioCount: number;
       diagramCount: number;
+      decisionAlternativeCount: number;
+      decisionConsequenceCount: number;
+      decisionCount: number;
       faqCount: number;
       faqQuestionCount: number;
       fileTreeCount: number;
@@ -108,6 +116,7 @@ export type StudioMathPreviewResult =
   | {
       issue:
         | MarkdownDiagramIssue
+        | MarkdownDecisionIssue
         | MarkdownFaqIssue
         | MarkdownFileTreeIssue
         | MarkdownTimelineIssue
@@ -184,6 +193,10 @@ export function renderStudioMathPreview(
     maximumDate: resolveContentBuildDate(),
   });
   if (timelineIssue) return { issue: timelineIssue, ok: false };
+  const decisionIssue = getMarkdownDecisionIssue(markdown, {
+    maximumDate: resolveContentBuildDate(),
+  });
+  if (decisionIssue) return { issue: decisionIssue, ok: false };
   const galleryIssue = getMarkdownGalleryIssue(markdown);
   if (galleryIssue) return { issue: galleryIssue, ok: false };
   const glossaryIssue = getMarkdownGlossaryIssue(markdown);
@@ -200,6 +213,16 @@ export function renderStudioMathPreview(
   if (videoIssue) return { issue: videoIssue, ok: false };
 
   const formulaCount = extractMarkdownMathExpressions(markdown).length;
+  const decisions = extractMarkdownDecisions(markdown);
+  const decisionCount = decisions.length;
+  const decisionAlternativeCount = decisions.reduce(
+    (total, decision) => total + decision.alternatives.length,
+    0,
+  );
+  const decisionConsequenceCount = decisions.reduce(
+    (total, decision) => total + decision.consequences.length,
+    0,
+  );
   const diagramCount = extractMarkdownDiagrams(markdown).length;
   const faqs = extractMarkdownFaqs(markdown);
   const faqCount = faqs.length;
@@ -282,6 +305,9 @@ export function renderStudioMathPreview(
     audioCount,
     calloutCount,
     diagramCount,
+    decisionAlternativeCount,
+    decisionConsequenceCount,
+    decisionCount,
     faqCount,
     faqQuestionCount,
     fileTreeCount,

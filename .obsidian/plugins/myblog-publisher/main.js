@@ -28,7 +28,7 @@ const AUTHOR_DOCTOR_PLUGIN_BUNDLE_VERSION = 1;
 const AUTHOR_DOCTOR_PLUGIN_PROVENANCE_VERSION = 1;
 const INBOX_READINESS_REPORT_VERSION = 8;
 const AUTHOR_DOCTOR_NODE_ENGINE = ">=22.13.0";
-const AUTHOR_DOCTOR_PLUGIN_VERSION = "1.52.0";
+const AUTHOR_DOCTOR_PLUGIN_VERSION = "1.53.0";
 const CURRENT_DRAFT_INTENT_RUN_SCOPE = Symbol("current-draft-intent");
 const PRODUCTION_CONTENT_CONVERGENCE_RUN_SCOPE = Symbol(
   "production-content-convergence",
@@ -277,6 +277,43 @@ function createTimelineTemplate(filePath) {
     "> - `2026-08-12` `VERIFY` **完成生产验证**",
     ">",
     ">   完成自动化、移动端、打印与生产环境验证。",
+  ].join("\n");
+}
+
+function createDecisionTemplate(filePath) {
+  const normalized = String(filePath || "").replaceAll("\\", "/");
+  if (
+    !/^content\/(inbox|posts|projects)\/[a-z0-9]+(?:-[a-z0-9]+)*\.md$/u.test(
+      normalized,
+    )
+  ) {
+    throw new Error("技术决策模板只能插入 content/inbox、content/posts 或 content/projects 中的博客文档");
+  }
+  return [
+    "> [!decision] 选择 Vercel 原生托管",
+    "> **STATUS:** `ACCEPTED` · **DATE:** `2026-08-12`",
+    ">",
+    "> **CONTEXT**",
+    ">",
+    "> 需要一个能直接运行 Next.js 且减少额外平台层的公开托管方案。",
+    ">",
+    "> **DECISION**",
+    ">",
+    "> 使用 Vercel 作为生产托管平台。",
+    ">",
+    "> **RATIONALE**",
+    ">",
+    "> 它与当前 Next.js 构建、预览和 Git 交付链路直接对齐。",
+    ">",
+    "> **ALTERNATIVES**",
+    ">",
+    "> - **Cloudflare Pages** — 需要额外适配与维护。",
+    "> - **自托管** — 运维成本超出个人博客需要。",
+    ">",
+    "> **CONSEQUENCES**",
+    ">",
+    "> - `POSITIVE` 发布链路更短，框架支持更直接。",
+    "> - `NEGATIVE` 托管能力与 Vercel 平台耦合。",
   ].join("\n");
 }
 
@@ -6223,6 +6260,20 @@ module.exports = class MyBlogPublisher extends Plugin {
           const template = createTimelineTemplate(view?.file?.path);
           editor.replaceSelection(template);
           new Notice("已插入三个项目里程碑；请替换标题、日期、事件类型与说明");
+        } catch (error) {
+          new Notice(error instanceof Error ? error.message : String(error));
+        }
+      },
+    });
+
+    this.addCommand({
+      id: "insert-decision-template",
+      name: "插入技术决策记录模板",
+      editorCallback: (editor, view) => {
+        try {
+          const template = createDecisionTemplate(view?.file?.path);
+          editor.replaceSelection(template);
+          new Notice("已插入技术决策记录；请替换标题、状态、日期、背景、决定、理由、备选与影响");
         } catch (error) {
           new Notice(error instanceof Error ? error.message : String(error));
         }

@@ -1487,6 +1487,212 @@
   margin-block: 0;
 }
 
+.markdown-content .markdown-decision {
+  margin-block: 2rem;
+  border-block: 0.0625rem solid var(--trace-dark);
+  background: color-mix(in srgb, var(--trace) 10%, var(--paper));
+}
+
+.markdown-content .markdown-decision-header {
+  display: grid;
+  grid-template-columns: 2rem minmax(0, 1fr);
+  min-width: 0;
+  border-bottom: 0.0625rem solid var(--rule);
+}
+
+.markdown-content .markdown-decision-spine {
+  display: grid;
+  place-items: center;
+  padding-block: 0.65rem;
+  border-right: 0.0625rem solid var(--rule);
+  background: var(--ink);
+  color: var(--paper);
+  font: 750 0.53rem/1 var(--mono);
+  letter-spacing: 0.12em;
+  writing-mode: vertical-rl;
+  transform: rotate(180deg);
+}
+
+.markdown-content .markdown-decision-heading {
+  display: grid;
+  min-width: 0;
+}
+
+.markdown-content .markdown-decision-meta {
+  display: flex;
+  min-height: 2.35rem;
+  align-items: center;
+  justify-content: space-between;
+  gap: 0.75rem;
+  padding: 0.5rem 0.75rem;
+  border-bottom: 0.0625rem solid var(--rule);
+  color: var(--muted);
+  font: 700 0.625rem/1.4 var(--mono);
+  letter-spacing: 0.075em;
+}
+
+.markdown-content .markdown-decision-status {
+  padding: 0.12rem 0.4rem;
+  border: 0.0625rem solid currentColor;
+  color: var(--signal);
+}
+
+.markdown-content .markdown-decision[data-status="rejected"] .markdown-decision-status,
+.markdown-content .markdown-decision[data-status="deprecated"] .markdown-decision-status {
+  color: var(--muted);
+  text-decoration: line-through;
+}
+
+.markdown-content .markdown-decision[data-status="superseded"] .markdown-decision-status {
+  color: var(--ink);
+}
+
+.markdown-content .markdown-decision-date { font-style: normal; }
+
+.markdown-content .markdown-decision-title {
+  padding: 0.9rem 1rem 1rem;
+  font-size: clamp(1.05rem, 1.75vw, 1.35rem);
+  line-height: 1.42;
+  letter-spacing: -0.02em;
+  overflow-wrap: anywhere;
+}
+
+.markdown-content .markdown-decision-brief {
+  display: grid;
+  grid-template-columns: minmax(0, 0.82fr) minmax(0, 1.18fr);
+  min-width: 0;
+  background: var(--paper);
+}
+
+.markdown-content .markdown-decision-copy-panel {
+  display: grid;
+  grid-template-columns: 6.8rem minmax(0, 1fr);
+  min-width: 0;
+}
+
+.markdown-content .markdown-decision-context {
+  border-right: 0.0625rem solid var(--rule);
+}
+
+.markdown-content .markdown-decision-verdict {
+  background: color-mix(in srgb, var(--signal) 5%, var(--paper));
+}
+
+.markdown-content .markdown-decision-rationale {
+  grid-column: 1 / -1;
+  border-top: 0.0625rem solid var(--rule);
+}
+
+.markdown-content .markdown-decision-copy-label {
+  padding: 0.9rem 0.65rem;
+  border-right: 0.0625rem solid var(--rule);
+  color: var(--muted);
+  font: 750 0.58rem/1.45 var(--mono);
+  letter-spacing: 0.08em;
+}
+
+.markdown-content .markdown-decision-verdict .markdown-decision-copy-label {
+  color: var(--signal);
+}
+
+.markdown-content .markdown-decision-copy {
+  min-width: 0;
+  padding: 0.85rem 0.9rem 1rem;
+  color: var(--muted);
+  font-size: 0.84rem;
+  line-height: 1.72;
+  overflow-wrap: anywhere;
+}
+
+.markdown-content .markdown-decision-verdict .markdown-decision-copy {
+  color: var(--ink);
+  font-weight: 650;
+}
+
+.markdown-content .markdown-decision-ledger {
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  min-width: 0;
+  border-top: 0.0625rem solid var(--trace-dark);
+}
+
+.markdown-content .markdown-decision-ledger-panel { min-width: 0; }
+
+.markdown-content .markdown-decision-alternatives {
+  border-right: 0.0625rem solid var(--rule);
+}
+
+.markdown-content .markdown-decision-ledger-header {
+  display: flex;
+  min-height: 2.35rem;
+  align-items: center;
+  justify-content: space-between;
+  gap: 0.75rem;
+  padding: 0.5rem 0.7rem;
+  border-bottom: 0.0625rem solid var(--rule);
+  font: 750 0.58rem/1.4 var(--mono);
+  letter-spacing: 0.08em;
+}
+
+.markdown-content .markdown-decision-ledger-label { color: var(--ink); }
+
+.markdown-content .markdown-decision-ledger-count {
+  color: var(--muted);
+  font-variant-numeric: tabular-nums;
+}
+
+.markdown-content .markdown-decision-ledger-list {
+  margin: 0;
+  padding: 0;
+  list-style: none;
+}
+
+.markdown-content .markdown-decision-ledger-item {
+  display: grid;
+  grid-template-columns: minmax(6.4rem, 0.72fr) minmax(0, 1.28fr);
+  min-width: 0;
+  margin: 0;
+}
+
+.markdown-content .markdown-decision-ledger-item:not(:last-child) {
+  border-bottom: 0.0625rem solid var(--rule);
+}
+
+.markdown-content .markdown-decision-alternative-title,
+.markdown-content .markdown-decision-consequence-tone,
+.markdown-content .markdown-decision-ledger-copy {
+  min-width: 0;
+  padding: 0.7rem;
+  overflow-wrap: anywhere;
+}
+
+.markdown-content .markdown-decision-alternative-title {
+  border-right: 0.0625rem solid var(--rule);
+  font-size: 0.74rem;
+  line-height: 1.55;
+}
+
+.markdown-content .markdown-decision-consequence-tone {
+  border-right: 0.0625rem solid var(--rule);
+  color: var(--muted);
+  font: 750 0.55rem/1.55 var(--mono);
+  letter-spacing: 0.06em;
+}
+
+.markdown-content .markdown-decision-ledger-item[data-consequence-tone="positive"] .markdown-decision-consequence-tone {
+  color: var(--signal);
+}
+
+.markdown-content .markdown-decision-ledger-item[data-consequence-tone="negative"] .markdown-decision-consequence-tone {
+  color: var(--ink);
+}
+
+.markdown-content .markdown-decision-ledger-copy {
+  color: var(--muted);
+  font-size: 0.74rem;
+  line-height: 1.65;
+}
+
 .markdown-content .markdown-procedure {
   margin-block: 2rem;
   border-block: 0.0625rem solid var(--trace-dark);
@@ -1690,6 +1896,12 @@
   }
 
   .markdown-content .markdown-timeline-copy { padding: 2.3mm 2.6mm; }
+
+  .markdown-content .markdown-decision { break-inside: auto; }
+
+  .markdown-content .markdown-decision-header,
+  .markdown-content .markdown-decision-copy-panel,
+  .markdown-content .markdown-decision-ledger-item { break-inside: avoid-page; }
 
   .markdown-content .markdown-glossary-term,
   .markdown-content .markdown-glossary-meaning { padding: 2.5mm; }
@@ -2071,4 +2283,26 @@
   }
 
   .markdown-content .markdown-timeline-description { grid-column: 1; }
+
+  .markdown-content .markdown-decision-header { grid-template-columns: 1.6rem minmax(0, 1fr); }
+
+  .markdown-content .markdown-decision-meta {
+    align-items: flex-start;
+    flex-direction: column;
+  }
+
+  .markdown-content .markdown-decision-brief,
+  .markdown-content .markdown-decision-ledger { grid-template-columns: minmax(0, 1fr); }
+
+  .markdown-content .markdown-decision-context,
+  .markdown-content .markdown-decision-alternatives {
+    border-right: 0;
+    border-bottom: 0.0625rem solid var(--rule);
+  }
+
+  .markdown-content .markdown-decision-rationale { grid-column: 1; }
+
+  .markdown-content .markdown-decision-copy-panel { grid-template-columns: 5.6rem minmax(0, 1fr); }
+
+  .markdown-content .markdown-decision-ledger-item { grid-template-columns: 6.15rem minmax(0, 1fr); }
 }

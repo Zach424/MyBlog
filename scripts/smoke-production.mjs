@@ -802,7 +802,7 @@ export async function runProductionSmoke(originInput, { expectOAuth = false } = 
   invariant(studioPolicy.includes("https://api.github.com"), "Studio CSP 缺少 GitHub API");
   invariant(studioPolicy.includes("frame-ancestors 'none'"), "Studio CSP 未禁止嵌入");
 
-  const [studioMaintenancePage, studioMaintenanceModule, studioMaintenanceStyles, studioMaintenanceResponse, studioConfig, studioManifest, studioPreflight, stableSlugWidget, entryPreflightModule, mathPreviewModule, galleryEditorModule, glossaryEditorModule, faqEditorModule, fileTreeEditorModule, timelineEditorModule, tableEditorModule, taskListEditorModule, referencesEditorModule, stepsEditorModule, audioEditorModule, videoEditorModule, studioPreview, katexStyles, studioRuntime, unknownStudioAsset] = await Promise.all([
+  const [studioMaintenancePage, studioMaintenanceModule, studioMaintenanceStyles, studioMaintenanceResponse, studioConfig, studioManifest, studioPreflight, stableSlugWidget, entryPreflightModule, mathPreviewModule, galleryEditorModule, glossaryEditorModule, faqEditorModule, fileTreeEditorModule, timelineEditorModule, decisionEditorModule, tableEditorModule, taskListEditorModule, referencesEditorModule, stepsEditorModule, audioEditorModule, videoEditorModule, studioPreview, katexStyles, studioRuntime, unknownStudioAsset] = await Promise.all([
     request(origin, "/studio/maintenance"),
     request(origin, "/studio/maintenance.mjs", { accept: "text/javascript" }),
     request(origin, "/studio/maintenance.css", { accept: "text/css" }),
@@ -818,6 +818,7 @@ export async function runProductionSmoke(originInput, { expectOAuth = false } = 
     request(origin, "/studio/faq-editor.mjs", { accept: "text/javascript" }),
     request(origin, "/studio/filetree-editor.mjs", { accept: "text/javascript" }),
     request(origin, "/studio/timeline-editor.mjs", { accept: "text/javascript" }),
+    request(origin, "/studio/decision-editor.mjs", { accept: "text/javascript" }),
     request(origin, "/studio/table-editor.mjs", { accept: "text/javascript" }),
     request(origin, "/studio/task-list-editor.mjs", { accept: "text/javascript" }),
     request(origin, "/studio/references-editor.mjs", { accept: "text/javascript" }),
@@ -1014,6 +1015,16 @@ export async function runProductionSmoke(originInput, { expectOAuth = false } = 
   invariant(
     timelineEditorModule.response.headers.get("content-type")?.startsWith("text/javascript"),
     "Studio 项目时间线编辑组件类型不正确",
+  );
+  invariant(
+    decisionEditorModule.response.status === 200 &&
+      decisionEditorModule.body.includes("registerStudioDecisionEditor") &&
+      decisionEditorModule.body.includes("myblog-decision"),
+    "Studio 技术决策编辑组件不可用",
+  );
+  invariant(
+    decisionEditorModule.response.headers.get("content-type")?.startsWith("text/javascript"),
+    "Studio 技术决策编辑组件类型不正确",
   );
   invariant(
     fileTreeEditorModule.response.headers.get("content-type")?.startsWith("text/javascript"),
@@ -1247,6 +1258,29 @@ export async function runProductionSmoke(originInput, { expectOAuth = false } = 
       timelinePreviewPayload.html.includes('datetime="2026-08-12"') &&
       !/<button|contenteditable|onclick=/iu.test(timelinePreviewPayload.html),
     "Studio 项目时间线生产管线预览不可用",
+  );
+
+  const decisionPreview = await request(origin, "/studio/math-preview", {
+    accept: "application/json",
+    body: JSON.stringify({
+      markdown:
+        "> [!decision] 选择 Vercel 原生托管\n> **STATUS:** `ACCEPTED` · **DATE:** `2026-08-12`\n>\n> **CONTEXT**\n>\n> 需要一个直接运行 Next.js 的公开托管方案。\n>\n> **DECISION**\n>\n> 使用 Vercel 作为生产托管平台。\n>\n> **RATIONALE**\n>\n> 它与当前构建、预览和 Git 交付链路直接对齐。\n>\n> **ALTERNATIVES**\n>\n> - **Cloudflare Pages** — 需要额外适配。\n> - **自托管** — 运维成本过高。\n>\n> **CONSEQUENCES**\n>\n> - `POSITIVE` 发布链路更短。\n> - `NEGATIVE` 托管能力与平台耦合。",
+    }),
+    headers: { "content-type": "application/json" },
+    method: "POST",
+  });
+  const decisionPreviewPayload = JSON.parse(decisionPreview.body);
+  invariant(
+    decisionPreview.response.status === 200 &&
+      decisionPreviewPayload.ok === true &&
+      decisionPreviewPayload.decisionCount === 1 &&
+      decisionPreviewPayload.decisionAlternativeCount === 2 &&
+      decisionPreviewPayload.decisionConsequenceCount === 2 &&
+      decisionPreviewPayload.html.includes('data-decision="decision-brief"') &&
+      decisionPreviewPayload.html.includes("IMPACT LEDGER") &&
+      decisionPreviewPayload.html.includes('datetime="2026-08-12"') &&
+      !/<button|contenteditable|onclick=/iu.test(decisionPreviewPayload.html),
+    "Studio 技术决策生产管线预览不可用",
   );
 
   const entryPreflight = await request(origin, "/studio/entry-preflight", {
