@@ -168,7 +168,7 @@ test("applies the production security and cache baseline", async () => {
 
 test("serves Studio, its maintenance queue, and media inventory through explicit Next.js routes", async () => {
   await assert.rejects(access(new URL("../public/studio", import.meta.url)));
-  const [studio, maintenancePage, maintenanceModule, maintenanceStyles, maintenanceResponse, config, manifest, preflight, stableSlugWidget, entryPreflightModule, mathPreviewModule, galleryEditorModule, glossaryEditorModule, faqEditorModule, tableEditorModule, taskListEditorModule, referencesEditorModule, stepsEditorModule, videoEditorModule, preview, katexStyles, runtime, unknown] = await Promise.all([
+  const [studio, maintenancePage, maintenanceModule, maintenanceStyles, maintenanceResponse, config, manifest, preflight, stableSlugWidget, entryPreflightModule, mathPreviewModule, galleryEditorModule, glossaryEditorModule, faqEditorModule, fileTreeEditorModule, tableEditorModule, taskListEditorModule, referencesEditorModule, stepsEditorModule, videoEditorModule, preview, katexStyles, runtime, unknown] = await Promise.all([
     request("/studio"),
     request("/studio/maintenance"),
     request("/studio/maintenance.mjs"),
@@ -183,6 +183,7 @@ test("serves Studio, its maintenance queue, and media inventory through explicit
     request("/studio/gallery-editor.mjs"),
     request("/studio/glossary-editor.mjs"),
     request("/studio/faq-editor.mjs"),
+    request("/studio/filetree-editor.mjs"),
     request("/studio/table-editor.mjs"),
     request("/studio/task-list-editor.mjs"),
     request("/studio/references-editor.mjs"),
@@ -254,6 +255,9 @@ test("serves Studio, its maintenance queue, and media inventory through explicit
   assert.equal(faqEditorModule.status, 200);
   assert.match(await faqEditorModule.text(), /registerStudioFaqEditor/u);
   assert.equal(faqEditorModule.headers.get("cache-control"), "no-store");
+  assert.equal(fileTreeEditorModule.status, 200);
+  assert.match(await fileTreeEditorModule.text(), /registerStudioFileTreeEditor/u);
+  assert.equal(fileTreeEditorModule.headers.get("cache-control"), "no-store");
   assert.match(await tableEditorModule.text(), /registerStudioTableEditor/);
   assert.equal(tableEditorModule.headers.get("cache-control"), "no-store");
   assert.equal(referencesEditorModule.status, 200);
@@ -427,6 +431,19 @@ test("renders bounded Studio formula previews with the production Markdown pipel
   assert.match(faqPayload.html, /<details[^>]*open/u);
   assert.match(faqPayload.html, /<summary class="markdown-faq-question"/u);
   assert.doesNotMatch(faqPayload.html, /<button|contenteditable|onclick=/iu);
+
+  const fileTree = await postStudioMathPreview({
+    markdown:
+      "> [!filetree] MyBlog 核心结构\n> - `app/` — 页面与同源路由。\n>   - `studio/` — Git-backed 发布后台。\n>     - `page.tsx` — 后台静态入口。\n> - `lib/` — 内容解析与渲染。\n> - `package.json` — 脚本与质量门。",
+  });
+  assert.equal(fileTree.status, 200);
+  const fileTreePayload = await fileTree.json();
+  assert.equal(fileTreePayload.fileTreeCount, 1);
+  assert.equal(fileTreePayload.fileTreeNodeCount, 5);
+  assert.equal(fileTreePayload.fileTreeMaxDepth, 3);
+  assert.match(fileTreePayload.html, /data-filetree="repository-slice"/u);
+  assert.match(fileTreePayload.html, /FILE MAP \/ 05 NODES/u);
+  assert.doesNotMatch(fileTreePayload.html, /<button|contenteditable|onclick=/iu);
 
   const unsafeLink = await postStudioMathPreview({
     markdown: "[unsafe](javascript:alert(1)) $x$",

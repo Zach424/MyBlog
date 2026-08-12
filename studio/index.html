@@ -181,6 +181,7 @@
       import { createStudioConfig } from "/studio/config.mjs";
       import { registerStudioAudioEditor } from "/studio/audio-editor.mjs";
       import { registerStudioFaqEditor } from "/studio/faq-editor.mjs";
+      import { registerStudioFileTreeEditor } from "/studio/filetree-editor.mjs";
       import { registerStudioGalleryEditor } from "/studio/gallery-editor.mjs";
       import { registerStudioGlossaryEditor } from "/studio/glossary-editor.mjs";
       import { registerStudioMathPreview } from "/studio/math-preview.mjs";
@@ -203,6 +204,7 @@
         try {
           registerStableSlugWidget();
           registerStudioFaqEditor();
+          registerStudioFileTreeEditor();
           registerStudioGalleryEditor();
           registerStudioGlossaryEditor();
           registerStudioTableEditor();

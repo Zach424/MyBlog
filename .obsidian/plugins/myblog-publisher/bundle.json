@@ -3,16 +3,16 @@
   "algorithm": "sha256",
   "plugin": {
     "id": "myblog-publisher",
-    "version": "1.50.0"
+    "version": "1.51.0"
   },
   "files": [
     {
       "path": "main.js",
-      "sha256": "0309e51ece3192ccec3bbda468cc140ea435916607a70a08250a67ffd536526e"
+      "sha256": "f2283b3f8479f3654abfee8c137a7885fa3633efdec8ffec44878843245a16b3"
     },
     {
       "path": "manifest.json",
-      "sha256": "a0b27f739fff9fea7f77d9375c0e05c97d1de039879a1c642165e77240f562c7"
+      "sha256": "75ba69bb2dcdaf231c0db397ee71ffc310aaee740ebf761d1a3c118c479c4af5"
     },
     {
       "path": "styles.css",

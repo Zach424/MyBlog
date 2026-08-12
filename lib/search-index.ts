@@ -7,6 +7,7 @@ import type { SearchDocument } from "./search.ts";
 import { normalizeMarkdownAudioNotesForPlainText } from "./markdown-audio.ts";
 import { normalizeMarkdownCalloutsForPlainText } from "./markdown-callout.ts";
 import { normalizeMarkdownFaqsForPlainText } from "./markdown-faq.ts";
+import { normalizeMarkdownFileTreesForPlainText } from "./markdown-filetree.ts";
 import { normalizeMarkdownGalleriesForPlainText } from "./markdown-gallery.ts";
 import { normalizeMarkdownGlossariesForPlainText } from "./markdown-glossary.ts";
 import { normalizeMarkdownReferenceListsForPlainText } from "./markdown-references.ts";
@@ -54,17 +55,19 @@ function markdownNodeText(node: MarkdownNode): string {
 export function markdownToPlainText(markdown: string) {
   const source = markdown.replace(/^---[\s\S]*?---\s*/mu, "");
   const tree = normalizeMarkdownCalloutsForPlainText(
-    normalizeMarkdownFaqsForPlainText(
-      normalizeMarkdownGalleriesForPlainText(
-        normalizeMarkdownGlossariesForPlainText(
-        normalizeMarkdownTablesForPlainText(
-          normalizeMarkdownStepsForPlainText(
-            normalizeMarkdownReferenceListsForPlainText(
-              normalizeMarkdownTaskListsForPlainText(
-                normalizeMarkdownAudioNotesForPlainText(parseMarkdown(source)),
+    normalizeMarkdownFileTreesForPlainText(
+      normalizeMarkdownFaqsForPlainText(
+        normalizeMarkdownGalleriesForPlainText(
+          normalizeMarkdownGlossariesForPlainText(
+            normalizeMarkdownTablesForPlainText(
+              normalizeMarkdownStepsForPlainText(
+                normalizeMarkdownReferenceListsForPlainText(
+                  normalizeMarkdownTaskListsForPlainText(
+                    normalizeMarkdownAudioNotesForPlainText(parseMarkdown(source)),
+                  ),
+                ),
               ),
             ),
-          ),
           ),
         ),
       ),

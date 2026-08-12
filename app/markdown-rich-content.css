@@ -1205,6 +1205,122 @@
 .markdown-content .markdown-faq-answer-copy > :first-child { margin-top: 0; }
 .markdown-content .markdown-faq-answer-copy > :last-child { margin-bottom: 0; }
 
+.markdown-content .markdown-filetree {
+  margin-block: 2rem;
+  border-block: 0.0625rem solid var(--trace-dark);
+  background: color-mix(in srgb, var(--trace) 12%, var(--paper));
+}
+
+.markdown-content .markdown-filetree-header {
+  display: grid;
+  border-bottom: 0.0625rem solid var(--rule);
+}
+
+.markdown-content .markdown-filetree-rail {
+  display: flex;
+  min-height: 2.4rem;
+  align-items: center;
+  justify-content: space-between;
+  gap: 0.75rem;
+  padding: 0.55rem 0.75rem;
+  color: var(--muted);
+  font: 700 0.625rem/1.4 "Cascadia Code", Consolas, monospace;
+  letter-spacing: 0.075em;
+}
+
+.markdown-content .markdown-filetree-kind-label { color: var(--ink); }
+
+.markdown-content .markdown-filetree-mode::before {
+  display: inline-block;
+  width: 1.35rem;
+  height: 0.62rem;
+  margin-right: 0.45rem;
+  background:
+    linear-gradient(var(--signal), var(--signal)) 0 0 / 0.15rem 100% no-repeat,
+    linear-gradient(var(--muted), var(--muted)) 0.45rem 0.18rem / 0.9rem 0.0625rem no-repeat,
+    linear-gradient(var(--muted), var(--muted)) 0.45rem 0.46rem / 0.6rem 0.0625rem no-repeat;
+  content: "";
+  vertical-align: -0.12rem;
+}
+
+.markdown-content .markdown-filetree-title {
+  padding: 0.85rem 0.9rem 0.9rem;
+  border-top: 0.0625rem solid var(--rule);
+  font-size: 1rem;
+  line-height: 1.5;
+  overflow-wrap: anywhere;
+}
+
+.markdown-content .markdown-filetree-items,
+.markdown-content .markdown-filetree-children {
+  margin: 0;
+  padding: 0;
+  list-style: none;
+}
+
+.markdown-content .markdown-filetree-items { background: var(--paper); }
+
+.markdown-content .markdown-filetree-node {
+  position: relative;
+  margin: 0;
+}
+
+.markdown-content .markdown-filetree-children {
+  position: relative;
+  margin-left: 2.9rem;
+  border-left: 0.0625rem solid color-mix(in srgb, var(--signal) 44%, var(--rule));
+}
+
+.markdown-content .markdown-filetree-row {
+  display: grid;
+  grid-template-columns: 2.9rem 3.4rem minmax(6rem, auto) minmax(10rem, 1fr);
+  min-width: 0;
+  border-bottom: 0.0625rem solid var(--rule);
+}
+
+.markdown-content .markdown-filetree-branch,
+.markdown-content .markdown-filetree-kind,
+.markdown-content .markdown-filetree-name,
+.markdown-content .markdown-filetree-description {
+  min-width: 0;
+  padding: 0.72rem 0.7rem;
+}
+
+.markdown-content .markdown-filetree-branch {
+  display: grid;
+  place-items: center;
+  color: var(--faint);
+  font: 700 0.5rem/1.4 "Cascadia Code", Consolas, monospace;
+  letter-spacing: 0.08em;
+}
+
+.markdown-content .markdown-filetree-kind {
+  color: var(--muted);
+  font: 750 0.58rem/1.5 "Cascadia Code", Consolas, monospace;
+  letter-spacing: 0.08em;
+}
+
+.markdown-content .markdown-filetree-node[data-kind="folder"] > .markdown-filetree-row .markdown-filetree-kind,
+.markdown-content .markdown-filetree-node[data-kind="folder"] > .markdown-filetree-row .markdown-filetree-name {
+  color: var(--signal);
+}
+
+.markdown-content .markdown-filetree-name {
+  border-inline: 0.0625rem solid var(--rule);
+  border-radius: 0;
+  background: color-mix(in srgb, var(--rule) 12%, var(--paper));
+  color: var(--ink);
+  font: 650 0.78rem/1.55 "Cascadia Code", Consolas, monospace;
+  overflow-wrap: anywhere;
+}
+
+.markdown-content .markdown-filetree-description {
+  color: var(--muted);
+  font-size: 0.78rem;
+  line-height: 1.65;
+  overflow-wrap: anywhere;
+}
+
 .markdown-content .markdown-procedure {
   margin-block: 2rem;
   border-block: 0.0625rem solid var(--trace-dark);
@@ -1386,6 +1502,17 @@
     grid-template-columns: 10mm minmax(0, 1fr);
     padding-right: 2.5mm;
   }
+
+  .markdown-content .markdown-filetree { break-inside: auto; }
+
+  .markdown-content .markdown-filetree-header,
+  .markdown-content .markdown-filetree-row { break-inside: avoid-page; }
+
+  .markdown-content .markdown-filetree-row {
+    grid-template-columns: 10mm 12mm 42mm minmax(0, 1fr);
+  }
+
+  .markdown-content .markdown-filetree-children { margin-left: 10mm; }
 
   .markdown-content .markdown-glossary-term,
   .markdown-content .markdown-glossary-meaning { padding: 2.5mm; }
@@ -1722,5 +1849,29 @@
     grid-column: 1;
     grid-row: auto;
     white-space: normal;
+  }
+
+  .markdown-content .markdown-filetree-rail {
+    align-items: flex-start;
+    flex-direction: column;
+  }
+
+  .markdown-content .markdown-filetree-children { margin-left: 1rem; }
+
+  .markdown-content .markdown-filetree-row {
+    grid-template-columns: 2.1rem 2.8rem minmax(0, 1fr);
+  }
+
+  .markdown-content .markdown-filetree-branch,
+  .markdown-content .markdown-filetree-kind,
+  .markdown-content .markdown-filetree-name,
+  .markdown-content .markdown-filetree-description { padding: 0.62rem 0.5rem; }
+
+  .markdown-content .markdown-filetree-name { border-right: 0; }
+
+  .markdown-content .markdown-filetree-description {
+    grid-column: 3;
+    padding-top: 0;
+    border-left: 0.0625rem solid var(--rule);
   }
 }

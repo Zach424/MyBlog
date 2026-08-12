@@ -284,6 +284,30 @@ export function hasPotentialStudioFaq(markdown) {
   return false;
 }
 
+export function hasPotentialStudioFileTree(markdown) {
+  let fenceCharacter = "";
+  let fenceLength = 0;
+
+  for (const sourceLine of textValue(markdown).split(/\r?\n/u)) {
+    const line = sourceLine.replace(/^[ \t]*(?:>[ \t]*)+/u, "");
+    const fence = /^[ \t]*(`{3,}|~{3,})/u.exec(line);
+    if (fenceCharacter) {
+      if (new RegExp(`^[ \\t]*${fenceCharacter}{${fenceLength},}[ \\t]*$`, "u").test(line)) {
+        fenceCharacter = "";
+        fenceLength = 0;
+      }
+      continue;
+    }
+    if (fence) {
+      fenceCharacter = fence[1][0];
+      fenceLength = fence[1].length;
+      continue;
+    }
+    if (/^[ \t]*(?:>[ \t]*)+\[!filetree\](?:[+\-]|[ \t]|$)/iu.test(sourceLine)) return true;
+  }
+  return false;
+}
+
 function hasPotentialStudioCallout(markdown) {
   let fenceCharacter = "";
   let fenceLength = 0;
@@ -322,6 +346,7 @@ export function hasPotentialStudioRichMarkdown(markdown) {
     hasPotentialStudioSteps(markdown) ||
     hasPotentialStudioGlossary(markdown) ||
     hasPotentialStudioFaq(markdown) ||
+    hasPotentialStudioFileTree(markdown) ||
     hasPotentialStudioCallout(markdown) ||
     hasPotentialStudioDiagram(markdown) ||
     hasPotentialStudioVideo(markdown)
@@ -401,9 +426,14 @@ export function getStudioMathPreviewStatus(state) {
       if (state.faqCount > 0) {
         evidence.push(`${state.faqCount} 个 FAQ / ${state.faqQuestionCount} 个问题`);
       }
+      if (state.fileTreeCount > 0) {
+        evidence.push(
+          `${state.fileTreeCount} 个项目文件树 / ${state.fileTreeNodeCount} 个节点 / 最大 ${state.fileTreeMaxDepth} 层`,
+        );
+      }
       if (state.videoCount > 0) evidence.push(`${state.videoCount} 段视频`);
       return {
-        detail: "这里与正式页面共享 remark、rehype、受限 KaTeX、Callout、画廊、技术表格、只读任务清单、参考资料清单、步骤流程、术语定义表、FAQ、Mermaid、本地音频与本地视频渲染配置。",
+        detail: "这里与正式页面共享 remark、rehype、受限 KaTeX、Callout、画廊、技术表格、只读任务清单、参考资料清单、步骤流程、术语定义表、FAQ、项目文件树、Mermaid、本地音频与本地视频渲染配置。",
         label: "RICH MARKDOWN / VERIFIED",
         title: `${evidence.join("、")}已按生产规则渲染`,
       };
@@ -420,9 +450,12 @@ export function getStudioMathPreviewStatus(state) {
       const isSteps = state.issue?.kind === "steps";
       const isGlossary = state.issue?.kind === "glossary";
       const isFaq = state.issue?.kind === "faq";
+      const isFileTree = state.issue?.kind === "filetree";
       return {
         detail: `${line}${state.issue?.message || "请检查增强 Markdown 语法。"}`,
-        label: isFaq
+        label: isFileTree
+          ? "FILE TREE / NEEDS FIX"
+          : isFaq
           ? "FAQ / NEEDS FIX"
           : isGlossary
           ? "GLOSSARY / NEEDS FIX"
@@ -443,7 +476,9 @@ export function getStudioMathPreviewStatus(state) {
           : isDiagram
             ? "DIAGRAM / NEEDS FIX"
             : "FORMULA / NEEDS FIX",
-        title: isFaq
+        title: isFileTree
+          ? "项目文件树尚不能发布"
+          : isFaq
           ? "FAQ 尚不能发布"
           : isGlossary
           ? "术语定义表尚不能发布"
@@ -509,6 +544,9 @@ export function createStudioMathPreviewTemplate({
         diagramCount: 0,
         faqCount: 0,
         faqQuestionCount: 0,
+        fileTreeCount: 0,
+        fileTreeMaxDepth: 0,
+        fileTreeNodeCount: 0,
         formulaCount: 0,
         galleryCount: 0,
         galleryImageCount: 0,
@@ -572,6 +610,9 @@ export function createStudioMathPreviewTemplate({
           diagramCount: 0,
           faqCount: 0,
           faqQuestionCount: 0,
+          fileTreeCount: 0,
+          fileTreeMaxDepth: 0,
+          fileTreeNodeCount: 0,
           formulaCount: 0,
           galleryCount: 0,
           galleryImageCount: 0,
@@ -617,6 +658,9 @@ export function createStudioMathPreviewTemplate({
             diagramCount: result.diagramCount,
             faqCount: result.faqCount,
             faqQuestionCount: result.faqQuestionCount,
+            fileTreeCount: result.fileTreeCount,
+            fileTreeMaxDepth: result.fileTreeMaxDepth,
+            fileTreeNodeCount: result.fileTreeNodeCount,
             formulaCount: result.formulaCount,
             galleryCount: result.galleryCount,
             galleryImageCount: result.galleryImageCount,
@@ -643,6 +687,9 @@ export function createStudioMathPreviewTemplate({
             diagramCount: 0,
             faqCount: 0,
             faqQuestionCount: 0,
+            fileTreeCount: 0,
+            fileTreeMaxDepth: 0,
+            fileTreeNodeCount: 0,
             formulaCount: 0,
             galleryCount: 0,
             galleryImageCount: 0,
@@ -672,6 +719,9 @@ export function createStudioMathPreviewTemplate({
           diagramCount: 0,
           faqCount: 0,
           faqQuestionCount: 0,
+          fileTreeCount: 0,
+          fileTreeMaxDepth: 0,
+          fileTreeNodeCount: 0,
           formulaCount: 0,
           galleryCount: 0,
           galleryImageCount: 0,

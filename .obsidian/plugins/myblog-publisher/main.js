@@ -28,7 +28,7 @@ const AUTHOR_DOCTOR_PLUGIN_BUNDLE_VERSION = 1;
 const AUTHOR_DOCTOR_PLUGIN_PROVENANCE_VERSION = 1;
 const INBOX_READINESS_REPORT_VERSION = 8;
 const AUTHOR_DOCTOR_NODE_ENGINE = ">=22.13.0";
-const AUTHOR_DOCTOR_PLUGIN_VERSION = "1.50.0";
+const AUTHOR_DOCTOR_PLUGIN_VERSION = "1.51.0";
 const CURRENT_DRAFT_INTENT_RUN_SCOPE = Symbol("current-draft-intent");
 const PRODUCTION_CONTENT_CONVERGENCE_RUN_SCOPE = Symbol(
   "production-content-convergence",
@@ -235,6 +235,25 @@ function createFaqTemplate(filePath) {
     "> - **FAQ 会保存读者的展开状态吗？**",
     ">",
     ">   不会。展开只存在于当前页面，不写回 Git，也不会跨访问保存。",
+  ].join("\n");
+}
+
+function createFileTreeTemplate(filePath) {
+  const normalized = String(filePath || "").replaceAll("\\", "/");
+  if (
+    !/^content\/(inbox|posts|projects)\/[a-z0-9]+(?:-[a-z0-9]+)*\.md$/u.test(
+      normalized,
+    )
+  ) {
+    throw new Error("项目文件树模板只能插入 content/inbox、content/posts 或 content/projects 中的博客文档");
+  }
+  return [
+    "> [!filetree] MyBlog 核心结构",
+    "> - `app/` — 页面、布局与同源路由。",
+    ">   - `studio/` — Git-backed 发布后台。",
+    ">     - `page.tsx` — 后台静态入口。",
+    "> - `lib/` — 共享内容解析与渲染。",
+    "> - `package.json` — 脚本、依赖与质量门。",
   ].join("\n");
 }
 
@@ -6153,6 +6172,20 @@ module.exports = class MyBlogPublisher extends Plugin {
           const template = createFaqTemplate(view?.file?.path);
           editor.replaceSelection(template);
           new Notice("已插入两条 FAQ 模板；请替换标题、问题与 1–3 段答案");
+        } catch (error) {
+          new Notice(error instanceof Error ? error.message : String(error));
+        }
+      },
+    });
+
+    this.addCommand({
+      id: "insert-filetree-template",
+      name: "插入项目文件树模板",
+      editorCallback: (editor, view) => {
+        try {
+          const template = createFileTreeTemplate(view?.file?.path);
+          editor.replaceSelection(template);
+          new Notice("已插入五个项目文件树节点；请替换标题、路径层级与说明");
         } catch (error) {
           new Notice(error instanceof Error ? error.message : String(error));
         }

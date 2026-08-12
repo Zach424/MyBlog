@@ -2,6 +2,7 @@ import { parseDocument } from "yaml";
 import { z } from "zod";
 import { getMarkdownAudioIssue } from "../markdown-audio.ts";
 import { getMarkdownFaqIssue } from "../markdown-faq.ts";
+import { getMarkdownFileTreeIssue } from "../markdown-filetree.ts";
 import { getMarkdownGlossaryIssue } from "../markdown-glossary.ts";
 import { getMarkdownReferenceIssue } from "../markdown-references.ts";
 import { getMarkdownStepsIssue } from "../markdown-steps.ts";
@@ -428,6 +429,15 @@ function parseFrontmatter<T>(
     );
   }
 
+  const fileTreeIssue = getMarkdownFileTreeIssue(body);
+  if (fileTreeIssue) {
+    const location = fileTreeIssue.line ? `正文第 ${fileTreeIssue.line} 行` : "正文";
+    throw new ContentValidationError(
+      sourcePath,
+      `${location}项目文件树无法解析：${fileTreeIssue.message}`,
+    );
+  }
+
   const referenceIssue = getMarkdownReferenceIssue(body);
   if (referenceIssue) {
     const location = referenceIssue.line ? `正文第 ${referenceIssue.line} 行` : "正文";
@@ -621,6 +631,14 @@ export function inspectContentDraft(
       issues.push({
         field: "body",
         message: `${location}FAQ 无法解析：${faqIssue.message}`,
+      });
+    }
+    const fileTreeIssue = getMarkdownFileTreeIssue(body);
+    if (fileTreeIssue) {
+      const location = fileTreeIssue.line ? `第 ${fileTreeIssue.line} 行` : "正文";
+      issues.push({
+        field: "body",
+        message: `${location}项目文件树无法解析：${fileTreeIssue.message}`,
       });
     }
     const referenceIssue = getMarkdownReferenceIssue(body);

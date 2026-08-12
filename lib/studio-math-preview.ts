@@ -20,6 +20,11 @@ import {
   type MarkdownFaqIssue,
 } from "@/lib/markdown-faq";
 import {
+  extractMarkdownFileTrees,
+  getMarkdownFileTreeIssue,
+  type MarkdownFileTreeIssue,
+} from "@/lib/markdown-filetree";
+import {
   MARKDOWN_REHYPE_OPTIONS,
   MARKDOWN_REHYPE_PLUGINS,
   MARKDOWN_REMARK_PLUGINS,
@@ -71,6 +76,9 @@ export type StudioMathPreviewResult =
       diagramCount: number;
       faqCount: number;
       faqQuestionCount: number;
+      fileTreeCount: number;
+      fileTreeMaxDepth: number;
+      fileTreeNodeCount: number;
       formulaCount: number;
       galleryCount: number;
       galleryImageCount: number;
@@ -93,6 +101,7 @@ export type StudioMathPreviewResult =
       issue:
         | MarkdownDiagramIssue
         | MarkdownFaqIssue
+        | MarkdownFileTreeIssue
         | MarkdownAudioIssue
         | MarkdownGalleryIssue
         | MarkdownGlossaryIssue
@@ -160,6 +169,8 @@ export function renderStudioMathPreview(
   if (diagramIssue) return { issue: diagramIssue, ok: false };
   const faqIssue = getMarkdownFaqIssue(markdown);
   if (faqIssue) return { issue: faqIssue, ok: false };
+  const fileTreeIssue = getMarkdownFileTreeIssue(markdown);
+  if (fileTreeIssue) return { issue: fileTreeIssue, ok: false };
   const galleryIssue = getMarkdownGalleryIssue(markdown);
   if (galleryIssue) return { issue: galleryIssue, ok: false };
   const glossaryIssue = getMarkdownGlossaryIssue(markdown);
@@ -181,6 +192,16 @@ export function renderStudioMathPreview(
   const faqCount = faqs.length;
   const faqQuestionCount = faqs.reduce(
     (total, faq) => total + faq.items.length,
+    0,
+  );
+  const fileTrees = extractMarkdownFileTrees(markdown);
+  const fileTreeCount = fileTrees.length;
+  const fileTreeNodeCount = fileTrees.reduce(
+    (total, fileTree) => total + fileTree.nodes.length,
+    0,
+  );
+  const fileTreeMaxDepth = fileTrees.reduce(
+    (maximum, fileTree) => Math.max(maximum, fileTree.maxDepth),
     0,
   );
   const galleries = extractMarkdownGalleries(markdown);
@@ -244,6 +265,9 @@ export function renderStudioMathPreview(
     diagramCount,
     faqCount,
     faqQuestionCount,
+    fileTreeCount,
+    fileTreeMaxDepth,
+    fileTreeNodeCount,
     formulaCount,
     galleryCount,
     galleryImageCount,
