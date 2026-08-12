@@ -106,6 +106,9 @@ mdast 层先识别顶层候选，再逐项校验准确节点序列、日期、�
 - 第一次专项测试发现 AST 空格文本节点被通用“可见节点”过滤，导致首行 5 节点语义误判；改为只在精确首行读取原始 children 后 9/9 通过；
 - 第一次浏览器验收命中了 3100 端口上的旧构建，页面把时间线降级为普通 Callout；核对进程命令行、替换为当前 build 后真实 Release Tape 通过。此经验阻止了用旧服务器的 HTTP 200 制造假绿；
 - 第一次打印验收发现 Studio 预览 CSS 缺少单事件 `avoid-page`，补齐后重建并实测 3 条均为 `avoid-page`。
+- 功能提交 `7b5b7f0` 与归档提交 `132a0b4` 推送后，稳定生产 `/studio/timeline-editor.mjs` 在第 6 次有界轮询从 404 收敛为 200，返回 10,090 B，并包含 `myblog-timeline` 与 `registerStudioTimelineEditor`；
+- `npm run production:smoke -- https://blog-iota-five-59.vercel.app --expect-oauth`：42.4 秒内通过 27 条路由、GitHub OAuth 302、`timelineCount: 1`、`timelineEventCount: 3`、Release Tape、真实 `datetime`、无交互边界及全部 HTML/发现资源预算；
+- 当前生产仍没有真实公开 `[!timeline]` 内容，因此线上证据证明模块、作者资源和合成生产预览已交付，不冒充真实项目历史样本。
 
 ## 8. 经验与教训
 
