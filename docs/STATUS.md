@@ -68,8 +68,8 @@ MyBlog 是 Zach424 的个人技术知识库与公开工程日志。它把学习�
 
 - 仓库：<https://github.com/Zach424/MyBlog>，生产分支 `main`；
 - 生产站：<https://blog-iota-five-59.vercel.app>；
-- 本轮功能提交：`0797cfa`（受约束只读任务清单）；归档提交与生产证据将在本轮后续提交记录；
-- 自动交付：本地生产 `/studio/task-list-editor.mjs` 为 200 且包含 `registerStudioTaskListEditor`；`/studio/math-preview` 已证明 `taskListCount: 1`、`taskItemCount: 3`、`taskCompleteCount: 2`、原生 progress 和三个 disabled checkbox。70 个生成页面/资源、35/35 应用测试、十三条 HTML 与十一个结构化发现端点全部 PASS；本轮没有改变公开内容集合或结构化端点正文，因此不重置既有生产预算基线；
+- 本轮功能提交：`0797cfa`（受约束只读任务清单），归档提交 `ce9f4a8`，稳定生产 smoke 门提交 `7edb506`；三项均已推送 `main` 并进入 Vercel 稳定生产；
+- 自动交付：稳定生产 `/studio/task-list-editor.mjs` 为 200、8147 bytes 且包含 `registerStudioTaskListEditor`；`/studio/math-preview` 已证明 `taskListCount: 1`、`taskItemCount: 3`、`taskCompleteCount: 2`、原生 progress 和三个 disabled checkbox。完整 smoke 为 27 routes、OAuth 302，十三条 HTML 与十一个结构化发现端点全部 PASS；本轮没有改变公开内容集合或结构化端点正文，因此不重置既有生产预算基线；
 - 最新完成迭代：0135 受约束只读任务清单、Studio/Obsidian 作者入口与 Task Ledger 阅读展示；
 - Obsidian 状态：仓库根目录就是 Vault，`docs/STATUS.md`、`docs/iterations/*.md` 与 `docs/knowledge/*.md` 是同一份本地文件，可直接阅读和维护；
 - 手动外部接入：自定义域名、统计、评论、公开邮箱均暂缓，不阻塞当前开发。

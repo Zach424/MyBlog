@@ -24,7 +24,7 @@
 - `tests/markdown-task-list.test.mjs` 与 `tests/studio-task-list-editor.test.mjs`；
 - 本文件与 `docs/knowledge/0135-task-state-is-published-evidence.md`。
 
-本轮修改共享 Markdown 类型/rehype 管线、内容文件和 Studio 结构化预检、搜索、Studio 预览计数/状态、生产与预览 CSS、Studio 配置/入口、Obsidian 插件版本/命令/bundle，以及质量门。功能提交为 `0797cfa`。
+本轮修改共享 Markdown 类型/rehype 管线、内容文件和 Studio 结构化预检、搜索、Studio 预览计数/状态、生产与预览 CSS、Studio 配置/入口、Obsidian 插件版本/命令/bundle，以及质量门。功能提交为 `0797cfa`，首份归档为 `ce9f4a8`，稳定生产 smoke 门提交为 `7edb506`。
 
 归档时工作区仍有用户自己的 `README.md`、`docs/README.md` 修改，以及 `docs/API_REFERENCE_CURRENT.md`、`docs/DATABASE_AND_DATA_MODEL_CURRENT.md`、`docs/PRD_CURRENT_IMPLEMENTATION.md` 新文件；本轮没有覆盖、暂存或提交它们。
 
@@ -95,7 +95,10 @@
 - Playwright Studio 登录页：0 console error / 0 warning；
 - Playwright 语义快照：原生 progressbar、3 个有名称的 disabled checkbox、强调与行内代码均保留；
 - 桌面与 390 px 截图：`output/playwright/iteration-0135-task-desktop.png`、`output/playwright/iteration-0135-task-mobile.png`；
-- 功能提交：`0797cfa`；
+- 功能提交：`0797cfa`；首份归档：`ce9f4a8`；稳定生产 smoke 门：`7edb506`；
+- 稳定生产 `/studio/task-list-editor.mjs`：200、8147 bytes，包含 `registerStudioTaskListEditor` 与 `myblog-task-list`；
+- 稳定生产合成预览：1 组、3 项、2 项完成，包含原生 progress、三个 disabled checkbox，无 button/contenteditable/onclick；
+- 完整生产 smoke：27 routes、OAuth 302；十三条 HTML 与十一个结构化发现端点预算全部 PASS；
 - 当前公开内容没有真实任务清单，因此浏览器使用共享生产端点返回的 HTML 夹具，不把它冒充为已发布文章或 CDN 证据。
 
 ## 8. 经验与教训
