@@ -153,7 +153,7 @@ redirects:
 
 公开附件位于 `public/uploads/<slug>/`。Obsidian 的默认附件目录是 `public/uploads`；作者可以直接粘贴图片，发布器会把当前笔记引用的 Wiki/Markdown 图片移动到文章或项目的专属子目录，并把正文改写为 `/uploads/<slug>/<稳定文件名>`。Studio 的 posts/projects 集合使用相同 slug 模板，作者先填写 slug 后上传时直接落入专属子目录。
 
-- 允许输入格式：PNG、JPEG、WebP、GIF、AVIF；静态 PNG/JPEG/WebP 发布为 `.webp`，GIF、AVIF 和动画 WebP 保持格式与原字节；
+- 允许输入格式：PNG、JPEG、WebP、GIF、AVIF、MP3、MP4；静态 PNG/JPEG/WebP 发布为 `.webp`，GIF、AVIF、动画 WebP、MP3 和 MP4 保持格式与原字节；
 - 原文件名已是小写 ASCII 安全名时保持 stem；空格、中文或其他不稳定字符会转换为可读前缀加 8 位路径哈希；静态格式共享同一个 `.webp` 目标命名空间，同 stem 冲突会被拒绝；
 - 静态图自动校正 EXIF 方向，最长边收敛到 2560 px，并以固定参数生成确定性 WebP；若现有 WebP 已满足预算且重编码不会更小，则保留原字节；
 - 可优化原图必须满足 25 MiB、8192 px 和 4000 万像素的解码安全包络；公开产物仍必须满足 3 MiB、2560 px、800 万单帧像素和 8000 万动图总像素预算；
@@ -161,6 +161,8 @@ redirects:
 - 已由 Git 跟踪且位于其他内容目录的附件不会被移动，避免破坏已有文章；
 - `--check-only` 在忽略的同盘 staging 中生成并验证产物，只输出处理计划，不修改草稿或附件；
 - 发布质量门失败时，草稿和本轮所有附件都会按原路径、原文本和原字节恢复。
+
+MP3 只用于受约束 `[!audio]` 音频笔记：每篇最多 3 段，每段最多 8 MiB/15 分钟，必须是真实 MPEG Layer III、32–320 kbps、16–48 kHz、单/双声道，并与标题、简述和完整文字稿一起发布。浏览器预检负责早期签名/时长反馈，构建期 `music-metadata` 解析才是权威；MP3 发布前后保持相同字节，不做自动转码。正式引用必须位于 `/uploads/<当前 slug>/`，根暂存只允许 inbox 草稿经 Obsidian 发布器归档。
 
 Studio 的浏览器选择器只接受上述扩展名，并在文件进入 Decap Git 草稿前校验真实 magic 格式、扩展名一致性、可解码宽高、3 MiB/2560 px/800 万像素预算以及 GIF/WebP/APNG 帧数和 8000 万总像素预算。通过后仍保存作者选择的原始文件；JPEG/PNG 不在浏览器内自动转 WebP，Evidence Rail 会提示需要自动优化时改用 Obsidian 发布器。动画 AVIF 因浏览器端无法可靠获得序列帧数而拒绝，静态 AVIF 正常支持。最终构建会用 Sharp 再次执行权威校验，因此浏览器差异不能绕过内容契约。
 

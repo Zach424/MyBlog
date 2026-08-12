@@ -8,11 +8,11 @@
 | 4. 作者自助写作 | done | `/studio` OAuth + editorial workflow PR、Obsidian Vault/模板/附件/真实 `--push` |
 | 5. Vercel 原生迁移 | production live | 原生 Next.js、无 Cloudflare 依赖、27 路由生产冒烟通过 |
 | 6. 所有者生产上线 | done | Git 自动 Production、稳定域名自动冒烟、双端发布、回滚与恢复均已验收 |
-| 7. 持续内容与作者体验 | in progress | Iteration 0133 已提供受约束多图画廊，继续推进受限、可移植的富内容 Markdown |
+| 7. 持续内容与作者体验 | in progress | Iteration 0136 已提供受约束本地 MP3 音频笔记，继续推进受限、可移植的富内容 Markdown |
 
 ## 当前唯一主线
 
-进入持续内容与作者体验阶段。Iteration 0133 已把受约束多图画廊接入生产 Markdown：作者使用 `[!gallery]` Callout 与标准图片列表，Studio 可增删/重排，Obsidian 插件可插入模板并原子归档附件；共享 AST 契约同时约束 2–6 张、每篇 3 组/12 张、组标题、alt、caption、当前 slug 路径、搜索、双栏/单栏、打印和无脚本展示。功能提交 `619a604`；本地为 565/565 单测、68 个生成页面/资源和 35/35 应用测试，真实浏览器桌面/320 px 均无溢出或控制台错误；稳定生产 27 routes/OAuth 302、十三路 HTML 与十一端点预算全部 PASS。下一主线只处理受约束技术表格：先保证 GFM 表头、宽表滚动、窄屏、打印与 Studio 预览，不默认加入客户端排序、虚拟滚动或表格库。首次真实 Obsidian 人机验收保留为所有者可执行事项，需要品牌域名时再绑定自定义域名。
+进入持续内容与作者体验阶段。Iteration 0136 已把受约束本地 MP3 音频笔记接入同一生产 Markdown：作者使用 `[!audio]`、本地下载链接、简述和完整文字稿，Studio 可选择文件并结构化编辑，Obsidian 1.46.0 可插入模板并把根暂存 MP3 原子归档到当前 slug；共享 AST 与媒体契约同时约束每篇 3 段、8 MiB/15 分钟、真实 MPEG Layer III、码率/采样率/声道、搜索、原生播放器、桌面/390 px 和打印。下一主线只处理受约束参考资料清单：先冻结开放 Markdown、链接目标、条目预算、可见短注释、Studio/Obsidian、搜索和打印，不在构建期抓远程标题/favicon，也不引入书签服务。首次真实 Obsidian 音频人机验收保留为所有者可执行事项，需要品牌域名时再绑定自定义域名。
 
 ## 已知风险
 
