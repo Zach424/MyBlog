@@ -109,7 +109,9 @@ mdast 层先在顶层寻找候选，再验证静态 marker、唯一无序列表�
 - 第一次合并执行 `lint/typecheck` 在 64 秒命令上限内未返回结果，拆分后两项都通过，不记为产品失败；
 - 第一次定向回归暴露两个旧断言：插件可见版本仍期待 1.49.0，Rich Markdown 证据串未包含 FAQ 计数；更新可观测契约后 233/233 通过；
 - Playwright 首次用 `127.0.0.1` 打开页面时，浏览器的 Origin 与 Next request URL 的 `localhost` 不一致，正确触发 403 同源保护；改用 `localhost` 后生产预览返回 200。该 403 是安全边界工作，不是 FAQ 故障；
-- 功能提交推送与稳定生产 smoke 证据将在 Vercel 收敛后回写本节。
+- 功能提交 `7d21738` 与归档提交 `f8f4467` 推送后，稳定生产 `/studio/faq-editor.mjs` 在第 7 次有界轮询从 404 收敛为 200，返回 8,701 B，并包含 `myblog-faq` 与 `registerStudioFaqEditor`；
+- `npm run production:smoke -- https://blog-iota-five-59.vercel.app --expect-oauth`：39.9 秒内通过 27 条路由、GitHub OAuth 302、`faqCount: 1`、`faqQuestionCount: 2`、Answer Cabinet、首题 `open`、原生 `<summary>`、无脚本边界及全部 HTML/发现资源预算；
+- 当前生产仍没有真实公开 `[!faq]` 内容，因此线上证据证明模块、作者资源和合成生产预览已交付，不冒充真实 FAQ 文章样本。
 
 ## 8. 经验与教训
 
