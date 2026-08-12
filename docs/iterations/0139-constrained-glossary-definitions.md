@@ -109,7 +109,9 @@ mdast 层只识别顶层候选，再验证 marker、唯一无序列表、条目�
 - 第一次定向测试暴露三处夹具/断言问题：搜索断言误把人类可读的顿号当噪声、Studio 测试使用了注册表之外的标签、列表延续段落实际需要三个空格；修正预期、规范标签和序列化缩进后通过；
 - 第一次 Playwright `run-code` 传入裸语句，第二次又尝试在 VM 中动态 import，均未执行目标预览；改为 CLI 规定的 `async (page) => { ... }` 文件后才取得有效 DOM 和截图证据。无效登录页截图已被最终证据覆盖，未记作通过。
 
-生产收敛与线上 smoke 证据在功能和归档提交推送后补记。
+- 功能提交 `b6afbaf` 与归档提交 `6f921ca` 推送后，稳定生产 `/studio/glossary-editor.mjs` 在第 9 次有界轮询从 404 收敛为 200，返回 11,220 B，并包含 `myblog-glossary` 与 `registerStudioGlossaryEditor`；
+- `npm run production:smoke -- https://blog-iota-five-59.vercel.app --expect-oauth`：42.7 秒内通过 27 条路由、GitHub OAuth 302、`glossaryCount: 1`、`glossaryTermCount: 2`、Definition Ledger 语义 HTML、无交互边界及全部 HTML/发现资源预算；
+- 当前生产仍没有真实公开 `[!glossary]` 内容，因此线上证据证明模块、作者资源和合成生产预览已交付，不冒充真实术语文章样本。
 
 ## 8. 经验与教训
 
