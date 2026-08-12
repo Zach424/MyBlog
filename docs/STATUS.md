@@ -68,8 +68,8 @@ MyBlog 是 Zach424 的个人技术知识库与公开工程日志。它把学习�
 
 - 仓库：<https://github.com/Zach424/MyBlog>，生产分支 `main`；
 - 生产站：<https://blog-iota-five-59.vercel.app>；
-- 本轮功能提交 `70aac0d` 已完成；本地证据覆盖 637/637 全量单测、8/8 实验专项、79 个生成页面/资源、35/35 应用测试、187.1 秒完整发布总门、生产依赖审计 0 漏洞、插件 3/3 SHA-256 和真实 Chromium 桌面/320 px/打印验收；归档与稳定生产证据将在本轮后续提交补齐；
-- 自动交付：上一稳定生产仍包含 `/studio/decision-editor.mjs` 与 0143 的完整 smoke 证据；`/studio/experiment-editor.mjs` 和合成实验预览将在 0144 归档提交推送后有界等待 Vercel 收敛。本轮没有改变公开内容集合或结构化端点正文，因此不重置既有生产预算基线；
+- 本轮功能提交 `70aac0d` 与首份归档提交 `2caf0cc` 已推送到 `origin/main`；本地证据覆盖 637/637 全量单测、8/8 实验专项、79 个生成页面/资源、35/35 应用测试、187.1 秒完整发布总门、生产依赖审计 0 漏洞、插件 3/3 SHA-256 和真实 Chromium 桌面/320 px/打印验收；
+- 自动交付：Vercel 已收敛到包含 `/studio/experiment-editor.mjs` 的版本；该资源在第 4 次有效有界轮询返回 200/15,583 B。稳定生产 smoke 在 39.6 秒内通过 27 条路由、GitHub OAuth 302、`experimentCount: 1`、2 个测量、2 个局限、Bench Sheet、真实 `datetime`、无交互边界及全部 HTML/发现资源预算。本轮没有改变公开内容集合或结构化端点正文，因此不重置既有生产预算基线；
 - 最新完成迭代：0144 受约束技术实验记录、未来日期门、Studio/Obsidian 作者入口、搜索降噪与 Bench Sheet；
 - Obsidian 状态：仓库根目录就是 Vault，`docs/STATUS.md`、`docs/iterations/*.md` 与 `docs/knowledge/*.md` 是同一份本地文件，可直接阅读和维护；
 - 手动外部接入：自定义域名、统计、评论、公开邮箱均暂缓，不阻塞当前开发。

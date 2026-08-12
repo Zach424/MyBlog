@@ -128,6 +128,8 @@ mdast 校验器先识别顶层 blockquote，再逐节点验证 marker/元数据�
 - Playwright CLI 在 Windows 上的长时间 `networkidle` 会被 Studio 后台请求拖住，验收改为 `domcontentloaded` 后显式等待 `[data-experiment='bench-sheet']`，从而把完成条件绑定到待测组件；
 - ASCII 验收样本最初使用连字符代替契约中的 middle dot/em dash，服务端预检按设计失败；改为字符码生成精确标点后通过，证明预览没有放宽作者契约。
 
+生产自动交付已收敛：功能提交 `70aac0d` 与首份归档提交 `2caf0cc` 均进入 `origin/main`；`/studio/experiment-editor.mjs` 在第 4 次有效有界轮询返回 200/15,583 B，并包含 `myblog-experiment` 注册契约。稳定生产 smoke 在 39.6 秒内通过 27 条路由、GitHub OAuth 302、1 条 Bench Sheet、2 个测量、2 个局限、真实 `datetime="2026-08-12"`、无按钮/contenteditable/onclick 边界，以及全部 HTML/发现资源传输预算。本轮没有改变公开内容集合或结构化端点正文，因此不重置既有生产预算基线。当前公开内容仍没有真实 `[!experiment]` 样本，生产证据证明部署后的能力与合成预览，不冒充真实作者实验。
+
 ## 8. 经验与教训
 
 1. 实验记录必须先保存可复现条件，再允许结论出现；
