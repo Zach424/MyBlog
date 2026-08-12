@@ -5,6 +5,7 @@ import { getMarkdownFaqIssue } from "../markdown-faq.ts";
 import { getMarkdownFileTreeIssue } from "../markdown-filetree.ts";
 import { getMarkdownDecisionIssue } from "../markdown-decision.ts";
 import { getMarkdownExperimentIssue } from "../markdown-experiment.ts";
+import { getMarkdownCodeChangeIssue } from "../markdown-codechange.ts";
 import { getMarkdownTimelineIssue } from "../markdown-timeline.ts";
 import { getMarkdownGlossaryIssue } from "../markdown-glossary.ts";
 import { getMarkdownReferenceIssue } from "../markdown-references.ts";
@@ -468,6 +469,15 @@ function parseFrontmatter<T>(
     );
   }
 
+  const codeChangeIssue = getMarkdownCodeChangeIssue(body);
+  if (codeChangeIssue) {
+    const location = codeChangeIssue.line ? `正文第 ${codeChangeIssue.line} 行` : "正文";
+    throw new ContentValidationError(
+      sourcePath,
+      `${location}代码变更证据无法解析：${codeChangeIssue.message}`,
+    );
+  }
+
   const referenceIssue = getMarkdownReferenceIssue(body);
   if (referenceIssue) {
     const location = referenceIssue.line ? `正文第 ${referenceIssue.line} 行` : "正文";
@@ -701,6 +711,16 @@ export function inspectContentDraft(
         message: `${location}技术实验记录无法解析：${experimentIssue.message}`,
       });
     }
+    const codeChangeIssue = getMarkdownCodeChangeIssue(body, {
+      maximumDate: buildDate,
+    });
+    if (codeChangeIssue) {
+      const location = codeChangeIssue.line ? `第 ${codeChangeIssue.line} 行` : "正文";
+      issues.push({
+        field: "body",
+        message: `${location}代码变更证据无法解析：${codeChangeIssue.message}`,
+      });
+    }
     const referenceIssue = getMarkdownReferenceIssue(body);
     if (referenceIssue) {
       const location = referenceIssue.line ? `第 ${referenceIssue.line} 行` : "正文";
@@ -867,6 +887,23 @@ export function validateContentExperiments(
     throw new ContentValidationError(
       record.sourcePath,
       `${location}技术实验记录无法解析：${issue.message}`,
+    );
+  }
+}
+
+export function validateContentCodeChanges(
+  records: ContentRecord[],
+  buildDate: string,
+) {
+  for (const record of records) {
+    const issue = getMarkdownCodeChangeIssue(record.body, {
+      maximumDate: buildDate,
+    });
+    if (!issue) continue;
+    const location = issue.line ? `正文第 ${issue.line} 行` : "正文";
+    throw new ContentValidationError(
+      record.sourcePath,
+      `${location}代码变更证据无法解析：${issue.message}`,
     );
   }
 }

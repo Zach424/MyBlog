@@ -14,6 +14,11 @@ import {
   type MarkdownExperimentIssue,
 } from "@/lib/markdown-experiment";
 import {
+  extractMarkdownCodeChanges,
+  getMarkdownCodeChangeIssue,
+  type MarkdownCodeChangeIssue,
+} from "@/lib/markdown-codechange";
+import {
   extractMarkdownAudioNotes,
   getMarkdownAudioIssue,
   type MarkdownAudioIssue,
@@ -96,6 +101,9 @@ export type StudioMathPreviewResult =
       experimentCount: number;
       experimentLimitationCount: number;
       experimentMeasurementCount: number;
+      codeChangeCount: number;
+      codeChangeFileCount: number;
+      codeChangeLineCount: number;
       faqCount: number;
       faqQuestionCount: number;
       fileTreeCount: number;
@@ -126,6 +134,7 @@ export type StudioMathPreviewResult =
         | MarkdownDiagramIssue
         | MarkdownDecisionIssue
         | MarkdownExperimentIssue
+        | MarkdownCodeChangeIssue
         | MarkdownFaqIssue
         | MarkdownFileTreeIssue
         | MarkdownTimelineIssue
@@ -210,6 +219,10 @@ export function renderStudioMathPreview(
     maximumDate: resolveContentBuildDate(),
   });
   if (experimentIssue) return { issue: experimentIssue, ok: false };
+  const codeChangeIssue = getMarkdownCodeChangeIssue(markdown, {
+    maximumDate: resolveContentBuildDate(),
+  });
+  if (codeChangeIssue) return { issue: codeChangeIssue, ok: false };
   const galleryIssue = getMarkdownGalleryIssue(markdown);
   if (galleryIssue) return { issue: galleryIssue, ok: false };
   const glossaryIssue = getMarkdownGlossaryIssue(markdown);
@@ -246,6 +259,16 @@ export function renderStudioMathPreview(
     (total, experiment) => total + experiment.limitations.length,
     0,
   );
+  const codeChanges = extractMarkdownCodeChanges(markdown);
+  const codeChangeCount = codeChanges.length;
+  const codeChangeFileCount = codeChanges.reduce(
+    (total, change) => total + change.files.length,
+    0,
+  );
+  const codeChangeLineCount = codeChanges.reduce((total, change) => {
+    if (change.mode === "UNIFIED") return total + change.diff.split("\n").length;
+    return total + change.before.split("\n").length + change.after.split("\n").length;
+  }, 0);
   const diagramCount = extractMarkdownDiagrams(markdown).length;
   const faqs = extractMarkdownFaqs(markdown);
   const faqCount = faqs.length;
@@ -327,6 +350,9 @@ export function renderStudioMathPreview(
   return {
     audioCount,
     calloutCount,
+    codeChangeCount,
+    codeChangeFileCount,
+    codeChangeLineCount,
     diagramCount,
     decisionAlternativeCount,
     decisionConsequenceCount,

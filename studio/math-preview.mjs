@@ -380,6 +380,30 @@ export function hasPotentialStudioExperiment(markdown) {
   return false;
 }
 
+export function hasPotentialStudioCodeChange(markdown) {
+  let fenceCharacter = "";
+  let fenceLength = 0;
+
+  for (const sourceLine of textValue(markdown).split(/\r?\n/u)) {
+    const line = sourceLine.replace(/^[ \t]*(?:>[ \t]*)+/u, "");
+    const fence = /^[ \t]*(`{3,}|~{3,})/u.exec(line);
+    if (fenceCharacter) {
+      if (new RegExp(`^[ \\t]*${fenceCharacter}{${fenceLength},}[ \\t]*$`, "u").test(line)) {
+        fenceCharacter = "";
+        fenceLength = 0;
+      }
+      continue;
+    }
+    if (fence) {
+      fenceCharacter = fence[1][0];
+      fenceLength = fence[1].length;
+      continue;
+    }
+    if (/^[ \t]*(?:>[ \t]*)+\[!codechange\](?:[+\-]|[ \t]|$)/iu.test(sourceLine)) return true;
+  }
+  return false;
+}
+
 function hasPotentialStudioCallout(markdown) {
   let fenceCharacter = "";
   let fenceLength = 0;
@@ -422,6 +446,7 @@ export function hasPotentialStudioRichMarkdown(markdown) {
     hasPotentialStudioTimeline(markdown) ||
     hasPotentialStudioDecision(markdown) ||
     hasPotentialStudioExperiment(markdown) ||
+    hasPotentialStudioCodeChange(markdown) ||
     hasPotentialStudioCallout(markdown) ||
     hasPotentialStudioDiagram(markdown) ||
     hasPotentialStudioVideo(markdown)
@@ -521,9 +546,14 @@ export function getStudioMathPreviewStatus(state) {
           `${state.experimentCount} 个技术实验 / ${state.experimentMeasurementCount} 项测量 / ${state.experimentLimitationCount} 项局限`,
         );
       }
+      if (state.codeChangeCount > 0) {
+        evidence.push(
+          `${state.codeChangeCount} 个代码变更 / ${state.codeChangeFileCount} 个文件 / ${state.codeChangeLineCount} 行代码`,
+        );
+      }
       if (state.videoCount > 0) evidence.push(`${state.videoCount} 段视频`);
       return {
-        detail: "这里与正式页面共享 remark、rehype、受限 KaTeX、Callout、画廊、技术表格、只读任务清单、参考资料清单、步骤流程、术语定义表、FAQ、项目文件树、项目时间线、技术决策记录、技术实验记录、Mermaid、本地音频与本地视频渲染配置。",
+        detail: "这里与正式页面共享 remark、rehype、受限 KaTeX、Callout、画廊、技术表格、只读任务清单、参考资料清单、步骤流程、术语定义表、FAQ、项目文件树、项目时间线、技术决策记录、技术实验记录、代码变更证据、Mermaid、本地音频与本地视频渲染配置。",
         label: "RICH MARKDOWN / VERIFIED",
         title: `${evidence.join("、")}已按生产规则渲染`,
       };
@@ -544,9 +574,12 @@ export function getStudioMathPreviewStatus(state) {
       const isTimeline = state.issue?.kind === "timeline";
       const isDecision = state.issue?.kind === "decision";
       const isExperiment = state.issue?.kind === "experiment";
+      const isCodeChange = state.issue?.kind === "codechange";
       return {
         detail: `${line}${state.issue?.message || "请检查增强 Markdown 语法。"}`,
-        label: isExperiment
+        label: isCodeChange
+          ? "CODE CHANGE / NEEDS FIX"
+          : isExperiment
           ? "EXPERIMENT / NEEDS FIX"
           : isDecision
           ? "DECISION / NEEDS FIX"
@@ -646,6 +679,9 @@ export function createStudioMathPreviewTemplate({
         entryNote: "",
         entryStatus: "preparing",
         calloutCount: 0,
+        codeChangeCount: 0,
+        codeChangeFileCount: 0,
+        codeChangeLineCount: 0,
         diagramCount: 0,
         decisionAlternativeCount: 0,
         decisionConsequenceCount: 0,
@@ -720,6 +756,9 @@ export function createStudioMathPreviewTemplate({
         this.setState({
           audioCount: 0,
           calloutCount: 0,
+          codeChangeCount: 0,
+          codeChangeFileCount: 0,
+          codeChangeLineCount: 0,
           diagramCount: 0,
           decisionAlternativeCount: 0,
           decisionConsequenceCount: 0,
@@ -776,6 +815,9 @@ export function createStudioMathPreviewTemplate({
           this.setState({
             audioCount: result.audioCount,
             calloutCount: result.calloutCount,
+            codeChangeCount: result.codeChangeCount,
+            codeChangeFileCount: result.codeChangeFileCount,
+            codeChangeLineCount: result.codeChangeLineCount,
             diagramCount: result.diagramCount,
             decisionAlternativeCount: result.decisionAlternativeCount,
             decisionConsequenceCount: result.decisionConsequenceCount,
@@ -813,6 +855,9 @@ export function createStudioMathPreviewTemplate({
           this.setState({
             audioCount: 0,
             calloutCount: 0,
+            codeChangeCount: 0,
+            codeChangeFileCount: 0,
+            codeChangeLineCount: 0,
             diagramCount: 0,
             decisionAlternativeCount: 0,
             decisionConsequenceCount: 0,
@@ -853,6 +898,9 @@ export function createStudioMathPreviewTemplate({
         this.setState({
           audioCount: 0,
           calloutCount: 0,
+          codeChangeCount: 0,
+          codeChangeFileCount: 0,
+          codeChangeLineCount: 0,
           diagramCount: 0,
           decisionAlternativeCount: 0,
           decisionConsequenceCount: 0,

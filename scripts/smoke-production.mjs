@@ -802,7 +802,7 @@ export async function runProductionSmoke(originInput, { expectOAuth = false } = 
   invariant(studioPolicy.includes("https://api.github.com"), "Studio CSP 缺少 GitHub API");
   invariant(studioPolicy.includes("frame-ancestors 'none'"), "Studio CSP 未禁止嵌入");
 
-  const [studioMaintenancePage, studioMaintenanceModule, studioMaintenanceStyles, studioMaintenanceResponse, studioConfig, studioManifest, studioPreflight, stableSlugWidget, entryPreflightModule, mathPreviewModule, galleryEditorModule, glossaryEditorModule, faqEditorModule, fileTreeEditorModule, timelineEditorModule, decisionEditorModule, experimentEditorModule, tableEditorModule, taskListEditorModule, referencesEditorModule, stepsEditorModule, audioEditorModule, videoEditorModule, studioPreview, katexStyles, studioRuntime, unknownStudioAsset] = await Promise.all([
+  const [studioMaintenancePage, studioMaintenanceModule, studioMaintenanceStyles, studioMaintenanceResponse, studioConfig, studioManifest, studioPreflight, stableSlugWidget, entryPreflightModule, mathPreviewModule, galleryEditorModule, glossaryEditorModule, faqEditorModule, fileTreeEditorModule, timelineEditorModule, decisionEditorModule, experimentEditorModule, codeChangeEditorModule, tableEditorModule, taskListEditorModule, referencesEditorModule, stepsEditorModule, audioEditorModule, videoEditorModule, studioPreview, katexStyles, studioRuntime, unknownStudioAsset] = await Promise.all([
     request(origin, "/studio/maintenance"),
     request(origin, "/studio/maintenance.mjs", { accept: "text/javascript" }),
     request(origin, "/studio/maintenance.css", { accept: "text/css" }),
@@ -820,6 +820,7 @@ export async function runProductionSmoke(originInput, { expectOAuth = false } = 
     request(origin, "/studio/timeline-editor.mjs", { accept: "text/javascript" }),
     request(origin, "/studio/decision-editor.mjs", { accept: "text/javascript" }),
     request(origin, "/studio/experiment-editor.mjs", { accept: "text/javascript" }),
+    request(origin, "/studio/codechange-editor.mjs", { accept: "text/javascript" }),
     request(origin, "/studio/table-editor.mjs", { accept: "text/javascript" }),
     request(origin, "/studio/task-list-editor.mjs", { accept: "text/javascript" }),
     request(origin, "/studio/references-editor.mjs", { accept: "text/javascript" }),
@@ -1036,6 +1037,16 @@ export async function runProductionSmoke(originInput, { expectOAuth = false } = 
   invariant(
     experimentEditorModule.response.headers.get("content-type")?.startsWith("text/javascript"),
     "Studio 技术实验编辑组件类型不正确",
+  );
+  invariant(
+    codeChangeEditorModule.response.status === 200 &&
+      codeChangeEditorModule.body.includes("registerStudioCodeChangeEditor") &&
+      codeChangeEditorModule.body.includes("myblog-codechange"),
+    "Studio 代码变更编辑组件不可用",
+  );
+  invariant(
+    codeChangeEditorModule.response.headers.get("content-type")?.startsWith("text/javascript"),
+    "Studio 代码变更编辑组件类型不正确",
   );
   invariant(
     fileTreeEditorModule.response.headers.get("content-type")?.startsWith("text/javascript"),
@@ -1316,6 +1327,30 @@ export async function runProductionSmoke(originInput, { expectOAuth = false } = 
       experimentPreviewPayload.html.includes('datetime="2026-08-12"') &&
       !/<button|contenteditable|onclick=/iu.test(experimentPreviewPayload.html),
     "Studio 技术实验生产管线预览不可用",
+  );
+
+  const codeChangePreview = await request(origin, "/studio/math-preview", {
+    accept: "application/json",
+    body: JSON.stringify({
+      markdown:
+        "> [!codechange] 为 Studio 增加代码变更编辑器\n> **MODE:** `UNIFIED` · **DATE:** `2026-08-12`\n>\n> **PURPOSE**\n>\n> 让文章保留可审阅的实现依据，而不连接线上 Git 仓库。\n>\n> **FILES**\n>\n> - `MODIFIED` `lib/example.ts` — 收敛共享解析与渲染入口。\n>\n> **CHANGE**\n>\n> **DIFF**\n>\n> ~~~diff\n> diff --git a/lib/example.ts b/lib/example.ts\n> --- a/lib/example.ts\n> +++ b/lib/example.ts\n> @@ -1 +1 @@\n> -export const enabled = false;\n> +export const enabled = true;\n> ~~~\n>\n> **VERIFICATION**\n>\n> - **Unit tests** `8/8` — 解析、预算和失败路径全部通过。\n>\n> **RISKS**\n>\n> - **示例漂移** — 编辑器与服务端必须继续共享固定契约。",
+    }),
+    headers: { "content-type": "application/json" },
+    method: "POST",
+  });
+  const codeChangePreviewPayload = JSON.parse(codeChangePreview.body);
+  invariant(
+    codeChangePreview.response.status === 200 &&
+      codeChangePreviewPayload.ok === true &&
+      codeChangePreviewPayload.codeChangeCount === 1 &&
+      codeChangePreviewPayload.codeChangeFileCount === 1 &&
+      codeChangePreviewPayload.codeChangeLineCount === 6 &&
+      codeChangePreviewPayload.html.includes('data-code-change="review-docket"') &&
+      codeChangePreviewPayload.html.includes("FILES / REVIEW INDEX") &&
+      codeChangePreviewPayload.html.includes("UNIFIED DIFF") &&
+      codeChangePreviewPayload.html.includes("KNOWN RISKS") &&
+      !/<button|contenteditable|onclick=/iu.test(codeChangePreviewPayload.html),
+    "Studio 代码变更生产管线预览不可用",
   );
 
   const entryPreflight = await request(origin, "/studio/entry-preflight", {

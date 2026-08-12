@@ -6,6 +6,7 @@ import {
 import type { SearchDocument } from "./search.ts";
 import { normalizeMarkdownAudioNotesForPlainText } from "./markdown-audio.ts";
 import { normalizeMarkdownCalloutsForPlainText } from "./markdown-callout.ts";
+import { normalizeMarkdownCodeChangesForPlainText } from "./markdown-codechange.ts";
 import { normalizeMarkdownDecisionsForPlainText } from "./markdown-decision.ts";
 import { normalizeMarkdownExperimentsForPlainText } from "./markdown-experiment.ts";
 import { normalizeMarkdownFaqsForPlainText } from "./markdown-faq.ts";
@@ -70,6 +71,7 @@ export function markdownToPlainText(markdown: string) {
   tree = normalizeMarkdownTimelinesForPlainText(tree);
   tree = normalizeMarkdownDecisionsForPlainText(tree);
   tree = normalizeMarkdownExperimentsForPlainText(tree);
+  tree = normalizeMarkdownCodeChangesForPlainText(tree);
   tree = normalizeMarkdownCalloutsForPlainText(tree);
   return markdownNodeText(tree).replace(/\s+/gu, " ").trim();
 }

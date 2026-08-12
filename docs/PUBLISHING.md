@@ -234,6 +234,49 @@ Studio 在正文工具栏选择“技术实验记录”，填写结果状态、�
 
 叙述与说明允许文本、行内代码/公式、简单强调、删除与链接；不要放图片、HTML、脚注、硬换行、嵌套列表、任务状态或额外段落。区段名称与顺序必须保持一致。状态只描述这次证据与假设的关系，不表示统计显著性；第一版不在线运行实验、采集遥测、保存原始数据、比较多次运行或自动生成结论。
 
+### 发布代码变更证据
+
+Studio 在正文工具栏选择“代码变更证据”，选择 UNIFIED 或 BEFORE_AFTER，填写真实日期、目的、文件台账、代码、验证与风险。Obsidian 可从命令面板运行“插入代码变更证据模板”，也可以直接写开放 Markdown：
+
+````markdown
+> [!codechange] 为搜索索引加入代码变更正文
+> **MODE:** `UNIFIED` · **DATE:** `2026-08-12`
+>
+> **PURPOSE**
+>
+> 让读者可以按目的、路径、关键代码与验证结果检索这条变更。
+>
+> **FILES**
+>
+> - `MODIFIED` `lib/search-index.ts` — 把受约束代码变更转换为可检索正文。
+>
+> **CHANGE**
+>
+> **DIFF**
+>
+> ~~~diff
+> diff --git a/lib/search-index.ts b/lib/search-index.ts
+> --- a/lib/search-index.ts
+> +++ b/lib/search-index.ts
+> @@ -1,2 +1,3 @@
+>  import { normalizeMarkdown } from "./markdown-normalize";
+> +import { normalizeMarkdownCodeChanges } from "./markdown-codechange";
+>  export function buildSearchIndex() {}
+> ~~~
+>
+> **VERIFICATION**
+>
+> - **专项测试** `11/11 PASS` — 合法、错误、搜索和编辑器往返全部通过。
+>
+> **RISKS**
+>
+> - **示例漂移** — 编辑器与服务端必须继续共享固定契约。
+````
+
+BEFORE_AFTER 模式把 CHANGE 中的 `diff` 围栏替换为同语言的 `**BEFORE:** \`ts\`` 与 `**AFTER:** \`ts\`` 两个围栏。每条记录包含 1–4 个文件、1–6 个验证和 1–6 个风险；每篇最多 2 条、合计最多 6 个文件与 240 行代码。单块最多 160 行、16,000 字符，单行最多 240 字符。路径必须是安全仓库相对路径；重命名写成 `old/path -> new/path`，UNIFIED 的文件状态、顺序和端点必须与 diff 完全对应。
+
+不要粘贴私钥、token、Authorization、Cookie、数据库密码或 `.env` 值；疑似凭据会被构建门拒绝，但作者仍须在发布前人工脱敏。该块只记录已完成并复核的证据，不会读取 Git、执行 patch、编辑仓库或连接 PR/CI。
+
 不要在正文、字段或截图中保存 OAuth token。若后台显示未配置，检查 Vercel Production 的 `GITHUB_OAUTH_ID` 与 `GITHUB_OAUTH_SECRET`，不要把值复制到聊天。
 
 ### 在 Studio 查看内容复核队列
@@ -261,7 +304,7 @@ Studio 在正文工具栏选择“技术实验记录”，填写结果状态、�
 9. 确认当前内容已经可以公开后，运行“发布当前草稿并同步 GitHub”；该命令会把 `draft` 改为 `false`，未来日期内容会保持计划状态；
 10. 阅读预检摘要，确认目标路径、附件源/产物格式、宽高、帧数、体积变化、站内链接、内容语境和 frontmatter；
 11. 发布器运行完整质量门、创建内容提交并 push `main`；Vercel Git 连接完成后会自动上线。若团队改用 PR 流程，则不要运行同步命令，改由普通 Git 客户端创建分支和 PR。
-12. MyBlog Publisher 1.54.0 会先确认运行代码、runtime manifest 和磁盘插件版本一致，验证三个插件文件的 bundle 摘要，并证明 bundle 与三个目标文件均由 Git HEAD 跟踪、index 相等且 worktree 未修改；推送成功后再校验 Git 交付证据、释放可能存在的写事务并完成 Vault reconcile，自动等待该篇正式内容上线。push 失败后使用两条“重新同步待交付…”恢复成功也会自动接力。只在使用网页或普通 Git 时，才手动打开正式笔记运行“等待当前正式内容上线”。需要核对全库时运行“检查生产内容同步状态”。
+12. MyBlog Publisher 1.55.0 会先确认运行代码、runtime manifest 和磁盘插件版本一致，验证三个插件文件的 bundle 摘要，并证明 bundle 与三个目标文件均由 Git HEAD 跟踪、index 相等且 worktree 未修改；推送成功后再校验 Git 交付证据、释放可能存在的写事务并完成 Vault reconcile，自动等待该篇正式内容上线。push 失败后使用两条“重新同步待交付…”恢复成功也会自动接力。只在使用网页或普通 Git 时，才手动打开正式笔记运行“等待当前正式内容上线”。需要核对全库时运行“检查生产内容同步状态”。
 
 ### 用受信模板新建一个 inbox 草稿
 

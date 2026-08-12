@@ -392,3 +392,22 @@ Studio 自定义组件和浏览器预检是作者反馈层，不是安全边界�
 Studio 的 nested list 负责可发现编辑和重排，不承担最终权威；服务端内容契约仍会重新解析序列化 Markdown。Obsidian 1.43.0 只增加模板命令和 `GALLERY` 媒体用途，图片继续复用真实格式、3 MiB/2560 px、目标冲突、原子 rename、失败回滚和 sealed Git envelope。
 
 读者端没有画廊客户端岛。HAST 使用 `section/header/ol/li/figure/figcaption` 保留顺序；桌面双栏、`32rem` 以下单栏，4:3 深色舞台使用 `object-fit: contain`，打印保持所有帧。灯箱、轮播、iframe、手势和远程图库均不在边界内。
+
+## 受约束代码变更证据边界（Iteration 0145）
+
+代码变更事实源仍是 Markdown，不读取实时 Git，也不把 Studio 表单或渲染后的 HTML 当成第二份数据：
+
+```text
+> [!codechange] 标题
+> **MODE:** `UNIFIED|BEFORE_AFTER` · **DATE:** `YYYY-MM-DD`
+> PURPOSE / FILES / CHANGE / VERIFICATION / RISKS
+  → `extractMarkdownCodeChanges` 解析固定 mdast 序列与来源行
+  → `getMarkdownCodeChangeIssue` 校验路径、diff、预算、日期与疑似凭据
+  → Studio/Obsidian 只生成同一可移植语法
+  → `rehypeMarkdownCodeChanges` 生成静态 Review Docket
+  → 搜索、320 px、深浅色与打印消费同一结构
+```
+
+`lib/markdown-codechange.ts` 是唯一服务端语义边界。每篇最多 2 个记录、合计最多 6 个文件与 240 行代码；每条包含 1–4 个文件、1–6 个验证和 1–6 个风险。UNIFIED 要求文件台账与 `diff --git` 文件段逐项同序对应，并校验 ADDED/MODIFIED/DELETED/RENAMED 端点；BEFORE_AFTER 要求一组允许语言的前后代码围栏。两种模式都限制单块 160 行、16,000 字符、单行 240 字符，并拒绝路径遍历、保留路径、重复目标、未来日期和疑似 token/key。
+
+Studio 的 `myblog-codechange` 组件只改善条件输入、排序和本地即时反馈；序列化后仍由 `/studio/math-preview` 与内容契约重新解析。Obsidian 1.55.0 只增加一个模板插入命令，继续复用插件既有 bundle 完整性和 Git provenance 边界。公开 `MarkdownContent` 对 `.markdown-codechange-pre` 保留原生 `pre`，有意绕过通用复制按钮，因此阅读页没有 patch 应用、仓库编辑、折叠、评论或读者状态。

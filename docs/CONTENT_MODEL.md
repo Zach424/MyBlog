@@ -328,3 +328,13 @@ Obsidian 草稿可以使用更自然的输入，发布器会在进入正式内�
 公开内容的 HTTPS 库存同时包含正文普通链接和 frontmatter 结构化端点。正文通过 GFM AST 识别裸 URL、行内链接和引用式链接，保留正文相对行与可见标签；文章的 `canonical`、项目的 `repository`/`demo` 以 `frontmatter.<field>` 标记。每个 occurrence 都有 `sourceField`，同一规范 URL 即使同时出现在正文与字段中也只形成一个 link entry，但保留全部出现次数，来源记录数继续按内容文件去重。图片、行内/围栏代码、站内路径、纯锚点和邮件链接不参与；显式 `demo: null` 表示没有公开演示地址，不生成 occurrence。
 
 结构化字段先由 schema 保证合法 HTTPS，再与正文链接复用同一 URL 规范化与检查器；没有第二套网络逻辑。正文中的 HTTP、协议相对、无法解析的 HTTPS 与含凭据 URL 不会进入可检查清单，而是形成不泄露凭据的本地 issue。默认库存完全离线且确定；实时健康状态不是内容字段，也不写回 Markdown，因为状态、网络路径、限流和 DNS 会变化。显式检查按唯一 URL 只用一次 HEAD，不用 GET 兜底；401/403/429 或 405/501 表示自动检查受限，5xx/超时/网络错误表示当前证据不足，只有确定缺失/客户端错误、不安全目标或坏重定向才归为 broken。`--fail-on-broken` 是作者主动选择，默认报告不因外部网络状态失败。
+
+## 代码变更证据
+
+代码变更使用顶层 `[!codechange]` Callout，并固定为标题、MODE/DATE 元数据、PURPOSE、FILES、CHANGE、VERIFICATION、RISKS。MODE 只能是 `UNIFIED` 或 `BEFORE_AFTER`；日期必须为真实且不晚于构建报告日。该日期描述记录的变更发生日，不从 Git commit 推断，也不表达计划或审批状态。
+
+FILES 是 1–4 项文件台账，每项由 `ADDED|MODIFIED|DELETED|RENAMED`、仓库相对路径和说明组成。普通状态只允许单一路径；RENAMED 使用 `old -> new`。路径限制为 1–180 字符、正斜杠、无空白/控制字符/`.`/`..`/`.git` 或平台保留片段；所有最终目标经 NFKC 后必须唯一。每篇最多 2 条代码变更、合计最多 6 个文件。
+
+UNIFIED 的 CHANGE 保存一个 `diff` 围栏，并要求 `diff --git` 文件段与 FILES 数量、顺序、状态和端点一致；BEFORE_AFTER 保存两个同语言围栏，语言必须来自显式允许集合。单块最多 160 行、16,000 字符、每行最多 240 字符，每篇合计最多 240 行。VERIFICATION 保存 1–6 条名称、行内代码结果和说明；RISKS 保存 1–6 条名称和说明。目的与说明允许受限行内 Markdown，但不能引入图片、HTML、脚注、硬换行或嵌套结构。
+
+解析器还拒绝常见私钥、访问 token 和 secret 赋值形态。这个门只能降低意外发布风险，不能证明代码正确、diff 完整或验证真的运行过；commit SHA、PR/CI 状态、签名和真实仓库内容都不是 v1 内容字段。

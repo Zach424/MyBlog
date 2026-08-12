@@ -1,9 +1,9 @@
 {
   "id": "myblog-publisher",
   "name": "MyBlog Publisher",
-  "version": "1.54.0",
+  "version": "1.55.0",
   "minAppVersion": "1.5.7",
-  "description": "Create filename-owned drafts, insert portable rich-content, decision, and experiment templates, and hand trusted Git deliveries to bounded production convergence.",
+  "description": "Create filename-owned drafts, insert portable rich-content and code-change evidence, and hand trusted Git deliveries to bounded production convergence.",
   "author": "Zach424",
   "isDesktopOnly": true
 }

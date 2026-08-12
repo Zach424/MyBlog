@@ -8,6 +8,7 @@ import {
   validateContentFreshness,
   validateContentDecisions,
   validateContentExperiments,
+  validateContentCodeChanges,
   validateContentTimelines,
 } from "../lib/content/contract.ts";
 import { deriveContentRelations } from "../lib/content/relations.ts";
@@ -50,6 +51,7 @@ export async function validateContentRepository(
   validateContentTimelines([...posts, ...projects], contentBuildDate);
   validateContentDecisions([...posts, ...projects], contentBuildDate);
   validateContentExperiments([...posts, ...projects], contentBuildDate);
+  validateContentCodeChanges([...posts, ...projects], contentBuildDate);
   const buildTime = new Date(`${contentBuildDate}T12:00:00Z`);
   validateContentFreshness(
     [...posts, ...projects].filter((record) => isPublished(record, buildTime)),

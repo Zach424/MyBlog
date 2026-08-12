@@ -106,14 +106,18 @@ function createMarkdownComponents(
         />
       );
     },
-    pre({ children }) {
+    pre({ children, className: preClassName, node, ...props }) {
+      void node;
+      if (preClassName?.split(/\s+/u).includes("markdown-codechange-pre")) {
+        return <pre {...props} className={preClassName}>{children}</pre>;
+      }
       const codeElement = Children.toArray(children).find(isValidElement);
-      const className = isValidElement<{ className?: string }>(codeElement)
+      const codeClassName = isValidElement<{ className?: string }>(codeElement)
         ? codeElement.props.className
         : undefined;
 
       return (
-        <CodeBlock language={getCodeLanguageLabel(className)}>{children}</CodeBlock>
+        <CodeBlock language={getCodeLanguageLabel(codeClassName)}>{children}</CodeBlock>
       );
     },
     span({ children, className, node, ...props }) {

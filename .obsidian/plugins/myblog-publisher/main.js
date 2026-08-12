@@ -28,7 +28,7 @@ const AUTHOR_DOCTOR_PLUGIN_BUNDLE_VERSION = 1;
 const AUTHOR_DOCTOR_PLUGIN_PROVENANCE_VERSION = 1;
 const INBOX_READINESS_REPORT_VERSION = 8;
 const AUTHOR_DOCTOR_NODE_ENGINE = ">=22.13.0";
-const AUTHOR_DOCTOR_PLUGIN_VERSION = "1.54.0";
+const AUTHOR_DOCTOR_PLUGIN_VERSION = "1.55.0";
 const CURRENT_DRAFT_INTENT_RUN_SCOPE = Symbol("current-draft-intent");
 const PRODUCTION_CONTENT_CONVERGENCE_RUN_SCOPE = Symbol(
   "production-content-convergence",
@@ -359,6 +359,50 @@ function createExperimentTemplate(filePath) {
     ">",
     "> - **单次运行** — 没有重复样本，不能证明长期耗时分布。",
     "> - **单机范围** — 结果只覆盖当前硬件、系统与依赖版本。",
+  ].join("\n");
+}
+
+function createCodeChangeTemplate(filePath) {
+  const normalized = String(filePath || "").replaceAll("\\", "/");
+  if (
+    !/^content\/(inbox|posts|projects)\/[a-z0-9]+(?:-[a-z0-9]+)*\.md$/u.test(
+      normalized,
+    )
+  ) {
+    throw new Error("代码变更模板只能插入 content/inbox、content/posts 或 content/projects 中的博客文档");
+  }
+  return [
+    "> [!codechange] 为 Studio 增加代码变更编辑器",
+    "> **MODE:** `UNIFIED` · **DATE:** `2026-08-12`",
+    ">",
+    "> **PURPOSE**",
+    ">",
+    "> 让文章保留可审阅的实现依据，而不连接线上 Git 仓库。",
+    ">",
+    "> **FILES**",
+    ">",
+    "> - `MODIFIED` `lib/example.ts` — 收敛共享解析与渲染入口。",
+    ">",
+    "> **CHANGE**",
+    ">",
+    "> **DIFF**",
+    ">",
+    "> ~~~diff",
+    "> diff --git a/lib/example.ts b/lib/example.ts",
+    "> --- a/lib/example.ts",
+    "> +++ b/lib/example.ts",
+    "> @@ -1 +1 @@",
+    "> -export const enabled = false;",
+    "> +export const enabled = true;",
+    "> ~~~",
+    ">",
+    "> **VERIFICATION**",
+    ">",
+    "> - **Unit tests** `8/8` — 解析、预算和失败路径全部通过。",
+    ">",
+    "> **RISKS**",
+    ">",
+    "> - **示例漂移** — 编辑器与服务端必须继续共享同一份固定契约。",
   ].join("\n");
 }
 
@@ -6333,6 +6377,20 @@ module.exports = class MyBlogPublisher extends Plugin {
           const template = createExperimentTemplate(view?.file?.path);
           editor.replaceSelection(template);
           new Notice("已插入技术实验记录；请替换标题、状态、日期、假设、环境、方法、样本、测量、结论与局限");
+        } catch (error) {
+          new Notice(error instanceof Error ? error.message : String(error));
+        }
+      },
+    });
+
+    this.addCommand({
+      id: "insert-codechange-template",
+      name: "插入代码变更证据模板",
+      editorCallback: (editor, view) => {
+        try {
+          const template = createCodeChangeTemplate(view?.file?.path);
+          editor.replaceSelection(template);
+          new Notice("已插入完整 unified diff 代码变更证据；请替换标题、日期、目的、文件、diff、验证与风险");
         } catch (error) {
           new Notice(error instanceof Error ? error.message : String(error));
         }

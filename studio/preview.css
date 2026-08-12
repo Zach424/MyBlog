@@ -225,6 +225,43 @@ th, td { padding: 0.6rem; border: 1px solid var(--rule); text-align: left; }
 .markdown-content .markdown-experiment-limitation { display: grid; grid-template-columns: minmax(6.4rem, 0.85fr) minmax(0, 1.15fr); margin: 0; }
 .markdown-content .markdown-experiment-limitation-title { border-right: 1px solid var(--rule); font-size: 0.72rem; line-height: 1.55; }
 
+.markdown-content .markdown-codechange { margin-block: 2rem; border-block: 1px solid var(--ink); background: color-mix(in srgb, var(--rule) 14%, var(--paper)); }
+.markdown-content .markdown-codechange-header { display: grid; grid-template-columns: 2rem minmax(0, 1fr); border-bottom: 1px solid var(--ink); }
+.markdown-content .markdown-codechange-spine { display: grid; place-items: center; padding-block: 0.65rem; border-right: 1px solid var(--ink); background: repeating-linear-gradient(180deg, var(--ink) 0 0.72rem, color-mix(in srgb, var(--ink) 82%, var(--signal)) 0.72rem 0.88rem); color: var(--paper); font: 750 0.53rem/1 "Cascadia Code", Consolas, monospace; letter-spacing: 0.12em; writing-mode: vertical-rl; transform: rotate(180deg); }
+.markdown-content .markdown-codechange-heading { display: grid; min-width: 0; }
+.markdown-content .markdown-codechange-meta { display: flex; min-height: 2.35rem; align-items: center; gap: 0.65rem; padding: 0.48rem 0.75rem; border-bottom: 1px solid var(--rule); color: var(--muted); font: 700 0.625rem/1.4 "Cascadia Code", Consolas, monospace; letter-spacing: 0.075em; }
+.markdown-content .markdown-codechange-mode { padding: 0.12rem 0.42rem; border: 1px solid currentColor; color: var(--signal); }
+.markdown-content .markdown-codechange-file-count { margin-left: auto; }
+.markdown-content .markdown-codechange-title { padding: 0.9rem 1rem 1rem; font-size: 1.15rem; line-height: 1.42; overflow-wrap: anywhere; }
+.markdown-content .markdown-codechange-purpose { display: grid; grid-template-columns: 7.2rem minmax(0, 1fr); border-bottom: 1px solid var(--ink); background: var(--paper); }
+.markdown-content .markdown-codechange-purpose-label, .markdown-content .markdown-codechange-purpose-copy { padding: 0.82rem 0.9rem; }
+.markdown-content .markdown-codechange-purpose-label { border-right: 1px solid var(--rule); color: var(--signal); font: 750 0.58rem/1.45 "Cascadia Code", Consolas, monospace; letter-spacing: 0.08em; }
+.markdown-content .markdown-codechange-purpose-copy { font-size: 0.84rem; font-weight: 650; line-height: 1.72; }
+.markdown-content .markdown-codechange-ledger-header { display: flex; min-height: 2.35rem; align-items: center; justify-content: space-between; gap: 0.75rem; padding: 0.5rem 0.7rem; border-bottom: 1px solid var(--rule); font: 750 0.58rem/1.4 "Cascadia Code", Consolas, monospace; letter-spacing: 0.08em; }
+.markdown-content .markdown-codechange-ledger-count { color: var(--muted); }
+.markdown-content .markdown-codechange-file-list, .markdown-content .markdown-codechange-ledger-list { margin: 0; padding: 0; list-style: none; }
+.markdown-content .markdown-codechange-file { display: grid; grid-template-columns: 6.8rem minmax(10rem, 0.8fr) minmax(0, 1.2fr); margin: 0; background: var(--paper); }
+.markdown-content .markdown-codechange-file:not(:last-child), .markdown-content .markdown-codechange-verification:not(:last-child), .markdown-content .markdown-codechange-risk:not(:last-child) { border-bottom: 1px solid var(--rule); }
+.markdown-content .markdown-codechange-file-status, .markdown-content .markdown-codechange-file-path, .markdown-content .markdown-codechange-file-copy { min-width: 0; padding: 0.68rem 0.72rem; overflow-wrap: anywhere; }
+.markdown-content .markdown-codechange-file-status { border-right: 1px solid var(--rule); color: var(--muted); font: 750 0.64rem/1.55 "Cascadia Code", Consolas, monospace; }
+.markdown-content .markdown-codechange-file-path { border-right: 1px solid var(--rule); border-radius: 0; background: color-mix(in srgb, var(--rule) 35%, var(--paper)); color: var(--ink); font: 700 0.68rem/1.55 "Cascadia Code", Consolas, monospace; }
+.markdown-content .markdown-codechange-file-copy, .markdown-content .markdown-codechange-verification-copy, .markdown-content .markdown-codechange-risk-copy { color: var(--muted); font-size: 0.74rem; line-height: 1.65; }
+.markdown-content .markdown-codechange-change { display: grid; min-width: 0; border-block: 1px solid var(--ink); background: #101820; }
+.markdown-content .markdown-codechange-split { grid-template-columns: repeat(2, minmax(0, 1fr)); }
+.markdown-content .markdown-codechange-code-stage { min-width: 0; }
+.markdown-content .markdown-codechange-code-stage + .markdown-codechange-code-stage { border-left: 1px solid #41515c; }
+.markdown-content .markdown-codechange-code-label { padding: 0.48rem 0.72rem; border-bottom: 1px solid #41515c; color: #a8b9be; font: 750 0.58rem/1.4 "Cascadia Code", Consolas, monospace; letter-spacing: 0.1em; }
+.markdown-content .markdown-codechange-pre { max-width: 100%; margin: 0; padding: 0.9rem 1rem 1rem; border: 0; border-radius: 0; background: transparent; overflow: auto; }
+.markdown-content .markdown-codechange-code { display: block; width: max-content; min-width: 100%; padding: 0; background: transparent; color: #edf4f5; font: 500 0.72rem/1.72 "Cascadia Code", Consolas, monospace; white-space: pre; }
+.markdown-content .markdown-codechange-evidence { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); background: var(--paper); }
+.markdown-content .markdown-codechange-verifications { border-right: 1px solid var(--ink); }
+.markdown-content .markdown-codechange-risks { background: repeating-linear-gradient(135deg, transparent 0 0.65rem, color-mix(in srgb, var(--rule) 26%, transparent) 0.65rem 0.72rem), var(--paper); }
+.markdown-content .markdown-codechange-verification { display: grid; grid-template-columns: minmax(6.2rem, 0.75fr) minmax(4.5rem, 0.5fr) minmax(0, 1.4fr); margin: 0; }
+.markdown-content .markdown-codechange-risk { display: grid; grid-template-columns: minmax(6.2rem, 0.75fr) minmax(0, 1.25fr); margin: 0; }
+.markdown-content .markdown-codechange-verification-label, .markdown-content .markdown-codechange-verification-value, .markdown-content .markdown-codechange-verification-copy, .markdown-content .markdown-codechange-risk-title, .markdown-content .markdown-codechange-risk-copy { min-width: 0; padding: 0.68rem 0.72rem; overflow-wrap: anywhere; }
+.markdown-content .markdown-codechange-verification-label, .markdown-content .markdown-codechange-risk-title { border-right: 1px solid var(--rule); font-size: 0.72rem; line-height: 1.55; }
+.markdown-content .markdown-codechange-verification-value { border-right: 1px solid var(--rule); border-radius: 0; background: color-mix(in srgb, var(--signal) 7%, var(--paper)); color: var(--signal); font: 750 0.68rem/1.55 "Cascadia Code", Consolas, monospace; }
+
 @media print {
   .markdown-content .markdown-timeline { break-inside: auto; }
   .markdown-content .markdown-timeline-header, .markdown-content .markdown-timeline-event { break-inside: avoid-page; }
@@ -234,6 +271,9 @@ th, td { padding: 0.6rem; border: 1px solid var(--rule); text-align: left; }
   .markdown-content .markdown-decision-header, .markdown-content .markdown-decision-copy-panel, .markdown-content .markdown-decision-ledger-item { break-inside: avoid-page; }
   .markdown-content .markdown-experiment { break-inside: auto; }
   .markdown-content .markdown-experiment-header, .markdown-content .markdown-experiment-copy-panel, .markdown-content .markdown-experiment-measurement, .markdown-content .markdown-experiment-limitation { break-inside: avoid-page; }
+  .markdown-content .markdown-codechange { break-inside: auto; }
+  .markdown-content .markdown-codechange-header, .markdown-content .markdown-codechange-purpose, .markdown-content .markdown-codechange-file, .markdown-content .markdown-codechange-code-stage, .markdown-content .markdown-codechange-verification, .markdown-content .markdown-codechange-risk { break-inside: avoid-page; }
+  .markdown-content .markdown-codechange-pre, .markdown-content .markdown-codechange-code { width: auto; white-space: pre-wrap; overflow: visible; overflow-wrap: anywhere; }
 }
 
 @media (max-width: 32rem) {
@@ -273,6 +313,15 @@ th, td { padding: 0.6rem; border: 1px solid var(--rule); text-align: left; }
   .markdown-content .markdown-experiment-measurements { grid-row: auto; border-right: 0; border-bottom: 1px solid var(--ink); }
   .markdown-content .markdown-experiment-measurement { grid-template-columns: minmax(5.8rem, 0.8fr) minmax(5rem, 0.7fr) minmax(0, 1.5fr); }
   .markdown-content .markdown-experiment-limitation { grid-template-columns: 5.8rem minmax(0, 1fr); }
+  .markdown-content .markdown-codechange-header { grid-template-columns: 1.6rem minmax(0, 1fr); }
+  .markdown-content .markdown-codechange-meta { align-items: flex-start; flex-direction: column; }
+  .markdown-content .markdown-codechange-file-count { margin-left: 0; }
+  .markdown-content .markdown-codechange-purpose { grid-template-columns: 5.6rem minmax(0, 1fr); }
+  .markdown-content .markdown-codechange-file { grid-template-columns: 5.7rem minmax(0, 1fr); }
+  .markdown-content .markdown-codechange-file-copy { grid-column: 2; padding-top: 0; }
+  .markdown-content .markdown-codechange-split, .markdown-content .markdown-codechange-evidence { grid-template-columns: 1fr; }
+  .markdown-content .markdown-codechange-code-stage + .markdown-codechange-code-stage { border-top: 1px solid #41515c; border-left: 0; }
+  .markdown-content .markdown-codechange-verifications { border-right: 0; border-bottom: 1px solid var(--ink); }
 }
 
 .markdown-content .markdown-procedure { margin-block: 2rem; border-block: 1px solid var(--ink); background: color-mix(in srgb, var(--rule) 18%, var(--paper)); }

@@ -2100,6 +2100,291 @@
   overflow-wrap: anywhere;
 }
 
+.markdown-content .markdown-codechange {
+  margin-block: 2rem;
+  border-block: 0.0625rem solid var(--trace-dark);
+  background: color-mix(in srgb, var(--trace) 8%, var(--paper));
+}
+
+.markdown-content .markdown-codechange-header {
+  display: grid;
+  grid-template-columns: 2rem minmax(0, 1fr);
+  min-width: 0;
+  border-bottom: 0.0625rem solid var(--trace-dark);
+}
+
+.markdown-content .markdown-codechange-spine {
+  display: grid;
+  place-items: center;
+  padding-block: 0.65rem;
+  border-right: 0.0625rem solid var(--trace-dark);
+  background:
+    repeating-linear-gradient(
+      180deg,
+      var(--ink) 0 0.72rem,
+      color-mix(in srgb, var(--ink) 82%, var(--signal)) 0.72rem 0.88rem
+    );
+  color: var(--paper);
+  font: 750 0.53rem/1 var(--mono);
+  letter-spacing: 0.12em;
+  writing-mode: vertical-rl;
+  transform: rotate(180deg);
+}
+
+.markdown-content .markdown-codechange-heading { display: grid; min-width: 0; }
+
+.markdown-content .markdown-codechange-meta {
+  display: flex;
+  min-height: 2.35rem;
+  align-items: center;
+  gap: 0.65rem;
+  padding: 0.48rem 0.75rem;
+  border-bottom: 0.0625rem solid var(--rule);
+  color: var(--muted);
+  font: 700 0.625rem/1.4 var(--mono);
+  letter-spacing: 0.075em;
+}
+
+.markdown-content .markdown-codechange-mode {
+  padding: 0.12rem 0.42rem;
+  border: 0.0625rem solid currentColor;
+  color: var(--signal);
+}
+
+.markdown-content .markdown-codechange-file-count { margin-left: auto; }
+.markdown-content .markdown-codechange-date { font-style: normal; font-variant-numeric: tabular-nums; }
+
+.markdown-content .markdown-codechange-title {
+  min-width: 0;
+  padding: 0.9rem 1rem 1rem;
+  font-size: clamp(1.05rem, 1.75vw, 1.35rem);
+  line-height: 1.42;
+  letter-spacing: -0.02em;
+  overflow-wrap: anywhere;
+}
+
+.markdown-content .markdown-codechange-purpose {
+  display: grid;
+  grid-template-columns: 7.2rem minmax(0, 1fr);
+  min-width: 0;
+  border-bottom: 0.0625rem solid var(--trace-dark);
+  background: var(--paper);
+}
+
+.markdown-content .markdown-codechange-purpose-label,
+.markdown-content .markdown-codechange-purpose-copy {
+  min-width: 0;
+  padding: 0.82rem 0.9rem;
+}
+
+.markdown-content .markdown-codechange-purpose-label {
+  border-right: 0.0625rem solid var(--rule);
+  color: var(--signal);
+  font: 750 0.58rem/1.45 var(--mono);
+  letter-spacing: 0.08em;
+}
+
+.markdown-content .markdown-codechange-purpose-copy {
+  color: var(--ink);
+  font-size: 0.84rem;
+  font-weight: 650;
+  line-height: 1.72;
+  overflow-wrap: anywhere;
+}
+
+.markdown-content .markdown-codechange-ledger-header {
+  display: flex;
+  min-height: 2.35rem;
+  align-items: center;
+  justify-content: space-between;
+  gap: 0.75rem;
+  padding: 0.5rem 0.7rem;
+  border-bottom: 0.0625rem solid var(--rule);
+  font: 750 0.58rem/1.4 var(--mono);
+  letter-spacing: 0.08em;
+}
+
+.markdown-content .markdown-codechange-ledger-count {
+  color: var(--muted);
+  font-variant-numeric: tabular-nums;
+}
+
+.markdown-content .markdown-codechange-file-list,
+.markdown-content .markdown-codechange-ledger-list {
+  margin: 0;
+  padding: 0;
+  list-style: none;
+}
+
+.markdown-content .markdown-codechange-file {
+  display: grid;
+  grid-template-columns: 6.8rem minmax(10rem, 0.8fr) minmax(0, 1.2fr);
+  min-width: 0;
+  margin: 0;
+  background: var(--paper);
+}
+
+.markdown-content .markdown-codechange-file:not(:last-child),
+.markdown-content .markdown-codechange-verification:not(:last-child),
+.markdown-content .markdown-codechange-risk:not(:last-child) { border-bottom: 0.0625rem solid var(--rule); }
+
+.markdown-content .markdown-codechange-file-status,
+.markdown-content .markdown-codechange-file-path,
+.markdown-content .markdown-codechange-file-copy {
+  min-width: 0;
+  padding: 0.68rem 0.72rem;
+  overflow-wrap: anywhere;
+}
+
+.markdown-content .markdown-codechange-file-status {
+  border-right: 0.0625rem solid var(--rule);
+  color: var(--muted);
+  font: 750 0.64rem/1.55 var(--mono);
+  letter-spacing: 0.05em;
+}
+
+.markdown-content .markdown-codechange-file[data-file-status="added"] .markdown-codechange-file-status,
+.markdown-content .markdown-codechange-file[data-file-status="renamed"] .markdown-codechange-file-status { color: var(--signal); }
+
+.markdown-content .markdown-codechange-file[data-file-status="deleted"] .markdown-codechange-file-status {
+  text-decoration: line-through;
+  text-decoration-thickness: 0.08rem;
+}
+
+.markdown-content .markdown-codechange-file-path {
+  border-right: 0.0625rem solid var(--rule);
+  border-radius: 0;
+  background: color-mix(in srgb, var(--trace) 10%, var(--paper));
+  color: var(--ink);
+  font: 700 0.68rem/1.55 var(--mono);
+}
+
+.markdown-content .markdown-codechange-file-copy,
+.markdown-content .markdown-codechange-verification-copy,
+.markdown-content .markdown-codechange-risk-copy {
+  color: var(--muted);
+  font-size: 0.74rem;
+  line-height: 1.65;
+}
+
+.markdown-content .markdown-codechange-change {
+  display: grid;
+  min-width: 0;
+  border-top: 0.0625rem solid var(--trace-dark);
+  border-bottom: 0.0625rem solid var(--trace-dark);
+  background: color-mix(in srgb, var(--ink) 96%, var(--paper));
+}
+
+.markdown-content .markdown-codechange-split { grid-template-columns: repeat(2, minmax(0, 1fr)); }
+
+.markdown-content .markdown-codechange-code-stage { min-width: 0; }
+
+.markdown-content .markdown-codechange-code-stage + .markdown-codechange-code-stage {
+  border-left: 0.0625rem solid color-mix(in srgb, var(--paper) 22%, transparent);
+}
+
+.markdown-content .markdown-codechange-code-label {
+  padding: 0.48rem 0.72rem;
+  border-bottom: 0.0625rem solid color-mix(in srgb, var(--paper) 18%, transparent);
+  color: color-mix(in srgb, var(--paper) 68%, var(--muted));
+  font: 750 0.58rem/1.4 var(--mono);
+  letter-spacing: 0.1em;
+}
+
+.markdown-content .markdown-codechange-pre {
+  max-width: 100%;
+  margin: 0;
+  padding: 0.9rem 1rem 1rem;
+  border: 0;
+  border-radius: 0;
+  background: transparent;
+  overflow: auto;
+  overscroll-behavior-inline: contain;
+}
+
+.markdown-content .markdown-codechange-code {
+  display: block;
+  width: max-content;
+  min-width: 100%;
+  padding: 0;
+  border: 0;
+  background: transparent;
+  color: #edf4f5;
+  font: 500 0.72rem/1.72 var(--mono);
+  tab-size: 2;
+  white-space: pre;
+}
+
+.markdown-content .markdown-codechange-code .hljs-addition {
+  background: color-mix(in srgb, #4fa88e 22%, transparent);
+  color: #c8f5e3;
+}
+
+.markdown-content .markdown-codechange-code .hljs-deletion {
+  background: color-mix(in srgb, #d06f62 20%, transparent);
+  color: #ffd7d0;
+}
+
+.markdown-content .markdown-codechange-evidence {
+  display: grid;
+  grid-template-columns: minmax(0, 1fr) minmax(0, 1fr);
+  min-width: 0;
+  background: var(--paper);
+}
+
+.markdown-content .markdown-codechange-ledger { min-width: 0; }
+.markdown-content .markdown-codechange-verifications { border-right: 0.0625rem solid var(--trace-dark); }
+
+.markdown-content .markdown-codechange-risks {
+  background:
+    repeating-linear-gradient(
+      135deg,
+      transparent 0 0.65rem,
+      color-mix(in srgb, var(--trace) 9%, transparent) 0.65rem 0.72rem
+    ),
+    var(--paper);
+}
+
+.markdown-content .markdown-codechange-verification {
+  display: grid;
+  grid-template-columns: minmax(6.2rem, 0.75fr) minmax(4.5rem, 0.5fr) minmax(0, 1.4fr);
+  min-width: 0;
+  margin: 0;
+}
+
+.markdown-content .markdown-codechange-risk {
+  display: grid;
+  grid-template-columns: minmax(6.2rem, 0.75fr) minmax(0, 1.25fr);
+  min-width: 0;
+  margin: 0;
+}
+
+.markdown-content .markdown-codechange-verification-label,
+.markdown-content .markdown-codechange-verification-value,
+.markdown-content .markdown-codechange-verification-copy,
+.markdown-content .markdown-codechange-risk-title,
+.markdown-content .markdown-codechange-risk-copy {
+  min-width: 0;
+  padding: 0.68rem 0.72rem;
+  overflow-wrap: anywhere;
+}
+
+.markdown-content .markdown-codechange-verification-label,
+.markdown-content .markdown-codechange-risk-title {
+  border-right: 0.0625rem solid var(--rule);
+  font-size: 0.72rem;
+  line-height: 1.55;
+}
+
+.markdown-content .markdown-codechange-verification-value {
+  border-right: 0.0625rem solid var(--rule);
+  border-radius: 0;
+  background: color-mix(in srgb, var(--signal) 7%, var(--paper));
+  color: var(--signal);
+  font: 750 0.68rem/1.55 var(--mono);
+  font-variant-numeric: tabular-nums;
+}
+
 @media print {
   .markdown-content .markdown-glossary { break-inside: auto; }
 
@@ -2161,6 +2446,23 @@
   .markdown-content .markdown-experiment-copy-panel,
   .markdown-content .markdown-experiment-measurement,
   .markdown-content .markdown-experiment-limitation { break-inside: avoid-page; }
+
+  .markdown-content .markdown-codechange { break-inside: auto; }
+
+  .markdown-content .markdown-codechange-header,
+  .markdown-content .markdown-codechange-purpose,
+  .markdown-content .markdown-codechange-file,
+  .markdown-content .markdown-codechange-code-stage,
+  .markdown-content .markdown-codechange-verification,
+  .markdown-content .markdown-codechange-risk { break-inside: avoid-page; }
+
+  .markdown-content .markdown-codechange-pre {
+    max-height: none;
+    white-space: pre-wrap;
+    overflow: visible;
+  }
+
+  .markdown-content .markdown-codechange-code { width: auto; white-space: pre-wrap; overflow-wrap: anywhere; }
 
   .markdown-content .markdown-glossary-term,
   .markdown-content .markdown-glossary-meaning { padding: 2.5mm; }
@@ -2606,4 +2908,18 @@
   .markdown-content .markdown-experiment-limitations { border-top: 0.0625rem solid var(--trace-dark); }
 
   .markdown-content .markdown-experiment-limitation { grid-template-columns: 5.8rem minmax(0, 1fr); }
+
+  .markdown-content .markdown-codechange-header { grid-template-columns: 1.6rem minmax(0, 1fr); }
+  .markdown-content .markdown-codechange-meta { align-items: flex-start; flex-direction: column; }
+  .markdown-content .markdown-codechange-file-count { margin-left: 0; }
+  .markdown-content .markdown-codechange-purpose { grid-template-columns: 5.6rem minmax(0, 1fr); }
+  .markdown-content .markdown-codechange-file { grid-template-columns: 5.7rem minmax(0, 1fr); }
+  .markdown-content .markdown-codechange-file-copy { grid-column: 2; padding-top: 0; border-left: 0.0625rem solid var(--rule); }
+  .markdown-content .markdown-codechange-file-path { border-right: 0; }
+  .markdown-content .markdown-codechange-split,
+  .markdown-content .markdown-codechange-evidence { grid-template-columns: minmax(0, 1fr); }
+  .markdown-content .markdown-codechange-code-stage + .markdown-codechange-code-stage { border-top: 0.0625rem solid color-mix(in srgb, var(--paper) 22%, transparent); border-left: 0; }
+  .markdown-content .markdown-codechange-verifications { border-right: 0; border-bottom: 0.0625rem solid var(--trace-dark); }
+  .markdown-content .markdown-codechange-verification { grid-template-columns: minmax(5.8rem, 0.8fr) minmax(4.5rem, 0.7fr) minmax(0, 1.5fr); }
+  .markdown-content .markdown-codechange-risk { grid-template-columns: 5.8rem minmax(0, 1fr); }
 }

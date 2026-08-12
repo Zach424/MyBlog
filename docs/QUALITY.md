@@ -251,6 +251,14 @@ Markdown 门要求精确 `[!gallery]` Callout、纯图片顶层列表和必填�
 
 真实浏览器至少检查两列/单列计算样式、自然图片尺寸、无根溢出、无脚本/iframe/dialog 和控制台 0 error。生产 smoke 使用合成 Markdown POST 验证模块、计数与 HAST，不把合成能力写成真实公开文章的 CDN 证据；第一篇真实画廊上线时补验最终图片优化与缓存。
 
+## 代码变更证据门（Iteration 0145）
+
+Markdown 门要求精确 `[!codechange]`、固定区段和 `UNIFIED|BEFORE_AFTER` 模式；每篇最多 2 条、合计最多 6 个文件与 240 行代码，每条 1–4 个文件、1–6 个验证和 1–6 个风险。标题、目的、说明、行内结果、代码块、路径和单行均有明确预算；未来日期、未知状态/语言、重复目标、路径遍历、平台保留路径、疑似密钥和额外结构全部失败关闭。
+
+UNIFIED 门逐段核对 `diff --git`、`---`、`+++` 与 FILES 的状态、顺序和前后端点；拒绝 binary patch、截断文件段和不匹配状态。BEFORE_AFTER 门要求前后语言相同、内容实际不同且不携带 diff 机械头。总门通过 `npm run test:codechange` 锁定合法双模式、解析、搜索、HAST、Studio round-trip、路由和错误边界。
+
+渲染门要求 `data-code-change="review-docket"`、文件索引、CHANGE/REVIEW 主轴、原生静态 pre、验证与风险台账；公开 renderer 不得注入复制/应用/评论控件。Studio 生产预览必须返回 `codeChangeCount`、`codeChangeFileCount`、`codeChangeLineCount`，Obsidian manifest/main/bundle 必须同为 1.55.0 且 3/3 SHA-256。真实浏览器至少核对 Studio 组件注册、桌面与 320 px 布局、根宽、模式切换、预览和控制台零 error；生产 smoke 使用合成 Markdown 证明能力，不把它写成真实提交或真实 patch 交付证据。
+
 ## 发布门槛
 
 只有以下证据同时成立才可切换生产入口：本地 `release:check` 通过、GitHub Quality Gate 通过、Vercel Production 成功、带 OAuth 的全路由冒烟通过、未登录真实浏览器通过、Studio 和 Obsidian 各完成一次真实发布。

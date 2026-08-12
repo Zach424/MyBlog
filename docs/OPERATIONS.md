@@ -230,6 +230,8 @@ Iteration 0132 起，这份合成正文同时加入一个带标题/说明的本�
 
 Iteration 0133 起，合成正文还加入两帧画廊。可信响应必须返回 `galleryCount: 1`、`galleryImageCount: 2`、`data-gallery="ordered-images"` 和 `markdown-gallery-grid`；`/studio/gallery-editor.mjs` 必须同源 200、`no-store` 且包含 `registerStudioGalleryEditor`/`myblog-gallery`。该 POST 证明生产 AST 与组件交付，不会为不存在的合成图片发送公开请求；第一篇真实画廊仍需另验最终图片候选、缓存与所有者编辑体验。
 
+Iteration 0145 起，合成正文还加入一条 UNIFIED 代码变更证据。可信响应必须返回 `codeChangeCount: 1`、`codeChangeFileCount: 1`、`codeChangeLineCount: 6`、`data-code-change="review-docket"`、文件状态与静态 diff；`/studio/codechange-editor.mjs` 必须同源 200、`no-store` 且包含 `registerStudioCodeChangeEditor`/`myblog-codechange`。若返回 422，先检查日期、固定区段、FILES 与 diff 文件段，再排查代码预算和疑似凭据；不要用删除文件台账或降低门限来绕过错误。该 POST 只证明生产解析与渲染能力，不证明 patch 来自 Git 或验证已经运行。
+
 依赖升级时必须特别复核 `beautiful-mermaid` 的 exports 条件、生成标签/属性、marker id、ELK 输出规模与内嵌 style；`hast-util-from-html`/`sanitize` schema 也必须重新跑六类夹具、危险指令、双图 id、Studio、构建与真实浏览器。不要直接信任“自包含 SVG”，也不要把上游远程字体或 style-src 扩进 CSP。当前包固定 1.1.3，生产依赖审计为 0 漏洞。
 
 ## 故障等级
