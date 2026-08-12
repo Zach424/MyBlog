@@ -68,8 +68,8 @@ MyBlog 是 Zach424 的个人技术知识库与公开工程日志。它把学习�
 
 - 仓库：<https://github.com/Zach424/MyBlog>，生产分支 `main`；
 - 生产站：<https://blog-iota-five-59.vercel.app>；
-- 本轮功能提交 `2e2bfd6` 已创建；本地证据覆盖 612/612 全量单测、5/5 图表测试、72 个生成页面/资源、35/35 应用测试、122.6 秒完整发布总门、生产依赖审计 0 漏洞、插件 3/3 SHA-256 和真实浏览器桌面/390 px 预览；
-- 自动交付：等待本轮归档推送后由 Vercel 收敛；生产证据将在稳定域名 smoke 通过后补记。本轮没有改变公开内容集合或结构化端点正文，因此不重置既有生产预算基线；
+- 本轮功能提交 `2e2bfd6` 与归档提交 `5b6a24b` 已推送到 `origin/main`；本地证据覆盖 612/612 全量单测、5/5 图表测试、72 个生成页面/资源、35/35 应用测试、122.6 秒完整发布总门、生产依赖审计 0 漏洞、插件 3/3 SHA-256 和真实浏览器桌面/390 px 预览；
+- 自动交付：Vercel 已收敛到包含 `/studio/references-editor.mjs` 的版本；稳定生产 smoke 通过 27 条路由、GitHub OAuth 302、`referenceListCount: 1`、`referenceItemCount: 2`、Source Index HTML 及全部 HTML/发现资源预算。本轮没有改变公开内容集合或结构化端点正文，因此不重置既有生产预算基线；
 - 最新完成迭代：0137 受约束参考资料清单、Studio/Obsidian 作者入口、搜索/关系/外链库存复用与 Source Index 阅读展示；
 - Obsidian 状态：仓库根目录就是 Vault，`docs/STATUS.md`、`docs/iterations/*.md` 与 `docs/knowledge/*.md` 是同一份本地文件，可直接阅读和维护；
 - 手动外部接入：自定义域名、统计、评论、公开邮箱均暂缓，不阻塞当前开发。

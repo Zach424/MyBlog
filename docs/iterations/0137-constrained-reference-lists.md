@@ -92,7 +92,10 @@ Studio 自定义组件只负责以结构化表单生成同一开放 Markdown；�
 - Playwright Studio：参考资料 editor 注册成功，浏览器控制台 0 error / 0 warning；
 - Playwright 合成预览：`referenceListCount: 1`、`referenceItemCount: 2`、来源为 `nextjs.org` 与“本站”；桌面块 640 px、390 px 块 358 px，均无横向溢出；
 - 截图：`output/playwright/iteration-0137-references-desktop.png`、`output/playwright/iteration-0137-references-mobile.png`；
-- 功能提交 `2e2bfd6` 已创建；生产部署与稳定域名证据将在推送后补入本档案。
+- 功能提交 `2e2bfd6` 与归档提交 `5b6a24b` 已推送到 `origin/main`；稳定生产 `/studio/references-editor.mjs` 返回 200，并包含 `myblog-references` 注册代码（8897 B）；
+- `npm run production:smoke -- https://blog-iota-five-59.vercel.app --expect-oauth`：27 条路由、GitHub OAuth 302、`referenceListCount: 1`、`referenceItemCount: 2`、Source Index HTML 与全部 HTML/发现资源预算通过。
+
+以上证据证明受约束参考清单已经从开放 Markdown、作者入口、共享预览、阅读投影收敛到稳定生产。当前没有真实公开清单，因此生产证据仍是模块和合成预览，不冒充真实文章样本或外站长期可用性证明。
 
 ## 8. 经验与教训
 
