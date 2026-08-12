@@ -7,6 +7,7 @@ import type { SearchDocument } from "./search.ts";
 import { normalizeMarkdownCalloutsForPlainText } from "./markdown-callout.ts";
 import { normalizeMarkdownGalleriesForPlainText } from "./markdown-gallery.ts";
 import { normalizeMarkdownTablesForPlainText } from "./markdown-table.ts";
+import { normalizeMarkdownTaskListsForPlainText } from "./markdown-task-list.ts";
 
 const BLOCK_TYPES = new Set([
   "blockquote",
@@ -49,7 +50,9 @@ export function markdownToPlainText(markdown: string) {
   const source = markdown.replace(/^---[\s\S]*?---\s*/mu, "");
   const tree = normalizeMarkdownCalloutsForPlainText(
     normalizeMarkdownGalleriesForPlainText(
-      normalizeMarkdownTablesForPlainText(parseMarkdown(source)),
+      normalizeMarkdownTablesForPlainText(
+        normalizeMarkdownTaskListsForPlainText(parseMarkdown(source)),
+      ),
     ),
   );
   return markdownNodeText(tree).replace(/\s+/gu, " ").trim();

@@ -28,7 +28,7 @@ const AUTHOR_DOCTOR_PLUGIN_BUNDLE_VERSION = 1;
 const AUTHOR_DOCTOR_PLUGIN_PROVENANCE_VERSION = 1;
 const INBOX_READINESS_REPORT_VERSION = 8;
 const AUTHOR_DOCTOR_NODE_ENGINE = ">=22.13.0";
-const AUTHOR_DOCTOR_PLUGIN_VERSION = "1.44.0";
+const AUTHOR_DOCTOR_PLUGIN_VERSION = "1.45.0";
 const CURRENT_DRAFT_INTENT_RUN_SCOPE = Symbol("current-draft-intent");
 const PRODUCTION_CONTENT_CONVERGENCE_RUN_SCOPE = Symbol(
   "production-content-convergence",
@@ -130,6 +130,23 @@ function createTableTemplate(filePath) {
     "> | --- | ---: | ---: |",
     "> | 本地 | 18 ms | 44 ms |",
     "> | 生产 | 42 ms | 118 ms |",
+  ].join("\n");
+}
+
+function createTaskListTemplate(filePath) {
+  const normalized = String(filePath || "").replaceAll("\\", "/");
+  if (
+    !/^content\/(inbox|posts|projects)\/[a-z0-9]+(?:-[a-z0-9]+)*\.md$/u.test(
+      normalized,
+    )
+  ) {
+    throw new Error("任务清单模板只能插入 content/inbox、content/posts 或 content/projects 中的博客文档");
+  }
+  return [
+    "> [!tasks] 发布准备",
+    "> - [x] 已完成的步骤",
+    "> - [ ] 正在推进的步骤",
+    "> - [ ] 下一步行动",
   ].join("\n");
 }
 const PLUGIN_PROVENANCE_PATHS = [
@@ -5944,6 +5961,20 @@ module.exports = class MyBlogPublisher extends Plugin {
           const template = createTableTemplate(view?.file?.path);
           editor.replaceSelection(template);
           new Notice("已插入三列技术表格模板；请替换标题、表头和示例数据");
+        } catch (error) {
+          new Notice(error instanceof Error ? error.message : String(error));
+        }
+      },
+    });
+
+    this.addCommand({
+      id: "insert-task-list-template",
+      name: "插入项目任务清单模板",
+      editorCallback: (editor, view) => {
+        try {
+          const template = createTaskListTemplate(view?.file?.path);
+          editor.replaceSelection(template);
+          new Notice("已插入三项只读任务清单模板；请替换标题、任务和完成状态");
         } catch (error) {
           new Notice(error instanceof Error ? error.message : String(error));
         }

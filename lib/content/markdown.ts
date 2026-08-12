@@ -40,10 +40,13 @@ export type InternalContentReferenceEvidence = InternalContentReference & {
 export type MarkdownNode = {
   align?: Array<"left" | "center" | "right" | null>;
   alt?: string;
+  checked?: boolean | null;
   children?: MarkdownNode[];
   depth?: number;
   identifier?: string;
   lang?: string;
+  ordered?: boolean;
+  spread?: boolean;
   title?: string;
   position?: {
     end?: {

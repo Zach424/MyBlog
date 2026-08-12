@@ -184,6 +184,7 @@
       import { installStudioMediaPreflight } from "/studio/media-preflight.mjs";
       import { registerStableSlugWidget } from "/studio/stable-slug-widget.mjs";
       import { registerStudioTableEditor } from "/studio/table-editor.mjs";
+      import { registerStudioTaskListEditor } from "/studio/task-list-editor.mjs";
       import { registerStudioVideoEditor } from "/studio/video-editor.mjs";
 
       installStudioMediaPreflight();
@@ -198,6 +199,7 @@
           registerStableSlugWidget();
           registerStudioGalleryEditor();
           registerStudioTableEditor();
+          registerStudioTaskListEditor();
           registerStudioVideoEditor();
           registerStudioMathPreview();
         } catch (error) {

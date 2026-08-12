@@ -4,6 +4,7 @@ import { getMarkdownMathIssue } from "../markdown-math.ts";
 import { getMarkdownDiagramIssue } from "../markdown-diagram.ts";
 import { getMarkdownGalleryIssue } from "../markdown-gallery.ts";
 import { getMarkdownTableIssue } from "../markdown-table.ts";
+import { getMarkdownTaskListIssue } from "../markdown-task-list.ts";
 import { getMarkdownVideoIssue } from "../markdown-video.ts";
 
 const SLUG_PATTERN = /^[a-z0-9]+(?:-[a-z0-9]+)*$/;
@@ -386,6 +387,15 @@ function parseFrontmatter<T>(
     );
   }
 
+  const taskListIssue = getMarkdownTaskListIssue(body);
+  if (taskListIssue) {
+    const location = taskListIssue.line ? `正文第 ${taskListIssue.line} 行` : "正文";
+    throw new ContentValidationError(
+      sourcePath,
+      `${location}任务清单声明无法解析：${taskListIssue.message}`,
+    );
+  }
+
   const videoIssue = getMarkdownVideoIssue(body);
   if (videoIssue) {
     const location = videoIssue.line ? `正文第 ${videoIssue.line} 行` : "正文";
@@ -529,6 +539,14 @@ export function inspectContentDraft(
       issues.push({
         field: "body",
         message: `${location}技术表格声明无法解析：${tableIssue.message}`,
+      });
+    }
+    const taskListIssue = getMarkdownTaskListIssue(body);
+    if (taskListIssue) {
+      const location = taskListIssue.line ? `第 ${taskListIssue.line} 行` : "正文";
+      issues.push({
+        field: "body",
+        message: `${location}任务清单声明无法解析：${taskListIssue.message}`,
       });
     }
     const videoIssue = getMarkdownVideoIssue(body);

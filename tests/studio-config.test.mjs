@@ -74,12 +74,14 @@ test("keeps CMS tags and required content fields aligned with the contract", () 
       "code-block",
       "myblog-gallery",
       "myblog-table",
+      "myblog-task-list",
       "myblog-video",
     ]);
     assert.equal(body.video_max_file_size, VIDEO_BUDGET.maxBytes);
     assert.match(body.hint, /新增、同内容复用和同名替换.*必须确认/u);
     assert.match(body.hint, /多图证据画廊/u);
     assert.match(body.hint, /技术数据表格/u);
+    assert.match(body.hint, /项目任务清单/u);
     assert.match(body.hint, /公式使用 \$\.\.\.\$ 或 \$\$\.\.\.\$\$.*原始 Markdown.*错误行/u);
   }
 });

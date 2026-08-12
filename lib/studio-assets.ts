@@ -13,6 +13,7 @@ type StudioAssetName =
   | "media-preflight.mjs"
   | "stable-slug-widget.mjs"
   | "table-editor.mjs"
+  | "task-list-editor.mjs"
   | "video-editor.mjs"
   | "preview.css";
 
@@ -28,6 +29,7 @@ const contentTypes: Record<StudioAssetName, string> = {
   "media-preflight.mjs": "text/javascript; charset=utf-8",
   "stable-slug-widget.mjs": "text/javascript; charset=utf-8",
   "table-editor.mjs": "text/javascript; charset=utf-8",
+  "task-list-editor.mjs": "text/javascript; charset=utf-8",
   "video-editor.mjs": "text/javascript; charset=utf-8",
   "preview.css": "text/css; charset=utf-8",
 };

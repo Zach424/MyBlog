@@ -27,6 +27,11 @@ import {
   type MarkdownTableIssue,
 } from "@/lib/markdown-table";
 import {
+  extractMarkdownTaskLists,
+  getMarkdownTaskListIssue,
+  type MarkdownTaskListIssue,
+} from "@/lib/markdown-task-list";
+import {
   extractMarkdownVideos,
   getMarkdownVideoIssue,
   type MarkdownVideoIssue,
@@ -45,6 +50,9 @@ export type StudioMathPreviewResult =
       ok: true;
       tableCount: number;
       tableDataCellCount: number;
+      taskCompleteCount: number;
+      taskItemCount: number;
+      taskListCount: number;
       videoCount: number;
     }
   | {
@@ -53,6 +61,7 @@ export type StudioMathPreviewResult =
         | MarkdownGalleryIssue
         | MarkdownMathIssue
         | MarkdownTableIssue
+        | MarkdownTaskListIssue
         | MarkdownVideoIssue;
       ok: false;
     };
@@ -112,6 +121,8 @@ export function renderStudioMathPreview(
   if (galleryIssue) return { issue: galleryIssue, ok: false };
   const tableIssue = getMarkdownTableIssue(markdown);
   if (tableIssue) return { issue: tableIssue, ok: false };
+  const taskListIssue = getMarkdownTaskListIssue(markdown);
+  if (taskListIssue) return { issue: taskListIssue, ok: false };
   const videoIssue = getMarkdownVideoIssue(markdown);
   if (videoIssue) return { issue: videoIssue, ok: false };
 
@@ -127,6 +138,16 @@ export function renderStudioMathPreview(
   const tableCount = tables.length;
   const tableDataCellCount = tables.reduce(
     (total, table) => total + table.headers.length * table.rowCount,
+    0,
+  );
+  const taskLists = extractMarkdownTaskLists(markdown);
+  const taskListCount = taskLists.length;
+  const taskItemCount = taskLists.reduce(
+    (total, taskList) => total + taskList.items.length,
+    0,
+  );
+  const taskCompleteCount = taskLists.reduce(
+    (total, taskList) => total + taskList.completeCount,
     0,
   );
   const videoCount = extractMarkdownVideos(markdown).length;
@@ -153,6 +174,9 @@ export function renderStudioMathPreview(
     ok: true,
     tableCount,
     tableDataCellCount,
+    taskCompleteCount,
+    taskItemCount,
+    taskListCount,
     videoCount,
   };
 }
