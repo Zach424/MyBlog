@@ -104,7 +104,9 @@ mdast 层先只识别顶层候选，再验证 marker、起始序号、唯一有�
 - 第一次真实浏览器预览因脚本把样式地址写成 `127.0.0.1`、页面为 `localhost` 而触发同源样式失败，导致无样式截图；改为同一 `localhost` origin 并修正 DOM 选择器后，最终计数、布局和控制台全部通过；
 - 第一次 `release:check` 不是检查失败，而是工具在 120 秒上限终止；提高到 360 秒后取得退出码 0 和完整证据。
 
-生产证据将在本轮实现/归档提交推送并由 Vercel 收敛后补记；在此之前不把本地模块冒充为已经上线。
+- 功能提交 `13d5658` 与归档提交 `11ffa59` 推送后，稳定生产 `/studio/steps-editor.mjs` 在第 12 次有界轮询从 404 收敛为 200，返回 9,076 B，并包含 `myblog-steps` 与 `registerStudioStepsEditor`；
+- `npm run production:smoke -- https://blog-iota-five-59.vercel.app --expect-oauth`：39.6 秒内通过 27 条路由、GitHub OAuth 302、`procedureCount: 1`、`procedureStepCount: 2`、Runbook Path HTML、无交互边界及全部 HTML/发现资源预算；
+- 当前生产仍没有真实公开 `[!steps]` 内容，因此线上证据证明模块、作者资源和合成生产预览已经交付，不冒充真实教程样本。
 
 ## 8. 经验与教训
 
