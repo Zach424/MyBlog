@@ -104,6 +104,9 @@ mdast 层先识别顶层候选，再递归验证无序列表、条目唯一段�
 - 第一次专项回归发现加粗说明前的作者空格被 AST 真实保留，同时搜索还保留 `/ —` 噪声；修正夹具和专用搜索规范化后 9/9 通过；
 - 第一次 Studio 模块加载发现 Unicode 正则中转义反引号会触发语法错误，改为 `\x60` 后真实 import 与往返序列化通过；
 - Playwright 首次把中文脚本直接作为 Windows 命令参数时破折号被拆分；改用 CLI `--filename` 后完成同一真实浏览器验收。这是 shell 编码问题，不是组件故障。
+- 功能提交 `f0e3794` 与归档提交 `5e94e0d` 推送后，稳定生产 `/studio/filetree-editor.mjs` 在第 6 次有界轮询从 404 收敛为 200，返回 10,382 B，并包含 `myblog-filetree` 与 `registerStudioFileTreeEditor`；
+- `npm run production:smoke -- https://blog-iota-five-59.vercel.app --expect-oauth`：45.5 秒内通过 27 条路由、GitHub OAuth 302、`fileTreeCount: 1`、`fileTreeNodeCount: 5`、`fileTreeMaxDepth: 3`、Repository Slice、原生嵌套列表、无交互边界及全部 HTML/发现资源预算；
+- 当前生产仍没有真实公开 `[!filetree]` 内容，因此线上证据证明模块、作者资源和合成生产预览已交付，不冒充真实项目文章样本。
 
 ## 8. 经验与教训
 
