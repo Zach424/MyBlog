@@ -93,13 +93,16 @@ Studio 与 Obsidian 都只生成相同开放 Markdown。文字稿位于正文结
 - `npm run build`：通过，71 个生成页面/资源，新增 `/studio/audio-editor.mjs`；
 - `npm run test:app`：35/35，十三条 HTML 与十一个结构化发现端点预算全部 PASS；
 - `npm audit --omit=dev --audit-level=high`：0 漏洞；
+- `npm run release:check`：116.3 秒内通过完整发布总门，包含内容维护、inbox/staging/链接库存、lint、单测、构建、应用测试与生产依赖审计；
 - 插件：`myblog-publisher@1.46.0 · 3/3 SHA-256 files`；
 - Playwright Studio：音频 editor 注册成功，登录页 0 error / 0 warning；
 - Playwright 合成音频预览：`audioCount: 1`、原生 controls、`preload=metadata`、完整文字稿；桌面块 864 px、390 px 块 334 px，均无横向溢出；
 - 截图：`output/playwright/iteration-0136-audio-desktop.png`、`output/playwright/iteration-0136-audio-mobile.png`；
 - 合成 MP3 路径有预期 404，因此该浏览器证据只证明渲染/布局/语义，不冒充真实文件播放或 CDN 证据。
+- 功能提交 `aecb001`、归档提交 `9ffa0e4` 已推送到 `origin/main`；稳定生产 `/studio/audio-editor.mjs` 返回 200，并包含音频 editor 注册代码；
+- `npm run production:smoke -- https://blog-iota-five-59.vercel.app --expect-oauth`：27 条路由、GitHub OAuth 302、音频合成预览与全部 HTML/发现资源预算通过。
 
-最终全量单测、release gate、提交 SHA、Vercel 收敛与稳定生产 smoke 在部署证据提交中补充。
+以上证据证明本轮开放 Markdown、作者入口、阅读投影和稳定生产链路已经收敛；真实公开 MP3 的浏览器解码、Range 与 CDN 头仍留待第一次真实内容发布验证。
 
 ## 8. 经验与教训
 
