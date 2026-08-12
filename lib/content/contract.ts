@@ -2,6 +2,7 @@ import { parseDocument } from "yaml";
 import { z } from "zod";
 import { getMarkdownAudioIssue } from "../markdown-audio.ts";
 import { getMarkdownReferenceIssue } from "../markdown-references.ts";
+import { getMarkdownStepsIssue } from "../markdown-steps.ts";
 import { getMarkdownMathIssue } from "../markdown-math.ts";
 import { getMarkdownDiagramIssue } from "../markdown-diagram.ts";
 import { getMarkdownGalleryIssue } from "../markdown-gallery.ts";
@@ -425,6 +426,15 @@ function parseFrontmatter<T>(
     );
   }
 
+  const stepsIssue = getMarkdownStepsIssue(body);
+  if (stepsIssue) {
+    const location = stepsIssue.line ? `正文第 ${stepsIssue.line} 行` : "正文";
+    throw new ContentValidationError(
+      sourcePath,
+      `${location}步骤流程无法解析：${stepsIssue.message}`,
+    );
+  }
+
   return { data: result.data, body };
 }
 
@@ -591,6 +601,14 @@ export function inspectContentDraft(
       issues.push({
         field: "body",
         message: `${location}参考资料清单无法解析：${referenceIssue.message}`,
+      });
+    }
+    const stepsIssue = getMarkdownStepsIssue(body);
+    if (stepsIssue) {
+      const location = stepsIssue.line ? `第 ${stepsIssue.line} 行` : "正文";
+      issues.push({
+        field: "body",
+        message: `${location}步骤流程无法解析：${stepsIssue.message}`,
       });
     }
   }

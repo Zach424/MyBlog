@@ -929,6 +929,161 @@
 
 .markdown-content .markdown-reference-print-target { display: none; }
 
+.markdown-content .markdown-procedure {
+  margin-block: 2rem;
+  border-block: 0.0625rem solid var(--trace-dark);
+  background: color-mix(in srgb, var(--trace) 10%, var(--paper));
+}
+
+.markdown-content .markdown-procedure-header {
+  display: grid;
+  border-bottom: 0.0625rem solid var(--rule);
+}
+
+.markdown-content .markdown-procedure-rail {
+  display: flex;
+  min-height: 2.4rem;
+  align-items: center;
+  justify-content: space-between;
+  gap: 0.75rem;
+  padding: 0.55rem 0.75rem;
+  color: var(--muted);
+  font: 700 0.625rem/1.4 var(--mono);
+  letter-spacing: 0.075em;
+}
+
+.markdown-content .markdown-procedure-kind { color: var(--ink); }
+
+.markdown-content .markdown-procedure-mode::before {
+  display: inline-block;
+  width: 1.35rem;
+  height: 0.35rem;
+  margin-right: 0.45rem;
+  background: linear-gradient(
+    90deg,
+    var(--signal) 0 0.2rem,
+    transparent 0.2rem 0.45rem,
+    var(--signal) 0.45rem 0.65rem,
+    transparent 0.65rem 0.9rem,
+    var(--signal) 0.9rem 1.1rem,
+    transparent 1.1rem
+  );
+  content: "";
+}
+
+.markdown-content .markdown-procedure-title {
+  padding: 0.85rem 0.9rem 0.9rem;
+  border-top: 0.0625rem solid var(--rule);
+  font-size: 1rem;
+  line-height: 1.5;
+  overflow-wrap: anywhere;
+}
+
+.markdown-content .markdown-procedure-items {
+  margin: 0;
+  padding: 0;
+  list-style: none;
+}
+
+.markdown-content .markdown-procedure-step {
+  position: relative;
+  display: grid;
+  grid-template-columns: 4.2rem minmax(0, 1fr);
+  margin: 0;
+  background: var(--paper);
+}
+
+.markdown-content .markdown-procedure-step:not(:last-child)::after {
+  position: absolute;
+  top: 3.4rem;
+  bottom: -0.35rem;
+  left: 2.08rem;
+  width: 0.125rem;
+  background: linear-gradient(var(--signal), var(--rule));
+  content: "";
+}
+
+.markdown-content .markdown-procedure-marker {
+  position: relative;
+  z-index: 1;
+  display: grid;
+  align-content: start;
+  justify-items: center;
+  gap: 0.15rem;
+  padding: 0.9rem 0.5rem;
+  border-right: 0.0625rem solid var(--rule);
+  color: var(--signal);
+  background: var(--paper);
+}
+
+.markdown-content .markdown-procedure-index {
+  display: grid;
+  width: 2rem;
+  height: 2rem;
+  place-items: center;
+  border: 0.125rem solid currentColor;
+  border-radius: 50%;
+  font: 750 0.7rem/1 var(--mono);
+  letter-spacing: 0.04em;
+}
+
+.markdown-content .markdown-procedure-index-label {
+  font: 700 0.5rem/1.4 var(--mono);
+  letter-spacing: 0.1em;
+}
+
+.markdown-content .markdown-procedure-copy {
+  display: grid;
+  gap: 0.55rem;
+  min-width: 0;
+  padding: 0.85rem 0.9rem 1rem;
+  border-bottom: 0.0625rem solid var(--rule);
+}
+
+.markdown-content .markdown-procedure-step:last-child .markdown-procedure-copy {
+  border-bottom: 0;
+}
+
+.markdown-content .markdown-procedure-step-name {
+  font-size: 0.95rem;
+  line-height: 1.45;
+  overflow-wrap: anywhere;
+}
+
+.markdown-content .markdown-procedure-instruction {
+  color: var(--muted);
+  font-size: 0.82rem;
+  line-height: 1.7;
+  overflow-wrap: anywhere;
+}
+
+.markdown-content .markdown-procedure-instruction > :first-child,
+.markdown-content .markdown-procedure-instruction > :last-child { margin-block: 0; }
+
+.markdown-content .markdown-procedure-check {
+  display: grid;
+  grid-template-columns: auto minmax(0, 1fr);
+  gap: 0.65rem;
+  align-items: start;
+  padding-top: 0.55rem;
+  border-top: 0.0625rem dashed color-mix(in srgb, var(--signal) 45%, var(--rule));
+}
+
+.markdown-content .markdown-procedure-check-label {
+  padding: 0.12rem 0.32rem;
+  color: var(--paper);
+  background: var(--signal);
+  font: 700 0.55rem/1.4 var(--mono);
+  letter-spacing: 0.08em;
+}
+
+.markdown-content .markdown-procedure-check-copy {
+  color: var(--ink);
+  font-size: 0.76rem;
+  line-height: 1.65;
+  overflow-wrap: anywhere;
+}
+
 @media print {
   .markdown-content .markdown-audio {
     break-inside: avoid-page;
@@ -952,6 +1107,25 @@
     border-color: var(--trace-dark);
     background: var(--paper);
   }
+
+  .markdown-content .markdown-procedure {
+    break-inside: auto;
+    border-color: var(--trace-dark);
+    background: var(--paper);
+  }
+
+  .markdown-content .markdown-procedure-header,
+  .markdown-content .markdown-procedure-step { break-inside: avoid-page; }
+
+  .markdown-content .markdown-procedure-step {
+    grid-template-columns: 13mm minmax(0, 1fr);
+  }
+
+  .markdown-content .markdown-procedure-step:not(:last-child)::after {
+    left: 6.4mm;
+  }
+
+  .markdown-content .markdown-procedure-copy { padding: 2.3mm 2.6mm; }
 
   .markdown-content .markdown-reference-header,
   .markdown-content .markdown-reference-item { break-inside: avoid-page; }
@@ -1123,6 +1297,25 @@
 }
 
 @media (max-width: 32rem) {
+  .markdown-content .markdown-procedure-rail {
+    align-items: flex-start;
+    flex-direction: column;
+  }
+
+  .markdown-content .markdown-procedure-step {
+    grid-template-columns: 3.25rem minmax(0, 1fr);
+  }
+
+  .markdown-content .markdown-procedure-step:not(:last-child)::after {
+    left: 1.6rem;
+  }
+
+  .markdown-content .markdown-procedure-check {
+    grid-template-columns: 1fr;
+  }
+
+  .markdown-content .markdown-procedure-check-label { justify-self: start; }
+
   .markdown-content .markdown-reference-rail {
     align-items: flex-start;
     flex-direction: column;

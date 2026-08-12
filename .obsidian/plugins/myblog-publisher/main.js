@@ -28,7 +28,7 @@ const AUTHOR_DOCTOR_PLUGIN_BUNDLE_VERSION = 1;
 const AUTHOR_DOCTOR_PLUGIN_PROVENANCE_VERSION = 1;
 const INBOX_READINESS_REPORT_VERSION = 8;
 const AUTHOR_DOCTOR_NODE_ENGINE = ">=22.13.0";
-const AUTHOR_DOCTOR_PLUGIN_VERSION = "1.47.0";
+const AUTHOR_DOCTOR_PLUGIN_VERSION = "1.48.0";
 const CURRENT_DRAFT_INTENT_RUN_SCOPE = Symbol("current-draft-intent");
 const PRODUCTION_CONTENT_CONVERGENCE_RUN_SCOPE = Symbol(
   "production-content-convergence",
@@ -163,6 +163,30 @@ function createReferencesTemplate(filePath) {
     "> [!references] 延伸阅读",
     "> 1. [官方文档标题](https://example.com/docs) — 说明这份资料与正文的关系。",
     "> 2. [本站相关记录](/projects/myblog) — 补充项目背景与实现过程。",
+  ].join("\n");
+}
+
+function createStepsTemplate(filePath) {
+  const normalized = String(filePath || "").replaceAll("\\", "/");
+  if (
+    !/^content\/(inbox|posts|projects)\/[a-z0-9]+(?:-[a-z0-9]+)*\.md$/u.test(
+      normalized,
+    )
+  ) {
+    throw new Error("步骤流程模板只能插入 content/inbox、content/posts 或 content/projects 中的博客文档");
+  }
+  return [
+    "> [!steps] 发布流程",
+    "> 1. **运行完整检查**",
+    ">",
+    ">    执行 `npm run release:check`，处理全部失败项。",
+    ">",
+    ">    **验证：** 命令以退出码 0 完成。",
+    "> 2. **推送主分支**",
+    ">",
+    ">    将已审阅提交推送到 `main`。",
+    ">",
+    ">    **验证：** 远端 HEAD 与本地一致。",
   ].join("\n");
 }
 
@@ -6039,6 +6063,20 @@ module.exports = class MyBlogPublisher extends Plugin {
           const template = createReferencesTemplate(view?.file?.path);
           editor.replaceSelection(template);
           new Notice("已插入两条参考资料模板；请替换标题、可见名称、链接与可选短注");
+        } catch (error) {
+          new Notice(error instanceof Error ? error.message : String(error));
+        }
+      },
+    });
+
+    this.addCommand({
+      id: "insert-steps-template",
+      name: "插入操作步骤流程模板",
+      editorCallback: (editor, view) => {
+        try {
+          const template = createStepsTemplate(view?.file?.path);
+          editor.replaceSelection(template);
+          new Notice("已插入两步操作流程模板；请替换流程标题、步骤名、说明与可选验证");
         } catch (error) {
           new Notice(error instanceof Error ? error.message : String(error));
         }

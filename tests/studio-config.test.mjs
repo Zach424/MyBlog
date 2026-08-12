@@ -78,6 +78,7 @@ test("keeps CMS tags and required content fields aligned with the contract", () 
       "myblog-table",
       "myblog-task-list",
       "myblog-references",
+      "myblog-steps",
       "myblog-audio",
       "myblog-video",
     ]);
@@ -88,6 +89,7 @@ test("keeps CMS tags and required content fields aligned with the contract", () 
     assert.match(body.hint, /多图证据画廊/u);
     assert.match(body.hint, /技术数据表格/u);
     assert.match(body.hint, /项目任务清单/u);
+    assert.match(body.hint, /操作步骤流程/u);
     assert.match(body.hint, /本地音频笔记.*完整文字稿/u);
     assert.match(body.hint, /公式使用 \$\.\.\.\$ 或 \$\$\.\.\.\$\$.*原始 Markdown.*错误行/u);
   }
@@ -107,12 +109,14 @@ test("pins the CMS asset and provides a useful loading failure", async () => {
   assert.match(html, /from "\/studio\/table-editor\.mjs"/);
   assert.match(html, /from "\/studio\/audio-editor\.mjs"/);
   assert.match(html, /from "\/studio\/references-editor\.mjs"/);
+  assert.match(html, /from "\/studio\/steps-editor\.mjs"/);
   assert.match(html, /installStudioMediaPreflight\(\)/);
   assert.match(html, /registerStableSlugWidget\(\)/);
   assert.match(html, /registerStudioMathPreview\(\)/);
   assert.match(html, /registerStudioGalleryEditor\(\)/);
   assert.match(html, /registerStudioTableEditor\(\)/);
   assert.match(html, /registerStudioAudioEditor\(\)/);
+  assert.match(html, /registerStudioStepsEditor\(\)/);
   assert.match(html, /#studio-media-preflight/);
   assert.match(html, /data-state="error"/);
   assert.match(html, /data-stable-slug-state="locked"/);

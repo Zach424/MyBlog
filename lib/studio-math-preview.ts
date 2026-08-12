@@ -30,6 +30,11 @@ import {
   getMarkdownReferenceIssue,
   type MarkdownReferenceIssue,
 } from "@/lib/markdown-references";
+import {
+  extractMarkdownSteps,
+  getMarkdownStepsIssue,
+  type MarkdownStepsIssue,
+} from "@/lib/markdown-steps";
 import { getMarkdownMathIssue, type MarkdownMathIssue } from "@/lib/markdown-math";
 import {
   extractMarkdownTables,
@@ -61,6 +66,8 @@ export type StudioMathPreviewResult =
       ok: true;
       referenceItemCount: number;
       referenceListCount: number;
+      procedureCount: number;
+      procedureStepCount: number;
       tableCount: number;
       tableDataCellCount: number;
       taskCompleteCount: number;
@@ -74,6 +81,7 @@ export type StudioMathPreviewResult =
         | MarkdownAudioIssue
         | MarkdownGalleryIssue
         | MarkdownReferenceIssue
+        | MarkdownStepsIssue
         | MarkdownMathIssue
         | MarkdownTableIssue
         | MarkdownTaskListIssue
@@ -138,6 +146,8 @@ export function renderStudioMathPreview(
   if (galleryIssue) return { issue: galleryIssue, ok: false };
   const referenceIssue = getMarkdownReferenceIssue(markdown);
   if (referenceIssue) return { issue: referenceIssue, ok: false };
+  const stepsIssue = getMarkdownStepsIssue(markdown);
+  if (stepsIssue) return { issue: stepsIssue, ok: false };
   const tableIssue = getMarkdownTableIssue(markdown);
   if (tableIssue) return { issue: tableIssue, ok: false };
   const taskListIssue = getMarkdownTaskListIssue(markdown);
@@ -157,6 +167,12 @@ export function renderStudioMathPreview(
   const referenceListCount = referenceLists.length;
   const referenceItemCount = referenceLists.reduce(
     (total, list) => total + list.items.length,
+    0,
+  );
+  const procedures = extractMarkdownSteps(markdown);
+  const procedureCount = procedures.length;
+  const procedureStepCount = procedures.reduce(
+    (total, procedure) => total + procedure.items.length,
     0,
   );
   const tables = extractMarkdownTables(markdown);
@@ -201,6 +217,8 @@ export function renderStudioMathPreview(
     ok: true,
     referenceItemCount,
     referenceListCount,
+    procedureCount,
+    procedureStepCount,
     tableCount,
     tableDataCellCount,
     taskCompleteCount,

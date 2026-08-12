@@ -204,6 +204,34 @@ export function hasPotentialStudioReferences(markdown) {
   return false;
 }
 
+export function hasPotentialStudioSteps(markdown) {
+  let fenceCharacter = "";
+  let fenceLength = 0;
+
+  for (const sourceLine of textValue(markdown).split(/\r?\n/u)) {
+    const line = sourceLine.replace(/^[ \t]*(?:>[ \t]*)+/u, "");
+    const fence = /^[ \t]*(`{3,}|~{3,})/u.exec(line);
+    if (fenceCharacter) {
+      if (
+        new RegExp(`^[ \\t]*${fenceCharacter}{${fenceLength},}[ \\t]*$`, "u").test(line)
+      ) {
+        fenceCharacter = "";
+        fenceLength = 0;
+      }
+      continue;
+    }
+    if (fence) {
+      fenceCharacter = fence[1][0];
+      fenceLength = fence[1].length;
+      continue;
+    }
+    if (/^[ \t]*(?:>[ \t]*)+\[!steps\](?:[+\-]|[ \t]|$)/iu.test(sourceLine)) {
+      return true;
+    }
+  }
+  return false;
+}
+
 function hasPotentialStudioCallout(markdown) {
   let fenceCharacter = "";
   let fenceLength = 0;
@@ -239,6 +267,7 @@ export function hasPotentialStudioRichMarkdown(markdown) {
     hasPotentialStudioTable(markdown) ||
     hasPotentialStudioTaskList(markdown) ||
     hasPotentialStudioReferences(markdown) ||
+    hasPotentialStudioSteps(markdown) ||
     hasPotentialStudioCallout(markdown) ||
     hasPotentialStudioDiagram(markdown) ||
     hasPotentialStudioVideo(markdown)
@@ -305,9 +334,14 @@ export function getStudioMathPreviewStatus(state) {
           `${state.referenceListCount} 个参考资料清单 / ${state.referenceItemCount} 条来源`,
         );
       }
+      if (state.procedureCount > 0) {
+        evidence.push(
+          `${state.procedureCount} 个步骤流程 / ${state.procedureStepCount} 步`,
+        );
+      }
       if (state.videoCount > 0) evidence.push(`${state.videoCount} 段视频`);
       return {
-        detail: "这里与正式页面共享 remark、rehype、受限 KaTeX、Callout、画廊、技术表格、只读任务清单、参考资料清单、Mermaid、本地音频与本地视频渲染配置。",
+        detail: "这里与正式页面共享 remark、rehype、受限 KaTeX、Callout、画廊、技术表格、只读任务清单、参考资料清单、步骤流程、Mermaid、本地音频与本地视频渲染配置。",
         label: "RICH MARKDOWN / VERIFIED",
         title: `${evidence.join("、")}已按生产规则渲染`,
       };
@@ -321,9 +355,12 @@ export function getStudioMathPreviewStatus(state) {
       const isVideo = state.issue?.kind === "video";
       const isAudio = state.issue?.kind === "audio";
       const isReferences = state.issue?.kind === "references";
+      const isSteps = state.issue?.kind === "steps";
       return {
         detail: `${line}${state.issue?.message || "请检查增强 Markdown 语法。"}`,
-        label: isReferences
+        label: isSteps
+          ? "STEPS / NEEDS FIX"
+          : isReferences
           ? "REFERENCES / NEEDS FIX"
           : isAudio
           ? "AUDIO / NEEDS FIX"
@@ -338,7 +375,9 @@ export function getStudioMathPreviewStatus(state) {
           : isDiagram
             ? "DIAGRAM / NEEDS FIX"
             : "FORMULA / NEEDS FIX",
-        title: isReferences
+        title: isSteps
+          ? "步骤流程尚不能发布"
+          : isReferences
           ? "参考资料清单尚不能发布"
           : isAudio
           ? "音频尚不能发布"
@@ -401,6 +440,8 @@ export function createStudioMathPreviewTemplate({
         galleryImageCount: 0,
         referenceItemCount: 0,
         referenceListCount: 0,
+        procedureCount: 0,
+        procedureStepCount: 0,
         tableCount: 0,
         tableDataCellCount: 0,
         taskCompleteCount: 0,
@@ -458,6 +499,8 @@ export function createStudioMathPreviewTemplate({
           galleryImageCount: 0,
           referenceItemCount: 0,
           referenceListCount: 0,
+          procedureCount: 0,
+          procedureStepCount: 0,
           tableCount: 0,
           tableDataCellCount: 0,
           taskCompleteCount: 0,
@@ -497,6 +540,8 @@ export function createStudioMathPreviewTemplate({
             galleryImageCount: result.galleryImageCount,
             referenceItemCount: result.referenceItemCount,
             referenceListCount: result.referenceListCount,
+            procedureCount: result.procedureCount,
+            procedureStepCount: result.procedureStepCount,
             tableCount: result.tableCount,
             tableDataCellCount: result.tableDataCellCount,
             taskCompleteCount: result.taskCompleteCount,
@@ -517,6 +562,8 @@ export function createStudioMathPreviewTemplate({
             galleryImageCount: 0,
             referenceItemCount: 0,
             referenceListCount: 0,
+            procedureCount: 0,
+            procedureStepCount: 0,
             tableCount: 0,
             tableDataCellCount: 0,
             taskCompleteCount: 0,
@@ -540,6 +587,8 @@ export function createStudioMathPreviewTemplate({
           galleryImageCount: 0,
           referenceItemCount: 0,
           referenceListCount: 0,
+          procedureCount: 0,
+          procedureStepCount: 0,
           tableCount: 0,
           tableDataCellCount: 0,
           taskCompleteCount: 0,

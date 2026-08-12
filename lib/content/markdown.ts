@@ -46,6 +46,7 @@ export type MarkdownNode = {
   identifier?: string;
   lang?: string;
   ordered?: boolean;
+  start?: number | null;
   spread?: boolean;
   title?: string;
   position?: {

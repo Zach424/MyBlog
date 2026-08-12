@@ -8,6 +8,7 @@ import { normalizeMarkdownAudioNotesForPlainText } from "./markdown-audio.ts";
 import { normalizeMarkdownCalloutsForPlainText } from "./markdown-callout.ts";
 import { normalizeMarkdownGalleriesForPlainText } from "./markdown-gallery.ts";
 import { normalizeMarkdownReferenceListsForPlainText } from "./markdown-references.ts";
+import { normalizeMarkdownStepsForPlainText } from "./markdown-steps.ts";
 import { normalizeMarkdownTablesForPlainText } from "./markdown-table.ts";
 import { normalizeMarkdownTaskListsForPlainText } from "./markdown-task-list.ts";
 
@@ -53,9 +54,11 @@ export function markdownToPlainText(markdown: string) {
   const tree = normalizeMarkdownCalloutsForPlainText(
     normalizeMarkdownGalleriesForPlainText(
       normalizeMarkdownTablesForPlainText(
-        normalizeMarkdownReferenceListsForPlainText(
-          normalizeMarkdownTaskListsForPlainText(
-            normalizeMarkdownAudioNotesForPlainText(parseMarkdown(source)),
+        normalizeMarkdownStepsForPlainText(
+          normalizeMarkdownReferenceListsForPlainText(
+            normalizeMarkdownTaskListsForPlainText(
+              normalizeMarkdownAudioNotesForPlainText(parseMarkdown(source)),
+            ),
           ),
         ),
       ),
