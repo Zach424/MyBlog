@@ -6,6 +6,7 @@ import {
   hasPotentialStudioDiagram,
   hasPotentialStudioAudio,
   hasPotentialStudioGallery,
+  hasPotentialStudioGlossary,
   hasPotentialStudioRichMarkdown,
   hasPotentialStudioMath,
   hasPotentialStudioReferences,
@@ -85,6 +86,8 @@ test("requests only potential rich Markdown from the same-origin preview endpoin
   assert.equal(hasPotentialStudioReferences("```md\n> [!references] 示例\n```"), false);
   assert.equal(hasPotentialStudioSteps("> [!steps] 发布流程"), true);
   assert.equal(hasPotentialStudioSteps("```md\n> [!steps] 示例\n```"), false);
+  assert.equal(hasPotentialStudioGlossary("> [!glossary] React 核心概念"), true);
+  assert.equal(hasPotentialStudioGlossary("```md\n> [!glossary] 示例\n```"), false);
   assert.equal(hasPotentialStudioRichMarkdown("```md\n> [!note]\n```"), false);
   assert.equal(hasPotentialStudioDiagram("```mermaid\nflowchart LR\nA --> B\n```"), true);
   assert.equal(hasPotentialStudioDiagram("```md\n```mermaid\nA --> B\n```\n```"), false);
@@ -107,6 +110,8 @@ test("requests only potential rich Markdown from the same-origin preview endpoin
         formulaCount: 1,
         galleryCount: 0,
         galleryImageCount: 0,
+        glossaryCount: 0,
+        glossaryTermCount: 0,
         html: "<span>math</span>",
         ok: true,
         referenceItemCount: 0,
@@ -143,6 +148,8 @@ test("keeps plain Markdown on the native preview and exposes recoverable rich-co
         formulaCount: 2,
         galleryCount: 1,
         galleryImageCount: 3,
+        glossaryCount: 1,
+        glossaryTermCount: 2,
         html: "<div class=\"katex\">ok</div>",
         ok: true,
         referenceItemCount: 2,
@@ -196,6 +203,8 @@ test("keeps plain Markdown on the native preview and exposes recoverable rich-co
   assert.equal(context.state.diagramCount, 1);
   assert.equal(context.state.galleryCount, 1);
   assert.equal(context.state.galleryImageCount, 3);
+  assert.equal(context.state.glossaryCount, 1);
+  assert.equal(context.state.glossaryTermCount, 2);
   assert.equal(context.state.tableCount, 1);
   assert.equal(context.state.tableDataCellCount, 6);
   assert.equal(context.state.taskListCount, 1);
@@ -209,7 +218,7 @@ test("keeps plain Markdown on the native preview and exposes recoverable rich-co
   const readyTree = template.render.call(context);
   assert.match(
     textContent(readyTree),
-    /1 段音频 \/ 含文字稿、2 个公式、1 张图表、1 组画廊 \/ 3 张图片、1 个表格 \/ 6 个数据单元格、1 个任务清单 \/ 2 项已完成 \/ 3 项总计、1 个参考资料清单 \/ 2 条来源、1 个步骤流程 \/ 2 步、1 段视频已按生产规则渲染/u,
+    /1 段音频 \/ 含文字稿、2 个公式、1 张图表、1 组画廊 \/ 3 张图片、1 个表格 \/ 6 个数据单元格、1 个任务清单 \/ 2 项已完成 \/ 3 项总计、1 个参考资料清单 \/ 2 条来源、1 个步骤流程 \/ 2 步、1 个术语定义表 \/ 2 个术语、1 段视频已按生产规则渲染/u,
   );
 
   context.state = {
@@ -256,6 +265,10 @@ test("keeps plain Markdown on the native preview and exposes recoverable rich-co
   assert.equal(
     getStudioMathPreviewStatus({ issue: { kind: "steps" }, status: "invalid" }).label,
     "STEPS / NEEDS FIX",
+  );
+  assert.equal(
+    getStudioMathPreviewStatus({ issue: { kind: "glossary" }, status: "invalid" }).label,
+    "GLOSSARY / NEEDS FIX",
   );
 });
 

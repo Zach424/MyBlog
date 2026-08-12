@@ -26,6 +26,11 @@ import {
   type MarkdownGalleryIssue,
 } from "@/lib/markdown-gallery";
 import {
+  extractMarkdownGlossaries,
+  getMarkdownGlossaryIssue,
+  type MarkdownGlossaryIssue,
+} from "@/lib/markdown-glossary";
+import {
   extractMarkdownReferenceLists,
   getMarkdownReferenceIssue,
   type MarkdownReferenceIssue,
@@ -62,6 +67,8 @@ export type StudioMathPreviewResult =
       formulaCount: number;
       galleryCount: number;
       galleryImageCount: number;
+      glossaryCount: number;
+      glossaryTermCount: number;
       html: string;
       ok: true;
       referenceItemCount: number;
@@ -80,6 +87,7 @@ export type StudioMathPreviewResult =
         | MarkdownDiagramIssue
         | MarkdownAudioIssue
         | MarkdownGalleryIssue
+        | MarkdownGlossaryIssue
         | MarkdownReferenceIssue
         | MarkdownStepsIssue
         | MarkdownMathIssue
@@ -144,6 +152,8 @@ export function renderStudioMathPreview(
   if (diagramIssue) return { issue: diagramIssue, ok: false };
   const galleryIssue = getMarkdownGalleryIssue(markdown);
   if (galleryIssue) return { issue: galleryIssue, ok: false };
+  const glossaryIssue = getMarkdownGlossaryIssue(markdown);
+  if (glossaryIssue) return { issue: glossaryIssue, ok: false };
   const referenceIssue = getMarkdownReferenceIssue(markdown);
   if (referenceIssue) return { issue: referenceIssue, ok: false };
   const stepsIssue = getMarkdownStepsIssue(markdown);
@@ -161,6 +171,12 @@ export function renderStudioMathPreview(
   const galleryCount = galleries.length;
   const galleryImageCount = galleries.reduce(
     (total, gallery) => total + gallery.images.length,
+    0,
+  );
+  const glossaries = extractMarkdownGlossaries(markdown);
+  const glossaryCount = glossaries.length;
+  const glossaryTermCount = glossaries.reduce(
+    (total, glossary) => total + glossary.items.length,
     0,
   );
   const referenceLists = extractMarkdownReferenceLists(markdown);
@@ -213,6 +229,8 @@ export function renderStudioMathPreview(
     formulaCount,
     galleryCount,
     galleryImageCount,
+    glossaryCount,
+    glossaryTermCount,
     html,
     ok: true,
     referenceItemCount,

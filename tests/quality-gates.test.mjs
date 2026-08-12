@@ -168,7 +168,7 @@ test("applies the production security and cache baseline", async () => {
 
 test("serves Studio, its maintenance queue, and media inventory through explicit Next.js routes", async () => {
   await assert.rejects(access(new URL("../public/studio", import.meta.url)));
-  const [studio, maintenancePage, maintenanceModule, maintenanceStyles, maintenanceResponse, config, manifest, preflight, stableSlugWidget, entryPreflightModule, mathPreviewModule, galleryEditorModule, tableEditorModule, taskListEditorModule, referencesEditorModule, stepsEditorModule, videoEditorModule, preview, katexStyles, runtime, unknown] = await Promise.all([
+  const [studio, maintenancePage, maintenanceModule, maintenanceStyles, maintenanceResponse, config, manifest, preflight, stableSlugWidget, entryPreflightModule, mathPreviewModule, galleryEditorModule, glossaryEditorModule, tableEditorModule, taskListEditorModule, referencesEditorModule, stepsEditorModule, videoEditorModule, preview, katexStyles, runtime, unknown] = await Promise.all([
     request("/studio"),
     request("/studio/maintenance"),
     request("/studio/maintenance.mjs"),
@@ -181,6 +181,7 @@ test("serves Studio, its maintenance queue, and media inventory through explicit
     request("/studio/entry-preflight.mjs"),
     request("/studio/math-preview.mjs"),
     request("/studio/gallery-editor.mjs"),
+    request("/studio/glossary-editor.mjs"),
     request("/studio/table-editor.mjs"),
     request("/studio/task-list-editor.mjs"),
     request("/studio/references-editor.mjs"),
@@ -246,6 +247,9 @@ test("serves Studio, its maintenance queue, and media inventory through explicit
   assert.equal(mathPreviewModule.headers.get("cache-control"), "no-store");
   assert.match(await galleryEditorModule.text(), /registerStudioGalleryEditor/);
   assert.equal(galleryEditorModule.headers.get("cache-control"), "no-store");
+  assert.equal(glossaryEditorModule.status, 200);
+  assert.match(await glossaryEditorModule.text(), /registerStudioGlossaryEditor/u);
+  assert.equal(glossaryEditorModule.headers.get("cache-control"), "no-store");
   assert.match(await tableEditorModule.text(), /registerStudioTableEditor/);
   assert.equal(tableEditorModule.headers.get("cache-control"), "no-store");
   assert.equal(referencesEditorModule.status, 200);
@@ -392,6 +396,19 @@ test("renders bounded Studio formula previews with the production Markdown pipel
   assert.ok(diagramHtml);
   assert.doesNotMatch(diagramHtml, /@import|https?:|<foreignObject/iu);
   assert.doesNotMatch(validPayload.html, /<script/u);
+
+  const glossary = await postStudioMathPreview({
+    markdown:
+      "> [!glossary] React 核心概念\n> - **Server Component**\n>\n>   只在服务端渲染的 React 组件。\n>\n>   **别名：** RSC、React Server Component\n>\n>   **上下文：** 在 Next.js App Router 中用于服务端数据读取。\n> - **水合**\n>\n>   React 在已有服务端 HTML 上绑定客户端行为的过程。\n>\n>   **别名：** Hydration",
+  });
+  assert.equal(glossary.status, 200);
+  const glossaryPayload = await glossary.json();
+  assert.equal(glossaryPayload.glossaryCount, 1);
+  assert.equal(glossaryPayload.glossaryTermCount, 2);
+  assert.match(glossaryPayload.html, /data-glossary="definition-ledger"/u);
+  assert.match(glossaryPayload.html, /GLOSSARY \/ 02 TERMS/u);
+  assert.match(glossaryPayload.html, /<dl class="markdown-glossary-items"/u);
+  assert.doesNotMatch(glossaryPayload.html, /<button|contenteditable|onclick=/iu);
 
   const unsafeLink = await postStudioMathPreview({
     markdown: "[unsafe](javascript:alert(1)) $x$",

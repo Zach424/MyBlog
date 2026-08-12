@@ -929,6 +929,145 @@
 
 .markdown-content .markdown-reference-print-target { display: none; }
 
+.markdown-content .markdown-glossary {
+  margin-block: 2rem;
+  border-block: 0.0625rem solid var(--trace-dark);
+  background: color-mix(in srgb, var(--trace) 8%, var(--paper));
+}
+
+.markdown-content .markdown-glossary-header {
+  display: grid;
+  border-bottom: 0.0625rem solid var(--rule);
+}
+
+.markdown-content .markdown-glossary-rail {
+  display: flex;
+  min-height: 2.4rem;
+  align-items: center;
+  justify-content: space-between;
+  gap: 0.75rem;
+  padding: 0.55rem 0.75rem;
+  color: var(--muted);
+  font: 700 0.625rem/1.4 var(--mono);
+  letter-spacing: 0.075em;
+}
+
+.markdown-content .markdown-glossary-kind { color: var(--ink); }
+
+.markdown-content .markdown-glossary-mode::before {
+  display: inline-block;
+  width: 1.35rem;
+  height: 0.35rem;
+  margin-right: 0.45rem;
+  background: linear-gradient(
+    90deg,
+    var(--trace-dark) 0 0.4rem,
+    transparent 0.4rem 0.55rem,
+    var(--signal) 0.55rem 0.95rem,
+    transparent 0.95rem 1.1rem,
+    var(--trace) 1.1rem 1.35rem
+  );
+  content: "";
+}
+
+.markdown-content .markdown-glossary-title {
+  padding: 0.85rem 0.9rem 0.9rem;
+  border-top: 0.0625rem solid var(--rule);
+  font-size: 1rem;
+  line-height: 1.5;
+  overflow-wrap: anywhere;
+}
+
+.markdown-content .markdown-glossary-items { margin: 0; }
+
+.markdown-content .markdown-glossary-entry {
+  display: grid;
+  grid-template-columns: minmax(10rem, 0.72fr) minmax(0, 1.55fr);
+  background: var(--paper);
+}
+
+.markdown-content .markdown-glossary-entry:not(:last-child) {
+  border-bottom: 0.0625rem solid var(--rule);
+}
+
+.markdown-content .markdown-glossary-term,
+.markdown-content .markdown-glossary-meaning {
+  min-width: 0;
+  margin: 0;
+  padding: 0.9rem;
+}
+
+.markdown-content .markdown-glossary-term {
+  display: grid;
+  align-content: start;
+  gap: 0.65rem;
+  border-right: 0.0625rem solid var(--rule);
+  background:
+    linear-gradient(90deg, var(--signal) 0 0.2rem, transparent 0.2rem),
+    color-mix(in srgb, var(--trace) 9%, var(--paper));
+}
+
+.markdown-content .markdown-glossary-term-name {
+  font-size: 0.95rem;
+  line-height: 1.45;
+  overflow-wrap: anywhere;
+}
+
+.markdown-content .markdown-glossary-aliases {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 0.35rem;
+  align-items: center;
+}
+
+.markdown-content .markdown-glossary-alias-label,
+.markdown-content .markdown-glossary-context-label {
+  color: var(--signal);
+  font: 700 0.55rem/1.4 var(--mono);
+  letter-spacing: 0.08em;
+}
+
+.markdown-content .markdown-glossary-alias {
+  padding: 0.15rem 0.35rem;
+  border: 0.0625rem solid color-mix(in srgb, var(--trace-dark) 55%, var(--rule));
+  color: var(--muted);
+  background: var(--paper);
+  font: 650 0.62rem/1.4 var(--mono);
+  overflow-wrap: anywhere;
+}
+
+.markdown-content .markdown-glossary-meaning {
+  display: grid;
+  gap: 0.7rem;
+  align-content: start;
+}
+
+.markdown-content .markdown-glossary-definition {
+  color: var(--ink);
+  font-size: 0.84rem;
+  line-height: 1.75;
+  overflow-wrap: anywhere;
+}
+
+.markdown-content .markdown-glossary-definition > :first-child,
+.markdown-content .markdown-glossary-definition > :last-child { margin-block: 0; }
+
+.markdown-content .markdown-glossary-context {
+  display: grid;
+  grid-template-columns: auto minmax(0, 1fr);
+  gap: 0.65rem;
+  align-items: start;
+  padding-top: 0.6rem;
+  border-top: 0.0625rem dashed color-mix(in srgb, var(--trace-dark) 42%, var(--rule));
+}
+
+.markdown-content .markdown-glossary-context-copy {
+  color: var(--muted);
+  font-size: 0.76rem;
+  line-height: 1.65;
+  overflow-wrap: anywhere;
+}
+
 .markdown-content .markdown-procedure {
   margin-block: 2rem;
   border-block: 0.0625rem solid var(--trace-dark);
@@ -1085,6 +1224,18 @@
 }
 
 @media print {
+  .markdown-content .markdown-glossary { break-inside: auto; }
+
+  .markdown-content .markdown-glossary-header,
+  .markdown-content .markdown-glossary-entry { break-inside: avoid-page; }
+
+  .markdown-content .markdown-glossary-entry {
+    grid-template-columns: 48mm minmax(0, 1fr);
+  }
+
+  .markdown-content .markdown-glossary-term,
+  .markdown-content .markdown-glossary-meaning { padding: 2.5mm; }
+
   .markdown-content .markdown-audio {
     break-inside: avoid-page;
     border-color: #777;
@@ -1297,6 +1448,20 @@
 }
 
 @media (max-width: 32rem) {
+  .markdown-content .markdown-glossary-rail {
+    align-items: flex-start;
+    flex-direction: column;
+  }
+
+  .markdown-content .markdown-glossary-entry { grid-template-columns: 1fr; }
+
+  .markdown-content .markdown-glossary-term {
+    border-right: 0;
+    border-bottom: 0.0625rem solid var(--rule);
+  }
+
+  .markdown-content .markdown-glossary-context { grid-template-columns: 1fr; }
+
   .markdown-content .markdown-procedure-rail {
     align-items: flex-start;
     flex-direction: column;

@@ -802,7 +802,7 @@ export async function runProductionSmoke(originInput, { expectOAuth = false } = 
   invariant(studioPolicy.includes("https://api.github.com"), "Studio CSP 缺少 GitHub API");
   invariant(studioPolicy.includes("frame-ancestors 'none'"), "Studio CSP 未禁止嵌入");
 
-  const [studioMaintenancePage, studioMaintenanceModule, studioMaintenanceStyles, studioMaintenanceResponse, studioConfig, studioManifest, studioPreflight, stableSlugWidget, entryPreflightModule, mathPreviewModule, galleryEditorModule, tableEditorModule, taskListEditorModule, referencesEditorModule, stepsEditorModule, audioEditorModule, videoEditorModule, studioPreview, katexStyles, studioRuntime, unknownStudioAsset] = await Promise.all([
+  const [studioMaintenancePage, studioMaintenanceModule, studioMaintenanceStyles, studioMaintenanceResponse, studioConfig, studioManifest, studioPreflight, stableSlugWidget, entryPreflightModule, mathPreviewModule, galleryEditorModule, glossaryEditorModule, tableEditorModule, taskListEditorModule, referencesEditorModule, stepsEditorModule, audioEditorModule, videoEditorModule, studioPreview, katexStyles, studioRuntime, unknownStudioAsset] = await Promise.all([
     request(origin, "/studio/maintenance"),
     request(origin, "/studio/maintenance.mjs", { accept: "text/javascript" }),
     request(origin, "/studio/maintenance.css", { accept: "text/css" }),
@@ -814,6 +814,7 @@ export async function runProductionSmoke(originInput, { expectOAuth = false } = 
     request(origin, "/studio/entry-preflight.mjs", { accept: "text/javascript" }),
     request(origin, "/studio/math-preview.mjs", { accept: "text/javascript" }),
     request(origin, "/studio/gallery-editor.mjs", { accept: "text/javascript" }),
+    request(origin, "/studio/glossary-editor.mjs", { accept: "text/javascript" }),
     request(origin, "/studio/table-editor.mjs", { accept: "text/javascript" }),
     request(origin, "/studio/task-list-editor.mjs", { accept: "text/javascript" }),
     request(origin, "/studio/references-editor.mjs", { accept: "text/javascript" }),
@@ -976,6 +977,16 @@ export async function runProductionSmoke(originInput, { expectOAuth = false } = 
     "Studio 画廊编辑组件类型不正确",
   );
   invariant(
+    glossaryEditorModule.response.status === 200 &&
+      glossaryEditorModule.body.includes("registerStudioGlossaryEditor") &&
+      glossaryEditorModule.body.includes("myblog-glossary"),
+    "Studio 术语表编辑组件不可用",
+  );
+  invariant(
+    glossaryEditorModule.response.headers.get("content-type")?.startsWith("text/javascript"),
+    "Studio 术语表编辑组件类型不正确",
+  );
+  invariant(
     tableEditorModule.response.status === 200 &&
       tableEditorModule.body.includes("registerStudioTableEditor") &&
       tableEditorModule.body.includes("myblog-table"),
@@ -1025,7 +1036,7 @@ export async function runProductionSmoke(originInput, { expectOAuth = false } = 
       "public, max-age=31536000, immutable",
     "固定版本 Studio KaTeX 样式缓存不正确",
   );
-  for (const asset of [studioMaintenancePage, studioMaintenanceModule, studioMaintenanceStyles, studioMaintenanceResponse, studioConfig, studioManifest, studioPreflight, stableSlugWidget, entryPreflightModule, mathPreviewModule, galleryEditorModule, tableEditorModule, taskListEditorModule, referencesEditorModule, stepsEditorModule, audioEditorModule, videoEditorModule, studioPreview]) {
+  for (const asset of [studioMaintenancePage, studioMaintenanceModule, studioMaintenanceStyles, studioMaintenanceResponse, studioConfig, studioManifest, studioPreflight, stableSlugWidget, entryPreflightModule, mathPreviewModule, galleryEditorModule, glossaryEditorModule, tableEditorModule, taskListEditorModule, referencesEditorModule, stepsEditorModule, audioEditorModule, videoEditorModule, studioPreview]) {
     invariant(asset.response.headers.get("cache-control") === "no-store", "Studio 子资源必须 no-store");
   }
   invariant(
@@ -1114,6 +1125,28 @@ export async function runProductionSmoke(originInput, { expectOAuth = false } = 
       mathPreviewPayload.html.includes('class="katex"') &&
       mathPreviewPayload.html.includes("<math"),
     "Studio 增强 Markdown 生产管线预览不可用",
+  );
+
+  const glossaryPreview = await request(origin, "/studio/math-preview", {
+    accept: "application/json",
+    body: JSON.stringify({
+      markdown:
+        "> [!glossary] React 核心概念\n> - **Server Component**\n>\n>   只在服务端渲染的 React 组件。\n>\n>   **别名：** RSC、React Server Component\n>\n>   **上下文：** 在 Next.js App Router 中用于服务端数据读取。\n> - **水合**\n>\n>   React 在已有服务端 HTML 上绑定客户端行为的过程。\n>\n>   **别名：** Hydration",
+    }),
+    headers: { "content-type": "application/json" },
+    method: "POST",
+  });
+  const glossaryPreviewPayload = JSON.parse(glossaryPreview.body);
+  invariant(
+    glossaryPreview.response.status === 200 &&
+      glossaryPreviewPayload.ok === true &&
+      glossaryPreviewPayload.glossaryCount === 1 &&
+      glossaryPreviewPayload.glossaryTermCount === 2 &&
+      glossaryPreviewPayload.html.includes('data-glossary="definition-ledger"') &&
+      glossaryPreviewPayload.html.includes('GLOSSARY / 02 TERMS') &&
+      glossaryPreviewPayload.html.includes('<dl class="markdown-glossary-items"') &&
+      !/<button|contenteditable|onclick=/iu.test(glossaryPreviewPayload.html),
+    "Studio 术语表生产管线预览不可用",
   );
 
   const entryPreflight = await request(origin, "/studio/entry-preflight", {

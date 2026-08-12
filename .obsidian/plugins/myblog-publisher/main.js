@@ -28,7 +28,7 @@ const AUTHOR_DOCTOR_PLUGIN_BUNDLE_VERSION = 1;
 const AUTHOR_DOCTOR_PLUGIN_PROVENANCE_VERSION = 1;
 const INBOX_READINESS_REPORT_VERSION = 8;
 const AUTHOR_DOCTOR_NODE_ENGINE = ">=22.13.0";
-const AUTHOR_DOCTOR_PLUGIN_VERSION = "1.48.0";
+const AUTHOR_DOCTOR_PLUGIN_VERSION = "1.49.0";
 const CURRENT_DRAFT_INTENT_RUN_SCOPE = Symbol("current-draft-intent");
 const PRODUCTION_CONTENT_CONVERGENCE_RUN_SCOPE = Symbol(
   "production-content-convergence",
@@ -187,6 +187,34 @@ function createStepsTemplate(filePath) {
     ">    将已审阅提交推送到 `main`。",
     ">",
     ">    **验证：** 远端 HEAD 与本地一致。",
+  ].join("\n");
+}
+
+function createGlossaryTemplate(filePath) {
+  const normalized = String(filePath || "").replaceAll("\\", "/");
+  if (
+    !/^content\/(inbox|posts|projects)\/[a-z0-9]+(?:-[a-z0-9]+)*\.md$/u.test(
+      normalized,
+    )
+  ) {
+    throw new Error("术语定义表模板只能插入 content/inbox、content/posts 或 content/projects 中的博客文档");
+  }
+  return [
+    "> [!glossary] React 核心概念",
+    "> - **Server Component**",
+    ">",
+    ">   只在服务端渲染的 React 组件，不向浏览器发送该组件本身的 JavaScript。",
+    ">",
+    ">   **别名：** RSC、React Server Component",
+    ">",
+    ">   **上下文：** 在 Next.js App Router 中默认用于服务端数据读取和组合界面。",
+    "> - **水合**",
+    ">",
+    ">   React 在已有服务端 HTML 上绑定客户端行为的过程。",
+    ">",
+    ">   **别名：** Hydration",
+    ">",
+    ">   **上下文：** 只发生在需要浏览器交互的 Client Component 边界。",
   ].join("\n");
 }
 
@@ -6077,6 +6105,20 @@ module.exports = class MyBlogPublisher extends Plugin {
           const template = createStepsTemplate(view?.file?.path);
           editor.replaceSelection(template);
           new Notice("已插入两步操作流程模板；请替换流程标题、步骤名、说明与可选验证");
+        } catch (error) {
+          new Notice(error instanceof Error ? error.message : String(error));
+        }
+      },
+    });
+
+    this.addCommand({
+      id: "insert-glossary-template",
+      name: "插入术语定义表模板",
+      editorCallback: (editor, view) => {
+        try {
+          const template = createGlossaryTemplate(view?.file?.path);
+          editor.replaceSelection(template);
+          new Notice("已插入两条术语定义模板；请替换标题、术语、定义、可选别名与上下文");
         } catch (error) {
           new Notice(error instanceof Error ? error.message : String(error));
         }

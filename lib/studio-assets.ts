@@ -7,6 +7,7 @@ type StudioAssetName =
   | "config.mjs"
   | "entry-preflight.mjs"
   | "gallery-editor.mjs"
+  | "glossary-editor.mjs"
   | "maintenance.html"
   | "maintenance.mjs"
   | "maintenance.css"
@@ -26,6 +27,7 @@ const contentTypes: Record<StudioAssetName, string> = {
   "config.mjs": "text/javascript; charset=utf-8",
   "entry-preflight.mjs": "text/javascript; charset=utf-8",
   "gallery-editor.mjs": "text/javascript; charset=utf-8",
+  "glossary-editor.mjs": "text/javascript; charset=utf-8",
   "maintenance.html": "text/html; charset=utf-8",
   "maintenance.mjs": "text/javascript; charset=utf-8",
   "maintenance.css": "text/css; charset=utf-8",

@@ -1,6 +1,7 @@
 import { parseDocument } from "yaml";
 import { z } from "zod";
 import { getMarkdownAudioIssue } from "../markdown-audio.ts";
+import { getMarkdownGlossaryIssue } from "../markdown-glossary.ts";
 import { getMarkdownReferenceIssue } from "../markdown-references.ts";
 import { getMarkdownStepsIssue } from "../markdown-steps.ts";
 import { getMarkdownMathIssue } from "../markdown-math.ts";
@@ -435,6 +436,15 @@ function parseFrontmatter<T>(
     );
   }
 
+  const glossaryIssue = getMarkdownGlossaryIssue(body);
+  if (glossaryIssue) {
+    const location = glossaryIssue.line ? `正文第 ${glossaryIssue.line} 行` : "正文";
+    throw new ContentValidationError(
+      sourcePath,
+      `${location}术语定义表无法解析：${glossaryIssue.message}`,
+    );
+  }
+
   return { data: result.data, body };
 }
 
@@ -609,6 +619,14 @@ export function inspectContentDraft(
       issues.push({
         field: "body",
         message: `${location}步骤流程无法解析：${stepsIssue.message}`,
+      });
+    }
+    const glossaryIssue = getMarkdownGlossaryIssue(body);
+    if (glossaryIssue) {
+      const location = glossaryIssue.line ? `第 ${glossaryIssue.line} 行` : "正文";
+      issues.push({
+        field: "body",
+        message: `${location}术语定义表无法解析：${glossaryIssue.message}`,
       });
     }
   }
