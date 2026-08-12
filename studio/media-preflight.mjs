@@ -14,6 +14,11 @@ export const STUDIO_VIDEO_BUDGET = Object.freeze({
   maxWidth: 1920,
 });
 
+export const STUDIO_AUDIO_BUDGET = Object.freeze({
+  maxBytes: 8 * 1024 * 1024,
+  maxDurationSeconds: 15 * 60,
+});
+
 export const STUDIO_SUPPORTED_IMAGE_EXTENSIONS = Object.freeze([
   ".avif",
   ".gif",
@@ -25,6 +30,7 @@ export const STUDIO_SUPPORTED_IMAGE_EXTENSIONS = Object.freeze([
 
 export const STUDIO_IMAGE_ACCEPT = STUDIO_SUPPORTED_IMAGE_EXTENSIONS.join(",");
 export const STUDIO_SUPPORTED_VIDEO_EXTENSIONS = Object.freeze([".mp4"]);
+export const STUDIO_SUPPORTED_AUDIO_EXTENSIONS = Object.freeze([".mp3"]);
 
 const FORMAT_BY_EXTENSION = Object.freeze({
   ".avif": "avif",
@@ -245,6 +251,37 @@ async function decodeVideoInBrowser(file) {
   });
 }
 
+async function decodeAudioInBrowser(file) {
+  if (!globalThis.document?.createElement || !globalThis.URL?.createObjectURL) {
+    throw new Error("当前浏览器不支持本地音频元数据预检");
+  }
+  const audio = globalThis.document.createElement("audio");
+  const source = globalThis.URL.createObjectURL(file);
+  audio.preload = "metadata";
+  return new Promise((resolve, reject) => {
+    const timeout = globalThis.setTimeout?.(() => {
+      cleanup();
+      reject(new Error("读取音频元数据超时"));
+    }, 10_000);
+    const cleanup = () => {
+      if (timeout !== undefined) globalThis.clearTimeout?.(timeout);
+      audio.removeAttribute?.("src");
+      audio.load?.();
+      globalThis.URL.revokeObjectURL(source);
+    };
+    audio.onloadedmetadata = () => {
+      const result = { durationSeconds: audio.duration };
+      cleanup();
+      resolve(result);
+    };
+    audio.onerror = () => {
+      cleanup();
+      reject(new Error("浏览器无法解码该 MP3"));
+    };
+    audio.src = source;
+  });
+}
+
 async function digestBytesInBrowser(bytes) {
   if (!globalThis.crypto?.subtle) {
     throw new Error("当前浏览器不支持 SHA-256 媒体指纹");
@@ -295,6 +332,33 @@ function inspectMp4Container(bytes, fileName) {
   }
 }
 
+function inspectMp3Container(bytes, fileName) {
+  const hasId3 = bytes.length >= 3 && textAt(bytes, 0, 3) === "ID3";
+  const hasFrameSync = bytes.length >= 2 && bytes[0] === 0xff && (bytes[1] & 0xe0) === 0xe0;
+  if (!hasId3 && !hasFrameSync) {
+    throw fileError(fileName, "MP3 签名无效，文件可能损坏或格式伪装");
+  }
+}
+
+function assertAudioInspectionWithinBudget(inspection) {
+  const { bytes, durationSeconds, fileName } = inspection;
+  if (bytes > STUDIO_AUDIO_BUDGET.maxBytes) {
+    throw fileError(
+      fileName,
+      `文件大小 ${formatMegabytes(bytes)} 超过 ${formatMegabytes(STUDIO_AUDIO_BUDGET.maxBytes)} 上限`,
+    );
+  }
+  if (!Number.isFinite(durationSeconds) || durationSeconds <= 0) {
+    throw fileError(fileName, "音频缺少可验证的时长信息");
+  }
+  if (durationSeconds > STUDIO_AUDIO_BUDGET.maxDurationSeconds) {
+    throw fileError(
+      fileName,
+      `音频时长 ${durationSeconds.toFixed(1)} 秒超过 ${STUDIO_AUDIO_BUDGET.maxDurationSeconds} 秒上限`,
+    );
+  }
+}
+
 function assertVideoInspectionWithinBudget(inspection) {
   const { bytes, durationSeconds, fileName, height, width } = inspection;
   if (bytes > STUDIO_VIDEO_BUDGET.maxBytes) {
@@ -334,6 +398,7 @@ function assertVideoInspectionWithinBudget(inspection) {
 export async function inspectStudioMediaFile(
   file,
   {
+    decodeAudio = decodeAudioInBrowser,
     decodeImage = decodeImageInBrowser,
     decodeVideo = decodeVideoInBrowser,
     digestBytes = digestBytesInBrowser,
@@ -342,21 +407,26 @@ export async function inspectStudioMediaFile(
   const fileName = file?.name || "未命名文件";
   const extension = extensionOf(fileName);
   const expectedFormat = FORMAT_BY_EXTENSION[extension];
+  const isAudio = STUDIO_SUPPORTED_AUDIO_EXTENSIONS.includes(extension);
   const isVideo = STUDIO_SUPPORTED_VIDEO_EXTENSIONS.includes(extension);
-  if (!expectedFormat && !isVideo) {
+  if (!expectedFormat && !isVideo && !isAudio) {
     throw fileError(
       fileName,
-      `只允许 ${STUDIO_SUPPORTED_IMAGE_EXTENSIONS.join(", ")} 图片和 .mp4 视频，当前扩展名为 ${extension || "无"}`,
+      `只允许 ${STUDIO_SUPPORTED_IMAGE_EXTENSIONS.join(", ")} 图片、.mp3 音频和 .mp4 视频，当前扩展名为 ${extension || "无"}`,
     );
   }
   if (!Number.isFinite(file?.size) || file.size < 1) {
     throw fileError(fileName, "文件为空或无法读取大小");
   }
-  const maxBytes = isVideo ? STUDIO_VIDEO_BUDGET.maxBytes : STUDIO_MEDIA_BUDGET.maxBytes;
+  const maxBytes = isVideo
+    ? STUDIO_VIDEO_BUDGET.maxBytes
+    : isAudio
+      ? STUDIO_AUDIO_BUDGET.maxBytes
+      : STUDIO_MEDIA_BUDGET.maxBytes;
   if (file.size > maxBytes) {
     throw fileError(
       fileName,
-      `文件大小 ${formatMegabytes(file.size)} 超过 ${formatMegabytes(maxBytes)} 上限${isVideo ? "" : "；请先压缩或转换为 AVIF/WebP"}`,
+      `文件大小 ${formatMegabytes(file.size)} 超过 ${formatMegabytes(maxBytes)} 上限${isVideo || isAudio ? "" : "；请先压缩或转换为 AVIF/WebP"}`,
     );
   }
 
@@ -364,7 +434,29 @@ export async function inspectStudioMediaFile(
   try {
     bytes = new Uint8Array(await file.arrayBuffer());
   } catch (error) {
-    throw fileError(fileName, `无法读取${isVideo ? "视频" : "图片"}字节`, error);
+    throw fileError(fileName, `无法读取${isVideo ? "视频" : isAudio ? "音频" : "图片"}字节`, error);
+  }
+  if (isAudio) {
+    inspectMp3Container(bytes, fileName);
+    let metadata;
+    try {
+      metadata = await decodeAudio(file);
+    } catch (error) {
+      throw fileError(fileName, "音频无法解码，文件可能损坏或并非浏览器兼容 MP3", error);
+    }
+    const inspection = {
+      bytes: file.size,
+      durationSeconds: Number(metadata?.durationSeconds),
+      extension,
+      fileName,
+      format: "mp3",
+      height: 1,
+      pages: 1,
+      sha256: await digestBytes(bytes),
+      width: 1,
+    };
+    assertAudioInspectionWithinBudget(inspection);
+    return inspection;
   }
   if (isVideo) {
     inspectMp4Container(bytes, fileName);
@@ -595,6 +687,9 @@ export function createStudioMediaConflictChecker({
 }
 
 export function formatStudioMediaInspection(inspection) {
+  if (inspection.format === "mp3") {
+    return `MP3 · ${inspection.durationSeconds.toFixed(1)} 秒 · ${formatMegabytes(inspection.bytes)}`;
+  }
   if (inspection.format === "mp4") {
     return `MP4 · ${inspection.width}×${inspection.height} px · ${inspection.durationSeconds.toFixed(1)} 秒 · ${formatMegabytes(inspection.bytes)}`;
   }
@@ -615,7 +710,8 @@ function isStudioMediaInput(target) {
   if (!target || target.tagName !== "INPUT" || target.type !== "file") return false;
   if (isStudioImageInput(target)) return true;
   const extension = extensionOf(target.files?.[0]?.name ?? "");
-  return STUDIO_SUPPORTED_VIDEO_EXTENSIONS.includes(extension);
+  return STUDIO_SUPPORTED_VIDEO_EXTENSIONS.includes(extension) ||
+    STUDIO_SUPPORTED_AUDIO_EXTENSIONS.includes(extension);
 }
 
 export function createStudioMediaPreflightHandler({
@@ -633,7 +729,11 @@ export function createStudioMediaPreflightHandler({
     const videoSelection = STUDIO_SUPPORTED_VIDEO_EXTENSIONS.includes(
       extensionOf(input.files?.[0]?.name ?? ""),
     );
-    if (!videoSelection) input.accept = STUDIO_IMAGE_ACCEPT;
+    const audioSelection = STUDIO_SUPPORTED_AUDIO_EXTENSIONS.includes(
+      extensionOf(input.files?.[0]?.name ?? ""),
+    );
+    const mediaLabel = videoSelection ? "视频" : audioSelection ? "音频" : "图片";
+    if (!videoSelection && !audioSelection) input.accept = STUDIO_IMAGE_ACCEPT;
     const file = input.files?.[0];
     if (file && approvedFiles.has(file)) {
       approvedFiles.delete(file);
@@ -648,7 +748,7 @@ export function createStudioMediaPreflightHandler({
 
     event.preventDefault?.();
     event.stopImmediatePropagation?.();
-    report({ detail: file.name, state: "checking", title: `正在检查${videoSelection ? "视频" : "图片"}` });
+    report({ detail: file.name, state: "checking", title: `正在检查${mediaLabel}` });
 
     try {
       const inspection = await inspect(file);
@@ -657,6 +757,8 @@ export function createStudioMediaPreflightHandler({
       if (!isCurrent() || conflict.state === "stale") return false;
       const optimizationNote = inspection.format === "mp4"
         ? "浏览器已核对容器、尺寸与时长；保存后的构建门会继续验证 H.264、无音轨和 fast start。"
+        : inspection.format === "mp3"
+          ? "浏览器已核对签名与时长；保存后的构建门会继续验证真实 MP3 编码、码率、采样率和声道。"
         : ["jpeg", "png"].includes(inspection.format)
         ? "Studio 会保留原格式；需要自动转 WebP 时请使用 Obsidian 发布器。"
         : "文件会按当前格式进入 Git 草稿。";
@@ -664,13 +766,13 @@ export function createStudioMediaPreflightHandler({
         ? `目标 ${conflict.targetPath}。`
         : "当前是全局媒体库，未绑定条目附件目录。";
       const title = {
-        new: `新增${videoSelection ? "视频" : "图片"}预检通过`,
-        "replace-confirmed": `已确认替换现有${videoSelection ? "视频" : "图片"}`,
-        "replace-session-confirmed": `已确认替换本次会话${videoSelection ? "视频" : "图片"}`,
-        same: `${videoSelection ? "视频" : "图片"}与已发布文件相同`,
-        "same-session": `${videoSelection ? "视频" : "图片"}与本次会话文件相同`,
-        unscoped: `${videoSelection ? "视频" : "图片"}预检通过`,
-      }[conflict.state] ?? `${videoSelection ? "视频" : "图片"}预检通过`;
+        new: `新增${mediaLabel}预检通过`,
+        "replace-confirmed": `已确认替换现有${mediaLabel}`,
+        "replace-session-confirmed": `已确认替换本次会话${mediaLabel}`,
+        same: `${mediaLabel}与已发布文件相同`,
+        "same-session": `${mediaLabel}与本次会话文件相同`,
+        unscoped: `${mediaLabel}预检通过`,
+      }[conflict.state] ?? `${mediaLabel}预检通过`;
       report({
         detail: `${formatStudioMediaInspection(inspection)}。${conflictNote}${optimizationNote}`,
         state: "success",
@@ -690,7 +792,7 @@ export function createStudioMediaPreflightHandler({
       report({
         detail: `${error instanceof Error ? error.message : String(error)}。请修正后重新选择。`,
         state: "error",
-        title: `${videoSelection ? "视频" : "图片"}未进入草稿`,
+        title: `${mediaLabel}未进入草稿`,
       });
       return false;
     }

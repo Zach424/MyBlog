@@ -259,6 +259,7 @@ test("validates every nested upload and rejects non-image repository files", asy
   const projectRoot = await temporaryDirectory();
   try {
     assert.deepEqual(await validateMediaRepository(projectRoot), {
+      audios: 0,
       images: 0,
       totalBytes: 0,
       videos: 0,
@@ -273,13 +274,14 @@ test("validates every nested upload and rejects non-image repository files", asy
 
     const result = await validateMediaRepository(projectRoot);
     assert.equal(result.images, 1);
+    assert.equal(result.audios, 0);
     assert.equal(result.videos, 0);
     assert.ok(result.totalBytes > 0);
 
     await writeFile(join(uploadsDirectory, "notes.txt"), "not public media");
     await assert.rejects(
       validateMediaRepository(projectRoot),
-      /public\/uploads 只允许 .*图片和 \.mp4 视频/u,
+      /public\/uploads 只允许 .*图片、\.mp3 音频和 \.mp4 视频/u,
     );
   } finally {
     await rm(projectRoot, { recursive: true, force: true });

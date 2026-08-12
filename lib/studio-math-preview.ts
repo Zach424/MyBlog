@@ -3,6 +3,11 @@ import rehypeStringify from "rehype-stringify";
 import remarkParse from "remark-parse";
 import remarkRehype from "remark-rehype";
 import { unified } from "unified";
+import {
+  extractMarkdownAudioNotes,
+  getMarkdownAudioIssue,
+  type MarkdownAudioIssue,
+} from "@/lib/markdown-audio";
 import { extractMarkdownMathExpressions } from "@/lib/content/markdown";
 import {
   extractMarkdownDiagrams,
@@ -42,6 +47,7 @@ export const STUDIO_MATH_PREVIEW_MAX_BYTES = 100_000;
 export type StudioMathPreviewResult =
   | {
       calloutCount: number;
+      audioCount: number;
       diagramCount: number;
       formulaCount: number;
       galleryCount: number;
@@ -58,6 +64,7 @@ export type StudioMathPreviewResult =
   | {
       issue:
         | MarkdownDiagramIssue
+        | MarkdownAudioIssue
         | MarkdownGalleryIssue
         | MarkdownMathIssue
         | MarkdownTableIssue
@@ -115,6 +122,8 @@ export function renderStudioMathPreview(
 ): StudioMathPreviewResult {
   const issue = getMarkdownMathIssue(markdown);
   if (issue) return { issue, ok: false };
+  const audioIssue = getMarkdownAudioIssue(markdown);
+  if (audioIssue) return { issue: audioIssue, ok: false };
   const diagramIssue = getMarkdownDiagramIssue(markdown);
   if (diagramIssue) return { issue: diagramIssue, ok: false };
   const galleryIssue = getMarkdownGalleryIssue(markdown);
@@ -151,6 +160,7 @@ export function renderStudioMathPreview(
     0,
   );
   const videoCount = extractMarkdownVideos(markdown).length;
+  const audioCount = extractMarkdownAudioNotes(markdown).length;
   const file = unified()
     .use(remarkParse)
     .use(MARKDOWN_REMARK_PLUGINS)
@@ -165,6 +175,7 @@ export function renderStudioMathPreview(
   const html = `<div class="markdown-content" data-studio-renderer="production-pipeline">${rendered}</div>`;
 
   return {
+    audioCount,
     calloutCount,
     diagramCount,
     formulaCount,

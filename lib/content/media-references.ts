@@ -13,6 +13,10 @@ export function isMarkdownVideoUrl(value: string) {
   return /\.mp4(?:[?#]|$)/iu.test(value.trim());
 }
 
+export function isMarkdownAudioUrl(value: string) {
+  return /\.mp3(?:[?#]|$)/iu.test(value.trim());
+}
+
 export function extractMarkdownImageReferences(markdown: string) {
   const tree = parseMarkdown(markdown);
   const definitions = new Map<string, string>();
@@ -31,7 +35,7 @@ export function extractMarkdownImageReferences(markdown: string) {
         ? definitions.get(node.identifier)
         : undefined;
     if (!url) return;
-    if (isMarkdownVideoUrl(url)) return;
+    if (isMarkdownVideoUrl(url) || isMarkdownAudioUrl(url)) return;
     references.push({
       alt: node.alt ?? "",
       line: node.position?.start?.line,
@@ -119,5 +123,13 @@ export function resolveContentVideoPath(reference: string, sourcePath: string) {
     extension: (value) => value.toLowerCase() === ".mp4",
     label: "本地视频",
     typeMessage: "必须指向 .mp4 视频",
+  });
+}
+
+export function resolveContentAudioPath(reference: string, sourcePath: string) {
+  return resolveContentUploadPath(reference, sourcePath, {
+    extension: (value) => value.toLowerCase() === ".mp3",
+    label: "本地音频",
+    typeMessage: "必须指向 .mp3 音频",
   });
 }

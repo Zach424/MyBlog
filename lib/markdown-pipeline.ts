@@ -4,6 +4,7 @@ import rehypeSlug from "rehype-slug";
 import type { Options as ReactMarkdownOptions } from "react-markdown";
 import remarkGfm from "remark-gfm";
 import remarkMath from "remark-math";
+import { rehypeMarkdownAudioNotes } from "@/lib/markdown-audio";
 import { rehypeMarkdownCallouts } from "@/lib/markdown-callout";
 import { rehypeMarkdownDiagrams } from "@/lib/markdown-diagram";
 import { rehypeMarkdownGalleries } from "@/lib/markdown-gallery";
@@ -32,6 +33,7 @@ export const MARKDOWN_REHYPE_PLUGINS = [
   rehypeMarkdownTaskLists,
   rehypeMarkdownTables,
   rehypeMarkdownGalleries,
+  rehypeMarkdownAudioNotes,
   rehypeMarkdownCallouts,
   rehypeMarkdownVideos,
   rehypeMarkdownDiagrams,

@@ -369,3 +369,14 @@ flowchart LR
     /Mermaid 图表无法解析.*交互|链接/u,
   );
 });
+
+test("rejects transcriptless audio before content can enter a production build", () => {
+  const source = `${postSource()}\n\n> [!audio] 发布复盘口述
+> [下载 MP3](/uploads/audio-contract/release-retro.mp3 "发布复盘口述")
+> 总结发布检查、上线确认与复盘结论。`;
+
+  assert.throws(
+    () => parsePostFile("content/posts/audio-contract.md", source),
+    /音频声明无法解析.*文字稿/u,
+  );
+});

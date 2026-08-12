@@ -2,6 +2,7 @@ import { readFile } from "node:fs/promises";
 import path from "node:path";
 
 type StudioAssetName =
+  | "audio-editor.mjs"
   | "index.html"
   | "config.mjs"
   | "entry-preflight.mjs"
@@ -18,6 +19,7 @@ type StudioAssetName =
   | "preview.css";
 
 const contentTypes: Record<StudioAssetName, string> = {
+  "audio-editor.mjs": "text/javascript; charset=utf-8",
   "index.html": "text/html; charset=utf-8",
   "config.mjs": "text/javascript; charset=utf-8",
   "entry-preflight.mjs": "text/javascript; charset=utf-8",

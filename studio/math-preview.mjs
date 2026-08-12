@@ -74,6 +74,32 @@ export function hasPotentialStudioVideo(markdown) {
   return false;
 }
 
+export function hasPotentialStudioAudio(markdown) {
+  let fenceCharacter = "";
+  let fenceLength = 0;
+
+  for (const sourceLine of textValue(markdown).split(/\r?\n/u)) {
+    const line = sourceLine.replace(/^[ \t]*(?:>[ \t]*)+/u, "");
+    const fence = /^[ \t]*(`{3,}|~{3,})/u.exec(line);
+    if (fenceCharacter) {
+      if (fence && fence[1][0] === fenceCharacter && fence[1].length >= fenceLength) {
+        fenceCharacter = "";
+        fenceLength = 0;
+      }
+      continue;
+    }
+    if (fence) {
+      fenceCharacter = fence[1][0];
+      fenceLength = fence[1].length;
+      continue;
+    }
+    if (/^[ \t]*(?:>[ \t]*)+\[!audio\](?=[+\-\s]|$)/iu.test(sourceLine)) {
+      return true;
+    }
+  }
+  return false;
+}
+
 export function hasPotentialStudioGallery(markdown) {
   let fenceCharacter = "";
   let fenceLength = 0;
@@ -182,6 +208,7 @@ function hasPotentialStudioCallout(markdown) {
 export function hasPotentialStudioRichMarkdown(markdown) {
   return (
     hasPotentialStudioMath(markdown) ||
+    hasPotentialStudioAudio(markdown) ||
     hasPotentialStudioGallery(markdown) ||
     hasPotentialStudioTable(markdown) ||
     hasPotentialStudioTaskList(markdown) ||
@@ -231,6 +258,7 @@ export function getStudioMathPreviewStatus(state) {
       };
     case "ready": {
       const evidence = [];
+      if (state.audioCount > 0) evidence.push(`${state.audioCount} 段音频 / 含文字稿`);
       if (state.formulaCount > 0) evidence.push(`${state.formulaCount} 个公式`);
       if (state.calloutCount > 0) evidence.push(`${state.calloutCount} 个信息块`);
       if (state.diagramCount > 0) evidence.push(`${state.diagramCount} 张图表`);
@@ -247,7 +275,7 @@ export function getStudioMathPreviewStatus(state) {
       }
       if (state.videoCount > 0) evidence.push(`${state.videoCount} 段视频`);
       return {
-        detail: "这里与正式页面共享 remark、rehype、受限 KaTeX、Callout、画廊、技术表格、只读任务清单、Mermaid 与本地视频渲染配置。",
+        detail: "这里与正式页面共享 remark、rehype、受限 KaTeX、Callout、画廊、技术表格、只读任务清单、Mermaid、本地音频与本地视频渲染配置。",
         label: "RICH MARKDOWN / VERIFIED",
         title: `${evidence.join("、")}已按生产规则渲染`,
       };
@@ -259,9 +287,12 @@ export function getStudioMathPreviewStatus(state) {
       const isTable = state.issue?.kind === "table";
       const isTaskList = state.issue?.kind === "task-list";
       const isVideo = state.issue?.kind === "video";
+      const isAudio = state.issue?.kind === "audio";
       return {
         detail: `${line}${state.issue?.message || "请检查增强 Markdown 语法。"}`,
-        label: isTaskList
+        label: isAudio
+          ? "AUDIO / NEEDS FIX"
+          : isTaskList
           ? "TASKS / NEEDS FIX"
           : isTable
           ? "TABLE / NEEDS FIX"
@@ -272,7 +303,9 @@ export function getStudioMathPreviewStatus(state) {
           : isDiagram
             ? "DIAGRAM / NEEDS FIX"
             : "FORMULA / NEEDS FIX",
-        title: isTaskList
+        title: isAudio
+          ? "音频尚不能发布"
+          : isTaskList
           ? "任务清单尚不能发布"
           : isTable
           ? "技术表格尚不能发布"
@@ -318,6 +351,7 @@ export function createStudioMathPreviewTemplate({
 
     getInitialState() {
       return {
+        audioCount: 0,
         entryFacts: [],
         entryIssueCount: 0,
         entryIssues: [],
@@ -377,6 +411,7 @@ export function createStudioMathPreviewTemplate({
 
       if (!hasPotentialStudioRichMarkdown(body)) {
         this.setState({
+          audioCount: 0,
           calloutCount: 0,
           diagramCount: 0,
           formulaCount: 0,
@@ -413,6 +448,7 @@ export function createStudioMathPreviewTemplate({
         if (this.previewDisposed || generation !== this.previewGeneration) return;
         if (result.ok) {
           this.setState({
+            audioCount: result.audioCount,
             calloutCount: result.calloutCount,
             diagramCount: result.diagramCount,
             formulaCount: result.formulaCount,
@@ -430,6 +466,7 @@ export function createStudioMathPreviewTemplate({
           });
         } else {
           this.setState({
+            audioCount: 0,
             calloutCount: 0,
             diagramCount: 0,
             formulaCount: 0,
@@ -450,6 +487,7 @@ export function createStudioMathPreviewTemplate({
         if (error?.name === "AbortError") return;
         if (this.previewDisposed || generation !== this.previewGeneration) return;
         this.setState({
+          audioCount: 0,
           calloutCount: 0,
           diagramCount: 0,
           formulaCount: 0,

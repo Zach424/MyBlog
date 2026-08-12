@@ -262,6 +262,46 @@ test("archives a titled MP4 declaration without treating it as an image", () => 
   ]);
 });
 
+test("archives a transcript-first MP3 declaration as an audio attachment", () => {
+  const withAudio = article.replace(
+    "## 方法",
+    [
+      "## 方法",
+      "",
+      "> [!audio] 发布复盘口述",
+      '> [下载 MP3](/uploads/release-retro.mp3 "发布复盘口述")',
+      "> 总结发布检查、上线确认与复盘结论。",
+      ">",
+      "> **文字稿**",
+      "> 先运行完整检查，再确认生产冒烟通过。",
+    ].join("\n"),
+  );
+  const result = prepareObsidianNote(
+    "content/inbox/obsidian-publishing.md",
+    withAudio,
+  );
+
+  assert.match(
+    result.content,
+    /\[下载 MP3\]\(\/uploads\/obsidian-publishing\/release-retro\.mp3 "发布复盘口述"\)/u,
+  );
+  const audio = result.attachments.find((attachment) =>
+    attachment.sourcePath.endsWith("release-retro.mp3"),
+  );
+  assert.deepEqual(audio, {
+    publicUrl: "/uploads/obsidian-publishing/release-retro.mp3",
+    sourcePath: "public/uploads/release-retro.mp3",
+    targetPath: "public/uploads/obsidian-publishing/release-retro.mp3",
+    usages: [{
+      altSources: ["authored"],
+      altTexts: ["发布复盘口述"],
+      occurrences: 1,
+      role: "audio",
+      sourceLines: [17],
+    }],
+  });
+});
+
 test("archives gallery images atomically while preserving order, captions, and gallery evidence", () => {
   const withGallery = article.replace(
     "正文图片 ![evidence](/uploads/obsidian-evidence.png)。",
@@ -650,7 +690,7 @@ test("rejects unsafe locations, unstable slugs, and mismatched metadata", () => 
       "content/inbox/obsidian-publishing.md",
       article.replace("obsidian-evidence.png", "diagram.svg"),
     ),
-    /仅支持常见图片和 MP4 视频附件/,
+    /仅支持常见图片、MP3 音频和 MP4 视频附件/,
   );
 });
 
@@ -829,14 +869,14 @@ test("ships one digest-bound desktop Obsidian plugin bundle without hidden shell
   ]);
   const bundle = JSON.parse(bundleSource);
   assert.equal(JSON.parse(manifest).isDesktopOnly, true);
-  assert.equal(JSON.parse(manifest).version, "1.45.0");
+  assert.equal(JSON.parse(manifest).version, "1.46.0");
   assert.equal(JSON.parse(manifest).minAppVersion, "1.5.7");
   assert.deepEqual(Object.keys(bundle), ["version", "algorithm", "plugin", "files"]);
   assert.equal(bundle.version, 1);
   assert.equal(bundle.algorithm, "sha256");
   assert.deepEqual(bundle.plugin, {
     id: "myblog-publisher",
-    version: "1.45.0",
+    version: "1.46.0",
   });
   assert.deepEqual(
     bundle.files,

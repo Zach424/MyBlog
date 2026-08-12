@@ -1,6 +1,7 @@
 import { copyFile, stat } from "node:fs/promises";
 import { extname } from "node:path";
 import sharp from "sharp";
+import { inspectAudioFile } from "./audio-policy.ts";
 import { inspectVideoFile } from "./video-policy.ts";
 
 // Publishing stages and then atomically renames attachments. Disabling the
@@ -234,6 +235,30 @@ export async function prepareMediaForPublishing(
 ): Promise<MediaPreparation> {
   const sourceExtension = extname(absoluteSourcePath).toLowerCase();
   const targetExtension = extname(targetPath).toLowerCase();
+  if (sourceExtension === ".mp3" || targetExtension === ".mp3") {
+    if (sourceExtension !== ".mp3" || targetExtension !== ".mp3") {
+      throw mediaError(targetPath, "MP3 音频发布前后必须保持 .mp3 扩展名");
+    }
+    const sourceAudio = await inspectAudioFile(absoluteSourcePath, sourcePath);
+    await copyFile(absoluteSourcePath, absoluteStagedPath);
+    const outputAudio = await inspectAudioFile(absoluteStagedPath, targetPath);
+    const asMediaInspection = (
+      audio: Awaited<ReturnType<typeof inspectAudioFile>>,
+    ): MediaInspection => ({
+      bytes: audio.bytes,
+      format: "mp3",
+      height: 1,
+      pages: 1,
+      sourcePath: audio.sourcePath,
+      width: 1,
+    });
+    return {
+      bytesSaved: 0,
+      optimized: false,
+      output: asMediaInspection(outputAudio),
+      source: asMediaInspection(sourceAudio),
+    };
+  }
   if (sourceExtension === ".mp4" || targetExtension === ".mp4") {
     if (sourceExtension !== ".mp4" || targetExtension !== ".mp4") {
       throw mediaError(targetPath, "MP4 视频发布前后必须保持 .mp4 扩展名");

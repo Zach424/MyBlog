@@ -3,6 +3,7 @@ import { readFile } from "node:fs/promises";
 import test from "node:test";
 import {
   FRESHNESS_OPTIONS,
+  AUDIO_MAX_FILE_SIZE,
   MEDIA_MAX_FILE_SIZE,
   STUDIO_ENTRY_MEDIA_FOLDER,
   STUDIO_ENTRY_PUBLIC_FOLDER,
@@ -15,6 +16,7 @@ import {
 } from "../lib/content/contract.ts";
 import { MEDIA_BUDGET } from "../lib/media-policy.ts";
 import { VIDEO_BUDGET } from "../lib/video-policy.ts";
+import { AUDIO_BUDGET } from "../lib/audio-policy.ts";
 
 test("maps the publishing studio to the single Git content source", () => {
   const config = createStudioConfig("https://blog.example.test/path");
@@ -75,13 +77,17 @@ test("keeps CMS tags and required content fields aligned with the contract", () 
       "myblog-gallery",
       "myblog-table",
       "myblog-task-list",
+      "myblog-audio",
       "myblog-video",
     ]);
+    assert.equal(body.audio_max_file_size, AUDIO_BUDGET.maxBytes);
     assert.equal(body.video_max_file_size, VIDEO_BUDGET.maxBytes);
+    assert.equal(AUDIO_MAX_FILE_SIZE, AUDIO_BUDGET.maxBytes);
     assert.match(body.hint, /新增、同内容复用和同名替换.*必须确认/u);
     assert.match(body.hint, /多图证据画廊/u);
     assert.match(body.hint, /技术数据表格/u);
     assert.match(body.hint, /项目任务清单/u);
+    assert.match(body.hint, /本地音频笔记.*完整文字稿/u);
     assert.match(body.hint, /公式使用 \$\.\.\.\$ 或 \$\$\.\.\.\$\$.*原始 Markdown.*错误行/u);
   }
 });
@@ -98,11 +104,13 @@ test("pins the CMS asset and provides a useful loading failure", async () => {
   assert.match(html, /from "\/studio\/math-preview\.mjs"/);
   assert.match(html, /from "\/studio\/gallery-editor\.mjs"/);
   assert.match(html, /from "\/studio\/table-editor\.mjs"/);
+  assert.match(html, /from "\/studio\/audio-editor\.mjs"/);
   assert.match(html, /installStudioMediaPreflight\(\)/);
   assert.match(html, /registerStableSlugWidget\(\)/);
   assert.match(html, /registerStudioMathPreview\(\)/);
   assert.match(html, /registerStudioGalleryEditor\(\)/);
   assert.match(html, /registerStudioTableEditor\(\)/);
+  assert.match(html, /registerStudioAudioEditor\(\)/);
   assert.match(html, /#studio-media-preflight/);
   assert.match(html, /data-state="error"/);
   assert.match(html, /data-stable-slug-state="locked"/);

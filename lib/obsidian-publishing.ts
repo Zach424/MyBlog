@@ -9,12 +9,14 @@ import {
   transformMarkdownProse,
 } from "./content/markdown.ts";
 import { extractMarkdownGalleries } from "./markdown-gallery.ts";
+import { extractMarkdownAudioNotes } from "./markdown-audio.ts";
 
 export type ObsidianContentKind = "post" | "project";
 
 const INBOX_PREFIX = "content/inbox/";
 const SLUG_PATTERN = /^[a-z0-9]+(?:-[a-z0-9]+)*$/u;
-const ATTACHMENT_EXTENSION_PATTERN = /\.(avif|gif|jpe?g|mp4|png|webp)$/iu;
+const ATTACHMENT_EXTENSION_PATTERN = /\.(avif|gif|jpe?g|mp3|mp4|png|webp)$/iu;
+const AUDIO_EXTENSION_PATTERN = /\.mp3$/iu;
 const VIDEO_EXTENSION_PATTERN = /\.mp4$/iu;
 
 export interface PreparedAttachment {
@@ -28,7 +30,7 @@ export interface PreparedAttachmentUsage {
   altSources: PreparedAttachmentAltSource[];
   altTexts: string[];
   occurrences: number;
-  role: "body" | "cover" | "gallery" | "video";
+  role: "audio" | "body" | "cover" | "gallery" | "video";
   sourceLines: number[];
 }
 
@@ -105,7 +107,7 @@ function sourceAttachmentPath(value: string, allowBareName: boolean) {
   }
 
   if (!ATTACHMENT_EXTENSION_PATTERN.test(segments.at(-1) ?? "")) {
-    throw new Error(`仅支持常见图片和 MP4 视频附件：${decoded}`);
+    throw new Error(`仅支持常见图片、MP3 音频和 MP4 视频附件：${decoded}`);
   }
   return decoded;
 }
@@ -165,6 +167,11 @@ function normalizeAttachmentLinks(
       (gallery) => gallery.images.flatMap((image) => image.line ?? []),
     ),
   );
+  const audioLines = new Set(
+    extractMarkdownAudioNotes(markdown, { allowStagingPaths: true }).flatMap(
+      (audio) => audio.line ?? [],
+    ),
+  );
 
   function register(
     reference: string,
@@ -187,8 +194,9 @@ function normalizeAttachmentLinks(
     }
     if (!sourcePath) return undefined;
     const isVideo = VIDEO_EXTENSION_PATTERN.test(sourcePath);
-    if (role === "cover" && isVideo) {
-      const message = `封面必须是图片，不能使用 MP4：${sourcePath}`;
+    const isAudio = AUDIO_EXTENSION_PATTERN.test(sourcePath);
+    if (role === "cover" && (isVideo || isAudio)) {
+      const message = `封面必须是图片，不能使用 ${isAudio ? "MP3" : "MP4"}：${sourcePath}`;
       if (!onIssue) throw new Error(message);
       onIssue(message);
       return undefined;
@@ -247,7 +255,8 @@ function normalizeAttachmentLinks(
   const normalizedSourceLine = sourceLineResolver(withNormalizedCover);
   const content = transformMarkdownProse(
     withNormalizedCover,
-    (segment, segmentOffset) => segment.replace(
+    (segment, segmentOffset) => {
+      const withImages = segment.replace(
       /!\[([^\]]*)\]\(([^\s)]+)(?:\s+(?:"([^"]*)"|'([^']*)'))?\)|!\[\[([^|\]]+?)(?:\|([^\]]+))?\]\]/gu,
       (
         match,
@@ -277,7 +286,9 @@ function normalizeAttachmentLinks(
         const attachment = register(
           reference,
           wikiReference !== undefined,
-          VIDEO_EXTENSION_PATTERN.test(reference)
+          AUDIO_EXTENSION_PATTERN.test(reference) || audioLines.has(sourceLine)
+            ? "audio"
+            : VIDEO_EXTENSION_PATTERN.test(reference)
             ? "video"
             : galleryImageLines.has(sourceLine)
               ? "gallery"
@@ -293,7 +304,26 @@ function normalizeAttachmentLinks(
         }
         return `![${altText}](${attachment.publicUrl})`;
       },
-    ),
+      );
+      return withImages.replace(
+        /\[下载 MP3\]\(([^\s)]+)\s+(?:"([^"]+)"|'([^']+)')\)/gu,
+        (match, reference: string, doubleTitle: string, singleTitle: string, matchOffset: number) => {
+          const title = doubleTitle ?? singleTitle;
+          const sourceLine = normalizedSourceLine(segmentOffset + matchOffset);
+          const attachment = register(
+            reference,
+            false,
+            "audio",
+            sourceLine,
+            title,
+            "authored",
+          );
+          return attachment
+            ? `[下载 MP3](${attachment.publicUrl} "${title}")`
+            : match;
+        },
+      );
+    },
   );
 
   return {
@@ -513,7 +543,8 @@ export function prepareObsidianNote(
     cover: 0,
     body: 1,
     gallery: 2,
-    video: 3,
+    audio: 3,
+    video: 4,
   };
   const attachments = normalizedAttachments.attachments.map((attachment) => ({
     ...attachment,

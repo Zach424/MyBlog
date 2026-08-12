@@ -4,6 +4,7 @@ import {
   createStudioMathPreviewTemplate,
   getStudioMathPreviewStatus,
   hasPotentialStudioDiagram,
+  hasPotentialStudioAudio,
   hasPotentialStudioGallery,
   hasPotentialStudioRichMarkdown,
   hasPotentialStudioMath,
@@ -71,6 +72,8 @@ test("requests only potential rich Markdown from the same-origin preview endpoin
   assert.equal(hasPotentialStudioMath("行内 $E = mc^2$"), true);
   assert.equal(hasPotentialStudioMath("金额 \\$5"), true);
   assert.equal(hasPotentialStudioRichMarkdown("普通 Markdown"), false);
+  assert.equal(hasPotentialStudioAudio("> [!audio] 复盘口述"), true);
+  assert.equal(hasPotentialStudioAudio("```md\n> [!audio] 示例\n```"), false);
   assert.equal(hasPotentialStudioRichMarkdown("> [!note] 证据"), true);
   assert.equal(hasPotentialStudioGallery("> [!gallery] 步骤证据"), true);
   assert.equal(hasPotentialStudioGallery("```md\n> [!gallery] 示例\n```"), false);
@@ -93,6 +96,7 @@ test("requests only potential rich Markdown from the same-origin preview endpoin
       calls.push({ options, url });
       return {
       json: async () => ({
+        audioCount: 0,
         diagramCount: 0,
         formulaCount: 1,
         galleryCount: 0,
@@ -124,6 +128,7 @@ test("keeps plain Markdown on the native preview and exposes recoverable rich-co
     createClass: (specification) => specification,
     fetcher: async () => ({
       json: async () => ({
+        audioCount: 1,
         diagramCount: 1,
         formulaCount: 2,
         galleryCount: 1,
@@ -173,6 +178,7 @@ test("keeps plain Markdown on the native preview and exposes recoverable rich-co
   await template.loadMathPreview.call(context, "$x$\n\n$$y$$", context.previewGeneration);
   assert.equal(context.state.status, "ready");
   assert.equal(context.state.formulaCount, 2);
+  assert.equal(context.state.audioCount, 1);
   assert.equal(context.state.diagramCount, 1);
   assert.equal(context.state.galleryCount, 1);
   assert.equal(context.state.galleryImageCount, 3);
@@ -185,7 +191,7 @@ test("keeps plain Markdown on the native preview and exposes recoverable rich-co
   const readyTree = template.render.call(context);
   assert.match(
     textContent(readyTree),
-    /2 个公式、1 张图表、1 组画廊 \/ 3 张图片、1 个表格 \/ 6 个数据单元格、1 个任务清单 \/ 2 项已完成 \/ 3 项总计、1 段视频已按生产规则渲染/u,
+    /1 段音频 \/ 含文字稿、2 个公式、1 张图表、1 组画廊 \/ 3 张图片、1 个表格 \/ 6 个数据单元格、1 个任务清单 \/ 2 项已完成 \/ 3 项总计、1 段视频已按生产规则渲染/u,
   );
 
   context.state = {
@@ -197,6 +203,10 @@ test("keeps plain Markdown on the native preview and exposes recoverable rich-co
   const invalidTree = template.render.call(context);
   assert.equal(invalidTree.props["data-math-preview-state"], "invalid");
   assert.match(textContent(invalidTree), /公式尚不能发布.*第 7 行.*Expected/u);
+  assert.equal(
+    getStudioMathPreviewStatus({ issue: { kind: "audio" }, status: "invalid" }).label,
+    "AUDIO / NEEDS FIX",
+  );
   assert.equal(
     getStudioMathPreviewStatus({ status: "unavailable" }).label,
     "RICH MARKDOWN / PREVIEW UNAVAILABLE",

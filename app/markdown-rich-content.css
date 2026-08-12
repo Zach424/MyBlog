@@ -711,7 +711,127 @@
   display: none;
 }
 
+.markdown-content .markdown-audio {
+  margin: 2rem 0;
+  border-block: 1px solid var(--muted);
+  background: color-mix(in srgb, var(--rule) 18%, var(--paper));
+}
+
+.markdown-content .markdown-audio-header {
+  display: grid;
+  gap: 0.45rem;
+  padding: 0 0 0.95rem;
+  border-bottom: 1px solid var(--rule);
+}
+
+.markdown-content .markdown-audio-rail {
+  display: flex;
+  min-height: 2.4rem;
+  align-items: center;
+  justify-content: space-between;
+  gap: 0.75rem;
+  padding: 0.55rem 0.75rem;
+  border-bottom: 1px solid var(--rule);
+  color: var(--muted);
+  font: 700 0.625rem/1.4 var(--mono);
+  letter-spacing: 0.075em;
+}
+
+.markdown-content .markdown-audio-kind { color: var(--ink); }
+
+.markdown-content .markdown-audio-origin::before {
+  display: inline-block;
+  width: 0.42rem;
+  height: 0.42rem;
+  margin-right: 0.45rem;
+  border-radius: 50%;
+  background: var(--signal);
+  content: "";
+}
+
+.markdown-content .markdown-audio-title,
+.markdown-content .markdown-audio-description {
+  padding-inline: 0.9rem;
+}
+
+.markdown-content .markdown-audio-title {
+  font-size: 1.05rem;
+  line-height: 1.5;
+}
+
+.markdown-content .markdown-audio-description {
+  color: var(--muted);
+  line-height: 1.65;
+}
+
+.markdown-content .markdown-audio-stage {
+  position: relative;
+  padding: 1rem 0.9rem;
+  background:
+    repeating-linear-gradient(90deg, transparent 0 1.35rem, color-mix(in srgb, var(--signal) 16%, transparent) 1.35rem 1.42rem),
+    #091016;
+}
+
+.markdown-content .markdown-audio-player {
+  display: block;
+  width: 100%;
+  min-height: 3.25rem;
+}
+
+.markdown-content .markdown-audio-player:focus-visible,
+.markdown-content .markdown-audio-download:focus-visible {
+  outline: 3px solid var(--signal);
+  outline-offset: 3px;
+}
+
+.markdown-content .markdown-audio-transcript {
+  display: grid;
+  grid-template-columns: auto minmax(0, 1fr);
+  gap: 0.8rem;
+  padding: 0.9rem;
+  border-top: 1px solid var(--rule);
+  background: var(--paper);
+}
+
+.markdown-content .markdown-audio-transcript-label {
+  color: var(--signal);
+  font: 700 0.625rem/1.6 var(--mono);
+  letter-spacing: 0.075em;
+}
+
+.markdown-content .markdown-audio-transcript p {
+  margin: 0;
+  white-space: pre-line;
+}
+
+.markdown-content .markdown-audio-download {
+  display: inline-block;
+  margin: 0 0.9rem 0.9rem;
+  color: var(--signal);
+  font: 700 0.68rem/1.5 var(--mono);
+  letter-spacing: 0.045em;
+}
+
+.markdown-content .markdown-audio-print { display: none; }
+
 @media print {
+  .markdown-content .markdown-audio {
+    break-inside: avoid-page;
+    border-color: #777;
+  }
+
+  .markdown-content .markdown-audio-player,
+  .markdown-content .markdown-audio-stage,
+  .markdown-content .markdown-audio-download {
+    display: none;
+  }
+
+  .markdown-content .markdown-audio-print {
+    display: block;
+    margin: 2mm 2.5mm;
+    overflow-wrap: anywhere;
+  }
+
   .markdown-content .markdown-task-ledger {
     break-inside: auto;
     border-color: var(--trace-dark);
@@ -861,6 +981,15 @@
 }
 
 @media (max-width: 32rem) {
+  .markdown-content .markdown-audio-rail {
+    align-items: flex-start;
+    flex-direction: column;
+  }
+
+  .markdown-content .markdown-audio-transcript {
+    grid-template-columns: 1fr;
+  }
+
   .markdown-content .markdown-task-rail {
     align-items: flex-start;
     flex-direction: column;

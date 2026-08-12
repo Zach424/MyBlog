@@ -2,10 +2,13 @@ import { listMediaRepositoryFiles } from "./validate-media.ts";
 import { loadContentRepository } from "./validate-content.ts";
 import {
   extractMarkdownImageReferences,
+  resolveContentAudioPath,
   resolveContentMediaPath,
   resolveContentVideoPath,
 } from "../lib/content/media-references.ts";
 import { extractMarkdownVideos } from "../lib/markdown-video.ts";
+import { extractMarkdownAudioNotes } from "../lib/markdown-audio.ts";
+import { isSupportedAudioExtension } from "../lib/audio-policy.ts";
 import { isSupportedVideoExtension } from "../lib/video-policy.ts";
 import path from "node:path";
 import {
@@ -15,7 +18,7 @@ import {
 
 type RecordMediaReference = {
   alt?: string;
-  kind: "image" | "video";
+  kind: "audio" | "image" | "video";
   label: string;
   url: string;
 };
@@ -35,9 +38,15 @@ function recordMediaReferences(record: ContentRecord): RecordMediaReference[] {
     label: reference.line ? `正文第 ${reference.line} 行` : "正文",
     url: reference.src,
   }));
+  const audioReferences = extractMarkdownAudioNotes(record.body).map((reference) => ({
+    alt: `${reference.title}。${reference.description}`,
+    kind: "audio" as const,
+    label: reference.line ? `正文第 ${reference.line} 行` : "正文",
+    url: reference.src,
+  }));
   return record.cover
-    ? [{ kind: "image" as const, label: "cover", url: record.cover }, ...bodyReferences, ...videoReferences]
-    : [...bodyReferences, ...videoReferences];
+    ? [{ kind: "image" as const, label: "cover", url: record.cover }, ...bodyReferences, ...audioReferences, ...videoReferences]
+    : [...bodyReferences, ...audioReferences, ...videoReferences];
 }
 
 function assertArchivedOwnership(
@@ -70,6 +79,7 @@ export async function validateContentMediaReferences(projectRoot: string) {
   const ownersByPath = new Map<string, Set<string>>();
   let references = 0;
   let imageReferences = 0;
+  let audioReferences = 0;
   let videoReferences = 0;
 
   for (const record of [...posts, ...projects]) {
@@ -82,16 +92,19 @@ export async function validateContentMediaReferences(projectRoot: string) {
       }
       const targetPath = reference.kind === "video"
         ? resolveContentVideoPath(reference.url, record.sourcePath)
-        : resolveContentMediaPath(reference.url, record.sourcePath);
+        : reference.kind === "audio"
+          ? resolveContentAudioPath(reference.url, record.sourcePath)
+          : resolveContentMediaPath(reference.url, record.sourcePath);
       if (!targetPath) continue;
       references += 1;
       if (reference.kind === "video") videoReferences += 1;
+      else if (reference.kind === "audio") audioReferences += 1;
       else imageReferences += 1;
       assertArchivedOwnership(record, targetPath, reference.label);
       if (!mediaFileSet.has(targetPath)) {
         throw new ContentValidationError(
           record.sourcePath,
-          `${reference.label}引用的本地${reference.kind === "video" ? "视频" : "图片"}不存在或大小写不一致：/${targetPath.slice("public/".length)}`,
+          `${reference.label}引用的本地${reference.kind === "video" ? "视频" : reference.kind === "audio" ? "音频" : "图片"}不存在或大小写不一致：/${targetPath.slice("public/".length)}`,
         );
       }
       const owners = ownersByPath.get(targetPath) ?? new Set<string>();
@@ -112,13 +125,17 @@ export async function validateContentMediaReferences(projectRoot: string) {
   }
 
   return {
-    archivedImages: archivedFiles.filter((mediaPath) => !isSupportedVideoExtension(path.extname(mediaPath))).length,
+    archivedAudios: archivedFiles.filter((mediaPath) => isSupportedAudioExtension(path.extname(mediaPath))).length,
+    archivedImages: archivedFiles.filter((mediaPath) => !isSupportedVideoExtension(path.extname(mediaPath)) && !isSupportedAudioExtension(path.extname(mediaPath))).length,
     archivedVideos: archivedFiles.filter((mediaPath) => isSupportedVideoExtension(path.extname(mediaPath))).length,
+    audioReferences,
     imageReferences,
-    referencedImages: [...ownersByPath.keys()].filter((mediaPath) => !isSupportedVideoExtension(path.extname(mediaPath))).length,
+    referencedAudios: [...ownersByPath.keys()].filter((mediaPath) => isSupportedAudioExtension(path.extname(mediaPath))).length,
+    referencedImages: [...ownersByPath.keys()].filter((mediaPath) => !isSupportedVideoExtension(path.extname(mediaPath)) && !isSupportedAudioExtension(path.extname(mediaPath))).length,
     referencedVideos: [...ownersByPath.keys()].filter((mediaPath) => isSupportedVideoExtension(path.extname(mediaPath))).length,
     references,
-    stagingImages: mediaFiles.filter((mediaPath) => mediaPath.slice("public/uploads/".length).split("/").length < 2 && !isSupportedVideoExtension(path.extname(mediaPath))).length,
+    stagingAudios: mediaFiles.filter((mediaPath) => mediaPath.slice("public/uploads/".length).split("/").length < 2 && isSupportedAudioExtension(path.extname(mediaPath))).length,
+    stagingImages: mediaFiles.filter((mediaPath) => mediaPath.slice("public/uploads/".length).split("/").length < 2 && !isSupportedVideoExtension(path.extname(mediaPath)) && !isSupportedAudioExtension(path.extname(mediaPath))).length,
     stagingVideos: mediaFiles.filter((mediaPath) => mediaPath.slice("public/uploads/".length).split("/").length < 2 && isSupportedVideoExtension(path.extname(mediaPath))).length,
     videoReferences,
   };

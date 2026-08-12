@@ -19,7 +19,7 @@ export const AUTHOR_DOCTOR_PROVENANCE_REPORT_VERSION = 3 as const;
 export const AUTHOR_DOCTOR_NODE_ENGINE = ">=22.13.0";
 export const AUTHOR_DOCTOR_PACKAGE_NAME = "zach424-myblog";
 export const AUTHOR_DOCTOR_PLUGIN_ID = "myblog-publisher";
-export const AUTHOR_DOCTOR_PLUGIN_VERSION = "1.45.0";
+export const AUTHOR_DOCTOR_PLUGIN_VERSION = "1.46.0";
 
 export const AUTHOR_DOCTOR_REQUIRED_SCRIPTS = [
   "content:author:doctor",

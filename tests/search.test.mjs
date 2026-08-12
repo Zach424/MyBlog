@@ -71,6 +71,21 @@ test("keeps footnote evidence searchable without leaking authoring markers", () 
   );
 });
 
+test("keeps audio title, summary, and full transcript searchable without authoring markers", () => {
+  const source = [
+    "> [!audio] 发布复盘口述",
+    '> [下载 MP3](/uploads/demo/release-retro.mp3 "发布复盘口述")',
+    "> 总结发布检查、上线确认与复盘结论。",
+    ">",
+    "> **文字稿**",
+    "> 先运行完整检查，再确认生产冒烟通过。",
+  ].join("\n");
+
+  const plain = markdownToPlainText(source);
+  assert.match(plain, /发布复盘口述.*总结发布检查.*文字稿.*生产冒烟通过/u);
+  assert.doesNotMatch(plain, /\[!audio\]|下载 MP3|\/uploads\//u);
+});
+
 test("preserves update dates in search documents without changing publication order", () => {
   const records = [
     {

@@ -28,7 +28,7 @@ const AUTHOR_DOCTOR_PLUGIN_BUNDLE_VERSION = 1;
 const AUTHOR_DOCTOR_PLUGIN_PROVENANCE_VERSION = 1;
 const INBOX_READINESS_REPORT_VERSION = 8;
 const AUTHOR_DOCTOR_NODE_ENGINE = ">=22.13.0";
-const AUTHOR_DOCTOR_PLUGIN_VERSION = "1.45.0";
+const AUTHOR_DOCTOR_PLUGIN_VERSION = "1.46.0";
 const CURRENT_DRAFT_INTENT_RUN_SCOPE = Symbol("current-draft-intent");
 const PRODUCTION_CONTENT_CONVERGENCE_RUN_SCOPE = Symbol(
   "production-content-convergence",
@@ -147,6 +147,25 @@ function createTaskListTemplate(filePath) {
     "> - [x] 已完成的步骤",
     "> - [ ] 正在推进的步骤",
     "> - [ ] 下一步行动",
+  ].join("\n");
+}
+
+function createAudioTemplate(filePath) {
+  const normalized = String(filePath || "").replaceAll("\\", "/");
+  const match = normalized.match(
+    /^content\/(inbox|posts|projects)\/([a-z0-9]+(?:-[a-z0-9]+)*)\.md$/u,
+  );
+  if (!match) {
+    throw new Error("音频模板只能插入 content/inbox、content/posts 或 content/projects 中的博客文档");
+  }
+  const mediaRoot = match[1] === "inbox" ? "/uploads" : `/uploads/${match[2]}`;
+  return [
+    "> [!audio] 说明这段录音的主题",
+    `> [下载 MP3](${mediaRoot}/audio-note.mp3 "说明这段录音的主题")`,
+    "> 用一句话概括录音包含的内容与价值。",
+    ">",
+    "> **文字稿**",
+    "> 在这里写下与录音等价的完整文字内容；多位说话者请标明身份，重要声音也应描述。",
   ].join("\n");
 }
 const PLUGIN_PROVENANCE_PATHS = [
@@ -299,6 +318,7 @@ function mediaFormatForPath(path) {
     jpeg: "jpeg",
     jpg: "jpeg",
     mp4: "mp4/h264",
+    mp3: "mp3",
     png: "png",
     webp: "webp",
   }[extension];
@@ -5975,6 +5995,20 @@ module.exports = class MyBlogPublisher extends Plugin {
           const template = createTaskListTemplate(view?.file?.path);
           editor.replaceSelection(template);
           new Notice("已插入三项只读任务清单模板；请替换标题、任务和完成状态");
+        } catch (error) {
+          new Notice(error instanceof Error ? error.message : String(error));
+        }
+      },
+    });
+
+    this.addCommand({
+      id: "insert-audio-template",
+      name: "插入本地音频笔记模板",
+      editorCallback: (editor, view) => {
+        try {
+          const template = createAudioTemplate(view?.file?.path);
+          editor.replaceSelection(template);
+          new Notice("已插入音频笔记模板；请替换 MP3、标题、简述和完整文字稿");
         } catch (error) {
           new Notice(error instanceof Error ? error.message : String(error));
         }

@@ -4,6 +4,7 @@ import { readFile } from "node:fs/promises";
 import test from "node:test";
 import sharp from "sharp";
 import {
+  STUDIO_AUDIO_BUDGET,
   STUDIO_IMAGE_ACCEPT,
   STUDIO_MEDIA_BUDGET,
   STUDIO_VIDEO_BUDGET,
@@ -20,6 +21,7 @@ import {
   SUPPORTED_IMAGE_EXTENSIONS,
 } from "../lib/media-policy.ts";
 import { VIDEO_BUDGET } from "../lib/video-policy.ts";
+import { AUDIO_BUDGET } from "../lib/audio-policy.ts";
 
 async function decodeWithSharp(file) {
   const metadata = await sharp(Buffer.from(await file.arrayBuffer()), {
@@ -67,6 +69,40 @@ test("keeps the Studio browser budget aligned with the authoritative media polic
   );
   assert.equal(STUDIO_IMAGE_ACCEPT, ".avif,.gif,.jpeg,.jpg,.png,.webp");
   assert.deepEqual(STUDIO_VIDEO_BUDGET, VIDEO_BUDGET);
+  assert.deepEqual(STUDIO_AUDIO_BUDGET, {
+    maxBytes: AUDIO_BUDGET.maxBytes,
+    maxDurationSeconds: AUDIO_BUDGET.maxDurationSeconds,
+  });
+});
+
+test("preflights a bounded MP3 signature with browser duration metadata", async () => {
+  const bytes = Buffer.concat([
+    Buffer.from("ID3", "ascii"),
+    Buffer.alloc(64, 0),
+  ]);
+  const inspection = await inspectStudioMediaFile(
+    browserFile(bytes, "release-retro.mp3", "audio/mpeg"),
+    { decodeAudio: async () => ({ durationSeconds: 48.5 }) },
+  );
+
+  assert.equal(inspection.format, "mp3");
+  assert.equal(inspection.durationSeconds, 48.5);
+  assert.equal(inspection.width, 1);
+  assert.match(formatStudioMediaInspection(inspection), /MP3.*48\.5 秒/u);
+
+  await assert.rejects(
+    inspectStudioMediaFile(
+      browserFile(bytes, "too-long.mp3", "audio/mpeg"),
+      { decodeAudio: async () => ({ durationSeconds: STUDIO_AUDIO_BUDGET.maxDurationSeconds + 1 }) },
+    ),
+    /音频时长.*超过 900 秒/u,
+  );
+  await assert.rejects(
+    inspectStudioMediaFile(browserFile(Buffer.from("not-mp3"), "spoof.mp3"), {
+      decodeAudio: async () => ({ durationSeconds: 10 }),
+    }),
+    /MP3 签名无效/u,
+  );
 });
 
 test("preflights an MP4 container with browser dimensions and duration", async () => {

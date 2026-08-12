@@ -8,6 +8,7 @@ import { validateMediaRepository } from "../build/validate-media.ts";
 import { validateContentMediaReferences } from "../build/validate-media-references.ts";
 import {
   extractMarkdownImageReferences,
+  resolveContentAudioPath,
   resolveContentMediaPath,
   resolveContentVideoPath,
 } from "../lib/content/media-references.ts";
@@ -127,17 +128,22 @@ test("accepts exact formal references and leaves root staging media unowned", as
       validateMediaRepository(root),
     ]);
     assert.deepEqual(references, {
+      archivedAudios: 0,
       archivedImages: 3,
       archivedVideos: 0,
+      audioReferences: 0,
       imageReferences: 3,
       referencedImages: 3,
+      referencedAudios: 0,
       referencedVideos: 0,
       references: 3,
       stagingImages: 2,
+      stagingAudios: 0,
       stagingVideos: 0,
       videoReferences: 0,
     });
     assert.equal(media.images, 5);
+    assert.equal(media.audios, 0);
     assert.equal(media.videos, 0);
     assert.ok(media.totalBytes > 0);
   } finally {
@@ -322,4 +328,31 @@ test("keeps MP4 declarations out of image loading and resolves only local video 
   assert.deepEqual(Object.keys(images), [
     "/uploads/building-a-maintainable-blog/content-delivery-pipeline.webp",
   ]);
+});
+
+test("keeps MP3 declarations out of image loading and resolves safe local audio paths", async () => {
+  const sourcePath = "content/posts/media-owner.md";
+  const markdown = [
+    "> [!audio] 发布复盘口述",
+    '> [下载 MP3](/uploads/media-owner/release-retro.mp3 "发布复盘口述")',
+    "> 总结发布检查、上线确认与复盘结论。",
+    ">",
+    "> **文字稿**",
+    "> 先运行完整检查，再确认生产冒烟通过。",
+  ].join("\n");
+
+  assert.deepEqual(extractMarkdownImageReferences(markdown), []);
+  assert.equal(
+    resolveContentAudioPath("/uploads/media-owner/release-retro.mp3", sourcePath),
+    "public/uploads/media-owner/release-retro.mp3",
+  );
+  assert.equal(
+    resolveContentAudioPath("/uploads/another-owner/release-retro.mp3", sourcePath),
+    "public/uploads/another-owner/release-retro.mp3",
+  );
+  assert.equal(
+    resolveContentAudioPath("https://audio.example/release-retro.mp3", sourcePath),
+    undefined,
+  );
+  assert.deepEqual(await getMarkdownContentImages(markdown, sourcePath), {});
 });

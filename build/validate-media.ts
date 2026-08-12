@@ -1,6 +1,10 @@
 import { access, readdir } from "node:fs/promises";
 import path from "node:path";
 import {
+  inspectAudioFile,
+  isSupportedAudioExtension,
+} from "../lib/audio-policy.ts";
+import {
   inspectMediaFile,
   isSupportedImageExtension,
   SUPPORTED_IMAGE_EXTENSIONS,
@@ -30,10 +34,11 @@ async function mediaPaths(directory: string): Promise<string[]> {
     }
     if (
       !isSupportedImageExtension(path.extname(entry.name)) &&
-      !isSupportedVideoExtension(path.extname(entry.name))
+      !isSupportedVideoExtension(path.extname(entry.name)) &&
+      !isSupportedAudioExtension(path.extname(entry.name))
     ) {
       throw new Error(
-        `[media] ${absolutePath}: public/uploads 只允许 ${SUPPORTED_IMAGE_EXTENSIONS.join(", ")} 图片和 .mp4 视频`,
+        `[media] ${absolutePath}: public/uploads 只允许 ${SUPPORTED_IMAGE_EXTENSIONS.join(", ")} 图片、.mp3 音频和 .mp4 视频`,
       );
     }
     paths.push(absolutePath);
@@ -61,13 +66,18 @@ export async function validateMediaRepository(projectRoot: string) {
   const inspections = await Promise.all(
     paths.map((sourcePath) => {
       const absolutePath = path.join(projectRoot, ...sourcePath.split("/"));
-      return isSupportedVideoExtension(path.extname(sourcePath))
-        ? inspectVideoFile(absolutePath, sourcePath)
-        : inspectMediaFile(absolutePath, sourcePath);
+      if (isSupportedVideoExtension(path.extname(sourcePath))) {
+        return inspectVideoFile(absolutePath, sourcePath);
+      }
+      if (isSupportedAudioExtension(path.extname(sourcePath))) {
+        return inspectAudioFile(absolutePath, sourcePath);
+      }
+      return inspectMediaFile(absolutePath, sourcePath);
     }),
   );
 
   return {
+    audios: paths.filter((sourcePath) => isSupportedAudioExtension(path.extname(sourcePath))).length,
     images: paths.filter((sourcePath) => isSupportedImageExtension(path.extname(sourcePath))).length,
     totalBytes: inspections.reduce((total, inspection) => total + inspection.bytes, 0),
     videos: paths.filter((sourcePath) => isSupportedVideoExtension(path.extname(sourcePath))).length,

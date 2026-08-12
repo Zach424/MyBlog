@@ -226,7 +226,7 @@ function exactPendingPublication(
   }
 
   const attachmentPattern = new RegExp(
-    `^public/uploads/${publication.slug}/[a-z0-9]+(?:-[a-z0-9]+)*(?:-[a-f0-9]{8})?\\.(?:avif|gif|mp4|webp)$`,
+      `^public/uploads/${publication.slug}/[a-z0-9]+(?:-[a-z0-9]+)*(?:-[a-f0-9]{8})?\\.(?:avif|gif|mp3|mp4|webp)$`,
     "u",
   );
   const attachments = changes.filter((change) =>
