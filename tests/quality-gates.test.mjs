@@ -168,7 +168,7 @@ test("applies the production security and cache baseline", async () => {
 
 test("serves Studio, its maintenance queue, and media inventory through explicit Next.js routes", async () => {
   await assert.rejects(access(new URL("../public/studio", import.meta.url)));
-  const [studio, maintenancePage, maintenanceModule, maintenanceStyles, maintenanceResponse, config, manifest, preflight, stableSlugWidget, entryPreflightModule, mathPreviewModule, galleryEditorModule, glossaryEditorModule, tableEditorModule, taskListEditorModule, referencesEditorModule, stepsEditorModule, videoEditorModule, preview, katexStyles, runtime, unknown] = await Promise.all([
+  const [studio, maintenancePage, maintenanceModule, maintenanceStyles, maintenanceResponse, config, manifest, preflight, stableSlugWidget, entryPreflightModule, mathPreviewModule, galleryEditorModule, glossaryEditorModule, faqEditorModule, tableEditorModule, taskListEditorModule, referencesEditorModule, stepsEditorModule, videoEditorModule, preview, katexStyles, runtime, unknown] = await Promise.all([
     request("/studio"),
     request("/studio/maintenance"),
     request("/studio/maintenance.mjs"),
@@ -182,6 +182,7 @@ test("serves Studio, its maintenance queue, and media inventory through explicit
     request("/studio/math-preview.mjs"),
     request("/studio/gallery-editor.mjs"),
     request("/studio/glossary-editor.mjs"),
+    request("/studio/faq-editor.mjs"),
     request("/studio/table-editor.mjs"),
     request("/studio/task-list-editor.mjs"),
     request("/studio/references-editor.mjs"),
@@ -250,6 +251,9 @@ test("serves Studio, its maintenance queue, and media inventory through explicit
   assert.equal(glossaryEditorModule.status, 200);
   assert.match(await glossaryEditorModule.text(), /registerStudioGlossaryEditor/u);
   assert.equal(glossaryEditorModule.headers.get("cache-control"), "no-store");
+  assert.equal(faqEditorModule.status, 200);
+  assert.match(await faqEditorModule.text(), /registerStudioFaqEditor/u);
+  assert.equal(faqEditorModule.headers.get("cache-control"), "no-store");
   assert.match(await tableEditorModule.text(), /registerStudioTableEditor/);
   assert.equal(tableEditorModule.headers.get("cache-control"), "no-store");
   assert.equal(referencesEditorModule.status, 200);
@@ -409,6 +413,20 @@ test("renders bounded Studio formula previews with the production Markdown pipel
   assert.match(glossaryPayload.html, /GLOSSARY \/ 02 TERMS/u);
   assert.match(glossaryPayload.html, /<dl class="markdown-glossary-items"/u);
   assert.doesNotMatch(glossaryPayload.html, /<button|contenteditable|onclick=/iu);
+
+  const faq = await postStudioMathPreview({
+    markdown:
+      "> [!faq] 发布常见问题\n> - **应该使用 Studio 还是 Obsidian？**\n>\n>   两者都可以，最终发布同一份 Markdown。\n> - **FAQ 会保存展开状态吗？**\n>\n>   不会；展开只属于当前页面。",
+  });
+  assert.equal(faq.status, 200);
+  const faqPayload = await faq.json();
+  assert.equal(faqPayload.faqCount, 1);
+  assert.equal(faqPayload.faqQuestionCount, 2);
+  assert.match(faqPayload.html, /data-faq="answer-cabinet"/u);
+  assert.match(faqPayload.html, /FAQ \/ 02 QUESTIONS/u);
+  assert.match(faqPayload.html, /<details[^>]*open/u);
+  assert.match(faqPayload.html, /<summary class="markdown-faq-question"/u);
+  assert.doesNotMatch(faqPayload.html, /<button|contenteditable|onclick=/iu);
 
   const unsafeLink = await postStudioMathPreview({
     markdown: "[unsafe](javascript:alert(1)) $x$",

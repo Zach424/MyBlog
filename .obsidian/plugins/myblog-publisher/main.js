@@ -28,7 +28,7 @@ const AUTHOR_DOCTOR_PLUGIN_BUNDLE_VERSION = 1;
 const AUTHOR_DOCTOR_PLUGIN_PROVENANCE_VERSION = 1;
 const INBOX_READINESS_REPORT_VERSION = 8;
 const AUTHOR_DOCTOR_NODE_ENGINE = ">=22.13.0";
-const AUTHOR_DOCTOR_PLUGIN_VERSION = "1.49.0";
+const AUTHOR_DOCTOR_PLUGIN_VERSION = "1.50.0";
 const CURRENT_DRAFT_INTENT_RUN_SCOPE = Symbol("current-draft-intent");
 const PRODUCTION_CONTENT_CONVERGENCE_RUN_SCOPE = Symbol(
   "production-content-convergence",
@@ -215,6 +215,26 @@ function createGlossaryTemplate(filePath) {
     ">   **别名：** Hydration",
     ">",
     ">   **上下文：** 只发生在需要浏览器交互的 Client Component 边界。",
+  ].join("\n");
+}
+
+function createFaqTemplate(filePath) {
+  const normalized = String(filePath || "").replaceAll("\\", "/");
+  if (
+    !/^content\/(inbox|posts|projects)\/[a-z0-9]+(?:-[a-z0-9]+)*\.md$/u.test(
+      normalized,
+    )
+  ) {
+    throw new Error("FAQ 模板只能插入 content/inbox、content/posts 或 content/projects 中的博客文档");
+  }
+  return [
+    "> [!faq] 发布常见问题",
+    "> - **应该使用 Studio 还是 Obsidian？**",
+    ">",
+    ">   Studio 适合浏览器内结构化编辑；Obsidian 适合本地知识库写作。两者最终发布同一份 Markdown。",
+    "> - **FAQ 会保存读者的展开状态吗？**",
+    ">",
+    ">   不会。展开只存在于当前页面，不写回 Git，也不会跨访问保存。",
   ].join("\n");
 }
 
@@ -6119,6 +6139,20 @@ module.exports = class MyBlogPublisher extends Plugin {
           const template = createGlossaryTemplate(view?.file?.path);
           editor.replaceSelection(template);
           new Notice("已插入两条术语定义模板；请替换标题、术语、定义、可选别名与上下文");
+        } catch (error) {
+          new Notice(error instanceof Error ? error.message : String(error));
+        }
+      },
+    });
+
+    this.addCommand({
+      id: "insert-faq-template",
+      name: "插入常见问题 FAQ 模板",
+      editorCallback: (editor, view) => {
+        try {
+          const template = createFaqTemplate(view?.file?.path);
+          editor.replaceSelection(template);
+          new Notice("已插入两条 FAQ 模板；请替换标题、问题与 1–3 段答案");
         } catch (error) {
           new Notice(error instanceof Error ? error.message : String(error));
         }

@@ -1,6 +1,7 @@
 import { parseDocument } from "yaml";
 import { z } from "zod";
 import { getMarkdownAudioIssue } from "../markdown-audio.ts";
+import { getMarkdownFaqIssue } from "../markdown-faq.ts";
 import { getMarkdownGlossaryIssue } from "../markdown-glossary.ts";
 import { getMarkdownReferenceIssue } from "../markdown-references.ts";
 import { getMarkdownStepsIssue } from "../markdown-steps.ts";
@@ -418,6 +419,15 @@ function parseFrontmatter<T>(
     );
   }
 
+  const faqIssue = getMarkdownFaqIssue(body);
+  if (faqIssue) {
+    const location = faqIssue.line ? `正文第 ${faqIssue.line} 行` : "正文";
+    throw new ContentValidationError(
+      sourcePath,
+      `${location}FAQ 无法解析：${faqIssue.message}`,
+    );
+  }
+
   const referenceIssue = getMarkdownReferenceIssue(body);
   if (referenceIssue) {
     const location = referenceIssue.line ? `正文第 ${referenceIssue.line} 行` : "正文";
@@ -603,6 +613,14 @@ export function inspectContentDraft(
       issues.push({
         field: "body",
         message: `${location}音频声明无法解析：${audioIssue.message}`,
+      });
+    }
+    const faqIssue = getMarkdownFaqIssue(body);
+    if (faqIssue) {
+      const location = faqIssue.line ? `第 ${faqIssue.line} 行` : "正文";
+      issues.push({
+        field: "body",
+        message: `${location}FAQ 无法解析：${faqIssue.message}`,
       });
     }
     const referenceIssue = getMarkdownReferenceIssue(body);

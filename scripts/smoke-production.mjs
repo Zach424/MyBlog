@@ -802,7 +802,7 @@ export async function runProductionSmoke(originInput, { expectOAuth = false } = 
   invariant(studioPolicy.includes("https://api.github.com"), "Studio CSP 缺少 GitHub API");
   invariant(studioPolicy.includes("frame-ancestors 'none'"), "Studio CSP 未禁止嵌入");
 
-  const [studioMaintenancePage, studioMaintenanceModule, studioMaintenanceStyles, studioMaintenanceResponse, studioConfig, studioManifest, studioPreflight, stableSlugWidget, entryPreflightModule, mathPreviewModule, galleryEditorModule, glossaryEditorModule, tableEditorModule, taskListEditorModule, referencesEditorModule, stepsEditorModule, audioEditorModule, videoEditorModule, studioPreview, katexStyles, studioRuntime, unknownStudioAsset] = await Promise.all([
+  const [studioMaintenancePage, studioMaintenanceModule, studioMaintenanceStyles, studioMaintenanceResponse, studioConfig, studioManifest, studioPreflight, stableSlugWidget, entryPreflightModule, mathPreviewModule, galleryEditorModule, glossaryEditorModule, faqEditorModule, tableEditorModule, taskListEditorModule, referencesEditorModule, stepsEditorModule, audioEditorModule, videoEditorModule, studioPreview, katexStyles, studioRuntime, unknownStudioAsset] = await Promise.all([
     request(origin, "/studio/maintenance"),
     request(origin, "/studio/maintenance.mjs", { accept: "text/javascript" }),
     request(origin, "/studio/maintenance.css", { accept: "text/css" }),
@@ -815,6 +815,7 @@ export async function runProductionSmoke(originInput, { expectOAuth = false } = 
     request(origin, "/studio/math-preview.mjs", { accept: "text/javascript" }),
     request(origin, "/studio/gallery-editor.mjs", { accept: "text/javascript" }),
     request(origin, "/studio/glossary-editor.mjs", { accept: "text/javascript" }),
+    request(origin, "/studio/faq-editor.mjs", { accept: "text/javascript" }),
     request(origin, "/studio/table-editor.mjs", { accept: "text/javascript" }),
     request(origin, "/studio/task-list-editor.mjs", { accept: "text/javascript" }),
     request(origin, "/studio/references-editor.mjs", { accept: "text/javascript" }),
@@ -987,6 +988,16 @@ export async function runProductionSmoke(originInput, { expectOAuth = false } = 
     "Studio 术语表编辑组件类型不正确",
   );
   invariant(
+    faqEditorModule.response.status === 200 &&
+      faqEditorModule.body.includes("registerStudioFaqEditor") &&
+      faqEditorModule.body.includes("myblog-faq"),
+    "Studio FAQ 编辑组件不可用",
+  );
+  invariant(
+    faqEditorModule.response.headers.get("content-type")?.startsWith("text/javascript"),
+    "Studio FAQ 编辑组件类型不正确",
+  );
+  invariant(
     tableEditorModule.response.status === 200 &&
       tableEditorModule.body.includes("registerStudioTableEditor") &&
       tableEditorModule.body.includes("myblog-table"),
@@ -1036,7 +1047,7 @@ export async function runProductionSmoke(originInput, { expectOAuth = false } = 
       "public, max-age=31536000, immutable",
     "固定版本 Studio KaTeX 样式缓存不正确",
   );
-  for (const asset of [studioMaintenancePage, studioMaintenanceModule, studioMaintenanceStyles, studioMaintenanceResponse, studioConfig, studioManifest, studioPreflight, stableSlugWidget, entryPreflightModule, mathPreviewModule, galleryEditorModule, glossaryEditorModule, tableEditorModule, taskListEditorModule, referencesEditorModule, stepsEditorModule, audioEditorModule, videoEditorModule, studioPreview]) {
+  for (const asset of [studioMaintenancePage, studioMaintenanceModule, studioMaintenanceStyles, studioMaintenanceResponse, studioConfig, studioManifest, studioPreflight, stableSlugWidget, entryPreflightModule, mathPreviewModule, galleryEditorModule, glossaryEditorModule, faqEditorModule, tableEditorModule, taskListEditorModule, referencesEditorModule, stepsEditorModule, audioEditorModule, videoEditorModule, studioPreview]) {
     invariant(asset.response.headers.get("cache-control") === "no-store", "Studio 子资源必须 no-store");
   }
   invariant(
@@ -1147,6 +1158,29 @@ export async function runProductionSmoke(originInput, { expectOAuth = false } = 
       glossaryPreviewPayload.html.includes('<dl class="markdown-glossary-items"') &&
       !/<button|contenteditable|onclick=/iu.test(glossaryPreviewPayload.html),
     "Studio 术语表生产管线预览不可用",
+  );
+
+  const faqPreview = await request(origin, "/studio/math-preview", {
+    accept: "application/json",
+    body: JSON.stringify({
+      markdown:
+        "> [!faq] 发布常见问题\n> - **应该使用 Studio 还是 Obsidian？**\n>\n>   两者都可以，最终发布同一份 Markdown。\n> - **FAQ 会保存展开状态吗？**\n>\n>   不会；展开只属于当前页面。",
+    }),
+    headers: { "content-type": "application/json" },
+    method: "POST",
+  });
+  const faqPreviewPayload = JSON.parse(faqPreview.body);
+  invariant(
+    faqPreview.response.status === 200 &&
+      faqPreviewPayload.ok === true &&
+      faqPreviewPayload.faqCount === 1 &&
+      faqPreviewPayload.faqQuestionCount === 2 &&
+      faqPreviewPayload.html.includes('data-faq="answer-cabinet"') &&
+      faqPreviewPayload.html.includes("FAQ / 02 QUESTIONS") &&
+      /<details[^>]*open/u.test(faqPreviewPayload.html) &&
+      faqPreviewPayload.html.includes('<summary class="markdown-faq-question"') &&
+      !/<button|contenteditable|onclick=/iu.test(faqPreviewPayload.html),
+    "Studio FAQ 生产管线预览不可用",
   );
 
   const entryPreflight = await request(origin, "/studio/entry-preflight", {

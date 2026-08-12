@@ -15,6 +15,11 @@ import {
   type MarkdownDiagramIssue,
 } from "@/lib/markdown-diagram";
 import {
+  extractMarkdownFaqs,
+  getMarkdownFaqIssue,
+  type MarkdownFaqIssue,
+} from "@/lib/markdown-faq";
+import {
   MARKDOWN_REHYPE_OPTIONS,
   MARKDOWN_REHYPE_PLUGINS,
   MARKDOWN_REMARK_PLUGINS,
@@ -64,6 +69,8 @@ export type StudioMathPreviewResult =
       calloutCount: number;
       audioCount: number;
       diagramCount: number;
+      faqCount: number;
+      faqQuestionCount: number;
       formulaCount: number;
       galleryCount: number;
       galleryImageCount: number;
@@ -85,6 +92,7 @@ export type StudioMathPreviewResult =
   | {
       issue:
         | MarkdownDiagramIssue
+        | MarkdownFaqIssue
         | MarkdownAudioIssue
         | MarkdownGalleryIssue
         | MarkdownGlossaryIssue
@@ -150,6 +158,8 @@ export function renderStudioMathPreview(
   if (audioIssue) return { issue: audioIssue, ok: false };
   const diagramIssue = getMarkdownDiagramIssue(markdown);
   if (diagramIssue) return { issue: diagramIssue, ok: false };
+  const faqIssue = getMarkdownFaqIssue(markdown);
+  if (faqIssue) return { issue: faqIssue, ok: false };
   const galleryIssue = getMarkdownGalleryIssue(markdown);
   if (galleryIssue) return { issue: galleryIssue, ok: false };
   const glossaryIssue = getMarkdownGlossaryIssue(markdown);
@@ -167,6 +177,12 @@ export function renderStudioMathPreview(
 
   const formulaCount = extractMarkdownMathExpressions(markdown).length;
   const diagramCount = extractMarkdownDiagrams(markdown).length;
+  const faqs = extractMarkdownFaqs(markdown);
+  const faqCount = faqs.length;
+  const faqQuestionCount = faqs.reduce(
+    (total, faq) => total + faq.items.length,
+    0,
+  );
   const galleries = extractMarkdownGalleries(markdown);
   const galleryCount = galleries.length;
   const galleryImageCount = galleries.reduce(
@@ -226,6 +242,8 @@ export function renderStudioMathPreview(
     audioCount,
     calloutCount,
     diagramCount,
+    faqCount,
+    faqQuestionCount,
     formulaCount,
     galleryCount,
     galleryImageCount,

@@ -1068,6 +1068,143 @@
   overflow-wrap: anywhere;
 }
 
+.markdown-content .markdown-faq {
+  margin-block: 2rem;
+  border-block: 1px solid var(--ink);
+  background: color-mix(in srgb, var(--rule) 16%, var(--paper));
+}
+
+.markdown-content .markdown-faq-header {
+  display: grid;
+  border-bottom: 1px solid var(--rule);
+}
+
+.markdown-content .markdown-faq-rail {
+  display: flex;
+  min-height: 2.4rem;
+  align-items: center;
+  justify-content: space-between;
+  gap: 0.75rem;
+  padding: 0.55rem 0.75rem;
+  color: var(--muted);
+  font: 700 0.625rem/1.4 "Cascadia Code", Consolas, monospace;
+  letter-spacing: 0.075em;
+}
+
+.markdown-content .markdown-faq-kind { color: var(--ink); }
+
+.markdown-content .markdown-faq-mode::before {
+  display: inline-block;
+  width: 1.2rem;
+  height: 0.5rem;
+  margin-right: 0.45rem;
+  border: 1px solid var(--muted);
+  border-left: 0.32rem solid var(--signal);
+  content: "";
+  vertical-align: -0.08rem;
+}
+
+.markdown-content .markdown-faq-title {
+  padding: 0.85rem 0.9rem 0.9rem;
+  border-top: 1px solid var(--rule);
+  font-size: 1rem;
+  line-height: 1.5;
+  overflow-wrap: anywhere;
+}
+
+.markdown-content .markdown-faq-items { margin: 0; }
+
+.markdown-content .markdown-faq-entry {
+  margin: 0;
+  background: var(--paper);
+}
+
+.markdown-content .markdown-faq-entry:not(:last-child) {
+  border-bottom: 1px solid var(--rule);
+}
+
+.markdown-content .markdown-faq-question {
+  display: grid;
+  grid-template-columns: 2.8rem minmax(0, 1fr) 1.6rem;
+  align-items: start;
+  gap: 0.75rem;
+  min-width: 0;
+  padding: 0.85rem 0.9rem 0.85rem 0;
+  cursor: pointer;
+  list-style: none;
+}
+
+.markdown-content .markdown-faq-question::-webkit-details-marker { display: none; }
+.markdown-content .markdown-faq-question::marker { content: ""; }
+
+.markdown-content .markdown-faq-question:focus-visible {
+  outline: 2px solid var(--signal);
+  outline-offset: -2px;
+}
+
+.markdown-content .markdown-faq-question-mark,
+.markdown-content .markdown-faq-answer-mark {
+  display: grid;
+  min-height: 1.7rem;
+  place-items: center;
+  color: var(--muted);
+  font: 800 0.65rem/1 "Cascadia Code", Consolas, monospace;
+  letter-spacing: 0.08em;
+}
+
+.markdown-content .markdown-faq-entry[open] .markdown-faq-question-mark,
+.markdown-content .markdown-faq-answer-mark { color: var(--signal); }
+
+.markdown-content .markdown-faq-question-copy {
+  padding-top: 0.1rem;
+  font-size: 0.92rem;
+  line-height: 1.55;
+  overflow-wrap: anywhere;
+}
+
+.markdown-content .markdown-faq-toggle {
+  display: grid;
+  width: 1.35rem;
+  height: 1.35rem;
+  border: 1px solid var(--rule);
+  color: var(--muted);
+  font: 700 0.9rem/1 "Cascadia Code", Consolas, monospace;
+  place-items: center;
+  transition: transform 140ms ease, border-color 140ms ease, color 140ms ease;
+}
+
+.markdown-content .markdown-faq-entry[open] .markdown-faq-toggle {
+  border-color: var(--signal);
+  color: var(--signal);
+  transform: rotate(45deg);
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .markdown-content .markdown-faq-toggle { transition: none; }
+}
+
+.markdown-content .markdown-faq-answer {
+  display: grid;
+  grid-template-columns: 2.8rem minmax(0, 1fr) 1.6rem;
+  gap: 0.75rem;
+  padding: 0 0.9rem 1rem 0;
+}
+
+.markdown-content .markdown-faq-answer-copy {
+  grid-column: 2;
+  min-width: 0;
+  padding: 0.75rem 0.85rem;
+  border-left: 1px solid var(--signal);
+  background: color-mix(in srgb, var(--signal) 5%, var(--paper));
+  color: var(--muted);
+  font-size: 0.82rem;
+  line-height: 1.75;
+  overflow-wrap: anywhere;
+}
+
+.markdown-content .markdown-faq-answer-copy > :first-child { margin-top: 0; }
+.markdown-content .markdown-faq-answer-copy > :last-child { margin-bottom: 0; }
+
 .markdown-content .markdown-procedure {
   margin-block: 2rem;
   border-block: 0.0625rem solid var(--trace-dark);
@@ -1231,6 +1368,23 @@
 
   .markdown-content .markdown-glossary-entry {
     grid-template-columns: 48mm minmax(0, 1fr);
+  }
+
+  .markdown-content .markdown-faq { break-inside: auto; }
+
+  .markdown-content .markdown-faq-header,
+  .markdown-content .markdown-faq-entry { break-inside: avoid-page; }
+
+  .markdown-content .markdown-faq-entry:not([open]) > :not(summary) {
+    display: grid !important;
+  }
+
+  .markdown-content .markdown-faq-toggle { display: none; }
+
+  .markdown-content .markdown-faq-question,
+  .markdown-content .markdown-faq-answer {
+    grid-template-columns: 10mm minmax(0, 1fr);
+    padding-right: 2.5mm;
   }
 
   .markdown-content .markdown-glossary-term,
@@ -1461,6 +1615,23 @@
   }
 
   .markdown-content .markdown-glossary-context { grid-template-columns: 1fr; }
+
+  .markdown-content .markdown-faq-rail {
+    align-items: flex-start;
+    flex-direction: column;
+  }
+
+  .markdown-content .markdown-faq-question {
+    grid-template-columns: 2.25rem minmax(0, 1fr) 1.4rem;
+    gap: 0.55rem;
+    padding-right: 0.7rem;
+  }
+
+  .markdown-content .markdown-faq-answer {
+    grid-template-columns: 2.25rem minmax(0, 1fr);
+    gap: 0.55rem;
+    padding-right: 0.7rem;
+  }
 
   .markdown-content .markdown-procedure-rail {
     align-items: flex-start;

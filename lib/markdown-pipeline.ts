@@ -7,6 +7,7 @@ import remarkMath from "remark-math";
 import { rehypeMarkdownAudioNotes } from "@/lib/markdown-audio";
 import { rehypeMarkdownCallouts } from "@/lib/markdown-callout";
 import { rehypeMarkdownDiagrams } from "@/lib/markdown-diagram";
+import { rehypeMarkdownFaqs } from "@/lib/markdown-faq";
 import { rehypeMarkdownGalleries } from "@/lib/markdown-gallery";
 import { rehypeMarkdownGlossaries } from "@/lib/markdown-glossary";
 import { rehypeMarkdownReferenceLists } from "@/lib/markdown-references";
@@ -37,6 +38,7 @@ export const MARKDOWN_REHYPE_PLUGINS = [
   rehypeMarkdownTables,
   rehypeMarkdownGalleries,
   rehypeMarkdownAudioNotes,
+  rehypeMarkdownFaqs,
   rehypeMarkdownGlossaries,
   rehypeMarkdownReferenceLists,
   rehypeMarkdownSteps,
