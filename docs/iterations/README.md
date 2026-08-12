@@ -138,6 +138,8 @@
 0131-constrained-server-mermaid.md
 0132-constrained-local-silent-video.md
 0133-constrained-multi-image-gallery.md
+0134-constrained-technical-tables.md
+0135-read-only-task-ledgers.md
 ```
 
 ## 必填结构
