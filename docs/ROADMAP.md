@@ -8,11 +8,11 @@
 | 4. 作者自助写作 | done | `/studio` OAuth + editorial workflow PR、Obsidian Vault/模板/附件/真实 `--push` |
 | 5. Vercel 原生迁移 | production live | 原生 Next.js、无 Cloudflare 依赖、27 路由生产冒烟通过 |
 | 6. 所有者生产上线 | done | Git 自动 Production、稳定域名自动冒烟、双端发布、回滚与恢复均已验收 |
-| 7. 持续内容与作者体验 | in progress | Iteration 0142 已提供受约束项目里程碑时间线，继续推进受限、可移植的富内容 Markdown |
+| 7. 持续内容与作者体验 | in progress | Iteration 0143 已提供受约束技术决策记录，继续推进受限、可移植的富内容 Markdown |
 
 ## 当前唯一主线
 
-进入持续内容与作者体验阶段。Iteration 0142 已把受约束项目里程碑时间线接入同一生产 Markdown：作者使用顶层 `[!timeline]` 与无序列表，以日期、START/DECISION/SHIP/CHANGE/VERIFY/RETIRE、标题和说明记录已发生历史；Studio 可编辑、排序与回填事件，Obsidian 1.52.0 可插入模板。共享 AST 同时约束每条 2–16 事件、每篇 3 条/32 事件、真实日期、非递减排序、同日同标题唯一、说明白名单和未来日期失败关闭，并把同一事实投影到搜索、语义 `<time>`、Release Tape、320 px 与打印。下一主线只处理受约束决策记录块：冻结上下文、最终决定、原因、备选与影响、Studio/Obsidian、搜索、窄屏和打印；不加入审批、投票、评论、自动建议、远程工单同步或客户端状态。首次真实 Obsidian 音频、参考资料、步骤流程、术语表、FAQ、文件树与时间线人机验收保留为所有者可执行事项，需要品牌域名时再绑定自定义域名。
+进入持续内容与作者体验阶段。Iteration 0143 已把受约束技术决策记录接入同一生产 Markdown：作者使用顶层 `[!decision]` 保存 ACCEPTED/SUPERSEDED/DEPRECATED/REJECTED 状态、真实日期、上下文、最终决定、理由、备选方案和正/负/中性影响；Studio 可编辑状态、日期与可排序台账，Obsidian 1.53.0 可插入模板。共享 AST 同时约束每篇 3 条、备选与影响合计 24 项、固定区段、NFKC 唯一、安全行内内容和未来日期失败关闭，并把同一事实投影到搜索、语义 `<time>`、Decision Brief、320 px 与打印。下一主线只处理受约束技术实验记录块：冻结假设、环境、方法、指标、结果、结论与局限，以及 Studio/Obsidian、搜索、窄屏和打印；不加入在线执行器、遥测采集、自动结论、统计显著性冒充或客户端状态。首次真实 Obsidian 音频、参考资料、步骤流程、术语表、FAQ、文件树、时间线与决策记录人机验收保留为所有者可执行事项，需要品牌域名时再绑定自定义域名。
 
 ## 已知风险
 

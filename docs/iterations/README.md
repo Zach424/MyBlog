@@ -147,6 +147,7 @@
 0140-constrained-faq-disclosures.md
 0141-constrained-project-file-trees.md
 0142-constrained-project-timelines.md
+0143-constrained-technical-decision-records.md
 ```
 
 ## 必填结构
