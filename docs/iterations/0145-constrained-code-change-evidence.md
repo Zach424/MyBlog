@@ -132,7 +132,7 @@ mdast 解析器按真实节点序列验证 12 个 UNIFIED 子节点或 14 个 BE
 - 真实 Chromium 桌面预览呈现 CHANGE/REVIEW、文件索引、UNIFIED DIFF、验证与风险，无操作按钮；320 px 下 viewport 320、根宽 305、正文 273，页面根无横向溢出，代码仅在自身舞台滚动；
 - 浏览器从真实 `/studio/codechange-editor.mjs` 注册 `myblog-codechange/1`，生产预览计数为 `1/1/6`，控制台 0 error；打印 PDF 成功生成。
 
-功能提交推送后的 Vercel 收敛、稳定生产 smoke 与最终提交哈希将在本轮第二笔归档提交中补全，当前不把本地合成预览误写成已上线证据。
+功能提交 `563b2d2` 已推送到 `origin/main`。稳定域名先连续 5 次返回旧版本 404，随后 `/studio/codechange-editor.mjs?revision=563b2d2` 返回 200/21,819 B 且包含真实注册函数。部署后 `npm run production:smoke -- https://blog-iota-five-59.vercel.app --expect-oauth` 在 43.1 秒内通过 27 条路由与 GitHub OAuth 302，并验证 `codeChangeCount: 1`、1 个文件、6 行代码、Review Docket、静态无交互 HTML、编辑器同源资源及全部 HTML/结构化发现预算。公开内容集合和结构化端点正文未改变，因此沿用既有带来源预算基线。
 
 修复过的真实失败：
 
