@@ -148,6 +148,7 @@
 0141-constrained-project-file-trees.md
 0142-constrained-project-timelines.md
 0143-constrained-technical-decision-records.md
+0144-constrained-technical-experiment-records.md
 ```
 
 ## 必填结构
