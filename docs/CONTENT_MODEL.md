@@ -139,6 +139,20 @@ redirects:
 
 源文验证器绑定最终 UTF-8 响应，而不是作者文件或数据库版本号：任何公开字段、正文、绝对 origin 或序列化变化都会得到新的 SHA-256 源站强 ETag。`Last-Modified` 使用 `publishedAt`、可选 `updatedAt` 与 `reviewedAt` 中最新日期的 UTC 零点；它只有日粒度，ETag 才是精确表示身份。GET 的 `If-None-Match` 使用弱比较，支持列表、弱标签与 `*`；匹配返回空 304，不匹配或畸形条件头返回完整 200。Vercel 为 Brotli 传输弱化标签、精简边缘 304 元数据时，opaque SHA-256 身份保持不变。404 继续 `no-store`，不借验证器暴露非公开记录。
 
+## 参考资料清单
+
+受约束参考资料使用顶层块引用 marker 和紧随其后的有序紧凑列表：
+
+```markdown
+> [!references] 延伸阅读
+> 1. [官方文档](https://example.com/docs) — 说明与正文的关系。
+> 2. [本站项目记录](/projects/myblog) — 补充实现背景。
+```
+
+清单标题为 1–120 字符；每组 2–12 条、每篇最多 3 组且总计不超过 24 条。每条的第一个内容必须是可见 Markdown 链接，名称为 1–160 字符；其后只能有使用精确 ` — ` 分隔的可选纯文本短注，最多 240 字符。链接目标最长 2048 字符，只接受无凭据、默认端口的完整 HTTPS URL 或 `/` 开头的站内绝对路径；协议相对 URL、空白、未编码圆括号和同组重复规范目标失败关闭。
+
+参考清单是普通开放 Markdown，不保存远程标题、摘要、favicon、健康状态或数据库 id。站内目标继续进入现有内容关系与锚点门禁，HTTPS 目标继续进入现有离线外链库存；搜索只保留清单标题、可见名称和短注，不索引 marker 与 URL 噪声。阅读端把同一结构投影为 Source Index，打印时为每条资料显式输出一次 URL。
+
 ## Obsidian inbox 就绪状态
 
 `content/inbox/*.md`（不含说明 README）是作者本地待发布集合。运行 `npm run content:inbox` 或 Obsidian 命令“查看全部草稿发布就绪状态”，每篇会得到以下状态：
