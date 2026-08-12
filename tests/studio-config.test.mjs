@@ -82,6 +82,7 @@ test("keeps CMS tags and required content fields aligned with the contract", () 
       "myblog-glossary",
       "myblog-faq",
       "myblog-filetree",
+      "myblog-timeline",
       "myblog-audio",
       "myblog-video",
     ]);
@@ -91,6 +92,7 @@ test("keeps CMS tags and required content fields aligned with the contract", () 
     assert.match(body.hint, /新增、同内容复用和同名替换.*必须确认/u);
     assert.match(body.hint, /多图证据画廊/u);
     assert.match(body.hint, /技术数据表格/u);
+    assert.match(body.hint, /项目里程碑时间线/u);
     assert.match(body.hint, /项目任务清单/u);
     assert.match(body.hint, /操作步骤流程/u);
     assert.match(body.hint, /术语定义表/u);

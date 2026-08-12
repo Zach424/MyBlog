@@ -802,7 +802,7 @@ export async function runProductionSmoke(originInput, { expectOAuth = false } = 
   invariant(studioPolicy.includes("https://api.github.com"), "Studio CSP 缺少 GitHub API");
   invariant(studioPolicy.includes("frame-ancestors 'none'"), "Studio CSP 未禁止嵌入");
 
-  const [studioMaintenancePage, studioMaintenanceModule, studioMaintenanceStyles, studioMaintenanceResponse, studioConfig, studioManifest, studioPreflight, stableSlugWidget, entryPreflightModule, mathPreviewModule, galleryEditorModule, glossaryEditorModule, faqEditorModule, fileTreeEditorModule, tableEditorModule, taskListEditorModule, referencesEditorModule, stepsEditorModule, audioEditorModule, videoEditorModule, studioPreview, katexStyles, studioRuntime, unknownStudioAsset] = await Promise.all([
+  const [studioMaintenancePage, studioMaintenanceModule, studioMaintenanceStyles, studioMaintenanceResponse, studioConfig, studioManifest, studioPreflight, stableSlugWidget, entryPreflightModule, mathPreviewModule, galleryEditorModule, glossaryEditorModule, faqEditorModule, fileTreeEditorModule, timelineEditorModule, tableEditorModule, taskListEditorModule, referencesEditorModule, stepsEditorModule, audioEditorModule, videoEditorModule, studioPreview, katexStyles, studioRuntime, unknownStudioAsset] = await Promise.all([
     request(origin, "/studio/maintenance"),
     request(origin, "/studio/maintenance.mjs", { accept: "text/javascript" }),
     request(origin, "/studio/maintenance.css", { accept: "text/css" }),
@@ -817,6 +817,7 @@ export async function runProductionSmoke(originInput, { expectOAuth = false } = 
     request(origin, "/studio/glossary-editor.mjs", { accept: "text/javascript" }),
     request(origin, "/studio/faq-editor.mjs", { accept: "text/javascript" }),
     request(origin, "/studio/filetree-editor.mjs", { accept: "text/javascript" }),
+    request(origin, "/studio/timeline-editor.mjs", { accept: "text/javascript" }),
     request(origin, "/studio/table-editor.mjs", { accept: "text/javascript" }),
     request(origin, "/studio/task-list-editor.mjs", { accept: "text/javascript" }),
     request(origin, "/studio/references-editor.mjs", { accept: "text/javascript" }),
@@ -1003,6 +1004,16 @@ export async function runProductionSmoke(originInput, { expectOAuth = false } = 
       fileTreeEditorModule.body.includes("registerStudioFileTreeEditor") &&
       fileTreeEditorModule.body.includes("myblog-filetree"),
     "Studio 项目文件树编辑组件不可用",
+  );
+  invariant(
+    timelineEditorModule.response.status === 200 &&
+      timelineEditorModule.body.includes("registerStudioTimelineEditor") &&
+      timelineEditorModule.body.includes("myblog-timeline"),
+    "Studio 项目时间线编辑组件不可用",
+  );
+  invariant(
+    timelineEditorModule.response.headers.get("content-type")?.startsWith("text/javascript"),
+    "Studio 项目时间线编辑组件类型不正确",
   );
   invariant(
     fileTreeEditorModule.response.headers.get("content-type")?.startsWith("text/javascript"),
@@ -1214,6 +1225,28 @@ export async function runProductionSmoke(originInput, { expectOAuth = false } = 
       fileTreePreviewPayload.html.includes("FILE MAP / 05 NODES") &&
       !/<button|contenteditable|onclick=/iu.test(fileTreePreviewPayload.html),
     "Studio 项目文件树生产管线预览不可用",
+  );
+
+  const timelinePreview = await request(origin, "/studio/math-preview", {
+    accept: "application/json",
+    body: JSON.stringify({
+      markdown:
+        "> [!timeline] MyBlog 交付里程碑\n> - `2026-07-19` `START` **建立内容契约**\n>\n>   用 Markdown 与 Zod 冻结内容边界。\n> - `2026-08-02` `DECISION` **统一作者入口**\n>\n>   选择 Studio 与 Obsidian 共享发布契约。\n> - `2026-08-12` `VERIFY` **完成生产验证**\n>\n>   完成自动化、移动端与打印验证。",
+    }),
+    headers: { "content-type": "application/json" },
+    method: "POST",
+  });
+  const timelinePreviewPayload = JSON.parse(timelinePreview.body);
+  invariant(
+    timelinePreview.response.status === 200 &&
+      timelinePreviewPayload.ok === true &&
+      timelinePreviewPayload.timelineCount === 1 &&
+      timelinePreviewPayload.timelineEventCount === 3 &&
+      timelinePreviewPayload.html.includes('data-timeline="release-tape"') &&
+      timelinePreviewPayload.html.includes("HISTORY / 03 EVENTS") &&
+      timelinePreviewPayload.html.includes('datetime="2026-08-12"') &&
+      !/<button|contenteditable|onclick=/iu.test(timelinePreviewPayload.html),
+    "Studio 项目时间线生产管线预览不可用",
   );
 
   const entryPreflight = await request(origin, "/studio/entry-preflight", {

@@ -1321,6 +1321,172 @@
   overflow-wrap: anywhere;
 }
 
+.markdown-content .markdown-timeline {
+  margin-block: 2rem;
+  border-block: 0.0625rem solid var(--trace-dark);
+  background: color-mix(in srgb, var(--trace) 10%, var(--paper));
+}
+
+.markdown-content .markdown-timeline-header {
+  display: grid;
+  border-bottom: 0.0625rem solid var(--rule);
+}
+
+.markdown-content .markdown-timeline-rail {
+  display: flex;
+  min-height: 2.4rem;
+  align-items: center;
+  justify-content: space-between;
+  gap: 0.75rem;
+  padding: 0.55rem 0.75rem;
+  color: var(--muted);
+  font: 700 0.625rem/1.4 var(--mono);
+  letter-spacing: 0.075em;
+}
+
+.markdown-content .markdown-timeline-kind {
+  color: var(--ink);
+}
+
+.markdown-content .markdown-timeline-kind::before {
+  display: inline-block;
+  width: 1.4rem;
+  height: 0.5rem;
+  margin-right: 0.45rem;
+  background:
+    linear-gradient(90deg, var(--signal) 0 0.28rem, transparent 0.28rem 0.56rem, var(--signal) 0.56rem 0.84rem, transparent 0.84rem 1.12rem, var(--signal) 1.12rem 1.4rem),
+    linear-gradient(var(--muted), var(--muted)) 0 50% / 100% 0.0625rem no-repeat;
+  content: "";
+}
+
+.markdown-content .markdown-timeline-title {
+  padding: 0.85rem 0.9rem 0.9rem;
+  border-top: 0.0625rem solid var(--rule);
+  font-size: 1rem;
+  line-height: 1.5;
+  overflow-wrap: anywhere;
+}
+
+.markdown-content .markdown-timeline-items {
+  margin: 0;
+  padding: 0;
+  list-style: none;
+  background: var(--paper);
+}
+
+.markdown-content .markdown-timeline-event {
+  display: grid;
+  grid-template-columns: 1.4rem 6.25rem minmax(0, 1fr);
+  min-width: 0;
+  margin: 0;
+}
+
+.markdown-content .markdown-timeline-event:not(:last-child) {
+  border-bottom: 0.0625rem solid var(--rule);
+}
+
+.markdown-content .markdown-timeline-trace {
+  position: relative;
+  display: grid;
+  justify-items: center;
+  background: color-mix(in srgb, var(--trace) 16%, var(--paper));
+}
+
+.markdown-content .markdown-timeline-trace::before {
+  position: absolute;
+  inset-block: 0;
+  width: 0.0625rem;
+  background: color-mix(in srgb, var(--signal) 48%, var(--rule));
+  content: "";
+}
+
+.markdown-content .markdown-timeline-event:first-child .markdown-timeline-trace::before {
+  top: 1.45rem;
+}
+
+.markdown-content .markdown-timeline-event:last-child .markdown-timeline-trace::before {
+  bottom: calc(100% - 1.45rem);
+}
+
+.markdown-content .markdown-timeline-node {
+  position: relative;
+  z-index: 1;
+  width: 0.5rem;
+  height: 0.5rem;
+  margin-top: 1.2rem;
+  border: 0.0625rem solid var(--signal);
+  background: var(--paper);
+  transform: rotate(45deg);
+}
+
+.markdown-content .markdown-timeline-date {
+  display: grid;
+  align-content: start;
+  gap: 0.08rem;
+  min-width: 0;
+  padding: 0.9rem 0.8rem;
+  border-right: 0.0625rem solid var(--rule);
+  color: var(--ink);
+  font-family: var(--mono);
+  font-style: normal;
+}
+
+.markdown-content .markdown-timeline-year {
+  color: var(--muted);
+  font-size: 0.58rem;
+  font-weight: 700;
+  letter-spacing: 0.08em;
+}
+
+.markdown-content .markdown-timeline-day {
+  font-size: 1.05rem;
+  font-weight: 780;
+  letter-spacing: -0.045em;
+}
+
+.markdown-content .markdown-timeline-copy {
+  display: grid;
+  grid-template-columns: auto minmax(0, 1fr);
+  gap: 0.45rem 0.75rem;
+  min-width: 0;
+  padding: 0.85rem 0.9rem 1rem;
+}
+
+.markdown-content .markdown-timeline-event-type {
+  align-self: start;
+  padding: 0.12rem 0.34rem;
+  border: 0.0625rem solid currentColor;
+  color: var(--muted);
+  font: 750 0.55rem/1.4 var(--mono);
+  letter-spacing: 0.08em;
+}
+
+.markdown-content .markdown-timeline-event[data-event-type="start"] .markdown-timeline-event-type,
+.markdown-content .markdown-timeline-event[data-event-type="ship"] .markdown-timeline-event-type,
+.markdown-content .markdown-timeline-event[data-event-type="verify"] .markdown-timeline-event-type {
+  color: var(--signal);
+}
+
+.markdown-content .markdown-timeline-event-title {
+  min-width: 0;
+  font-size: 0.93rem;
+  line-height: 1.5;
+  overflow-wrap: anywhere;
+}
+
+.markdown-content .markdown-timeline-description {
+  grid-column: 1 / -1;
+  color: var(--muted);
+  font-size: 0.8rem;
+  line-height: 1.7;
+  overflow-wrap: anywhere;
+}
+
+.markdown-content .markdown-timeline-description > :first-child,
+.markdown-content .markdown-timeline-description > :last-child {
+  margin-block: 0;
+}
+
 .markdown-content .markdown-procedure {
   margin-block: 2rem;
   border-block: 0.0625rem solid var(--trace-dark);
@@ -1513,6 +1679,17 @@
   }
 
   .markdown-content .markdown-filetree-children { margin-left: 10mm; }
+
+  .markdown-content .markdown-timeline { break-inside: auto; }
+
+  .markdown-content .markdown-timeline-header,
+  .markdown-content .markdown-timeline-event { break-inside: avoid-page; }
+
+  .markdown-content .markdown-timeline-event {
+    grid-template-columns: 5mm 25mm minmax(0, 1fr);
+  }
+
+  .markdown-content .markdown-timeline-copy { padding: 2.3mm 2.6mm; }
 
   .markdown-content .markdown-glossary-term,
   .markdown-content .markdown-glossary-meaning { padding: 2.5mm; }
@@ -1874,4 +2051,24 @@
     padding-top: 0;
     border-left: 0.0625rem solid var(--rule);
   }
+
+  .markdown-content .markdown-timeline-rail {
+    align-items: flex-start;
+    flex-direction: column;
+  }
+
+  .markdown-content .markdown-timeline-event {
+    grid-template-columns: 0.9rem 4.25rem minmax(0, 1fr);
+  }
+
+  .markdown-content .markdown-timeline-date { padding-inline: 0.55rem; }
+
+  .markdown-content .markdown-timeline-day { font-size: 0.88rem; }
+
+  .markdown-content .markdown-timeline-copy {
+    grid-template-columns: 1fr;
+    padding-inline: 0.7rem;
+  }
+
+  .markdown-content .markdown-timeline-description { grid-column: 1; }
 }

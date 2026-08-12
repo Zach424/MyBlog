@@ -9,6 +9,7 @@ import { rehypeMarkdownCallouts } from "@/lib/markdown-callout";
 import { rehypeMarkdownDiagrams } from "@/lib/markdown-diagram";
 import { rehypeMarkdownFaqs } from "@/lib/markdown-faq";
 import { rehypeMarkdownFileTrees } from "@/lib/markdown-filetree";
+import { rehypeMarkdownTimelines } from "@/lib/markdown-timeline";
 import { rehypeMarkdownGalleries } from "@/lib/markdown-gallery";
 import { rehypeMarkdownGlossaries } from "@/lib/markdown-glossary";
 import { rehypeMarkdownReferenceLists } from "@/lib/markdown-references";
@@ -41,6 +42,7 @@ export const MARKDOWN_REHYPE_PLUGINS = [
   rehypeMarkdownAudioNotes,
   rehypeMarkdownFaqs,
   rehypeMarkdownFileTrees,
+  rehypeMarkdownTimelines,
   rehypeMarkdownGlossaries,
   rehypeMarkdownReferenceLists,
   rehypeMarkdownSteps,

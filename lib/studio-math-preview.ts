@@ -25,6 +25,12 @@ import {
   type MarkdownFileTreeIssue,
 } from "@/lib/markdown-filetree";
 import {
+  extractMarkdownTimelines,
+  getMarkdownTimelineIssue,
+  type MarkdownTimelineIssue,
+} from "@/lib/markdown-timeline";
+import { resolveContentBuildDate } from "@/build/content-build-date";
+import {
   MARKDOWN_REHYPE_OPTIONS,
   MARKDOWN_REHYPE_PLUGINS,
   MARKDOWN_REMARK_PLUGINS,
@@ -79,6 +85,8 @@ export type StudioMathPreviewResult =
       fileTreeCount: number;
       fileTreeMaxDepth: number;
       fileTreeNodeCount: number;
+      timelineCount: number;
+      timelineEventCount: number;
       formulaCount: number;
       galleryCount: number;
       galleryImageCount: number;
@@ -102,6 +110,7 @@ export type StudioMathPreviewResult =
         | MarkdownDiagramIssue
         | MarkdownFaqIssue
         | MarkdownFileTreeIssue
+        | MarkdownTimelineIssue
         | MarkdownAudioIssue
         | MarkdownGalleryIssue
         | MarkdownGlossaryIssue
@@ -171,6 +180,10 @@ export function renderStudioMathPreview(
   if (faqIssue) return { issue: faqIssue, ok: false };
   const fileTreeIssue = getMarkdownFileTreeIssue(markdown);
   if (fileTreeIssue) return { issue: fileTreeIssue, ok: false };
+  const timelineIssue = getMarkdownTimelineIssue(markdown, {
+    maximumDate: resolveContentBuildDate(),
+  });
+  if (timelineIssue) return { issue: timelineIssue, ok: false };
   const galleryIssue = getMarkdownGalleryIssue(markdown);
   if (galleryIssue) return { issue: galleryIssue, ok: false };
   const glossaryIssue = getMarkdownGlossaryIssue(markdown);
@@ -202,6 +215,12 @@ export function renderStudioMathPreview(
   );
   const fileTreeMaxDepth = fileTrees.reduce(
     (maximum, fileTree) => Math.max(maximum, fileTree.maxDepth),
+    0,
+  );
+  const timelines = extractMarkdownTimelines(markdown);
+  const timelineCount = timelines.length;
+  const timelineEventCount = timelines.reduce(
+    (total, timeline) => total + timeline.events.length,
     0,
   );
   const galleries = extractMarkdownGalleries(markdown);
@@ -268,6 +287,8 @@ export function renderStudioMathPreview(
     fileTreeCount,
     fileTreeMaxDepth,
     fileTreeNodeCount,
+    timelineCount,
+    timelineEventCount,
     formulaCount,
     galleryCount,
     galleryImageCount,

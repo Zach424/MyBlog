@@ -20,6 +20,7 @@ type StudioAssetName =
   | "stable-slug-widget.mjs"
   | "table-editor.mjs"
   | "task-list-editor.mjs"
+  | "timeline-editor.mjs"
   | "video-editor.mjs"
   | "preview.css";
 
@@ -42,6 +43,7 @@ const contentTypes: Record<StudioAssetName, string> = {
   "stable-slug-widget.mjs": "text/javascript; charset=utf-8",
   "table-editor.mjs": "text/javascript; charset=utf-8",
   "task-list-editor.mjs": "text/javascript; charset=utf-8",
+  "timeline-editor.mjs": "text/javascript; charset=utf-8",
   "video-editor.mjs": "text/javascript; charset=utf-8",
   "preview.css": "text/css; charset=utf-8",
 };

@@ -28,7 +28,7 @@ const AUTHOR_DOCTOR_PLUGIN_BUNDLE_VERSION = 1;
 const AUTHOR_DOCTOR_PLUGIN_PROVENANCE_VERSION = 1;
 const INBOX_READINESS_REPORT_VERSION = 8;
 const AUTHOR_DOCTOR_NODE_ENGINE = ">=22.13.0";
-const AUTHOR_DOCTOR_PLUGIN_VERSION = "1.51.0";
+const AUTHOR_DOCTOR_PLUGIN_VERSION = "1.52.0";
 const CURRENT_DRAFT_INTENT_RUN_SCOPE = Symbol("current-draft-intent");
 const PRODUCTION_CONTENT_CONVERGENCE_RUN_SCOPE = Symbol(
   "production-content-convergence",
@@ -254,6 +254,29 @@ function createFileTreeTemplate(filePath) {
     ">     - `page.tsx` — 后台静态入口。",
     "> - `lib/` — 共享内容解析与渲染。",
     "> - `package.json` — 脚本、依赖与质量门。",
+  ].join("\n");
+}
+
+function createTimelineTemplate(filePath) {
+  const normalized = String(filePath || "").replaceAll("\\", "/");
+  if (
+    !/^content\/(inbox|posts|projects)\/[a-z0-9]+(?:-[a-z0-9]+)*\.md$/u.test(
+      normalized,
+    )
+  ) {
+    throw new Error("项目时间线模板只能插入 content/inbox、content/posts 或 content/projects 中的博客文档");
+  }
+  return [
+    "> [!timeline] MyBlog 交付里程碑",
+    "> - `2026-07-19` `START` **建立内容契约**",
+    ">",
+    ">   用 Markdown、YAML 与 Zod 冻结第一版内容边界。",
+    "> - `2026-08-02` `DECISION` **统一作者入口**",
+    ">",
+    ">   选择 Studio 与 Obsidian 共享同一套可发布富内容契约。",
+    "> - `2026-08-12` `VERIFY` **完成生产验证**",
+    ">",
+    ">   完成自动化、移动端、打印与生产环境验证。",
   ].join("\n");
 }
 
@@ -6186,6 +6209,20 @@ module.exports = class MyBlogPublisher extends Plugin {
           const template = createFileTreeTemplate(view?.file?.path);
           editor.replaceSelection(template);
           new Notice("已插入五个项目文件树节点；请替换标题、路径层级与说明");
+        } catch (error) {
+          new Notice(error instanceof Error ? error.message : String(error));
+        }
+      },
+    });
+
+    this.addCommand({
+      id: "insert-timeline-template",
+      name: "插入项目里程碑时间线模板",
+      editorCallback: (editor, view) => {
+        try {
+          const template = createTimelineTemplate(view?.file?.path);
+          editor.replaceSelection(template);
+          new Notice("已插入三个项目里程碑；请替换标题、日期、事件类型与说明");
         } catch (error) {
           new Notice(error instanceof Error ? error.message : String(error));
         }

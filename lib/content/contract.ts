@@ -3,6 +3,7 @@ import { z } from "zod";
 import { getMarkdownAudioIssue } from "../markdown-audio.ts";
 import { getMarkdownFaqIssue } from "../markdown-faq.ts";
 import { getMarkdownFileTreeIssue } from "../markdown-filetree.ts";
+import { getMarkdownTimelineIssue } from "../markdown-timeline.ts";
 import { getMarkdownGlossaryIssue } from "../markdown-glossary.ts";
 import { getMarkdownReferenceIssue } from "../markdown-references.ts";
 import { getMarkdownStepsIssue } from "../markdown-steps.ts";
@@ -438,6 +439,15 @@ function parseFrontmatter<T>(
     );
   }
 
+  const timelineIssue = getMarkdownTimelineIssue(body);
+  if (timelineIssue) {
+    const location = timelineIssue.line ? `正文第 ${timelineIssue.line} 行` : "正文";
+    throw new ContentValidationError(
+      sourcePath,
+      `${location}项目时间线无法解析：${timelineIssue.message}`,
+    );
+  }
+
   const referenceIssue = getMarkdownReferenceIssue(body);
   if (referenceIssue) {
     const location = referenceIssue.line ? `正文第 ${referenceIssue.line} 行` : "正文";
@@ -641,6 +651,16 @@ export function inspectContentDraft(
         message: `${location}项目文件树无法解析：${fileTreeIssue.message}`,
       });
     }
+    const timelineIssue = getMarkdownTimelineIssue(body, {
+      maximumDate: buildDate,
+    });
+    if (timelineIssue) {
+      const location = timelineIssue.line ? `第 ${timelineIssue.line} 行` : "正文";
+      issues.push({
+        field: "body",
+        message: `${location}项目时间线无法解析：${timelineIssue.message}`,
+      });
+    }
     const referenceIssue = getMarkdownReferenceIssue(body);
     if (referenceIssue) {
       const location = referenceIssue.line ? `第 ${referenceIssue.line} 行` : "正文";
@@ -757,6 +777,23 @@ export function validateContentFreshness(
         `当前维护内容已超过 ${maxAgeDays} 天未复核（reviewedAt: ${record.reviewedAt}）`,
       );
     }
+  }
+}
+
+export function validateContentTimelines(
+  records: ContentRecord[],
+  buildDate: string,
+) {
+  for (const record of records) {
+    const issue = getMarkdownTimelineIssue(record.body, {
+      maximumDate: buildDate,
+    });
+    if (!issue) continue;
+    const location = issue.line ? `正文第 ${issue.line} 行` : "正文";
+    throw new ContentValidationError(
+      record.sourcePath,
+      `${location}项目时间线无法解析：${issue.message}`,
+    );
   }
 }
 
