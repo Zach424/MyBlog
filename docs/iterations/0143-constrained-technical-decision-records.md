@@ -124,7 +124,7 @@ CommonMark 会把标记和紧随其后的元数据保存在同一个 paragraph �
 - 第一次 Playwright 运行用 `about:blank` 加载 loopback CSS，被 Chromium Private Network Access 阻止；验收页先导航到同源 `/studio` 再注入内容后，CSS 正常加载且控制台清零；
 - Playwright CLI 的 `run-code` shell 内联方式会把代码中的反引号当成命令替换；改用官方 `--filename` 参数后稳定执行，避免为了通过工具而篡改测试内容。
 
-生产证据将在功能与归档提交推送、Vercel 收敛后补写；当前公开内容仍没有真实 `[!decision]` 样本，因此本地证据只证明能力与合成预览，不冒充真实作者决定。
+生产自动交付已收敛：功能提交 `bc2c725` 与首份归档提交 `af1dfe8` 均进入 `origin/main`；`/studio/decision-editor.mjs` 在第 4 次有效有界轮询返回 200/12,972 B，并包含 `myblog-decision` 注册契约。稳定生产 smoke 在 43.3 秒内通过 27 条路由、GitHub OAuth 302、1 条 Decision Brief、2 个备选、2 个影响、真实 `datetime="2026-08-12"`、无按钮/contenteditable/onclick 边界，以及全部 HTML/发现资源传输预算。本轮没有改变公开内容集合或结构化端点正文，因此不重置既有生产预算基线。当前公开内容仍没有真实 `[!decision]` 样本，生产证据证明部署后的能力与合成预览，不冒充真实作者决定。
 
 ## 8. 经验与教训
 
