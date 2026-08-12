@@ -13,10 +13,10 @@ MyBlog 是 Zach424 的个人技术知识库与公开工程日志。它把学习�
 | 内容契约 | done | YAML + Zod 校验文章、TIL、项目、标签、专题、日期、URL、内容语境、复核日期与本地封面替代文本 |
 | 公开阅读 | done | 首页、文章、项目、专题、标签、统一时间档案、首发/更新内容活动、首页最近三次变化摘要、订阅与开放接口目录、搜索、关于、品牌化 404 恢复路口、响应式、深色模式与详情页封面；共享列表、搜索和知识图谱统一区分首发/更新日，搜索结果提供 Unicode 安全命中证据，文章/项目详情提供最多 3 条带可见理由的继续阅读 |
 | 读者分享 | done | 文章/项目服务端规范链接、Web Share、URL/Markdown 引用 Clipboard、全 ASCII 标点转义、取消静默、共享 single-flight、`aria-live` 回执、无 JavaScript 恢复路径与 print 隔离 |
-| Markdown | done | GFM、代码高亮、语言标签、渐进增强的一键复制、与实际渲染一致的 H1–H6 heading id、H2/H3 目录与原生永久链接、Obsidian 兼容脚注/尾注、行内/块级数学公式、Callout、受限 Mermaid 服务端 SVG、受限本地静音 MP4、受限本地 MP3 + 完整文字稿、受限多图画廊、受限技术表格、受限只读任务清单、受限参考资料清单、受限步骤流程、受限术语定义表与受限 FAQ、A4 打印/PDF 版式、阅读时间、相邻文章与响应式媒体 |
+| Markdown | done | GFM、代码高亮、语言标签、渐进增强的一键复制、与实际渲染一致的 H1–H6 heading id、H2/H3 目录与原生永久链接、Obsidian 兼容脚注/尾注、行内/块级数学公式、Callout、受限 Mermaid 服务端 SVG、受限本地静音 MP4、受限本地 MP3 + 完整文字稿、受限多图画廊、受限技术表格、受限只读任务清单、受限参考资料清单、受限步骤流程、受限术语定义表、受限 FAQ 与受限项目文件树、A4 打印/PDF 版式、阅读时间、相邻文章与响应式媒体 |
 | 内容发现 | done | SEO、内容级 OG/Twitter 封面、首页唯一 `WebSite`、文章/项目纯生成器维护的稳定身份与站点引用、文章 `wordCount`/`timeRequired`、四类详情可见路径与 `BreadcrumbList` JSON-LD、统一年月时间档案、可见订阅目录、标签/专题级 RSS 与页面自动发现、一次导入全部公开 RSS 的分组 OPML 2.0、按真实内容变化排序的 Atom 1.0、首页/Sitemap 共享公开路由事实、OpenSearch 1.1、version 1 公开内容清单及 Draft 2020-12 JSON Schema、JSON Feed 1.1、保留首发 `pubDate` 且以 `dcterms:modified` 表达更新的 RSS、Feed/清单/单篇 Markdown 的 Last-Modified 与日期条件验证、十三端点 HEAD 等价门禁、Sitemap、robots、NFKC/AND 本地全文搜索；十一个结构化端点与源文均有 SHA-256 ETag/条件读取 |
-| 网页写作 | done | `/studio`、GitHub OAuth、Decap workflow、PR、按 slug 归档媒体、稳定 slug 锁定、双层 SHA-256 冲突预检、快速重选 latest-wins、共享生产管线的公式/Callout/Mermaid/视频/音频/画廊/技术表格/只读任务/参考资料/步骤流程/术语表/FAQ 预览、自定义本地 MP3/静音 MP4 组件、可排序画廊、结构化技术表格/任务清单/参考资料/步骤流程/术语表/FAQ 组件与全字段只读发布清单 |
-| Obsidian 写作 | done | Vault、三类受信模板、桌面插件 1.50.0、文件名唯一草稿身份、图片/画廊/MP3/MP4 原子归档、画廊/技术表格/任务清单/音频/参考资料/步骤流程/术语表/FAQ 模板插入、source-scoped 作者意图与来源行导航、发布/复核 single-flight、三方版本联锁、bundle SHA-256 完整性、四路径 Git HEAD/index/worktree provenance、sealed Git 交付恢复、维护台账、全库生产同步、手动单篇收敛与正常/恢复交付自动接力 |
+| 网页写作 | done | `/studio`、GitHub OAuth、Decap workflow、PR、按 slug 归档媒体、稳定 slug 锁定、双层 SHA-256 冲突预检、快速重选 latest-wins、共享生产管线的公式/Callout/Mermaid/视频/音频/画廊/技术表格/只读任务/参考资料/步骤流程/术语表/FAQ/项目文件树预览、自定义本地 MP3/静音 MP4 组件、可排序画廊、结构化技术表格/任务清单/参考资料/步骤流程/术语表/FAQ/项目文件树组件与全字段只读发布清单 |
+| Obsidian 写作 | done | Vault、三类受信模板、桌面插件 1.51.0、文件名唯一草稿身份、图片/画廊/MP3/MP4 原子归档、画廊/技术表格/任务清单/音频/参考资料/步骤流程/术语表/FAQ/项目文件树模板插入、source-scoped 作者意图与来源行导航、发布/复核 single-flight、三方版本联锁、bundle SHA-256 完整性、四路径 Git HEAD/index/worktree provenance、sealed Git 交付恢复、维护台账、全库生产同步、手动单篇收敛与正常/恢复交付自动接力 |
 | Inbox 发布就绪 | done | version 8/read-only 全草稿 ready/scheduled/blocked、每个可读来源的原始字节 SHA-256、Article/TIL/Project、精确站内目标/源码行/重复次数、媒体 COVER/BODY/GALLERY/VIDEO 用途/出现次数/源码行/最终说明及来源、空文本与文件名回退阻塞、真实媒体候选、目标/共享附件诊断、CLI 全库或 `--source` 聚焦 JSON 与 Obsidian 当前草稿原生摘要 |
 | 附件发布 | done | Wiki/Markdown 图片、受限画廊列表与 Markdown MP4 转换，按内容隔离、稳定命名、越界保护、真实媒体校验与失败回滚 |
 | 自动交付 | done | GitHub `main` → Vercel Production → 稳定域名冒烟；checkout/setup-node v6 Node 24 action runtime 的六处引用固定到官方完整 SHA，应用 Node 22 与 workflow 语义由共享结构/发布门禁保护 |
@@ -56,7 +56,7 @@ MyBlog 是 Zach424 的个人技术知识库与公开工程日志。它把学习�
 - 搜索：服务端 Markdown AST 生成纯文本索引，客户端使用 NFKC、`zh-CN` 小写和多词 AND 排名；规范化命中通过 grapheme 边界映射回作者原文，只以 React 文本节点和原生 `<mark>` 渲染。摘要/正文选择覆盖查询词更多的证据，字段原因与来源标签、浅深色 AA 对比和显式 `:focus-visible` 共同提供可解释反馈；
 - 推荐：服务端纯函数从公开记录和 outgoing/backlink 索引派生，按双向引用 120、当前引用 80、反向引用 70、同专题 60、每个共同标签 15 排序；最多 3 条、同分稳定决胜、逐条显示实际理由，无客户端请求、数据库或新增内容字段；
 - 阅读：react-markdown、remark-gfm、remark-math、rehype-slug、rehype-highlight、rehype-katex 与 KaTeX；服务端 Markdown、中文脚注语义与回链、HTML + MathML 数学公式、MarkdownHeading 永久链接、PrintSource 可信来源与字段受限的可移植 `source.md`，最终 UTF-8 SHA-256 ETag、公开日期 Last-Modified、ETag 优先与日期条件回退，最小 CodeBlock/ShareTrace 客户端岛、Web Share/Clipboard API、CommonMark 全 ASCII 标点引用转义、共享 single-flight 与 aria-live；GFM + math 共享 mdast 继续复现标题、链接、媒体、搜索和源文 URL 改写语义，生产阅读与 Studio 共享 remark/rehype/KaTeX/安全 URL 规则，构建期公式使用 `trust: false`/严格资源上限；A4 `@page` 与 scoped print CSS 只重排既有语义 DOM；
-- 发布：Decap CMS 3.14.1、GitHub OAuth、stable slug/媒体/公式/条目预检、本地 MP3/静音 MP4、可排序画廊、结构化技术表格/任务清单/参考资料/步骤流程/术语表/FAQ 组件，Obsidian Publisher 1.50.0 的受信模板、画廊/技术表格/任务清单/音频/参考资料/步骤流程/术语表/FAQ 插入、文件名身份、source-scoped 作者意图、媒体/链接来源行、四事务联锁、所有 Git writer 三方版本、bundle 摘要与 Git provenance 握手、sealed Git 交付恢复、全库生产同步、单篇收敛等待与正常/恢复 version 1 post-delivery handoff；`content:production`/`content:production:wait` 复用公开清单生成器，使用受限流式 GET、严格 version 1 协议、来源字节冻结、条件请求与零写入报告；
+- 发布：Decap CMS 3.14.1、GitHub OAuth、stable slug/媒体/公式/条目预检、本地 MP3/静音 MP4、可排序画廊、结构化技术表格/任务清单/参考资料/步骤流程/术语表/FAQ/项目文件树组件，Obsidian Publisher 1.51.0 的受信模板、画廊/技术表格/任务清单/音频/参考资料/步骤流程/术语表/FAQ/项目文件树插入、文件名身份、source-scoped 作者意图、媒体/链接来源行、四事务联锁、所有 Git writer 三方版本、bundle 摘要与 Git provenance 握手、sealed Git 交付恢复、全库生产同步、单篇收敛等待与正常/恢复 version 1 post-delivery handoff；`content:production`/`content:production:wait` 复用公开清单生成器，使用受限流式 GET、严格 version 1 协议、来源字节冻结、条件请求与零写入报告；
 - 媒体：Sharp 0.35.3、MP4Box 2.4.1、music-metadata 11.14.0、浏览器图片/音频/视频元数据解析、`createImageBitmap`/`HTMLAudioElement`/`HTMLVideoElement` 与 Web Crypto、构建期确定性摘要清单、mdast-util-from-markdown 2.0.3、`next/image`、原生 `<audio>`/`<video>`、固有尺寸、WebP 优化、引用所有权与 Git 附件跟踪；
 - 维护：内容新鲜度、根暂存媒体、正文/结构化端点外链、生产内容同步与收敛等待 CLI；Studio/Obsidian 提供只读队列，实时网络检查都只显式运行且不进入默认离线发布门；
 - 路由：严格 YAML + Zod 永久重定向注册表、Next `redirects()` 308、构建期现行路由与静态文件交叉校验；
@@ -68,22 +68,22 @@ MyBlog 是 Zach424 的个人技术知识库与公开工程日志。它把学习�
 
 - 仓库：<https://github.com/Zach424/MyBlog>，生产分支 `main`；
 - 生产站：<https://blog-iota-five-59.vercel.app>；
-- 本轮功能提交 `7d21738` 与归档提交 `f8f4467` 已推送到 `origin/main`；本地证据覆盖 633/633 全量单测、9/9 FAQ 专项、5/5 图表测试、75 个生成页面/资源、35/35 应用测试、206.2 秒完整发布总门、生产依赖审计 0 漏洞、插件 3/3 SHA-256 和真实浏览器点击/键盘/320 px/打印预览；
-- 自动交付：Vercel 已收敛到包含 `/studio/faq-editor.mjs` 的版本；该资源在第 7 次有界轮询返回 200/8,701 B。稳定生产 smoke 在 39.9 秒内通过 27 条路由、GitHub OAuth 302、`faqCount: 1`、`faqQuestionCount: 2`、Answer Cabinet 原生披露语义及全部 HTML/发现资源预算。本轮没有改变公开内容集合或结构化端点正文，因此不重置既有生产预算基线；
-- 最新完成迭代：0140 受约束 FAQ、Studio/Obsidian 作者入口、搜索降噪与 Answer Cabinet 原生渐进披露；
+- 本轮功能提交 `f0e3794` 已创建；本地证据覆盖 634/634 全量单测、9/9 文件树专项、9/9 FAQ、5/5 图表测试、76 个生成页面/资源、35/35 应用测试、183.8 秒完整发布总门、生产依赖审计 0 漏洞、插件 3/3 SHA-256 和真实浏览器桌面/320 px/打印验收；
+- 自动交付：等待本轮归档提交推送后核验 Vercel 收敛到包含 `/studio/filetree-editor.mjs` 的版本；本轮没有改变公开内容集合或结构化端点正文，因此不重置既有生产预算基线；
+- 最新完成迭代：0141 受约束项目文件树、Studio/Obsidian 作者入口、搜索降噪与 Repository Slice 静态层级；
 - Obsidian 状态：仓库根目录就是 Vault，`docs/STATUS.md`、`docs/iterations/*.md` 与 `docs/knowledge/*.md` 是同一份本地文件，可直接阅读和维护；
 - 手动外部接入：自定义域名、统计、评论、公开邮箱均暂缓，不阻塞当前开发。
 
 ## 本轮新增能力
 
-作者现在可以在 Studio 或 Obsidian 发布受约束 FAQ。每组有明确标题和 2–10 个问题，每题必须包含仅粗体问题及 1–3 个答案段落；每篇最多 3 组/24 问。Studio 提供可排序结构化组件与共享生产预览，Obsidian 1.50.0 提供一键模板。读者页使用原生 `<details>/<summary>` Answer Cabinet：首题默认展开，其余独立开合，点击和键盘都可操作但不保存跨访问状态；搜索保留全部问题和答案，320 px 无横向溢出，打印展开全部答案。
+作者现在可以在 Studio 或 Obsidian 发布受约束项目文件树。每棵树有明确标题、2–32 个节点、最多 4 层；每篇最多 3 棵/64 个节点。路径段、文件夹 `/` 类型、完整路径唯一性、父子关系和说明内容由同一 AST 契约验证。Studio 提供完整相对路径表单与共享生产预览，Obsidian 1.51.0 提供一键模板；阅读端以原生嵌套列表 Repository Slice 展示，搜索保留路径与职责，320 px 和打印保留完整层级。
 
 ## 风险与下一步
 
 1. Studio 已完成真实格式/预算、生产/会话摘要、快速重选竞态、数学公式作者预览和全字段只读 Author Proof，但有意不自动缩放/转 WebP，也不在第一版阻断保存；跨文章 slug/专题连续性、媒体引用和站内关系仍由完整仓库门验证；
 2. 首次保存后的 slug 已在 Studio 控件层锁定；真正迁移仍只能通过 Git 同步修改内容文件、正文引用、附件目录和 `content/redirects.yml`。注册表不自动推断迁移且有意只支持精确单跳路径；该控件依赖固定 Decap 3.14.1 bundle 的 `entry/newRecord` 契约，升级时必须重审；
 3. inbox readiness 已覆盖全部本地草稿，但有意不进入 Actions：未跟踪草稿和附件天然不在 CI 检出中；当前真实 inbox 为空，正向/阻塞路径由临时 Git/媒体夹具验证，首次实际多草稿使用时仍应按 Modal 逐项复核；
-4. Obsidian 1.50.0 已闭合草稿身份、source-scoped 作者意图、图片/MP3/MP4 媒体与链接源码行、画廊/技术表格/任务清单/音频/参考资料/步骤流程/术语表/FAQ 插入、发布/复核事务、sealed Git 交付恢复、内容维护、全库生产同步和活动正式笔记收敛等待；正常与恢复 publication/review 成功后均自动接力。三方版本、bundle 完整性、Git provenance、未来 patch/minor、伪造/局部/staged/unstaged 失败关闭、receipt/handoff、事务先释放、reconcile 后启动、latest-wins、卸载取消和零重复 Git 动作均由宿主/真实临时仓库覆盖，但仍需首次真实 Obsidian 主题下观察 reload/bundle/provenance interlock、两个连续 Modal、长 ETag、commit 和持续 Notice 的视觉密度；
+4. Obsidian 1.51.0 已闭合草稿身份、source-scoped 作者意图、图片/MP3/MP4 媒体与链接源码行、画廊/技术表格/任务清单/音频/参考资料/步骤流程/术语表/FAQ/项目文件树插入、发布/复核事务、sealed Git 交付恢复、内容维护、全库生产同步和活动正式笔记收敛等待；正常与恢复 publication/review 成功后均自动接力。三方版本、bundle 完整性、Git provenance、未来 patch/minor、伪造/局部/staged/unstaged 失败关闭、receipt/handoff、事务先释放、reconcile 后启动、latest-wins、卸载取消和零重复 Git 动作均由宿主/真实临时仓库覆盖，但仍需首次真实 Obsidian 主题下观察 reload/bundle/provenance interlock、两个连续 Modal、长 ETag、commit 和持续 Notice 的视觉密度；
 5. Obsidian 块引用是专有语法，当前明确拒绝；知识地图已公开，但当前 SVG 双列布局为小型内容库优化，内容增长后需要在不牺牲 HTML 语义的前提下增加过滤或分组；
 6. 正文与结构化 HTTPS 端点已有统一离线库存、显式健康检查、生产四态核对和单篇条件轮询，但 DNS、代理、限流与网络仍只是观察证据；传输/协议错误独立失败，实时检查不进 Actions，Obsidian 子进程能否访问 Vercel 取决于本机 Node 网络环境；Node 24 使用代理环境变量时需同时启用 `NODE_USE_ENV_PROXY=1` 并完整重启 Obsidian；
 7. 标题锚点采用严格的实际渲染 id；改名或调整重复标题顺序时必须同步正文深链，Obsidian 块引用和模糊匹配仍明确不支持；
