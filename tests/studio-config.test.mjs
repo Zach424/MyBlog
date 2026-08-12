@@ -84,6 +84,7 @@ test("keeps CMS tags and required content fields aligned with the contract", () 
       "myblog-filetree",
       "myblog-timeline",
       "myblog-decision",
+      "myblog-experiment",
       "myblog-audio",
       "myblog-video",
     ]);

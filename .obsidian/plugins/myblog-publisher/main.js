@@ -28,7 +28,7 @@ const AUTHOR_DOCTOR_PLUGIN_BUNDLE_VERSION = 1;
 const AUTHOR_DOCTOR_PLUGIN_PROVENANCE_VERSION = 1;
 const INBOX_READINESS_REPORT_VERSION = 8;
 const AUTHOR_DOCTOR_NODE_ENGINE = ">=22.13.0";
-const AUTHOR_DOCTOR_PLUGIN_VERSION = "1.53.0";
+const AUTHOR_DOCTOR_PLUGIN_VERSION = "1.54.0";
 const CURRENT_DRAFT_INTENT_RUN_SCOPE = Symbol("current-draft-intent");
 const PRODUCTION_CONTENT_CONVERGENCE_RUN_SCOPE = Symbol(
   "production-content-convergence",
@@ -314,6 +314,51 @@ function createDecisionTemplate(filePath) {
     ">",
     "> - `POSITIVE` 发布链路更短，框架支持更直接。",
     "> - `NEGATIVE` 托管能力与 Vercel 平台耦合。",
+  ].join("\n");
+}
+
+function createExperimentTemplate(filePath) {
+  const normalized = String(filePath || "").replaceAll("\\", "/");
+  if (
+    !/^content\/(inbox|posts|projects)\/[a-z0-9]+(?:-[a-z0-9]+)*\.md$/u.test(
+      normalized,
+    )
+  ) {
+    throw new Error("技术实验模板只能插入 content/inbox、content/posts 或 content/projects 中的博客文档");
+  }
+  return [
+    "> [!experiment] 验证博客完整发布门耗时",
+    "> **STATUS:** `SUPPORTED` · **DATE:** `2026-08-12`",
+    ">",
+    "> **HYPOTHESIS**",
+    ">",
+    "> 当前工作站可以在三分钟内完成全部本地发布质量门。",
+    ">",
+    "> **ENVIRONMENT**",
+    ">",
+    "> Windows、Node.js 22、Next.js 16.3.0，使用仓库锁定依赖。",
+    ">",
+    "> **METHOD**",
+    ">",
+    "> 在干净依赖环境中运行一次 `npm run release:check` 并记录最终结果。",
+    ">",
+    "> **SAMPLE**",
+    ">",
+    "> 单台工作站、一次完整运行，覆盖当前公开内容与全部测试。",
+    ">",
+    "> **MEASUREMENTS**",
+    ">",
+    "> - **完整发布检查** `184.3 s` — 配置、内容、测试、类型、构建、应用和审计全部通过。",
+    "> - **应用测试** `35/35` — 真实生产服务器路径全部通过。",
+    ">",
+    "> **CONCLUSION**",
+    ">",
+    "> 本次运行支持当前工作站能在约三分钟内完成完整发布检查。",
+    ">",
+    "> **LIMITATIONS**",
+    ">",
+    "> - **单次运行** — 没有重复样本，不能证明长期耗时分布。",
+    "> - **单机范围** — 结果只覆盖当前硬件、系统与依赖版本。",
   ].join("\n");
 }
 
@@ -6274,6 +6319,20 @@ module.exports = class MyBlogPublisher extends Plugin {
           const template = createDecisionTemplate(view?.file?.path);
           editor.replaceSelection(template);
           new Notice("已插入技术决策记录；请替换标题、状态、日期、背景、决定、理由、备选与影响");
+        } catch (error) {
+          new Notice(error instanceof Error ? error.message : String(error));
+        }
+      },
+    });
+
+    this.addCommand({
+      id: "insert-experiment-template",
+      name: "插入技术实验记录模板",
+      editorCallback: (editor, view) => {
+        try {
+          const template = createExperimentTemplate(view?.file?.path);
+          editor.replaceSelection(template);
+          new Notice("已插入技术实验记录；请替换标题、状态、日期、假设、环境、方法、样本、测量、结论与局限");
         } catch (error) {
           new Notice(error instanceof Error ? error.message : String(error));
         }

@@ -181,6 +181,7 @@
       import { createStudioConfig } from "/studio/config.mjs";
       import { registerStudioAudioEditor } from "/studio/audio-editor.mjs";
       import { registerStudioDecisionEditor } from "/studio/decision-editor.mjs";
+      import { registerStudioExperimentEditor } from "/studio/experiment-editor.mjs";
       import { registerStudioFaqEditor } from "/studio/faq-editor.mjs";
       import { registerStudioFileTreeEditor } from "/studio/filetree-editor.mjs";
       import { registerStudioTimelineEditor } from "/studio/timeline-editor.mjs";
@@ -206,6 +207,7 @@
         try {
           registerStableSlugWidget();
           registerStudioDecisionEditor();
+          registerStudioExperimentEditor();
           registerStudioFaqEditor();
           registerStudioFileTreeEditor();
           registerStudioTimelineEditor();

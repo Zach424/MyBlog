@@ -802,7 +802,7 @@ export async function runProductionSmoke(originInput, { expectOAuth = false } = 
   invariant(studioPolicy.includes("https://api.github.com"), "Studio CSP 缺少 GitHub API");
   invariant(studioPolicy.includes("frame-ancestors 'none'"), "Studio CSP 未禁止嵌入");
 
-  const [studioMaintenancePage, studioMaintenanceModule, studioMaintenanceStyles, studioMaintenanceResponse, studioConfig, studioManifest, studioPreflight, stableSlugWidget, entryPreflightModule, mathPreviewModule, galleryEditorModule, glossaryEditorModule, faqEditorModule, fileTreeEditorModule, timelineEditorModule, decisionEditorModule, tableEditorModule, taskListEditorModule, referencesEditorModule, stepsEditorModule, audioEditorModule, videoEditorModule, studioPreview, katexStyles, studioRuntime, unknownStudioAsset] = await Promise.all([
+  const [studioMaintenancePage, studioMaintenanceModule, studioMaintenanceStyles, studioMaintenanceResponse, studioConfig, studioManifest, studioPreflight, stableSlugWidget, entryPreflightModule, mathPreviewModule, galleryEditorModule, glossaryEditorModule, faqEditorModule, fileTreeEditorModule, timelineEditorModule, decisionEditorModule, experimentEditorModule, tableEditorModule, taskListEditorModule, referencesEditorModule, stepsEditorModule, audioEditorModule, videoEditorModule, studioPreview, katexStyles, studioRuntime, unknownStudioAsset] = await Promise.all([
     request(origin, "/studio/maintenance"),
     request(origin, "/studio/maintenance.mjs", { accept: "text/javascript" }),
     request(origin, "/studio/maintenance.css", { accept: "text/css" }),
@@ -819,6 +819,7 @@ export async function runProductionSmoke(originInput, { expectOAuth = false } = 
     request(origin, "/studio/filetree-editor.mjs", { accept: "text/javascript" }),
     request(origin, "/studio/timeline-editor.mjs", { accept: "text/javascript" }),
     request(origin, "/studio/decision-editor.mjs", { accept: "text/javascript" }),
+    request(origin, "/studio/experiment-editor.mjs", { accept: "text/javascript" }),
     request(origin, "/studio/table-editor.mjs", { accept: "text/javascript" }),
     request(origin, "/studio/task-list-editor.mjs", { accept: "text/javascript" }),
     request(origin, "/studio/references-editor.mjs", { accept: "text/javascript" }),
@@ -1025,6 +1026,16 @@ export async function runProductionSmoke(originInput, { expectOAuth = false } = 
   invariant(
     decisionEditorModule.response.headers.get("content-type")?.startsWith("text/javascript"),
     "Studio 技术决策编辑组件类型不正确",
+  );
+  invariant(
+    experimentEditorModule.response.status === 200 &&
+      experimentEditorModule.body.includes("registerStudioExperimentEditor") &&
+      experimentEditorModule.body.includes("myblog-experiment"),
+    "Studio 技术实验编辑组件不可用",
+  );
+  invariant(
+    experimentEditorModule.response.headers.get("content-type")?.startsWith("text/javascript"),
+    "Studio 技术实验编辑组件类型不正确",
   );
   invariant(
     fileTreeEditorModule.response.headers.get("content-type")?.startsWith("text/javascript"),
@@ -1281,6 +1292,30 @@ export async function runProductionSmoke(originInput, { expectOAuth = false } = 
       decisionPreviewPayload.html.includes('datetime="2026-08-12"') &&
       !/<button|contenteditable|onclick=/iu.test(decisionPreviewPayload.html),
     "Studio 技术决策生产管线预览不可用",
+  );
+
+  const experimentPreview = await request(origin, "/studio/math-preview", {
+    accept: "application/json",
+    body: JSON.stringify({
+      markdown:
+        "> [!experiment] 验证博客完整发布门耗时\n> **STATUS:** `SUPPORTED` · **DATE:** `2026-08-12`\n>\n> **HYPOTHESIS**\n>\n> 当前工作站可以在三分钟内完成全部本地发布质量门。\n>\n> **ENVIRONMENT**\n>\n> Windows、Node.js 22、Next.js 16.3.0，使用仓库锁定依赖。\n>\n> **METHOD**\n>\n> 运行一次 `npm run release:check` 并记录最终结果。\n>\n> **SAMPLE**\n>\n> 单台工作站、一次完整运行。\n>\n> **MEASUREMENTS**\n>\n> - **完整发布检查** `184.3 s` — 全部本地发布门通过。\n> - **应用测试** `35/35` — 真实生产服务器路径通过。\n>\n> **CONCLUSION**\n>\n> 本次运行支持当前工作站能在约三分钟内完成完整发布检查。\n>\n> **LIMITATIONS**\n>\n> - **单次运行** — 不能证明长期耗时分布。\n> - **单机范围** — 只覆盖当前硬件和依赖版本。",
+    }),
+    headers: { "content-type": "application/json" },
+    method: "POST",
+  });
+  const experimentPreviewPayload = JSON.parse(experimentPreview.body);
+  invariant(
+    experimentPreview.response.status === 200 &&
+      experimentPreviewPayload.ok === true &&
+      experimentPreviewPayload.experimentCount === 1 &&
+      experimentPreviewPayload.experimentMeasurementCount === 2 &&
+      experimentPreviewPayload.experimentLimitationCount === 2 &&
+      experimentPreviewPayload.html.includes('data-experiment="bench-sheet"') &&
+      experimentPreviewPayload.html.includes("MEASUREMENTS") &&
+      experimentPreviewPayload.html.includes("LIMITATIONS") &&
+      experimentPreviewPayload.html.includes('datetime="2026-08-12"') &&
+      !/<button|contenteditable|onclick=/iu.test(experimentPreviewPayload.html),
+    "Studio 技术实验生产管线预览不可用",
   );
 
   const entryPreflight = await request(origin, "/studio/entry-preflight", {

@@ -60,7 +60,7 @@ function healthyObservation() {
         isDesktopOnly: true,
         mainPresent: true,
         stylesPresent: true,
-      version: "1.53.0",
+      version: "1.54.0",
       },
     },
     workspace: {
@@ -160,14 +160,14 @@ async function createDoctorFixture() {
     scripts,
   }, null, 2)}\n`;
   const pluginManifest =
-    '{"id":"myblog-publisher","version":"1.53.0","isDesktopOnly":true}\n';
+    '{"id":"myblog-publisher","version":"1.54.0","isDesktopOnly":true}\n';
   const pluginMain = "module.exports = {};\n";
   const pluginStyles = ".fixture {}\n";
   const pluginBundle = `${JSON.stringify(
     {
       version: 1,
       algorithm: "sha256",
-    plugin: { id: "myblog-publisher", version: "1.53.0" },
+    plugin: { id: "myblog-publisher", version: "1.54.0" },
       files: [
         ["main.js", pluginMain],
         ["manifest.json", pluginManifest],
@@ -285,7 +285,7 @@ test("reports a real ready repository after its remote becomes unavailable", asy
         path: file.path,
         status: "verified",
       })),
-    plugin: { id: "myblog-publisher", version: "1.53.0" },
+    plugin: { id: "myblog-publisher", version: "1.54.0" },
       version: 1,
     });
     assert.deepEqual(

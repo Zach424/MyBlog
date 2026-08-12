@@ -9,6 +9,11 @@ import {
   type MarkdownDecisionIssue,
 } from "@/lib/markdown-decision";
 import {
+  extractMarkdownExperiments,
+  getMarkdownExperimentIssue,
+  type MarkdownExperimentIssue,
+} from "@/lib/markdown-experiment";
+import {
   extractMarkdownAudioNotes,
   getMarkdownAudioIssue,
   type MarkdownAudioIssue,
@@ -88,6 +93,9 @@ export type StudioMathPreviewResult =
       decisionAlternativeCount: number;
       decisionConsequenceCount: number;
       decisionCount: number;
+      experimentCount: number;
+      experimentLimitationCount: number;
+      experimentMeasurementCount: number;
       faqCount: number;
       faqQuestionCount: number;
       fileTreeCount: number;
@@ -117,6 +125,7 @@ export type StudioMathPreviewResult =
       issue:
         | MarkdownDiagramIssue
         | MarkdownDecisionIssue
+        | MarkdownExperimentIssue
         | MarkdownFaqIssue
         | MarkdownFileTreeIssue
         | MarkdownTimelineIssue
@@ -197,6 +206,10 @@ export function renderStudioMathPreview(
     maximumDate: resolveContentBuildDate(),
   });
   if (decisionIssue) return { issue: decisionIssue, ok: false };
+  const experimentIssue = getMarkdownExperimentIssue(markdown, {
+    maximumDate: resolveContentBuildDate(),
+  });
+  if (experimentIssue) return { issue: experimentIssue, ok: false };
   const galleryIssue = getMarkdownGalleryIssue(markdown);
   if (galleryIssue) return { issue: galleryIssue, ok: false };
   const glossaryIssue = getMarkdownGlossaryIssue(markdown);
@@ -221,6 +234,16 @@ export function renderStudioMathPreview(
   );
   const decisionConsequenceCount = decisions.reduce(
     (total, decision) => total + decision.consequences.length,
+    0,
+  );
+  const experiments = extractMarkdownExperiments(markdown);
+  const experimentCount = experiments.length;
+  const experimentMeasurementCount = experiments.reduce(
+    (total, experiment) => total + experiment.measurements.length,
+    0,
+  );
+  const experimentLimitationCount = experiments.reduce(
+    (total, experiment) => total + experiment.limitations.length,
     0,
   );
   const diagramCount = extractMarkdownDiagrams(markdown).length;
@@ -308,6 +331,9 @@ export function renderStudioMathPreview(
     decisionAlternativeCount,
     decisionConsequenceCount,
     decisionCount,
+    experimentCount,
+    experimentLimitationCount,
+    experimentMeasurementCount,
     faqCount,
     faqQuestionCount,
     fileTreeCount,

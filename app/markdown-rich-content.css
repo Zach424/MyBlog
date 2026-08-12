@@ -1693,6 +1693,258 @@
   line-height: 1.65;
 }
 
+.markdown-content .markdown-experiment {
+  margin-block: 2rem;
+  border-block: 0.0625rem solid var(--trace-dark);
+  background: color-mix(in srgb, var(--trace) 9%, var(--paper));
+}
+
+.markdown-content .markdown-experiment-header {
+  display: grid;
+  grid-template-columns: 2rem minmax(0, 1fr);
+  min-width: 0;
+  border-bottom: 0.0625rem solid var(--rule);
+}
+
+.markdown-content .markdown-experiment-spine {
+  display: grid;
+  place-items: center;
+  padding-block: 0.65rem;
+  border-right: 0.0625rem solid var(--rule);
+  background:
+    repeating-linear-gradient(
+      180deg,
+      var(--ink) 0 0.7rem,
+      color-mix(in srgb, var(--ink) 86%, var(--signal)) 0.7rem 0.84rem
+    );
+  color: var(--paper);
+  font: 750 0.53rem/1 var(--mono);
+  letter-spacing: 0.12em;
+  writing-mode: vertical-rl;
+  transform: rotate(180deg);
+}
+
+.markdown-content .markdown-experiment-heading {
+  display: grid;
+  min-width: 0;
+}
+
+.markdown-content .markdown-experiment-meta {
+  display: flex;
+  min-height: 2.35rem;
+  align-items: center;
+  justify-content: space-between;
+  gap: 0.75rem;
+  padding: 0.5rem 0.75rem;
+  border-bottom: 0.0625rem solid var(--rule);
+  color: var(--muted);
+  font: 700 0.625rem/1.4 var(--mono);
+  letter-spacing: 0.075em;
+}
+
+.markdown-content .markdown-experiment-status {
+  padding: 0.12rem 0.4rem;
+  border: 0.0625rem solid currentColor;
+  color: var(--signal);
+}
+
+.markdown-content .markdown-experiment[data-status="refuted"] .markdown-experiment-status {
+  color: var(--ink);
+}
+
+.markdown-content .markdown-experiment[data-status="inconclusive"] .markdown-experiment-status,
+.markdown-content .markdown-experiment[data-status="failed"] .markdown-experiment-status {
+  color: var(--muted);
+}
+
+.markdown-content .markdown-experiment[data-status="failed"] .markdown-experiment-status {
+  border-style: dashed;
+}
+
+.markdown-content .markdown-experiment-date { font-style: normal; }
+
+.markdown-content .markdown-experiment-title {
+  padding: 0.9rem 1rem 1rem;
+  font-size: clamp(1.05rem, 1.75vw, 1.35rem);
+  line-height: 1.42;
+  letter-spacing: -0.02em;
+  overflow-wrap: anywhere;
+}
+
+.markdown-content .markdown-experiment-copy-panel {
+  display: grid;
+  grid-template-columns: 7.2rem minmax(0, 1fr);
+  min-width: 0;
+}
+
+.markdown-content .markdown-experiment-copy-label {
+  padding: 0.85rem 0.65rem;
+  border-right: 0.0625rem solid var(--rule);
+  color: var(--muted);
+  font: 750 0.58rem/1.45 var(--mono);
+  letter-spacing: 0.08em;
+}
+
+.markdown-content .markdown-experiment-copy {
+  min-width: 0;
+  padding: 0.8rem 0.9rem 0.9rem;
+  color: var(--muted);
+  font-size: 0.82rem;
+  line-height: 1.72;
+  overflow-wrap: anywhere;
+}
+
+.markdown-content .markdown-experiment-hypothesis {
+  border-bottom: 0.0625rem solid var(--trace-dark);
+  background: var(--paper);
+}
+
+.markdown-content .markdown-experiment-hypothesis .markdown-experiment-copy-label,
+.markdown-content .markdown-experiment-conclusion .markdown-experiment-copy-label {
+  color: var(--signal);
+}
+
+.markdown-content .markdown-experiment-hypothesis .markdown-experiment-copy,
+.markdown-content .markdown-experiment-conclusion .markdown-experiment-copy {
+  color: var(--ink);
+  font-weight: 650;
+}
+
+.markdown-content .markdown-experiment-setup {
+  display: grid;
+  grid-template-columns: repeat(3, minmax(0, 1fr));
+  min-width: 0;
+  background: var(--paper);
+}
+
+.markdown-content .markdown-experiment-setup .markdown-experiment-copy-panel {
+  grid-template-columns: 1fr;
+  grid-template-rows: auto 1fr;
+}
+
+.markdown-content .markdown-experiment-setup .markdown-experiment-copy-panel:not(:last-child) {
+  border-right: 0.0625rem solid var(--rule);
+}
+
+.markdown-content .markdown-experiment-setup .markdown-experiment-copy-label {
+  padding-block: 0.55rem;
+  border-right: 0;
+  border-bottom: 0.0625rem solid var(--rule);
+}
+
+.markdown-content .markdown-experiment-results {
+  display: grid;
+  grid-template-columns: minmax(0, 1.25fr) minmax(0, 0.75fr);
+  min-width: 0;
+  border-top: 0.0625rem solid var(--trace-dark);
+}
+
+.markdown-content .markdown-experiment-measurements {
+  grid-row: 1 / span 2;
+  min-width: 0;
+  border-right: 0.0625rem solid var(--trace-dark);
+  background: var(--paper);
+}
+
+.markdown-content .markdown-experiment-ledger-header {
+  display: flex;
+  min-height: 2.35rem;
+  align-items: center;
+  justify-content: space-between;
+  gap: 0.75rem;
+  padding: 0.5rem 0.7rem;
+  border-bottom: 0.0625rem solid var(--rule);
+  font: 750 0.58rem/1.4 var(--mono);
+  letter-spacing: 0.08em;
+}
+
+.markdown-content .markdown-experiment-ledger-label { color: var(--ink); }
+
+.markdown-content .markdown-experiment-ledger-count {
+  color: var(--muted);
+  font-variant-numeric: tabular-nums;
+}
+
+.markdown-content .markdown-experiment-measurement-list,
+.markdown-content .markdown-experiment-limitation-list {
+  margin: 0;
+  padding: 0;
+  list-style: none;
+}
+
+.markdown-content .markdown-experiment-measurement {
+  display: grid;
+  grid-template-columns: minmax(6.4rem, 0.8fr) minmax(5.5rem, 0.6fr) minmax(0, 1.6fr);
+  min-width: 0;
+  margin: 0;
+}
+
+.markdown-content .markdown-experiment-measurement:not(:last-child),
+.markdown-content .markdown-experiment-limitation:not(:last-child) {
+  border-bottom: 0.0625rem solid var(--rule);
+}
+
+.markdown-content .markdown-experiment-measurement-label,
+.markdown-content .markdown-experiment-measurement-value,
+.markdown-content .markdown-experiment-measurement-copy,
+.markdown-content .markdown-experiment-limitation-title,
+.markdown-content .markdown-experiment-limitation-copy {
+  min-width: 0;
+  padding: 0.7rem;
+  overflow-wrap: anywhere;
+}
+
+.markdown-content .markdown-experiment-measurement-label {
+  border-right: 0.0625rem solid var(--rule);
+  font-size: 0.74rem;
+  line-height: 1.55;
+}
+
+.markdown-content .markdown-experiment-measurement-value {
+  border-right: 0.0625rem solid var(--rule);
+  border-radius: 0;
+  background: color-mix(in srgb, var(--signal) 7%, var(--paper));
+  color: var(--signal);
+  font: 750 0.68rem/1.55 var(--mono);
+  font-variant-numeric: tabular-nums;
+}
+
+.markdown-content .markdown-experiment-measurement-copy,
+.markdown-content .markdown-experiment-limitation-copy {
+  color: var(--muted);
+  font-size: 0.74rem;
+  line-height: 1.65;
+}
+
+.markdown-content .markdown-experiment-conclusion {
+  background: color-mix(in srgb, var(--signal) 5%, var(--paper));
+}
+
+.markdown-content .markdown-experiment-limitations {
+  min-width: 0;
+  border-top: 0.0625rem solid var(--rule);
+  background:
+    repeating-linear-gradient(
+      135deg,
+      transparent 0 0.65rem,
+      color-mix(in srgb, var(--trace) 9%, transparent) 0.65rem 0.72rem
+    ),
+    var(--paper);
+}
+
+.markdown-content .markdown-experiment-limitation {
+  display: grid;
+  grid-template-columns: minmax(6.4rem, 0.85fr) minmax(0, 1.15fr);
+  min-width: 0;
+  margin: 0;
+}
+
+.markdown-content .markdown-experiment-limitation-title {
+  border-right: 0.0625rem solid var(--rule);
+  font-size: 0.72rem;
+  line-height: 1.55;
+}
+
 .markdown-content .markdown-procedure {
   margin-block: 2rem;
   border-block: 0.0625rem solid var(--trace-dark);
@@ -1902,6 +2154,13 @@
   .markdown-content .markdown-decision-header,
   .markdown-content .markdown-decision-copy-panel,
   .markdown-content .markdown-decision-ledger-item { break-inside: avoid-page; }
+
+  .markdown-content .markdown-experiment { break-inside: auto; }
+
+  .markdown-content .markdown-experiment-header,
+  .markdown-content .markdown-experiment-copy-panel,
+  .markdown-content .markdown-experiment-measurement,
+  .markdown-content .markdown-experiment-limitation { break-inside: avoid-page; }
 
   .markdown-content .markdown-glossary-term,
   .markdown-content .markdown-glossary-meaning { padding: 2.5mm; }
@@ -2305,4 +2564,46 @@
   .markdown-content .markdown-decision-copy-panel { grid-template-columns: 5.6rem minmax(0, 1fr); }
 
   .markdown-content .markdown-decision-ledger-item { grid-template-columns: 6.15rem minmax(0, 1fr); }
+
+  .markdown-content .markdown-experiment-header { grid-template-columns: 1.6rem minmax(0, 1fr); }
+
+  .markdown-content .markdown-experiment-meta {
+    align-items: flex-start;
+    flex-direction: column;
+  }
+
+  .markdown-content .markdown-experiment-copy-panel { grid-template-columns: 5.6rem minmax(0, 1fr); }
+
+  .markdown-content .markdown-experiment-setup,
+  .markdown-content .markdown-experiment-results { grid-template-columns: minmax(0, 1fr); }
+
+  .markdown-content .markdown-experiment-setup .markdown-experiment-copy-panel {
+    grid-template-columns: 5.6rem minmax(0, 1fr);
+    grid-template-rows: auto;
+  }
+
+  .markdown-content .markdown-experiment-setup .markdown-experiment-copy-panel:not(:last-child) {
+    border-right: 0;
+    border-bottom: 0.0625rem solid var(--rule);
+  }
+
+  .markdown-content .markdown-experiment-setup .markdown-experiment-copy-label {
+    padding-block: 0.85rem;
+    border-right: 0.0625rem solid var(--rule);
+    border-bottom: 0;
+  }
+
+  .markdown-content .markdown-experiment-measurements {
+    grid-row: auto;
+    border-right: 0;
+    border-bottom: 0.0625rem solid var(--trace-dark);
+  }
+
+  .markdown-content .markdown-experiment-measurement {
+    grid-template-columns: minmax(5.8rem, 0.8fr) minmax(5rem, 0.7fr) minmax(0, 1.5fr);
+  }
+
+  .markdown-content .markdown-experiment-limitations { border-top: 0.0625rem solid var(--trace-dark); }
+
+  .markdown-content .markdown-experiment-limitation { grid-template-columns: 5.8rem minmax(0, 1fr); }
 }

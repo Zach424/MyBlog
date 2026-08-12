@@ -11,6 +11,7 @@ import {
   hasPotentialStudioFileTree,
   hasPotentialStudioTimeline,
   hasPotentialStudioDecision,
+  hasPotentialStudioExperiment,
   hasPotentialStudioRichMarkdown,
   hasPotentialStudioMath,
   hasPotentialStudioReferences,
@@ -100,6 +101,8 @@ test("requests only potential rich Markdown from the same-origin preview endpoin
   assert.equal(hasPotentialStudioTimeline("```md\n> [!timeline] 示例\n```"), false);
   assert.equal(hasPotentialStudioDecision("> [!decision] 选择托管方案"), true);
   assert.equal(hasPotentialStudioDecision("```md\n> [!decision] 示例\n```"), false);
+  assert.equal(hasPotentialStudioExperiment("> [!experiment] 发布门耗时"), true);
+  assert.equal(hasPotentialStudioExperiment("```md\n> [!experiment] 示例\n```"), false);
   assert.equal(hasPotentialStudioRichMarkdown("```md\n> [!note]\n```"), false);
   assert.equal(hasPotentialStudioDiagram("```mermaid\nflowchart LR\nA --> B\n```"), true);
   assert.equal(hasPotentialStudioDiagram("```md\n```mermaid\nA --> B\n```\n```"), false);
@@ -167,6 +170,9 @@ test("keeps plain Markdown on the native preview and exposes recoverable rich-co
         decisionAlternativeCount: 2,
         decisionConsequenceCount: 2,
         decisionCount: 1,
+        experimentCount: 1,
+        experimentLimitationCount: 2,
+        experimentMeasurementCount: 2,
         formulaCount: 2,
         galleryCount: 1,
         galleryImageCount: 3,
@@ -233,6 +239,9 @@ test("keeps plain Markdown on the native preview and exposes recoverable rich-co
   assert.equal(context.state.decisionCount, 1);
   assert.equal(context.state.decisionAlternativeCount, 2);
   assert.equal(context.state.decisionConsequenceCount, 2);
+  assert.equal(context.state.experimentCount, 1);
+  assert.equal(context.state.experimentMeasurementCount, 2);
+  assert.equal(context.state.experimentLimitationCount, 2);
   assert.equal(context.state.galleryCount, 1);
   assert.equal(context.state.galleryImageCount, 3);
   assert.equal(context.state.glossaryCount, 1);
@@ -257,7 +266,7 @@ test("keeps plain Markdown on the native preview and exposes recoverable rich-co
   const readyTree = template.render.call(context);
   assert.match(
     textContent(readyTree),
-    /1 段音频 \/ 含文字稿、2 个公式、1 张图表、1 组画廊 \/ 3 张图片、1 个表格 \/ 6 个数据单元格、1 个任务清单 \/ 2 项已完成 \/ 3 项总计、1 个参考资料清单 \/ 2 条来源、1 个步骤流程 \/ 2 步、1 个术语定义表 \/ 2 个术语、1 个 FAQ \/ 2 个问题、1 个项目文件树 \/ 5 个节点 \/ 最大 3 层、1 个项目时间线 \/ 3 个里程碑、1 个技术决策 \/ 2 个备选 \/ 2 条影响、1 段视频已按生产规则渲染/u,
+    /1 段音频 \/ 含文字稿、2 个公式、1 张图表、1 组画廊 \/ 3 张图片、1 个表格 \/ 6 个数据单元格、1 个任务清单 \/ 2 项已完成 \/ 3 项总计、1 个参考资料清单 \/ 2 条来源、1 个步骤流程 \/ 2 步、1 个术语定义表 \/ 2 个术语、1 个 FAQ \/ 2 个问题、1 个项目文件树 \/ 5 个节点 \/ 最大 3 层、1 个项目时间线 \/ 3 个里程碑、1 个技术决策 \/ 2 个备选 \/ 2 条影响、1 个技术实验 \/ 2 项测量 \/ 2 项局限、1 段视频已按生产规则渲染/u,
   );
 
   context.state = {
@@ -276,6 +285,10 @@ test("keeps plain Markdown on the native preview and exposes recoverable rich-co
   assert.equal(
     getStudioMathPreviewStatus({ issue: { kind: "decision" }, status: "invalid" }).label,
     "DECISION / NEEDS FIX",
+  );
+  assert.equal(
+    getStudioMathPreviewStatus({ issue: { kind: "experiment" }, status: "invalid" }).label,
+    "EXPERIMENT / NEEDS FIX",
   );
   assert.equal(
     getStudioMathPreviewStatus({ issue: { kind: "timeline" }, status: "invalid" }).label,
